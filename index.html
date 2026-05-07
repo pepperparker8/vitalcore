@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitalCore — Health Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0eeea;
+  --border: #e0ddd6;
+  --border-strong: #c8c4bc;
+  --text: #1a1916;
+  --text-2: #5a5750;
+  --text-3: #9a9690;
+  --accent: #1a4a3a;
+  --accent-light: #e8f0ec;
+  --accent-mid: #2d6b52;
+  --green: #1a6b3a;
+  --green-light: #eaf4ee;
+  --amber: #b8740a;
+  --amber-light: #fdf6e8;
+  --red: #c0392b;
+  --red-light: #fdf0ef;
+  --blue: #1a3a6b;
+  --blue-light: #edf0f8;
+  --polar: #d4572a;
+  --polar-light: #fdf0eb;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --serif: 'DM Serif Display', serif;
+  --r: 2px;
+  --sh: 0 1px 3px rgba(0,0,0,0.06);
+  --sh-md: 0 4px 16px rgba(0,0,0,0.09);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+
+/* HEADER */
+header {
+  background:var(--accent);
+  color:white;
+  padding:0 28px;
+  height:54px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+.logo { display:flex; align-items:baseline; gap:10px; }
+.logo-name { font-family:var(--serif); font-size:21px; color:white; }
+.logo-tag { font-family:var(--mono); font-size:9px; color:rgba(255,255,255,0.45); letter-spacing:2px; text-transform:uppercase; }
+.header-right { display:flex; align-items:center; gap:12px; }
+.date-disp { font-family:var(--mono); font-size:10px; color:rgba(255,255,255,0.55); letter-spacing:1px; }
+.btn-hdr {
+  background:rgba(255,255,255,0.14);
+  color:white;
+  border:1px solid rgba(255,255,255,0.22);
+  padding:5px 14px;
+  font-family:var(--sans);
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  border-radius:var(--r);
+  transition:background 0.2s;
+}
+.btn-hdr:hover { background:rgba(255,255,255,0.24); }
+.btn-hdr.polar { background:rgba(212,87,42,0.7); border-color:rgba(212,87,42,0.8); }
+.btn-hdr.polar:hover { background:rgba(212,87,42,0.9); }
+
+/* NAV TABS */
+.nav-tabs {
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 28px;
+  display:flex;
+  gap:0;
+}
+.nav-tab {
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  padding:12px 16px;
+  cursor:pointer;
+  color:var(--text-3);
+  border-bottom:2px solid transparent;
+  margin-bottom:-1px;
+  transition:color 0.15s;
+}
+.nav-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.nav-tab:hover:not(.active) { color:var(--text-2); }
+
+/* LAYOUT */
+.container { max-width:1300px; margin:0 auto; padding:24px 28px; }
+.page { display:none; }
+.page.active { display:block; }
+
+/* INTELLIGENCE PANEL — TOP ROW */
+.intel-row {
+  display:grid;
+  grid-template-columns:200px 200px 200px 1fr;
+  gap:14px;
+  margin-bottom:22px;
+}
+
+.score-ring-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:18px;
+  box-shadow:var(--sh);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+}
+
+.ring-wrap { position:relative; width:100px; height:100px; }
+.ring-wrap svg { position:absolute; top:0; left:0; transform:rotate(-90deg); }
+.ring-center {
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.ring-val { font-family:var(--serif); font-size:30px; line-height:1; }
+.ring-pct { font-family:var(--mono); font-size:9px; color:var(--text-3); margin-top:2px; }
+.ring-label { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-2); }
+.ring-sub { font-size:11px; color:var(--text-3); text-align:center; }
+
+.zone-dot {
+  display:inline-block;
+  width:8px; height:8px;
+  border-radius:50%;
+  margin-right:5px;
+}
+.zone-green { background:#1a6b3a; }
+.zone-amber { background:#b8740a; }
+.zone-red { background:#c0392b; }
+.zone-grey { background:#9a9690; }
+
+/* AI INSIGHT */
+.ai-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:20px 22px;
+  box-shadow:var(--sh);
+}
+.ai-badge {
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  background:var(--accent-light);
+  color:var(--accent);
+  padding:3px 8px;
+  border-radius:20px;
+  display:inline-block;
+  margin-bottom:10px;
+  border:1px solid rgba(26,74,58,0.15);
+}
+.ai-text { font-size:13px; color:var(--text); line-height:1.75; }
+.ai-loading { display:flex; align-items:center; gap:8px; color:var(--text-3); font-family:var(--mono); font-size:11px; }
+.pulse { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+/* METRICS GRID */
+.section-hdr {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:12px;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.sec-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-2); }
+.sec-note { font-family:var(--mono); font-size:9px; color:var(--text-3); }
+
+.metrics-section { margin-bottom:24px; }
+.mgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; }
+
+.mcard {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:14px 16px;
+  box-shadow:var(--sh);
+  cursor:pointer;
+  transition:border-color 0.2s, box-shadow 0.2s;
+  position:relative;
+}
+.mcard:hover { border-color:var(--border-strong); box-shadow:var(--sh-md); }
+.mcard.s-normal { border-left:3px solid var(--green); }
+.mcard.s-borderline { border-left:3px solid var(--amber); }
+.mcard.s-elevated { border-left:3px solid var(--red); }
+.mcard.s-none { border-left:3px solid var(--border-strong); }
+.mcard.s-polar { border-left:3px solid var(--polar); }
+
+.mtop { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.mname { font-size:10px; font-weight:500; color:var(--text-2); text-transform:uppercase; letter-spacing:0.8px; }
+
+.sbadge {
+  font-family:var(--mono);
+  font-size:8px;
+  letter-spacing:0.8px;
+  padding:2px 6px;
+  border-radius:20px;
+}
+.sbadge.normal { background:var(--green-light); color:var(--green); }
+.sbadge.borderline { background:var(--amber-light); color:var(--amber); }
+.sbadge.elevated { background:var(--red-light); color:var(--red); }
+.sbadge.none { background:var(--surface2); color:var(--text-3); }
+.sbadge.polar { background:var(--polar-light); color:var(--polar); }
+
+.mval { font-family:var(--mono); font-size:26px; font-weight:400; color:var(--text); line-height:1; }
+.munit { font-family:var(--mono); font-size:10px; color:var(--text-3); margin-top:2px; }
+.spark-wrap { margin-top:10px; height:30px; }
+.mfoot { display:flex; justify-content:space-between; margin-top:6px; }
+.mdate { font-family:var(--mono); font-size:9px; color:var(--text-3); }
+.mdelta { font-family:var(--mono); font-size:9px; }
+.mdelta.up { color:var(--red); }
+.mdelta.down { color:var(--green); }
+.mdelta.neutral { color:var(--text-3); }
+
+/* POLAR IMPORT SECTION */
+.polar-banner {
+  background:linear-gradient(135deg, #2a1a14 0%, #5a2010 100%);
+  border-radius:var(--r);
+  padding:20px 24px;
+  margin-bottom:22px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+}
+.polar-banner-left { flex:1; }
+.polar-device-badge {
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  background:rgba(212,87,42,0.3);
+  color:#f4a07a;
+  padding:3px 10px;
+  border-radius:20px;
+  display:inline-block;
+  margin-bottom:8px;
+  border:1px solid rgba(212,87,42,0.4);
+}
+.polar-banner h3 { font-family:var(--serif); font-size:18px; color:white; margin-bottom:4px; }
+.polar-banner p { font-size:12px; color:rgba(255,255,255,0.6); line-height:1.6; }
+.polar-steps { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.polar-step {
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:var(--r);
+  padding:6px 12px;
+  font-family:var(--mono);
+  font-size:9px;
+  color:rgba(255,255,255,0.7);
+  letter-spacing:0.5px;
+}
+.polar-step span { color:#f4a07a; margin-right:6px; }
+
+/* CHARTS */
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px; }
+.chart-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:18px;
+  box-shadow:var(--sh);
+}
+
+/* LOG & INPUT */
+.log-row { display:grid; grid-template-columns:1fr 360px; gap:14px; }
+.log-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  box-shadow:var(--sh);
+  overflow:hidden;
+}
+.log-hdr { padding:12px 18px; border-bottom:1px solid var(--border); background:var(--surface2); }
+table { width:100%; border-collapse:collapse; }
+th { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-3); padding:9px 18px; text-align:left; background:var(--surface2); border-bottom:1px solid var(--border); }
+td { padding:9px 18px; font-family:var(--mono); font-size:11px; color:var(--text); border-bottom:1px solid var(--border); }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--surface2); }
+.ls { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:5px; }
+.ls.normal { background:var(--green); }
+.ls.borderline { background:var(--amber); }
+.ls.elevated { background:var(--red); }
+.ls.polar { background:var(--polar); }
+
+/* INPUT PANEL */
+.input-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  box-shadow:var(--sh);
+  overflow:hidden;
+}
+.input-hdr { padding:12px 18px; border-bottom:1px solid var(--border); background:var(--surface2); }
+.tabs { display:flex; border-bottom:1px solid var(--border); padding:0 16px; background:var(--surface2); }
+.tab { font-family:var(--mono); font-size:9px; letter-spacing:1px; text-transform:uppercase; padding:9px 12px; cursor:pointer; color:var(--text-3); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color 0.15s; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab.polar-tab.active { color:var(--polar); border-bottom-color:var(--polar); }
+.input-body { padding:14px 16px; }
+.ig { margin-bottom:10px; }
+.ilabel { font-family:var(--mono); font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-2); margin-bottom:4px; display:block; }
+.irow { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+input[type=number], input[type=text], select {
+  width:100%;
+  padding:7px 9px;
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--text);
+  background:var(--bg);
+  outline:none;
+  transition:border-color 0.15s;
+}
+input[type=number]:focus, select:focus { border-color:var(--accent); background:white; }
+.ihint { font-family:var(--mono); font-size:8px; color:var(--text-3); margin-top:2px; }
+.divider { height:1px; background:var(--border); margin:10px 0; }
+.btn-save {
+  width:100%;
+  padding:10px;
+  background:var(--accent);
+  color:white;
+  border:none;
+  border-radius:var(--r);
+  font-family:var(--sans);
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  transition:background 0.2s;
+}
+.btn-save:hover { background:var(--accent-mid); }
+.btn-save.polar-btn { background:var(--polar); }
+.btn-save.polar-btn:hover { background:#b84a22; }
+
+/* POLAR HOW-TO PAGE */
+.howto-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px; }
+.howto-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:20px;
+  box-shadow:var(--sh);
+}
+.step-num {
+  font-family:var(--serif);
+  font-size:36px;
+  color:var(--polar);
+  line-height:1;
+  margin-bottom:8px;
+}
+.howto-card h4 { font-size:14px; font-weight:600; margin-bottom:6px; }
+.howto-card p { font-size:12px; color:var(--text-2); line-height:1.65; }
+.howto-card .mono-path {
+  font-family:var(--mono);
+  font-size:10px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  padding:6px 10px;
+  border-radius:var(--r);
+  margin-top:8px;
+  color:var(--accent);
+}
+.metrics-table-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  overflow:hidden;
+  box-shadow:var(--sh);
+  margin-bottom:24px;
+}
+.metrics-table-card th { background:var(--accent); color:white; }
+.metrics-table-card td:first-child { font-weight:500; }
+.available { color:var(--green); }
+.partial { color:var(--amber); }
+.manual { color:var(--polar); }
+
+/* MODAL */
+.overlay { display:none; position:fixed; inset:0; background:rgba(26,25,22,0.55); z-index:200; align-items:center; justify-content:center; }
+.overlay.open { display:flex; }
+.modal { background:var(--surface); border-radius:var(--r); width:500px; box-shadow:var(--sh-md); overflow:hidden; }
+.modal-hdr { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:var(--surface2); border-bottom:1px solid var(--border); }
+.modal-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-2); }
+.modal-close { font-size:18px; cursor:pointer; color:var(--text-3); border:none; background:none; }
+.modal-body { padding:18px; }
+
+/* TOAST */
+.toast { position:fixed; bottom:20px; right:20px; background:var(--accent); color:white; padding:10px 16px; border-radius:var(--r); font-size:12px; font-family:var(--sans); box-shadow:var(--sh-md); transform:translateY(60px); opacity:0; transition:all 0.3s; z-index:300; }
+.toast.show { transform:translateY(0); opacity:1; }
+
+.empty-state { text-align:center; padding:28px; color:var(--text-3); font-family:var(--mono); font-size:10px; letter-spacing:1px; }
+
+@media(max-width:900px){
+  .intel-row,.chart-row,.log-row,.howto-grid { grid-template-columns:1fr; }
+  .container { padding:14px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-name">VitalCore</span>
+    <span class="logo-tag">Health Intelligence</span>
+  </div>
+  <div class="header-right">
+    <span class="date-disp" id="dateDisp"></span>
+    <button class="btn-hdr polar" onclick="showPage('polar-howto')">Polar Guide</button>
+    <button class="btn-hdr" onclick="openQuickLog()">+ Log Reading</button>
+  </div>
+</header>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="showPage('dashboard')">Dashboard</div>
+  <div class="nav-tab" onclick="showPage('recovery')">Recovery</div>
+  <div class="nav-tab" onclick="showPage('polar-howto')">Polar Setup</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ DASHBOARD PAGE -->
+<div class="container">
+<div id="page-dashboard" class="page active">
+
+  <!-- INTELLIGENCE ROW -->
+  <div class="intel-row">
+    <!-- RECOVERY RING -->
+    <div class="score-ring-card">
+      <div class="ring-label">Recovery</div>
+      <div class="ring-wrap" id="recoveryRingWrap">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#e0ddd6" stroke-width="7"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#1a6b3a" stroke-width="7"
+            stroke-dasharray="264" stroke-dashoffset="264" id="recoveryArc"
+            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease,stroke 0.5s"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-val" id="recoveryVal">—</div>
+          <div class="ring-pct">%</div>
+        </div>
+      </div>
+      <div class="ring-sub" id="recoveryZone">No data yet</div>
+    </div>
+
+    <!-- STRAIN RING -->
+    <div class="score-ring-card">
+      <div class="ring-label">Day Strain</div>
+      <div class="ring-wrap">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#e0ddd6" stroke-width="7"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#1a3a6b" stroke-width="7"
+            stroke-dasharray="264" stroke-dashoffset="264" id="strainArc"
+            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-val" id="strainVal">—</div>
+          <div class="ring-pct">/ 21</div>
+        </div>
+      </div>
+      <div class="ring-sub" id="strainZone">Borg scale</div>
+    </div>
+
+    <!-- SLEEP RING -->
+    <div class="score-ring-card">
+      <div class="ring-label">Sleep Score</div>
+      <div class="ring-wrap">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#e0ddd6" stroke-width="7"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#6b3a9a" stroke-width="7"
+            stroke-dasharray="264" stroke-dashoffset="264" id="sleepArc"
+            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-val" id="sleepVal">—</div>
+          <div class="ring-pct">%</div>
+        </div>
+      </div>
+      <div class="ring-sub" id="sleepDebt">Awaiting data</div>
+    </div>
+
+    <!-- AI INSIGHT -->
+    <div class="ai-card">
+      <div class="ai-badge">AI · Cross-metric insight</div>
+      <div class="ai-text" id="aiSummary">
+        <div class="ai-loading"><div class="pulse"></div> Awaiting your first readings...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POLAR SOURCE BANNER -->
+  <div class="polar-banner">
+    <div class="polar-banner-left">
+      <div class="polar-device-badge">Polar Loop 2 — Connected via Polar Flow</div>
+      <h3>Pull your Polar data in 3 steps</h3>
+      <p>Your Loop 2 captures heart rate, HRV (during sleep), steps, activity intensity, sleep duration, and calories. Export from Polar Flow and log the key numbers here — VitalCore does the rest.</p>
+      <div class="polar-steps">
+        <div class="polar-step"><span>01</span>Sync Loop 2 → Polar Flow app</div>
+        <div class="polar-step"><span>02</span>Check last night's sleep & HR data</div>
+        <div class="polar-step"><span>03</span>Log numbers in Recovery tab below</div>
+      </div>
+    </div>
+    <button class="btn-hdr polar" style="white-space:nowrap" onclick="showPage('polar-howto')">Full Setup Guide →</button>
+  </div>
+
+  <!-- CARDIOVASCULAR -->
+  <div class="metrics-section">
+    <div class="section-hdr"><span class="sec-title">Cardiovascular</span><span class="sec-note">from Polar Loop 2 + manual</span></div>
+    <div class="mgrid" id="g-cardio"></div>
+  </div>
+
+  <!-- METABOLIC -->
+  <div class="metrics-section">
+    <div class="section-hdr"><span class="sec-title">Metabolic</span><span class="sec-note">manual input</span></div>
+    <div class="mgrid" id="g-metabolic"></div>
+  </div>
+
+  <!-- BODY + RECOVERY -->
+  <div class="chart-row" style="align-items:start">
+    <div>
+      <div class="section-hdr"><span class="sec-title">Body Composition</span></div>
+      <div class="mgrid" id="g-body"></div>
+    </div>
+    <div>
+      <div class="section-hdr"><span class="sec-title">Activity (Polar Loop 2)</span><span class="sec-note">from Polar Flow</span></div>
+      <div class="mgrid" id="g-activity"></div>
+    </div>
+  </div>
+
+  <!-- TREND CHARTS -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="section-hdr"><span class="sec-title">Recovery Score (30d)</span></div>
+      <canvas id="recoveryChart" height="150"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="section-hdr"><span class="sec-title">Heart Rate & HRV trend</span></div>
+      <canvas id="hrChart" height="150"></canvas>
+    </div>
+  </div>
+
+  <!-- LOG + INPUT -->
+  <div class="log-row">
+    <div class="log-card">
+      <div class="log-hdr"><span class="sec-title">Reading Log</span></div>
+      <table>
+        <thead><tr><th>Date</th><th>Metric</th><th>Value</th><th>Source</th><th>Status</th></tr></thead>
+        <tbody id="logBody"><tr><td colspan="5"><div class="empty-state">No readings yet</div></td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="input-card">
+      <div class="input-hdr"><span class="sec-title">Log a Reading</span></div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'t-cardio')">Cardio</div>
+        <div class="tab polar-tab" onclick="switchTab(this,'t-polar')">Polar</div>
+        <div class="tab" onclick="switchTab(this,'t-metabolic')">Metabolic</div>
+        <div class="tab" onclick="switchTab(this,'t-body')">Body</div>
+      </div>
+      <div class="input-body">
+        <!-- CARDIO -->
+        <div id="t-cardio">
+          <div class="ig"><label class="ilabel">Blood Pressure</label>
+            <div class="irow">
+              <div><input type="number" id="i_bps" placeholder="Systolic"><div class="ihint">mmHg</div></div>
+              <div><input type="number" id="i_bpd" placeholder="Diastolic"><div class="ihint">mmHg</div></div>
+            </div>
+          </div>
+          <div class="ig"><label class="ilabel">Resting Heart Rate</label>
+            <input type="number" id="i_hr" placeholder="e.g. 62"><div class="ihint">bpm — morning reading from Polar Flow</div>
+          </div>
+          <div class="ig"><label class="ilabel">HRV (overnight)</label>
+            <input type="number" id="i_hrv" placeholder="e.g. 45" step="0.1"><div class="ihint">ms — from Polar Flow sleep data</div>
+          </div>
+        </div>
+        <!-- POLAR DATA -->
+        <div id="t-polar" style="display:none">
+          <p style="font-size:11px;color:var(--text-2);margin-bottom:10px;line-height:1.6">Enter data from your Polar Flow app after syncing your Loop 2.</p>
+          <div class="ig"><label class="ilabel">Steps Today</label>
+            <input type="number" id="i_steps" placeholder="e.g. 8500"><div class="ihint">from Polar Flow daily summary</div>
+          </div>
+          <div class="ig"><label class="ilabel">Active Calories</label>
+            <input type="number" id="i_cals" placeholder="e.g. 420"><div class="ihint">kcal — active calories only</div>
+          </div>
+          <div class="ig"><label class="ilabel">Activity Score</label>
+            <input type="number" id="i_act" placeholder="e.g. 78" min="0" max="100"><div class="ihint">0–100 from Polar Flow activity goal</div>
+          </div>
+          <div class="ig"><label class="ilabel">Nightly Sleep Duration</label>
+            <input type="number" id="i_sleep" placeholder="e.g. 7.5" step="0.5"><div class="ihint">hours — from Polar Loop 2 sleep tracking</div>
+          </div>
+          <div class="ig"><label class="ilabel">Sleep Quality (Polar)</label>
+            <select id="i_slq">
+              <option value="">— select —</option>
+              <option value="5">Excellent / Fully rested</option>
+              <option value="4">Good</option>
+              <option value="3">Fair</option>
+              <option value="2">Poor</option>
+              <option value="1">Very poor</option>
+            </select>
+          </div>
+          <button class="btn-save polar-btn" onclick="savePolar()">Save Polar Data</button>
+        </div>
+        <!-- METABOLIC -->
+        <div id="t-metabolic" style="display:none">
+          <div class="ig"><label class="ilabel">Blood Glucose</label>
+            <input type="number" id="i_gluc" placeholder="e.g. 5.2" step="0.1"><div class="ihint">mmol/L — fasting</div>
+          </div>
+          <div class="ig"><label class="ilabel">Cholesterol</label>
+            <input type="number" id="i_chol" placeholder="e.g. 4.8" step="0.1"><div class="ihint">mmol/L total</div>
+          </div>
+          <div class="ig"><label class="ilabel">Uric Acid</label>
+            <input type="number" id="i_ua" placeholder="e.g. 340"><div class="ihint">µmol/L</div>
+          </div>
+        </div>
+        <!-- BODY -->
+        <div id="t-body" style="display:none">
+          <div class="ig"><label class="ilabel">Weight</label>
+            <input type="number" id="i_wt" placeholder="e.g. 72.5" step="0.1"><div class="ihint">kg</div>
+          </div>
+          <div class="ig"><label class="ilabel">Body Fat %</label>
+            <input type="number" id="i_bf" placeholder="e.g. 18" step="0.1"><div class="ihint">% from smart scale</div>
+          </div>
+          <div class="ig"><label class="ilabel">Bone Mass</label>
+            <input type="number" id="i_bm" placeholder="e.g. 3.2" step="0.1"><div class="ihint">kg from smart scale</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <button class="btn-save" id="mainSaveBtn" onclick="saveReading()">Save & Recalculate Intelligence</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end dashboard page -->
+
+<!-- ═══════════════════════════════════════════════════════ RECOVERY PAGE -->
+<div id="page-recovery" class="page">
+  <div style="margin-bottom:22px">
+    <div class="section-hdr"><span class="sec-title">Whoop-style Recovery Intelligence</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px" id="recoveryBreakdown"></div>
+  </div>
+
+  <div class="section-hdr" style="margin-top:4px"><span class="sec-title">Strain vs Recovery (30d)</span></div>
+  <div class="chart-card" style="margin-bottom:22px">
+    <canvas id="strainRecoveryChart" height="180"></canvas>
+  </div>
+
+  <div class="section-hdr"><span class="sec-title">Sleep Intelligence</span></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:22px" id="sleepBreakdown"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ POLAR HOWTO PAGE -->
+<div id="page-polar-howto" class="page">
+  <div class="polar-banner" style="margin-bottom:22px">
+    <div>
+      <div class="polar-device-badge">Polar Loop 2</div>
+      <h3 style="font-family:var(--serif);font-size:22px;color:white;margin-bottom:4px">How to get the most from your Polar Loop 2</h3>
+      <p style="font-size:12px;color:rgba(255,255,255,0.6)">What your device actually tracks, what it misses, and how VitalCore fills the gap.</p>
+    </div>
+  </div>
+
+  <!-- WHAT POLAR TRACKS -->
+  <div class="section-hdr"><span class="sec-title">What Polar Loop 2 captures</span></div>
+  <div class="metrics-table-card" style="margin-bottom:22px">
+    <table>
+      <thead><tr><th>Metric</th><th>How captured</th><th>Where to find it</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Resting Heart Rate</td><td>Continuous optical HR sensor</td><td>Polar Flow → Daily Summary</td><td><span class="available">✓ Reliable</span></td></tr>
+        <tr><td>HRV (overnight)</td><td>Wrist-based during sleep</td><td>Flow → Sleep → Nightly HRV</td><td><span class="partial">~ Good, not clinical</span></td></tr>
+        <tr><td>Sleep Duration</td><td>Auto-detected actigraphy + HR</td><td>Flow → Sleep tab</td><td><span class="available">✓ Reliable</span></td></tr>
+        <tr><td>Steps / Distance</td><td>Accelerometer</td><td>Flow → Activity</td><td><span class="available">✓ Reliable</span></td></tr>
+        <tr><td>Calories Burned</td><td>HR + personal biometrics</td><td>Flow → Activity</td><td><span class="partial">~ Estimate only</span></td></tr>
+        <tr><td>Activity Intensity Levels</td><td>5 levels: rest/sitting/low/medium/high</td><td>Flow → Activity pie chart</td><td><span class="available">✓ Useful for trend</span></td></tr>
+        <tr><td>Activity Goal Progress</td><td>0–100% daily goal score</td><td>Flow → top of Activity screen</td><td><span class="available">✓ Reliable</span></td></tr>
+        <tr><td>Skin Temperature</td><td>Not on Loop 2</td><td>—</td><td><span class="manual">✗ Not available</span></td></tr>
+        <tr><td>SpO2 (blood oxygen)</td><td>Not on Loop 2</td><td>—</td><td><span class="manual">✗ Not available</span></td></tr>
+        <tr><td>Respiratory Rate</td><td>Not on Loop 2</td><td>—</td><td><span class="manual">✗ Not available</span></td></tr>
+        <tr><td>Blood Pressure / Glucose</td><td>Not a wearable function</td><td>Manual input in VitalCore</td><td><span class="manual">→ Log manually</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- HOW TO EXPORT -->
+  <div class="section-hdr"><span class="sec-title">Step-by-step: Export from Polar Flow</span></div>
+  <div class="howto-grid">
+    <div class="howto-card">
+      <div class="step-num">01</div>
+      <h4>Sync your Loop 2</h4>
+      <p>Open the Polar Flow app on your phone. Your Loop 2 syncs automatically via Bluetooth when it's nearby. Allow 30–60 seconds for full sync.</p>
+      <div class="mono-path">Polar Flow app → Home screen → sync indicator top right</div>
+    </div>
+    <div class="howto-card">
+      <div class="step-num">02</div>
+      <h4>Find your resting HR and HRV</h4>
+      <p>These are calculated from your overnight sleep session. Tap on last night's sleep entry. You'll see Resting Heart Rate and, if wearing all night, an HRV reading.</p>
+      <div class="mono-path">Flow app → Activity → Sleep → last night → HR details</div>
+    </div>
+    <div class="howto-card">
+      <div class="step-num">03</div>
+      <h4>Find your activity data</h4>
+      <p>The main Activity screen shows Steps, Active Calories, and your daily Activity Goal percentage (0–100%). These reset at midnight each day.</p>
+      <div class="mono-path">Flow app → Activity → Daily summary</div>
+    </div>
+    <div class="howto-card">
+      <div class="step-num">04</div>
+      <h4>Log in VitalCore</h4>
+      <p>Go to Dashboard, open the input panel, and tap the orange "Polar" tab. Enter the numbers you found. VitalCore calculates your Recovery Score, Strain estimate, and Sleep Score automatically.</p>
+      <div class="mono-path">VitalCore → Dashboard → Log Reading → Polar tab</div>
+    </div>
+  </div>
+
+  <!-- WHOOP VS POLAR COMPARISON -->
+  <div class="section-hdr"><span class="sec-title">Why Polar feels less intelligent than Whoop — and how VitalCore bridges it</span></div>
+  <div class="chart-card" style="margin-bottom:22px">
+    <table style="margin-top:0">
+      <thead><tr><th>Capability</th><th>Whoop</th><th>Polar Loop 2 alone</th><th>Polar + VitalCore</th></tr></thead>
+      <tbody>
+        <tr><td>Daily Recovery Score (0–100%)</td><td><span class="available">✓ Automatic</span></td><td><span class="manual">✗ Not shown</span></td><td><span class="available">✓ Calculated here</span></td></tr>
+        <tr><td>HRV-based readiness signal</td><td><span class="available">✓ Automatic</span></td><td><span class="partial">~ In app, buried</span></td><td><span class="available">✓ Surfaced clearly</span></td></tr>
+        <tr><td>Strain vs Recovery alignment</td><td><span class="available">✓ Core feature</span></td><td><span class="manual">✗ Not available</span></td><td><span class="available">✓ Estimated here</span></td></tr>
+        <tr><td>Sleep debt tracking</td><td><span class="available">✓ Automatic</span></td><td><span class="manual">✗ Not available</span></td><td><span class="available">✓ Tracked here</span></td></tr>
+        <tr><td>Cross-metric AI insight</td><td><span class="partial">~ Generic coaching</span></td><td><span class="manual">✗ Not available</span></td><td><span class="available">✓ Personalised AI</span></td></tr>
+        <tr><td>Metabolic data (glucose, BP, UA)</td><td><span class="manual">✗ Not tracked</span></td><td><span class="manual">✗ Not tracked</span></td><td><span class="available">✓ Manual + integrated</span></td></tr>
+        <tr><td>Monthly subscription fee</td><td><span class="manual">$30/month</span></td><td><span class="available">Free</span></td><td><span class="available">Free</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<!-- QUICK LOG MODAL -->
+<div class="overlay" id="qlOverlay" onclick="closeQL(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Quick Log — All Metrics</span>
+      <button class="modal-close" onclick="document.getElementById('qlOverlay').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:11px;color:var(--text-2);margin-bottom:14px">Fill in whatever you have. Empty fields are skipped.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+        <div class="ig"><label class="ilabel">Systolic BP</label><input type="number" id="q_bps" placeholder="mmHg"></div>
+        <div class="ig"><label class="ilabel">Diastolic BP</label><input type="number" id="q_bpd" placeholder="mmHg"></div>
+        <div class="ig"><label class="ilabel">Resting HR</label><input type="number" id="q_hr" placeholder="bpm"></div>
+        <div class="ig"><label class="ilabel">HRV</label><input type="number" id="q_hrv" placeholder="ms"></div>
+        <div class="ig"><label class="ilabel">Steps</label><input type="number" id="q_steps" placeholder="today"></div>
+        <div class="ig"><label class="ilabel">Sleep (hrs)</label><input type="number" id="q_sleep" placeholder="last night" step="0.5"></div>
+        <div class="ig"><label class="ilabel">Glucose</label><input type="number" id="q_gluc" placeholder="mmol/L" step="0.1"></div>
+        <div class="ig"><label class="ilabel">Weight</label><input type="number" id="q_wt" placeholder="kg" step="0.1"></div>
+      </div>
+      <button class="btn-save" onclick="saveQuickLog()" style="margin-top:12px">Save All & Analyse</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STORE ────────────────────────────────────────────────────────────────────
+const KEY = 'vitalcore_v2';
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || { readings:[], seeded:false }; } catch(e) { return { readings:[], seeded:false }; } }
+function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+
+// Reference ranges
+const RANGES = {
+  bp_sys:     { normal:[90,120],  borderline:[120,140] },
+  bp_dia:     { normal:[60,80],   borderline:[80,90] },
+  hr:         { normal:[50,85],   borderline:[85,100] },
+  hrv:        { normal:[40,200],  borderline:[25,40] },
+  glucose:    { normal:[3.9,5.6], borderline:[5.6,7.0] },
+  cholesterol:{ normal:[0,5.2],   borderline:[5.2,6.2] },
+  uric_acid:  { normal:[0,380],   borderline:[380,480] },
+  sleep:      { normal:[7,9],     borderline:[6,7] },
+  steps:      { normal:[8000,99999], borderline:[5000,8000] },
+};
+
+function status(key, val) {
+  const r = RANGES[key]; if(!r) return 'normal';
+  const v = parseFloat(val);
+  if(v>=r.normal[0]&&v<=r.normal[1]) return 'normal';
+  if(r.borderline && ((v>=r.borderline[0]&&v<=r.borderline[1])||(key==='hrv'&&v<r.borderline[1]))) return 'borderline';
+  return 'elevated';
+}
+
+function bpStatus(s,d) {
+  const order = ['elevated','borderline','normal'];
+  const ss = status('bp_sys',s), ds = status('bp_dia',d);
+  return order[Math.min(order.indexOf(ss),order.indexOf(ds))];
+}
+
+function fmtDate(ts) { return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+function latest(arr,m) { return arr.filter(r=>r.metric===m).sort((a,b)=>b.ts-a.ts)[0]||null; }
+function last(arr,m,n) { return arr.filter(r=>r.metric===m).sort((a,b)=>a.ts-b.ts).slice(-n); }
+function delta(arr) { if(arr.length<2) return {t:'',d:'neutral'}; const diff=parseFloat(arr[arr.length-1].value)-parseFloat(arr[arr.length-2].value); if(Math.abs(diff)<0.01) return {t:'→ stable',d:'neutral'}; return {t:(diff>0?'↑':'↓')+' '+Math.abs(diff).toFixed(1),d:diff>0?'up':'down'}; }
+
+// ─── WHOOP-STYLE CALCULATIONS ─────────────────────────────────────────────────
+
+function calcRecovery(readings) {
+  // Based on: HRV vs baseline, RHR vs baseline, sleep score, sleep duration
+  const hrvArr = last(readings,'hrv',14);
+  const hrArr = last(readings,'hr',14);
+  const sleepArr = last(readings,'sleep',14);
+
+  if(!hrvArr.length && !hrArr.length) return null;
+
+  let score = 50; // baseline
+
+  // HRV component (40% weight) — compare latest to 7-day average
+  if(hrvArr.length>=2) {
+    const base = hrvArr.slice(0,-1).reduce((a,b)=>a+parseFloat(b.value),0)/Math.max(hrvArr.length-1,1);
+    const curr = parseFloat(hrvArr[hrvArr.length-1].value);
+    const ratio = curr/base;
+    score += (ratio-1)*60; // above baseline = higher recovery
+  }
+
+  // RHR component (30% weight) — lower is better
+  if(hrArr.length>=2) {
+    const base = hrArr.slice(0,-1).reduce((a,b)=>a+parseFloat(b.value),0)/Math.max(hrArr.length-1,1);
+    const curr = parseFloat(hrArr[hrArr.length-1].value);
+    const ratio = base/curr; // inverted: lower HR = better
+    score += (ratio-1)*45;
+  }
+
+  // Sleep component (30% weight)
+  if(sleepArr.length) {
+    const sl = parseFloat(sleepArr[sleepArr.length-1].value);
+    const needed = 7.5;
+    const slScore = Math.min(sl/needed, 1.0);
+    score += (slScore - 0.85) * 40;
+  }
+
+  return Math.max(1, Math.min(100, Math.round(score)));
+}
+
+function calcStrain(readings) {
+  // Estimate from steps, active calories, HR elevation
+  const latSteps = latest(readings,'steps');
+  const latCals = latest(readings,'cals');
+  const latHR = latest(readings,'hr');
+
+  if(!latSteps && !latCals) return null;
+
+  let strain = 6; // base metabolic
+
+  if(latSteps) {
+    const s = parseFloat(latSteps.value);
+    strain += Math.min(s/10000 * 4, 5); // up to 5 points for 10k steps
+  }
+  if(latCals) {
+    const c = parseFloat(latCals.value);
+    strain += Math.min(c/600 * 4, 5); // up to 5 points for 600 active kcal
+  }
+  if(latHR) {
+    const hr = parseFloat(latHR.value);
+    if(hr > 80) strain += 1.5;
+    if(hr > 90) strain += 1.5;
+  }
+
+  return Math.max(1, Math.min(21, parseFloat(strain.toFixed(1))));
+}
+
+function calcSleepScore(readings) {
+  const sleepArr = last(readings,'sleep',7);
+  const slqArr = last(readings,'slq',7);
+  if(!sleepArr.length) return null;
+
+  const avgNeeded = 7.5;
+  const latSleep = parseFloat(sleepArr[sleepArr.length-1].value);
+  let score = Math.min(latSleep/avgNeeded, 1) * 70; // up to 70 from duration
+
+  if(slqArr.length) {
+    const q = parseFloat(slqArr[slqArr.length-1].value);
+    score += (q/5) * 30; // up to 30 from quality
+  } else {
+    score += 20; // default if no quality logged
+  }
+
+  return Math.max(1, Math.min(100, Math.round(score)));
+}
+
+function calcSleepDebt(readings) {
+  const sleepArr = last(readings,'sleep',7);
+  if(sleepArr.length < 3) return null;
+  const avg = sleepArr.reduce((a,b)=>a+parseFloat(b.value),0)/sleepArr.length;
+  const debt = (7.5 - avg) * sleepArr.length;
+  return Math.max(0, parseFloat(debt.toFixed(1)));
+}
+
+// ─── SEED DATA ────────────────────────────────────────────────────────────────
+function seed() {
+  const d = load(); if(d.seeded) return;
+  const now = Date.now(), day = 86400000;
+  const rr = [];
+  for(let i=29;i>=0;i--) {
+    const ts = now - i*day + Math.random()*3600000;
+    // Polar Loop 2 metrics
+    rr.push({ts,metric:'hr',value:+(60+Math.random()*18).toFixed(0),source:'polar'});
+    rr.push({ts,metric:'hrv',value:+(35+Math.random()*35).toFixed(0),source:'polar'});
+    rr.push({ts,metric:'sleep',value:+(5.5+Math.random()*3).toFixed(1),source:'polar'});
+    rr.push({ts,metric:'steps',value:Math.round(4000+Math.random()*9000),source:'polar'});
+    rr.push({ts,metric:'cals',value:Math.round(200+Math.random()*500),source:'polar'});
+    if(i%3===0) rr.push({ts,metric:'slq',value:Math.round(2+Math.random()*3),source:'polar'});
+    if(i%4===0) {
+      const s=Math.round(108+Math.random()*25), dv=Math.round(68+Math.random()*18);
+      rr.push({ts,metric:'bp',value:`${s}/${dv}`,raw_s:s,raw_d:dv,source:'manual'});
+    }
+    if(i%3===0) rr.push({ts,metric:'glucose',value:+(4.3+Math.random()*2).toFixed(1),source:'manual'});
+    if(i%7===0) rr.push({ts,metric:'cholesterol',value:+(4.0+Math.random()*2.2).toFixed(1),source:'manual'});
+    if(i%7===0) rr.push({ts,metric:'uric_acid',value:Math.round(260+Math.random()*220),source:'manual'});
+    rr.push({ts,metric:'weight',value:+(72+Math.sin(i/4)*2+Math.random()).toFixed(1),source:'manual'});
+    if(i%14===0) rr.push({ts,metric:'body_fat',value:+(17+Math.random()*4).toFixed(1),source:'manual'});
+  }
+  d.readings = rr; d.seeded = true; save(d);
+}
+
+// ─── RENDER SPARKLINE ─────────────────────────────────────────────────────────
+function spark(canvas, vals, col) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth||200, H=30;
+  canvas.width=W; canvas.height=H;
+  if(vals.length<2) return;
+  const mn=Math.min(...vals)*0.97, mx=Math.max(...vals)*1.03;
+  const x=i=>(i/(vals.length-1))*W;
+  const y=v=>H-((v-mn)/(mx-mn))*(H-4)-2;
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath();
+  vals.forEach((v,i)=>i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v)));
+  ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.lineTo(x(vals.length-1),H); ctx.lineTo(0,H); ctx.closePath();
+  ctx.fillStyle=col+'18'; ctx.fill();
+}
+
+function sColor(s) {
+  if(s==='normal') return '#1a6b3a';
+  if(s==='borderline') return '#b8740a';
+  if(s==='polar') return '#d4572a';
+  return '#c0392b';
+}
+
+function mkCard(container, name, val, unit, st, sparkVals, date, delt, src) {
+  const el = document.createElement('div');
+  el.className = `mcard s-${st}`;
+  const badgeText = st==='none'?'NO DATA':st==='polar'?'POLAR':st.toUpperCase();
+  el.innerHTML = `
+    <div class="mtop">
+      <div class="mname">${name}</div>
+      <div class="sbadge ${st}">${badgeText}</div>
+    </div>
+    <div class="mval">${val||'—'}</div>
+    <div class="munit">${unit}</div>
+    <div class="spark-wrap"><canvas class="sp"></canvas></div>
+    <div class="mfoot">
+      <span class="mdate">${date||''}</span>
+      <span class="mdelta ${delt?.d||'neutral'}">${delt?.t||''}</span>
+    </div>`;
+  container.appendChild(el);
+  if(sparkVals?.length>1) setTimeout(()=>spark(el.querySelector('.sp'),sparkVals,sColor(st)),50);
+}
+
+// ─── RING ANIMATION ───────────────────────────────────────────────────────────
+function setRing(arcId, pct, col) {
+  const arc = document.getElementById(arcId);
+  if(!arc) return;
+  arc.style.stroke = col;
+  const circumference = 264;
+  const offset = circumference - (pct/100)*circumference;
+  arc.style.strokeDashoffset = offset;
+}
+
+function ringColor(pct) {
+  if(pct>=67) return '#1a6b3a';
+  if(pct>=34) return '#b8740a';
+  return '#c0392b';
+}
+
+// ─── MAIN RENDER ─────────────────────────────────────────────────────────────
+function renderAll() {
+  const d = load(), r = d.readings;
+  ['g-cardio','g-metabolic','g-body','g-activity'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=''; });
+
+  // --- INTELLIGENCE RINGS ---
+  const rec = calcRecovery(r);
+  const strain = calcStrain(r);
+  const slScore = calcSleepScore(r);
+  const slDebt = calcSleepDebt(r);
+
+  if(rec!==null) {
+    document.getElementById('recoveryVal').textContent = rec;
+    setRing('recoveryArc', rec, ringColor(rec));
+    const zone = rec>=67?'🟢 Green — push':'rec>=34?🟡 Yellow — maintain':'🔴 Red — rest';
+    document.getElementById('recoveryZone').textContent = rec>=67?'Green — ready to push':rec>=34?'Yellow — moderate day':'Red — rest today';
+  }
+
+  if(strain!==null) {
+    document.getElementById('strainVal').textContent = strain;
+    const strainPct = (strain/21)*100;
+    setRing('strainArc', strainPct, strain<8?'#1a3a6b':strain<14?'#b8740a':'#c0392b');
+    document.getElementById('strainZone').textContent = strain<8?'Light':strain<14?'Moderate':'High strain day';
+  }
+
+  if(slScore!==null) {
+    document.getElementById('sleepVal').textContent = slScore;
+    setRing('sleepArc', slScore, slScore>=70?'#6b3a9a':slScore>=50?'#b8740a':'#c0392b');
+  }
+
+  if(slDebt!==null) {
+    document.getElementById('sleepDebt').textContent = slDebt>0?`${slDebt}h debt accumulated`:'Sleep debt: minimal';
+  }
+
+  // --- CARDIO CARDS ---
+  const bpArr = r.filter(x=>x.metric==='bp').sort((a,b)=>b.ts-a.ts);
+  const latBP = bpArr[0];
+  mkCard(document.getElementById('g-cardio'),'Blood Pressure',latBP?latBP.value:null,'mmHg (sys/dia)',
+    latBP?bpStatus(latBP.raw_s,latBP.raw_d):'none',
+    bpArr.slice(0,15).reverse().map(x=>x.raw_s||parseInt(x.value)),
+    latBP?fmtDate(latBP.ts):null,
+    bpArr.length>=2?{t:(bpArr[0].raw_s-bpArr[1].raw_s)>0?'↑ sys':'↓ sys',d:(bpArr[0].raw_s-bpArr[1].raw_s)>0?'up':'down'}:null,
+    'manual');
+
+  const hrArr = last(r,'hr',20); const latHR = hrArr[hrArr.length-1];
+  mkCard(document.getElementById('g-cardio'),'Resting HR',latHR?latHR.value:null,'bpm',
+    latHR?status('hr',latHR.value):'none', hrArr.map(x=>parseFloat(x.value)),
+    latHR?fmtDate(latHR.ts):null, delta(hrArr), 'polar');
+
+  const hrvArr = last(r,'hrv',20); const latHRV = hrvArr[hrvArr.length-1];
+  mkCard(document.getElementById('g-cardio'),'HRV (overnight)',latHRV?latHRV.value:null,'ms',
+    latHRV?status('hrv',latHRV.value):'none', hrvArr.map(x=>parseFloat(x.value)),
+    latHRV?fmtDate(latHRV.ts):null, delta(hrvArr), 'polar');
+
+  // --- METABOLIC ---
+  const glArr = last(r,'glucose',20); const latGL = glArr[glArr.length-1];
+  mkCard(document.getElementById('g-metabolic'),'Glucose',latGL?latGL.value:null,'mmol/L',
+    latGL?status('glucose',latGL.value):'none', glArr.map(x=>parseFloat(x.value)),
+    latGL?fmtDate(latGL.ts):null, delta(glArr),'manual');
+
+  const chArr = last(r,'cholesterol',20); const latCH = chArr[chArr.length-1];
+  mkCard(document.getElementById('g-metabolic'),'Cholesterol',latCH?latCH.value:null,'mmol/L',
+    latCH?status('cholesterol',latCH.value):'none', chArr.map(x=>parseFloat(x.value)),
+    latCH?fmtDate(latCH.ts):null, delta(chArr),'manual');
+
+  const uaArr = last(r,'uric_acid',20); const latUA = uaArr[uaArr.length-1];
+  mkCard(document.getElementById('g-metabolic'),'Uric Acid',latUA?latUA.value:null,'µmol/L',
+    latUA?status('uric_acid',latUA.value):'none', uaArr.map(x=>parseFloat(x.value)),
+    latUA?fmtDate(latUA.ts):null, delta(uaArr),'manual');
+
+  // --- BODY ---
+  const wtArr = last(r,'weight',20); const latWT = wtArr[wtArr.length-1];
+  mkCard(document.getElementById('g-body'),'Weight',latWT?latWT.value:null,'kg',
+    'normal', wtArr.map(x=>parseFloat(x.value)),latWT?fmtDate(latWT.ts):null,delta(wtArr),'manual');
+
+  const bfArr = last(r,'body_fat',10); const latBF = bfArr[bfArr.length-1];
+  mkCard(document.getElementById('g-body'),'Body Fat',latBF?latBF.value:null,'%',
+    'normal', bfArr.map(x=>parseFloat(x.value)),latBF?fmtDate(latBF.ts):null,null,'manual');
+
+  // --- ACTIVITY (Polar) ---
+  const stArr = last(r,'steps',20); const latST = stArr[stArr.length-1];
+  mkCard(document.getElementById('g-activity'),'Steps',latST?latST.value.toLocaleString():null,'per day',
+    latST?status('steps',latST.value):'none', stArr.map(x=>parseFloat(x.value)),
+    latST?fmtDate(latST.ts):null, delta(stArr),'polar');
+
+  const caArr = last(r,'cals',20); const latCA = caArr[caArr.length-1];
+  mkCard(document.getElementById('g-activity'),'Active Calories',latCA?latCA.value:null,'kcal',
+    'normal', caArr.map(x=>parseFloat(x.value)),latCA?fmtDate(latCA.ts):null,delta(caArr),'polar');
+
+  const slArr = last(r,'sleep',20); const latSL = slArr[slArr.length-1];
+  mkCard(document.getElementById('g-activity'),'Sleep',latSL?latSL.value:null,'hours',
+    latSL?status('sleep',latSL.value):'none', slArr.map(x=>parseFloat(x.value)),
+    latSL?fmtDate(latSL.ts):null, delta(slArr),'polar');
+
+  renderCharts(r);
+  renderLog(r);
+  renderRecoveryPage(r, rec, strain, slScore, slDebt);
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────────────────
+function lineChart(canvas, labels, datasets, h) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth||500, H=h||150;
+  canvas.width=W; canvas.height=H;
+  const p={t:10,r:10,b:26,l:34};
+  const pw=W-p.l-p.r, ph=H-p.t-p.b;
+  ctx.clearRect(0,0,W,H);
+  ctx.font='9px IBM Plex Mono,monospace'; ctx.fillStyle='#9a9690';
+  const all=datasets.flatMap(d=>d.data);
+  const mn=Math.min(...all)*0.96, mx=Math.max(...all)*1.04;
+  const xS=i=>p.l+(i/(labels.length-1))*pw;
+  const yS=v=>p.t+ph-((v-mn)/(mx-mn))*ph;
+  ctx.strokeStyle='#e0ddd6'; ctx.lineWidth=0.5;
+  for(let g=0;g<=4;g++){const y=p.t+(g/4)*ph;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(W-p.r,y);ctx.stroke();ctx.fillText((mx-(g/4)*(mx-mn)).toFixed(0),2,y+3);}
+  const step=Math.ceil(labels.length/6);
+  labels.forEach((l,i)=>{if(i%step===0)ctx.fillText(l,xS(i)-10,H-4);});
+  datasets.forEach(ds=>{
+    ctx.beginPath();
+    ds.data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
+    ctx.strokeStyle=ds.color; ctx.lineWidth=2; ctx.stroke();
+    const li=ds.data.length-1; ctx.beginPath(); ctx.arc(xS(li),yS(ds.data[li]),3,0,Math.PI*2); ctx.fillStyle=ds.color; ctx.fill();
+  });
+}
+
+function renderCharts(r) {
+  const hrvD = last(r,'hrv',20), hrD = last(r,'hr',20);
+  if(hrD.length>1) {
+    lineChart(document.getElementById('hrChart'),
+      hrD.map(x=>fmtDate(x.ts)),
+      [{label:'RHR',data:hrD.map(x=>parseFloat(x.value)),color:'#c0392b'},
+       ...(hrvD.length>1?[{label:'HRV',data:hrvD.slice(-hrD.length).map(x=>parseFloat(x.value)),color:'#1a4a3a'}]:[])
+      ]);
+  }
+
+  // Recovery score over time
+  const all = r.slice().sort((a,b)=>a.ts-b.ts);
+  const days30 = [...new Set(all.map(x=>fmtDate(x.ts)))].slice(-20);
+  const recScores = days30.map(d=>{
+    const dayReadings = all.filter(x=>fmtDate(x.ts)===d);
+    return calcRecovery(dayReadings)||50;
+  });
+  if(recScores.length>1) {
+    lineChart(document.getElementById('recoveryChart'),days30,
+      [{label:'Recovery %',data:recScores,color:'#1a6b3a'}]);
+  }
+
+  const src = document.getElementById('strainRecoveryChart');
+  if(src && recScores.length>1) {
+    const strainScores = days30.map(d=>{
+      const dayReadings = all.filter(x=>fmtDate(x.ts)===d);
+      return calcStrain(dayReadings)||8;
+    });
+    lineChart(src, days30,
+      [{label:'Recovery',data:recScores,color:'#1a6b3a'},
+       {label:'Strain (×5)',data:strainScores.map(x=>x*5),color:'#1a3a6b'}], 180);
+  }
+}
+
+// ─── RECOVERY PAGE ────────────────────────────────────────────────────────────
+function renderRecoveryPage(r, rec, strain, slScore, slDebt) {
+  const rb = document.getElementById('recoveryBreakdown');
+  if(!rb) return;
+
+  const latHRV = latest(r,'hrv');
+  const latHR = latest(r,'hr');
+  const latSleep = latest(r,'sleep');
+  const hrvBase = last(r,'hrv',7).slice(0,-1);
+  const hrBase = last(r,'hr',7).slice(0,-1);
+
+  const items = [
+    {
+      title:'Recovery Score',
+      val: rec!==null?`${rec}%`:'—',
+      color: rec!==null?ringColor(rec):'#9a9690',
+      note: rec!==null?(rec>=67?'Body is primed. Take on a challenging workout or high-strain day.':rec>=34?'Moderate readiness. Maintain current training volume.':'Body needs rest. Keep activity light.'):'Log HRV and sleep to activate recovery scoring.',
+      sub:'Based on HRV trend, resting HR, and sleep'
+    },
+    {
+      title:'HRV Status',
+      val: latHRV?`${latHRV.value} ms`:'—',
+      color: latHRV?sColor(status('hrv',latHRV.value)):'#9a9690',
+      note: latHRV && hrvBase.length?(()=>{
+        const base = hrvBase.reduce((a,b)=>a+parseFloat(b.value),0)/hrvBase.length;
+        const ratio = parseFloat(latHRV.value)/base;
+        return ratio>1.1?'HRV above your 7-day baseline — autonomic nervous system is well-recovered.':ratio<0.9?'HRV below your baseline — possible fatigue or stress. Consider reducing load.':'HRV within normal variation. No action required.';
+      })():'Need 7+ days of HRV readings to establish your baseline.',
+      sub:'Compared to your 7-day rolling average'
+    },
+    {
+      title:'Strain Estimate',
+      val: strain!==null?`${strain} / 21`:'—',
+      color: strain<8?'#1a3a6b':strain<14?'#b8740a':'#c0392b',
+      note: strain!==null?`Estimated from steps and active calories. ${strain<8?'Light activity day — recovery-friendly.':strain<14?'Moderate strain — sustainable for most fitness levels.':'High strain — pair with strong recovery tonight.'}`:'Log steps and calories from Polar Flow to calculate strain.',
+      sub:'Calibrated to Borg scale (0–21)'
+    },
+    {
+      title:'Sleep Debt',
+      val: slDebt!==null?slDebt===0?'0h debt':`${slDebt}h`:'—',
+      color: slDebt!==null?(slDebt<2?'#1a6b3a':slDebt<5?'#b8740a':'#c0392b'):'#9a9690',
+      note: slDebt!==null?(slDebt<2?'Minimal sleep debt. You are catching up adequately.':slDebt<5?'Moderate deficit building. Prioritise earlier bedtime tonight.':'Significant sleep debt. Recovery score will be suppressed until resolved.'):'Log sleep duration for 3+ nights to calculate debt.',
+      sub:'Based on 7.5h target vs last 7 nights'
+    }
+  ];
+
+  rb.innerHTML = items.map(it=>`
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-2);margin-bottom:4px">${it.title}</div>
+          <div style="font-family:var(--serif);font-size:32px;color:${it.color};line-height:1">${it.val}</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-3);text-align:right;max-width:120px;line-height:1.5">${it.sub}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-2);line-height:1.7;border-top:1px solid var(--border);padding-top:10px">${it.note}</div>
+    </div>`).join('');
+
+  // Sleep breakdown
+  const sb = document.getElementById('sleepBreakdown');
+  if(!sb) return;
+  const slArr = last(r,'sleep',7);
+  const avgSleep = slArr.length?slArr.reduce((a,b)=>a+parseFloat(b.value),0)/slArr.length:null;
+  sb.innerHTML = `
+    <div class="chart-card">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-2);margin-bottom:8px">7-Night Average</div>
+      <div style="font-family:var(--serif);font-size:40px;color:var(--accent);line-height:1">${avgSleep?avgSleep.toFixed(1)+'h':'—'}</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:4px">Target: 7.5h • Debt: ${slDebt!==null?slDebt+'h':'not yet calculated'}</div>
+      <div style="margin-top:12px">${slArr.map(x=>{const pct=Math.min(parseFloat(x.value)/9,1)*100;return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-family:var(--mono);font-size:9px;color:var(--text-3);width:36px">${fmtDate(x.ts)}</span><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px"><div style="width:${pct}%;height:100%;background:${parseFloat(x.value)>=7?'var(--green)':parseFloat(x.value)>=6?'var(--amber)':'var(--red)'};border-radius:3px;transition:width 0.5s"></div></div><span style="font-family:var(--mono);font-size:9px;width:28px;color:var(--text-2)">${x.value}h</span></div>`}).join('')}
+      </div>
+    </div>
+    <div class="chart-card">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-2);margin-bottom:8px">Sleep Score Breakdown</div>
+      <div style="font-family:var(--serif);font-size:40px;color:#6b3a9a;line-height:1">${slScore!==null?slScore+'%':'—'}</div>
+      <div style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.7">
+        ${slScore!==null?(slScore>=80?'Strong sleep score. HRV and recovery will benefit from consistent nights above 7h.':slScore>=60?'Adequate sleep. Quality or duration could be improved for better recovery.':'Below-target sleep is suppressing your recovery score. Aim to add 45–60 minutes tonight.'):'Log sleep data to generate your sleep score.'}
+      </div>
+    </div>`;
+}
+
+// ─── LOG TABLE ────────────────────────────────────────────────────────────────
+const MNAMES = {bp:'Blood Pressure',hr:'Resting HR',hrv:'HRV',sleep:'Sleep',steps:'Steps',cals:'Active Cal',slq:'Sleep Quality',glucose:'Glucose',cholesterol:'Cholesterol',uric_acid:'Uric Acid',weight:'Weight',body_fat:'Body Fat'};
+const MUNITS = {bp:'mmHg',hr:'bpm',hrv:'ms',sleep:'hrs',steps:'steps',cals:'kcal',slq:'/5',glucose:'mmol/L',cholesterol:'mmol/L',uric_acid:'µmol/L',weight:'kg',body_fat:'%'};
+
+function renderLog(r) {
+  const tbody = document.getElementById('logBody');
+  const recent = [...r].sort((a,b)=>b.ts-a.ts).slice(0,40);
+  if(!recent.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty-state">No readings yet</div></td></tr>';return;}
+  tbody.innerHTML = recent.map(row=>{
+    const name = MNAMES[row.metric]||row.metric;
+    const unit = MUNITS[row.metric]||'';
+    let st = 'normal';
+    if(row.metric==='bp') st = bpStatus(row.raw_s,row.raw_d);
+    else if(RANGES[row.metric]) st = status(row.metric, row.value);
+    const src = row.source==='polar'?'<span style="color:var(--polar)">Polar</span>':'Manual';
+    return `<tr><td>${fmtDate(row.ts)}</td><td>${name}</td><td style="font-weight:500">${row.value} <span style="color:var(--text-3)">${unit}</span></td><td>${src}</td><td><span class="ls ${st}"></span>${st}</td></tr>`;
+  }).join('');
+}
+
+// ─── AI INSIGHT ───────────────────────────────────────────────────────────────
+async function genAI() {
+  const d = load(), r = d.readings;
+  if(r.length<5) return;
+  const el = document.getElementById('aiSummary');
+  el.innerHTML = '<div class="ai-loading"><div class="pulse"></div> Analysing Polar + metabolic data...</div>';
+
+  const rec = calcRecovery(r), strain = calcStrain(r), slDebt = calcSleepDebt(r);
+  const snap = {};
+  ['hr','hrv','sleep','steps','glucose','cholesterol','bp','weight','uric_acid'].forEach(m=>{
+    const recs = r.filter(x=>x.metric===m).sort((a,b)=>b.ts-a.ts).slice(0,5);
+    if(recs.length) snap[m] = recs.map(x=>x.value);
+  });
+
+  const prompt = `You are a clinical health analyst. Provide 3–4 sentence insight based on this biometric snapshot from a Polar Loop 2 wearable combined with manual health readings.
+
+Recovery score: ${rec!==null?rec+'%':'not yet calculated'}
+Strain estimate: ${strain!==null?strain+'/21':'not yet calculated'}
+Sleep debt: ${slDebt!==null?slDebt+'h over 7 nights':'not yet calculated'}
+
+Biometrics (most recent first):
+${Object.entries(snap).map(([k,v])=>`${MNAMES[k]||k}: ${v.join(', ')} ${MUNITS[k]||''}`).join('\n')}
+
+Focus on cross-metric patterns. If HRV is trending down while resting HR is rising, note fatigue. If sleep debt is high, relate it to recovery. If metabolic markers are elevated, connect them to cardiovascular readings. Be direct. No disclaimers. No bullet points. Plain clinical language.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data = await res.json();
+    const text = data.content?.map(c=>c.text||'').join('').trim();
+    if(text) el.textContent = text;
+    else el.textContent = 'Unable to generate insight at this time.';
+  } catch(e) { el.textContent='AI insight unavailable. Check your connection.'; }
+}
+
+// ─── INPUT HANDLERS ───────────────────────────────────────────────────────────
+function switchTab(el, id) {
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['t-cardio','t-polar','t-metabolic','t-body'].forEach(t=>{
+    document.getElementById(t).style.display=t===id?'block':'none';
+  });
+  const btn = document.getElementById('mainSaveBtn');
+  if(id==='t-polar'){btn.style.display='none';}else{btn.style.display='block';}
+}
+
+function gv(id){const el=document.getElementById(id);return el&&el.value.trim()!==''?el.value:null;}
+function clr(...ids){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+
+function saveReading() {
+  const d=load(); let n=0; const ts=Date.now();
+  const s=gv('i_bps'),dv=gv('i_bpd');
+  if(s&&dv){d.readings.push({ts,metric:'bp',value:`${s}/${dv}`,raw_s:+s,raw_d:+dv,source:'manual'});clr('i_bps','i_bpd');n++;}
+  if(gv('i_hr')){d.readings.push({ts,metric:'hr',value:+gv('i_hr'),source:'polar'});clr('i_hr');n++;}
+  if(gv('i_hrv')){d.readings.push({ts,metric:'hrv',value:+gv('i_hrv'),source:'polar'});clr('i_hrv');n++;}
+  if(gv('i_gluc')){d.readings.push({ts,metric:'glucose',value:+gv('i_gluc'),source:'manual'});clr('i_gluc');n++;}
+  if(gv('i_chol')){d.readings.push({ts,metric:'cholesterol',value:+gv('i_chol'),source:'manual'});clr('i_chol');n++;}
+  if(gv('i_ua')){d.readings.push({ts,metric:'uric_acid',value:+gv('i_ua'),source:'manual'});clr('i_ua');n++;}
+  if(gv('i_wt')){d.readings.push({ts,metric:'weight',value:+gv('i_wt'),source:'manual'});clr('i_wt');n++;}
+  if(gv('i_bf')){d.readings.push({ts,metric:'body_fat',value:+gv('i_bf'),source:'manual'});clr('i_bf');n++;}
+  if(!n){toast('No values entered.');return;}
+  save(d); renderAll(); genAI();
+  toast(`${n} reading${n>1?'s':''} saved.`);
+}
+
+function savePolar() {
+  const d=load(); let n=0; const ts=Date.now();
+  if(gv('i_steps')){d.readings.push({ts,metric:'steps',value:+gv('i_steps'),source:'polar'});clr('i_steps');n++;}
+  if(gv('i_cals')){d.readings.push({ts,metric:'cals',value:+gv('i_cals'),source:'polar'});clr('i_cals');n++;}
+  if(gv('i_sleep')){d.readings.push({ts,metric:'sleep',value:+gv('i_sleep'),source:'polar'});clr('i_sleep');n++;}
+  if(gv('i_slq')){d.readings.push({ts,metric:'slq',value:+gv('i_slq'),source:'polar'});clr('i_slq');n++;}
+  if(gv('i_act')){d.readings.push({ts,metric:'act',value:+gv('i_act'),source:'polar'});clr('i_act');n++;}
+  if(!n){toast('No Polar values entered.');return;}
+  save(d); renderAll(); genAI();
+  toast(`${n} Polar reading${n>1?'s':''} saved.`);
+}
+
+function saveQuickLog() {
+  const d=load(); let n=0; const ts=Date.now();
+  const s=gv('q_bps'),dv=gv('q_bpd');
+  if(s&&dv){d.readings.push({ts,metric:'bp',value:`${s}/${dv}`,raw_s:+s,raw_d:+dv,source:'manual'});n++;}
+  [{id:'q_hr',m:'hr',src:'polar'},{id:'q_hrv',m:'hrv',src:'polar'},{id:'q_steps',m:'steps',src:'polar'},
+   {id:'q_sleep',m:'sleep',src:'polar'},{id:'q_gluc',m:'glucose',src:'manual'},{id:'q_wt',m:'weight',src:'manual'}
+  ].forEach(({id,m,src})=>{const v=gv(id);if(v){d.readings.push({ts,metric:m,value:+v,source:src});n++;}});
+  if(!n){toast('No values entered.');return;}
+  save(d); renderAll(); genAI();
+  document.getElementById('qlOverlay').classList.remove('open');
+  toast(`${n} reading${n>1?'s':''} saved.`);
+}
+
+function openQuickLog(){document.getElementById('qlOverlay').classList.add('open');}
+function closeQL(e){if(e.target.id==='qlOverlay')document.getElementById('qlOverlay').classList.remove('open');}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  const map = {'dashboard':0,'recovery':1,'polar-howto':2};
+  document.querySelectorAll('.nav-tab')[map[id]]?.classList.add('active');
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('dateDisp').textContent = new Date().toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();
+seed();
+renderAll();
+genAI();
+window.addEventListener('resize',()=>{const d=load();renderCharts(d.readings);});
+</script>
+</body>
+</html>
