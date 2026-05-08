@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.pepperparker8.github.twa",
+    "package_name": "io.github.pepperparker8.twa",
     "sha256_cert_fingerprints": [
       "10:D1:2C:47:F9:6C:66:D5:16:2E:E6:E4:24:C8:B9:54:91:F7:A0:E1:29:F0:EB:5F:82:87:C5:55:EB:F7:58:B4"
     ]
