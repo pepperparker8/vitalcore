@@ -7,367 +7,575 @@
 <meta name="theme-color" content="#E8500A">
 <title>VitalCore</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js"></script>
 <style>
-:root{--bg:#FFFFFF;--surface:#F9F7F5;--surface2:#F2F0ED;--border:#EDE9E3;--border-strong:#D8D4CE;--text:#1A1916;--text-2:#5A5750;--text-3:#9A9690;--orange:#E8500A;--orange-light:#FEF0E9;--orange-dark:#C43D06;--red:#C0392B;--red-light:#FDF0EF;--green:#1A6B3A;--green-light:#EAF4EE;--amber:#B8740A;--amber-light:#FDF6E8;--mono:'IBM Plex Mono',monospace;--body:'Outfit',sans-serif;--serif:'DM Serif Display',serif;--r:12px;--r-sm:8px;--sh:0 1px 4px rgba(0,0,0,0.06);--sh-md:0 4px 16px rgba(0,0,0,0.1);--nav-h:64px;--header-h:52px;}
+:root{
+  --bg:#FFF;--surface:#F9F7F5;--surface2:#F2F0ED;--border:#EDE9E3;--border-strong:#D8D4CE;
+  --text:#1A1916;--text-2:#5A5750;--text-3:#9A9690;
+  --orange:#E8500A;--orange-light:#FEF0E9;--orange-dark:#C43D06;
+  --red:#C0392B;--red-light:#FDF0EF;--green:#1A6B3A;--green-light:#EAF4EE;
+  --amber:#B8740A;--amber-light:#FDF6E8;--purple:#6B3A9A;--purple-light:#F3EEF9;
+  --mono:'IBM Plex Mono',monospace;--body:'Outfit',sans-serif;--serif:'DM Serif Display',serif;
+  --r:12px;--r-sm:8px;--sh:0 1px 4px rgba(0,0,0,0.07);--sh-md:0 4px 20px rgba(0,0,0,0.12);
+  --nav-h:68px;--hdr-h:52px;
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
 body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;overscroll-behavior:none;}
-.app-header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--orange);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;}
-.header-logo{font-family:var(--serif);font-size:22px;color:white;}
-.header-right{display:flex;align-items:center;gap:8px;}
-.header-date{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:1px;}
-.btn-icon{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.sync-btn{background:rgba(255,255,255,0.15);border:none;color:white;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;font-family:var(--body);display:flex;align-items:center;gap:4px;}
-.sync-btn.syncing{opacity:0.6;}
-.app-body{position:fixed;top:var(--header-h);bottom:var(--nav-h);left:0;right:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.page{display:none;padding:14px 14px 20px;}
+
+/* SPLASH */
+.splash{position:fixed;inset:0;background:var(--orange);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.5s ease;}
+.splash.hidden{opacity:0;pointer-events:none;}
+.splash-logo{font-family:var(--serif);font-size:42px;color:white;margin-bottom:8px;}
+.splash-tag{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:3px;text-transform:uppercase;}
+.splash-pulse{width:8px;height:8px;border-radius:50%;background:white;margin-top:40px;animation:pulse 1.2s ease-in-out infinite;}
+
+/* HEADER */
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--hdr-h);background:var(--orange);display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:100;}
+.hdr-logo{font-family:var(--serif);font-size:21px;color:white;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.hdr-date{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.65);letter-spacing:0.8px;}
+.hdr-btn{background:rgba(255,255,255,0.15);border:none;color:white;padding:5px 11px;border-radius:20px;cursor:pointer;font-family:var(--body);font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;transition:background 0.2s;}
+.hdr-btn:active{background:rgba(255,255,255,0.3);}
+.hdr-icon-btn{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+/* BODY & NAV */
+.app-body{position:fixed;top:var(--hdr-h);bottom:var(--nav-h);left:0;right:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.page{display:none;padding:12px 12px 16px;}
 .page.active{display:block;}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:white;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);z-index:100;}
-.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:6px 0;border:none;background:none;color:var(--text-3);transition:color 0.15s;}
-.nav-item.active{color:var(--orange);}
-.nav-icon{font-size:22px;line-height:1;}
-.nav-label{font-family:var(--body);font-size:10px;font-weight:500;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh);}
-.readiness-card{background:var(--text);border-radius:var(--r);padding:20px;margin-bottom:12px;position:relative;overflow:hidden;}
-.readiness-card::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.04);}
-.readiness-top{display:flex;align-items:center;gap:20px;margin-bottom:16px;}
-.ring-wrap{position:relative;width:90px;height:90px;flex-shrink:0;}
-.ring-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:white;border-top:1.5px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom);}
+.nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--text-3);cursor:pointer;padding:6px 2px;transition:color 0.15s;}
+.nav-btn.active{color:var(--orange);}
+.nav-btn svg{width:22px;height:22px;stroke-width:1.8;}
+.nav-lbl{font-size:10px;font-weight:600;letter-spacing:0.2px;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--sh);}
+
+/* READINESS HERO */
+.hero{background:var(--text);border-radius:var(--r);padding:16px;margin-bottom:10px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.04);}
+.hero-top{display:flex;align-items:center;gap:16px;margin-bottom:14px;}
+.ring-wrap{position:relative;width:86px;height:86px;flex-shrink:0;}
+.ring-wrap svg.ring-svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.ring-val{font-family:var(--serif);font-size:28px;color:white;line-height:1;}
-.ring-pct{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.5);}
-.readiness-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:4px;}
-.readiness-zone{font-size:20px;font-weight:700;color:white;margin-bottom:2px;}
-.readiness-sub{font-size:13px;color:rgba(255,255,255,0.6);}
-.bars-row{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
-.bar-item{display:flex;align-items:center;gap:10px;}
-.bar-label{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.5);width:44px;letter-spacing:1px;}
-.bar-track{flex:1;height:5px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;}
-.bar-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
-.bar-val{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.7);width:40px;text-align:right;}
-.readiness-insight{background:rgba(255,255,255,0.07);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.75);line-height:1.6;border-left:3px solid var(--orange);}
-.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.section-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-2);}
-.section-badge{font-family:var(--mono);font-size:8px;background:var(--orange-light);color:var(--orange);padding:2px 8px;border-radius:20px;}
-.section-badge.grey{background:var(--surface2);color:var(--text-3);}
-.section-badge.green{background:var(--green-light);color:var(--green);}
-.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.mcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;}
+.ring-val{font-family:var(--serif);font-size:26px;color:white;line-height:1;}
+.ring-unit{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,0.45);}
+.hero-info{flex:1;}
+.hero-lbl{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:3px;}
+.hero-zone{font-size:19px;font-weight:700;color:white;line-height:1.2;}
+.hero-sub{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;}
+.bars-row{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;}
+.bar-row{display:flex;align-items:center;gap:8px;}
+.bar-lbl{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,0.45);width:52px;letter-spacing:0.5px;}
+.bar-track{flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width 1s ease;}
+.bar-val{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.65);width:44px;text-align:right;}
+.hero-insight{background:rgba(255,255,255,0.06);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.7);line-height:1.65;border-left:3px solid var(--orange);}
+
+/* SECTION HEADERS */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+.sec-title{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-2);}
+.sec-title svg{width:13px;height:13px;color:var(--orange);}
+.sec-badge{font-family:var(--mono);font-size:7px;padding:2px 7px;border-radius:20px;letter-spacing:0.5px;}
+.sec-badge.orange{background:var(--orange-light);color:var(--orange);}
+.sec-badge.grey{background:var(--surface2);color:var(--text-3);}
+.sec-badge.green{background:var(--green-light);color:var(--green);}
+
+/* METRIC GRID */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px;position:relative;}
 .mcard.s-normal{border-top:3px solid var(--green);}
 .mcard.s-borderline{border-top:3px solid var(--amber);}
 .mcard.s-elevated{border-top:3px solid var(--red);}
 .mcard.s-none{border-top:3px solid var(--border-strong);}
-.mcard.s-polar{border-top:3px solid var(--orange);}
-.mcard-name{font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;}
-.mcard-val{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--text);line-height:1;}
-.mcard-unit{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:2px;}
-.mcard-foot{display:flex;justify-content:space-between;margin-top:8px;}
-.mcard-delta{font-family:var(--mono);font-size:9px;}
+.mcard-ico{width:18px;height:18px;margin-bottom:5px;color:var(--text-3);}
+.mcard-name{font-family:var(--mono);font-size:7px;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;}
+.mcard-val{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--text);line-height:1;}
+.mcard-unit{font-family:var(--mono);font-size:8px;color:var(--text-3);margin-top:2px;}
+.mcard-foot{display:flex;justify-content:space-between;align-items:center;margin-top:7px;}
+.mcard-delta{font-family:var(--mono);font-size:8px;}
 .mcard-delta.up{color:var(--red);}
 .mcard-delta.down{color:var(--green);}
 .mcard-delta.neutral{color:var(--text-3);}
-.mcard-src{font-family:var(--mono);font-size:8px;color:var(--text-3);}
-.spark-wrap{height:24px;margin-top:6px;}
+.mcard-src{font-family:var(--mono);font-size:7px;color:var(--text-3);}
+.spark-wrap{height:22px;margin-top:5px;}
 
-/* EXERCISE CARDS */
-.ex-today{background:linear-gradient(135deg,#1a1916 0%,#2a2520 100%);border-radius:var(--r);padding:18px;margin-bottom:10px;border-left:4px solid var(--orange);}
-.ex-today-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-.ex-today-icon{font-size:32px;width:52px;height:52px;background:rgba(232,80,10,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.ex-today-title{font-size:18px;font-weight:700;color:white;}
-.ex-today-time{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;}
-.ex-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.ex-stat{background:rgba(255,255,255,0.07);border-radius:var(--r-sm);padding:10px;text-align:center;}
-.ex-stat-val{font-family:var(--mono);font-size:16px;font-weight:500;color:white;}
-.ex-stat-label{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:0.5px;}
-.ex-strain-tag{display:inline-flex;align-items:center;gap:4px;background:rgba(232,80,10,0.25);border:1px solid rgba(232,80,10,0.4);border-radius:20px;padding:4px 10px;font-family:var(--mono);font-size:9px;color:#f4a07a;margin-top:10px;}
+/* FITNESS TREND CARDS */
+.fitness-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.fit-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;text-align:center;}
+.fit-val{font-family:var(--serif);font-size:22px;color:var(--text);line-height:1;margin-bottom:3px;}
+.fit-lbl{font-family:var(--mono);font-size:7px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-3);margin-bottom:4px;}
+.fit-status{font-size:10px;color:var(--text-2);}
+.fit-emoji{font-size:16px;margin-bottom:3px;}
 
-.ex-list-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
-.ex-list-icon{font-size:20px;width:38px;height:38px;background:var(--orange-light);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.ex-list-body{flex:1;}
-.ex-list-type{font-weight:600;font-size:13px;}
-.ex-list-date{font-family:var(--mono);font-size:9px;color:var(--text-3);}
-.ex-list-stats{font-family:var(--mono);font-size:10px;color:var(--text-2);margin-top:2px;}
-.ex-list-hr{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:500;}
-.no-exercise{text-align:center;padding:20px;color:var(--text-3);font-size:13px;}
+/* EXERCISE */
+.ex-hero{background:linear-gradient(135deg,#1a1916,#2d2520);border-radius:var(--r);padding:14px;margin-bottom:8px;border-left:4px solid var(--orange);}
+.ex-hero-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ex-ico-wrap{width:46px;height:46px;background:rgba(232,80,10,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ex-ico-wrap svg{width:24px;height:24px;color:var(--orange);}
+.ex-title{font-size:16px;font-weight:700;color:white;}
+.ex-date{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.45);margin-top:2px;}
+.ex-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.ex-stat{background:rgba(255,255,255,0.06);border-radius:var(--r-sm);padding:8px;text-align:center;}
+.ex-stat-val{font-family:var(--mono);font-size:14px;font-weight:500;color:white;}
+.ex-stat-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,0.4);margin-top:2px;}
+.ex-strain{display:inline-flex;align-items:center;gap:4px;background:rgba(232,80,10,0.2);border:1px solid rgba(232,80,10,0.35);border-radius:20px;padding:3px 9px;font-family:var(--mono);font-size:8px;color:#f4a07a;margin-top:8px;}
 
-/* SYNC STATUS */
-.sync-status{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--text-3);margin-bottom:10px;}
-.sync-dot{width:6px;height:6px;border-radius:50%;}
-.sync-dot.live{background:var(--green);}
-.sync-dot.manual{background:var(--amber);}
-.sync-dot.error{background:var(--red);}
+.ex-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;}
+.ex-list-ico{width:36px;height:36px;background:var(--orange-light);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ex-list-ico svg{width:18px;height:18px;color:var(--orange);}
+.ex-list-body{flex:1;min-width:0;}
+.ex-list-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ex-list-date{font-family:var(--mono);font-size:8px;color:var(--text-3);}
+.ex-list-stats{font-family:var(--mono);font-size:9px;color:var(--text-2);margin-top:2px;}
+.ex-list-hr{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:500;flex-shrink:0;text-align:center;}
+.no-ex{text-align:center;padding:16px;color:var(--text-3);font-size:12px;}
 
 /* ZONE CARDS */
-.zone-card{border-radius:var(--r-sm);padding:16px;margin-bottom:10px;border-left:5px solid;}
+.zone-card{border-radius:var(--r-sm);padding:13px;margin-bottom:8px;border-left:4px solid;}
 .zone-card.green{background:var(--green-light);border-color:var(--green);}
 .zone-card.amber{background:var(--amber-light);border-color:var(--amber);}
 .zone-card.red{background:var(--red-light);border-color:var(--red);}
 .zone-card.grey{background:var(--surface);border-color:var(--border-strong);}
 .zone-card.orange{background:var(--orange-light);border-color:var(--orange);}
-.zone-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-2);}
-.zone-val{font-family:var(--serif);font-size:28px;line-height:1;color:var(--text);}
-.zone-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
-.zone-note{font-size:12px;color:var(--text-2);line-height:1.6;margin-top:8px;border-top:1px solid rgba(0,0,0,0.06);padding-top:8px;}
-.progress-bar{height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;margin-top:8px;}
-.progress-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
-.sleep-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
-.sleep-day{font-family:var(--mono);font-size:9px;color:var(--text-3);width:28px;}
-.sleep-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
-.sleep-fill{height:100%;border-radius:4px;}
-.sleep-val{font-family:var(--mono);font-size:9px;color:var(--text-2);width:30px;text-align:right;}
+.zone-card.purple{background:var(--purple-light);border-color:var(--purple);}
+.zone-hdr{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.zone-hdr svg{width:14px;height:14px;}
+.zone-lbl{font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--text-2);}
+.zone-val{font-family:var(--serif);font-size:26px;line-height:1;color:var(--text);}
+.zone-sub{font-size:11px;color:var(--text-2);margin-top:2px;}
+.zone-note{font-size:11px;color:var(--text-2);line-height:1.6;margin-top:8px;border-top:1px solid rgba(0,0,0,0.06);padding-top:7px;}
+.prog-bar{height:5px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;margin-top:7px;}
+.prog-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+
+/* SLEEP BARS */
+.sleep-row{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.sleep-day{font-family:var(--mono);font-size:8px;color:var(--text-3);width:26px;}
+.sleep-track{flex:1;height:7px;background:var(--border);border-radius:3px;overflow:hidden;}
+.sleep-fill{height:100%;border-radius:3px;}
+.sleep-val{font-family:var(--mono);font-size:8px;color:var(--text-2);width:28px;text-align:right;}
+
+/* PR CARDS */
+.pr-sport-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+.pr-tab{flex-shrink:0;padding:7px 14px;border-radius:20px;font-family:var(--body);font-size:12px;font-weight:600;border:1.5px solid var(--border);background:white;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;}
+.pr-tab svg{width:14px;height:14px;}
+.pr-tab.active{background:var(--orange);color:white;border-color:var(--orange);}
+.pr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.pr-left{}
+.pr-dist{font-weight:700;font-size:15px;color:var(--text);}
+.pr-date{font-family:var(--mono);font-size:8px;color:var(--text-3);margin-top:2px;}
+.pr-right{text-align:right;}
+.pr-time{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--orange);}
+.pr-pace{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:2px;}
+.pr-badge{display:inline-flex;align-items:center;gap:3px;background:var(--amber-light);color:var(--amber);border-radius:20px;padding:2px 7px;font-family:var(--mono);font-size:7px;margin-top:3px;}
+.pr-empty{text-align:center;padding:24px;color:var(--text-3);font-size:12px;}
 
 /* LOG */
-.log-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px;}
-.log-section-hdr{padding:12px 16px;border-bottom:1px solid var(--border);}
-.log-section-title{font-weight:600;font-size:14px;}
-.log-section-sub{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:2px;}
-.log-section-body{padding:14px 16px;}
-.input-group{margin-bottom:12px;}
-.input-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-2);margin-bottom:5px;display:block;}
-.input-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-input[type=number],input[type=text],select,textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--body);font-size:16px;color:var(--text);background:white;outline:none;transition:border-color 0.15s;-webkit-appearance:none;}
+.log-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.log-sec-hdr{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.log-sec-hdr svg{width:18px;height:18px;color:var(--orange);}
+.log-sec-title{font-weight:700;font-size:14px;}
+.log-sec-sub{font-family:var(--mono);font-size:8px;color:var(--text-3);margin-top:1px;}
+.log-body{padding:12px 14px;}
+.ig{margin-bottom:11px;}
+.ilbl{font-family:var(--mono);font-size:8px;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-2);margin-bottom:4px;display:block;}
+.irow{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+input[type=number],input[type=text],select{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--body);font-size:15px;color:var(--text);background:white;outline:none;-webkit-appearance:none;transition:border-color 0.15s;}
 input:focus,select:focus{border-color:var(--orange);}
-.input-hint{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:4px;}
-.divider{height:1px;background:var(--border);margin:12px 0;}
-.btn-save{width:100%;padding:14px;border:none;border-radius:var(--r-sm);font-family:var(--body);font-size:15px;font-weight:600;cursor:pointer;transition:background 0.2s,transform 0.1s;}
-.btn-save:active{transform:scale(0.98);}
-.btn-save.orange{background:var(--orange);color:white;}
-.btn-save.green{background:var(--green);color:white;}
-.btn-save.grey{background:var(--surface2);color:var(--text-2);border:1px solid var(--border);}
-.ex-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
-.ex-type-btn{padding:10px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:white;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;}
-.ex-type-btn.selected{border-color:var(--orange);background:var(--orange-light);}
-.et-icon{font-size:20px;margin-bottom:3px;}
-.et-label{font-family:var(--mono);font-size:8px;color:var(--text-2);}
+.ihint{font-family:var(--mono);font-size:8px;color:var(--text-3);margin-top:3px;}
+.divider{height:1px;background:var(--border);margin:10px 0;}
+.btn{width:100%;padding:13px;border:none;border-radius:var(--r-sm);font-family:var(--body);font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.1s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn:active{transform:scale(0.98);}
+.btn svg{width:16px;height:16px;}
+.btn.orange{background:var(--orange);color:white;}
+.btn.green{background:var(--green);color:white;}
+.btn.grey{background:var(--surface2);color:var(--text-2);border:1px solid var(--border);}
+
+/* EXERCISE TYPE GRID */
+.ex-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px;}
+.ex-type-btn{padding:9px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:white;text-align:center;cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ex-type-btn.active{border-color:var(--orange);background:var(--orange-light);}
+.ex-type-btn svg{width:20px;height:20px;color:var(--text-3);}
+.ex-type-btn.active svg{color:var(--orange);}
+.ex-type-lbl{font-family:var(--mono);font-size:7px;color:var(--text-2);}
+
+/* WEIGHT TRAINING ROWS */
+.wt-exercise-row{background:white;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:10px;margin-bottom:8px;position:relative;}
+.wt-row-top{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-bottom:8px;}
+.wt-row-fields{display:grid;gap:6px;}
+.wt-row-fields.reps-mode{grid-template-columns:1fr 1fr 1fr;}
+.wt-row-fields.hold-mode{grid-template-columns:1fr 1fr;}
+.wt-field-label{font-family:var(--mono);font-size:7px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.wt-field input{padding:8px 10px;font-size:14px;}
+.wt-remove{width:28px;height:28px;border-radius:50%;background:var(--red-light);border:none;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.wt-remove svg{width:14px;height:14px;}
+.add-exercise-btn{width:100%;padding:10px;border:1.5px dashed var(--border);border-radius:var(--r-sm);background:white;color:var(--text-3);font-family:var(--body);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px;}
+.add-exercise-btn svg{width:15px;height:15px;}
 
 /* INSIGHTS */
-.insight-hero{background:linear-gradient(135deg,var(--orange) 0%,var(--orange-dark) 100%);border-radius:var(--r);padding:20px;margin-bottom:12px;}
-.insight-hero-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:10px;}
-.insight-hero-text{font-size:14px;line-height:1.75;color:rgba(255,255,255,0.9);}
-.insight-loading{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.6);font-family:var(--mono);font-size:11px;}
+.insight-hero{background:linear-gradient(135deg,var(--orange),var(--orange-dark));border-radius:var(--r);padding:16px;margin-bottom:10px;}
+.insight-lbl{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:8px;}
+.insight-text{font-size:13px;line-height:1.75;color:rgba(255,255,255,0.9);}
+.insight-loading{display:flex;align-items:center;gap:7px;color:rgba(255,255,255,0.55);font-family:var(--mono);font-size:10px;}
 .pulse{width:6px;height:6px;border-radius:50%;background:white;animation:pulse 1.4s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}
-.insight-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
-.insight-section-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px;}
-.insight-section-body{padding:12px 16px;}
-.insight-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.35;transform:scale(0.75)}}
+.insight-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;}
+.insight-sec-hdr{padding:11px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;}
+.insight-sec-hdr svg{width:15px;height:15px;}
+.insight-sec-body{padding:11px 14px;}
+.insight-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--border);}
 .insight-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
-.insight-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px;}
+.insight-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
 .insight-dot.green{background:var(--green);}
 .insight-dot.amber{background:var(--amber);}
-.insight-item-text{font-size:13px;color:var(--text-2);line-height:1.6;}
-.regen-btn{width:100%;padding:14px;background:white;border:1.5px solid var(--orange);border-radius:var(--r-sm);color:var(--orange);font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+.insight-dot.red{background:var(--red);}
+.insight-item-text{font-size:12px;color:var(--text-2);line-height:1.6;}
+.regen-btn{width:100%;padding:13px;background:white;border:1.5px solid var(--orange);border-radius:var(--r-sm);color:var(--orange);font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.regen-btn svg{width:15px;height:15px;}
 
-/* OVERLAY */
+/* OVERLAY/SHEET */
 .overlay{display:none;position:fixed;inset:0;background:rgba(26,25,22,0.6);z-index:200;align-items:flex-end;}
 .overlay.open{display:flex;}
-.sheet{background:white;border-radius:var(--r) var(--r) 0 0;width:100%;padding:20px 16px 32px;max-height:90vh;overflow-y:auto;}
-.sheet-handle{width:40px;height:4px;background:var(--border-strong);border-radius:2px;margin:0 auto 20px;}
-.sheet-title{font-size:18px;font-weight:700;margin-bottom:16px;}
-.toast{position:fixed;bottom:calc(var(--nav-h) + 12px);left:14px;right:14px;background:var(--text);color:white;padding:12px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;box-shadow:var(--sh-md);transform:translateY(20px);opacity:0;transition:all 0.3s;z-index:300;text-align:center;}
+.sheet{background:white;border-radius:var(--r) var(--r) 0 0;width:100%;padding:16px 14px 28px;max-height:88vh;overflow-y:auto;}
+.sheet-handle{width:36px;height:4px;background:var(--border-strong);border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:17px;font-weight:700;margin-bottom:14px;}
+.settings-section{margin-bottom:16px;}
+.settings-section-title{font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.settings-section-title svg{width:15px;height:15px;color:var(--orange);}
+.connected-badge{display:inline-flex;align-items:center;gap:5px;background:var(--green-light);color:var(--green);border:1px solid rgba(26,107,58,0.2);border-radius:20px;padding:3px 10px;font-family:var(--mono);font-size:8px;}
+.connected-badge svg{width:10px;height:10px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(var(--nav-h)+10px);left:10px;right:10px;background:var(--text);color:white;padding:11px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:500;box-shadow:var(--sh-md);transform:translateY(20px);opacity:0;transition:all 0.3s;z-index:300;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;}
+.toast svg{width:15px;height:15px;}
 .toast.show{transform:translateY(0);opacity:1;}
-.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-bottom:12px;}
-.strava-connect-btn{display:block;width:100%;padding:14px;background:#FC4C02;color:white;border:none;border-radius:var(--r-sm);font-family:var(--body);font-size:15px;font-weight:600;cursor:pointer;text-align:center;margin-bottom:12px;}
-.connected-badge{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:9px;letter-spacing:1px;}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-bottom:10px;}
 </style>
 </head>
 <body>
 
-<header class="app-header">
-  <div class="header-logo">VitalCore</div>
-  <div class="header-right">
-    <span class="header-date" id="headerDate"></span>
-    <button class="sync-btn" id="syncBtn" onclick="syncAll()">⟳ Sync</button>
-    <button class="btn-icon" onclick="openSettings()">⚙</button>
+<!-- SPLASH -->
+<div class="splash" id="splash">
+  <div class="splash-logo">VitalCore</div>
+  <div class="splash-tag">Health Intelligence</div>
+  <div class="splash-pulse"></div>
+</div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-logo">VitalCore</div>
+  <div class="hdr-right">
+    <span class="hdr-date" id="hdrDate"></span>
+    <button class="hdr-btn" id="syncBtn" onclick="syncAll()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+      Sync
+    </button>
+    <button class="hdr-icon-btn" onclick="openSettings()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.1 4.9C16.2 2 12 2 12 2s-4.2 0-7.1 2.9C2 7.8 2 12 2 12s0 4.2 2.9 7.1C7.8 22 12 22 12 22s4.2 0 7.1-2.9C22 16.2 22 12 22 12s0-4.2-2.9-7.1z"/></svg>
+    </button>
   </div>
 </header>
 
-<div class="app-body">
+<div class="app-body" id="appBody">
 
-  <!-- TODAY -->
-  <div id="page-today" class="page active">
-    <div class="readiness-card">
-      <div class="readiness-top">
-        <div class="ring-wrap">
-          <svg width="90" height="90" viewBox="0 0 90 90">
-            <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="7"/>
-            <circle cx="45" cy="45" r="38" fill="none" stroke="#E8500A" stroke-width="7"
-              stroke-dasharray="239" stroke-dashoffset="239" id="recoveryArc"
-              stroke-linecap="round" style="transition:stroke-dashoffset 1s ease,stroke 0.5s"/>
-          </svg>
-          <div class="ring-center">
-            <div class="ring-val" id="recVal">—</div>
-            <div class="ring-pct">%</div>
-          </div>
-        </div>
-        <div>
-          <div class="readiness-label">Recovery</div>
-          <div class="readiness-zone" id="recZone">No data</div>
-          <div class="readiness-sub" id="recSub">Log Polar data to start</div>
+<!-- TODAY -->
+<div id="pg-today" class="page active">
+  <!-- READINESS HERO -->
+  <div class="hero">
+    <div class="hero-top">
+      <div class="ring-wrap">
+        <svg class="ring-svg" width="86" height="86" viewBox="0 0 86 86">
+          <circle cx="43" cy="43" r="36" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="7"/>
+          <circle cx="43" cy="43" r="36" fill="none" stroke="#E8500A" stroke-width="7"
+            stroke-dasharray="226" stroke-dashoffset="226" id="readinessArc"
+            stroke-linecap="round" style="transition:stroke-dashoffset 1.2s ease,stroke 0.5s"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-val" id="readinessVal">—</div>
+          <div class="ring-unit">%</div>
         </div>
       </div>
-      <div class="bars-row">
-        <div class="bar-item">
-          <span class="bar-label">STRAIN</span>
-          <div class="bar-track"><div class="bar-fill" id="strainBar" style="width:0%;background:#E8500A"></div></div>
-          <span class="bar-val" id="strainBarVal">—</span>
-        </div>
-        <div class="bar-item">
-          <span class="bar-label">SLEEP</span>
-          <div class="bar-track"><div class="bar-fill" id="sleepBar" style="width:0%;background:#6B3A9A"></div></div>
-          <span class="bar-val" id="sleepBarVal">—</span>
-        </div>
+      <div class="hero-info">
+        <div class="hero-lbl">Readiness</div>
+        <div class="hero-zone" id="readinessZone">No data yet</div>
+        <div class="hero-sub" id="readinessSub">Connect Intervals.icu to start</div>
       </div>
-      <div class="readiness-insight" id="todayInsight">Log your morning Polar data to activate insights.</div>
     </div>
-
-    <!-- POLAR RECOVERY DATA -->
-    <div class="section-hdr">
-      <span class="section-title">Recovery Data</span>
-      <span class="section-badge">POLAR LOOP 2</span>
+    <div class="bars-row">
+      <div class="bar-row">
+        <span class="bar-lbl">LOAD</span>
+        <div class="bar-track"><div class="bar-fill" id="strainBar" style="width:0%;background:#E8500A"></div></div>
+        <span class="bar-val" id="strainVal">—</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">SLEEP</span>
+        <div class="bar-track"><div class="bar-fill" id="sleepBar" style="width:0%;background:#6B3A9A"></div></div>
+        <span class="bar-val" id="sleepVal">—</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">FRESHNESS</span>
+        <div class="bar-track"><div class="bar-fill" id="freshBar" style="width:0%;background:#1A6B3A"></div></div>
+        <span class="bar-val" id="freshVal">—</span>
+      </div>
     </div>
-    <div class="sync-status" id="polarSyncStatus">
-      <div class="sync-dot manual"></div>
-      <span>Manual entry — log from Polar Flow each morning</span>
-    </div>
-    <div class="mgrid" id="g-polar"></div>
-
-    <!-- EXERCISE -->
-    <div class="section-hdr">
-      <span class="section-title">Exercise — Last 7 Days</span>
-      <span class="section-badge green" id="stravaStatus">STRAVA</span>
-    </div>
-    <div id="g-exercise"><div class="no-exercise">Tap ⟳ Sync to load Strava activities</div></div>
-
-    <!-- VITALS -->
-    <div class="section-hdr">
-      <span class="section-title">Vitals</span>
-      <span class="section-badge grey">OMRON · XIAOMI</span>
-    </div>
-    <div class="mgrid" id="g-vitals"></div>
-
-    <!-- LAB -->
-    <div class="section-hdr">
-      <span class="section-title">Lab Results</span>
-      <span class="section-badge grey">MANUAL</span>
-    </div>
-    <div class="mgrid" id="g-lab"></div>
+    <div class="hero-insight" id="todayInsight">Tap Sync to load your data from Intervals.icu</div>
   </div>
 
-  <!-- RECOVERY -->
-  <div id="page-recovery" class="page">
-    <div id="recoveryZoneCards"></div>
-    <div class="section-hdr"><span class="section-title">7-Night Sleep</span></div>
-    <div class="card" style="padding:14px"><div id="sleepBars"></div></div>
-    <div class="section-hdr"><span class="section-title">30-Day Recovery Trend</span></div>
-    <div class="chart-wrap"><canvas id="recoveryChart" height="130"></canvas></div>
-    <div class="section-hdr"><span class="section-title">Heart Rate & HRV</span></div>
-    <div class="chart-wrap"><canvas id="hrChart" height="130"></canvas></div>
+  <!-- WEARABLE DATA -->
+  <div class="sec-hdr">
+    <div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 10v4"/><path d="M12 6h.01"/></svg>Wearable Data</div>
+    <span class="sec-badge orange">INTERVALS.ICU</span>
+  </div>
+  <div class="mgrid" id="g-wearable"></div>
+
+  <!-- ACTIVITY -->
+  <div class="sec-hdr">
+    <div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Activity</div>
+    <span class="sec-badge green" id="actBadge">LAST 7 DAYS</span>
+  </div>
+  <div id="g-activity"><div class="no-ex">Tap Sync to load activities</div></div>
+
+  <!-- FITNESS TREND -->
+  <div class="sec-hdr">
+    <div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Fitness Trend</div>
+    <span class="sec-badge orange">INTERVALS.ICU</span>
+  </div>
+  <div class="fitness-grid" id="g-fitness">
+    <div class="fit-card"><div class="fit-emoji">💪</div><div class="fit-val" id="fitCTL">—</div><div class="fit-lbl">Fitness Level</div><div class="fit-status" id="fitCTLsub">—</div></div>
+    <div class="fit-card"><div class="fit-emoji">😓</div><div class="fit-val" id="fitATL">—</div><div class="fit-lbl">Recent Fatigue</div><div class="fit-status" id="fitATLsub">—</div></div>
+    <div class="fit-card"><div class="fit-emoji" id="fitEmoji">⚡</div><div class="fit-val" id="fitTSB">—</div><div class="fit-lbl">Freshness</div><div class="fit-status" id="fitTSBsub">—</div></div>
   </div>
 
-  <!-- LOG -->
-  <div id="page-log" class="page">
-    <div class="log-section">
-      <div class="log-section-hdr"><div class="log-section-title">🔶 Morning Polar Data</div><div class="log-section-sub">From Polar Flow after syncing Loop 2</div></div>
-      <div class="log-section-body">
-        <div class="input-group"><label class="input-label">Resting Heart Rate</label><input type="number" id="l_hr" placeholder="e.g. 62"><div class="input-hint">bpm</div></div>
-        <div class="input-group"><label class="input-label">HRV (overnight)</label><input type="number" id="l_hrv" placeholder="e.g. 45"><div class="input-hint">ms — from sleep details in Polar Flow</div></div>
-        <div class="input-group"><label class="input-label">Sleep Duration</label><input type="number" id="l_sleep" placeholder="e.g. 7.5" step="0.5"><div class="input-hint">hours last night</div></div>
-        <div class="input-row">
-          <div class="input-group"><label class="input-label">Steps</label><input type="number" id="l_steps" placeholder="8500"></div>
-          <div class="input-group"><label class="input-label">Active Cal</label><input type="number" id="l_cals" placeholder="420"></div>
-        </div>
-        <button class="btn-save orange" onclick="savePolar()">Save Polar Data</button>
-      </div>
-    </div>
-
-    <div class="log-section">
-      <div class="log-section-hdr"><div class="log-section-title">🏃 Manual Exercise Log</div><div class="log-section-sub">For sessions not in Strava, or weight training details</div></div>
-      <div class="log-section-body">
-        <div class="input-group"><label class="input-label">Activity Type</label>
-          <div class="ex-type-grid">
-            <div class="ex-type-btn selected" onclick="selectEx(this,'Running')"><div class="et-icon">🏃</div><div class="et-label">RUN</div></div>
-            <div class="ex-type-btn" onclick="selectEx(this,'Walking')"><div class="et-icon">🚶</div><div class="et-label">WALK</div></div>
-            <div class="ex-type-btn" onclick="selectEx(this,'Cycling')"><div class="et-icon">🚴</div><div class="et-label">CYCLE</div></div>
-            <div class="ex-type-btn" onclick="selectEx(this,'WeightTraining')"><div class="et-icon">🏋️</div><div class="et-label">WEIGHTS</div></div>
-            <div class="ex-type-btn" onclick="selectEx(this,'Swimming')"><div class="et-icon">🏊</div><div class="et-label">SWIM</div></div>
-            <div class="ex-type-btn" onclick="selectEx(this,'Other')"><div class="et-icon">⚡</div><div class="et-label">OTHER</div></div>
-          </div>
-        </div>
-        <div class="input-row">
-          <div class="input-group"><label class="input-label">Distance (km)</label><input type="number" id="l_dist" placeholder="5.2" step="0.1"></div>
-          <div class="input-group"><label class="input-label">Duration (min)</label><input type="number" id="l_dur" placeholder="38"></div>
-        </div>
-        <div class="input-group"><label class="input-label">Avg Heart Rate (bpm)</label><input type="number" id="l_exhr" placeholder="142"></div>
-        <div id="weights-section" style="display:none">
-          <div class="divider"></div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--orange);letter-spacing:1px;margin-bottom:10px">WEIGHT TRAINING DETAILS</div>
-          <div class="input-row">
-            <div class="input-group"><label class="input-label">Sets completed</label><input type="number" id="l_sets" placeholder="15"></div>
-            <div class="input-group"><label class="input-label">Total reps</label><input type="number" id="l_reps" placeholder="120"></div>
-          </div>
-          <div class="input-group"><label class="input-label">Main exercises</label><input type="text" id="l_exercises" placeholder="e.g. Squat, Bench, Deadlift"></div>
-          <div class="input-group"><label class="input-label">Max weight lifted (kg)</label><input type="number" id="l_maxweight" placeholder="80" step="2.5"></div>
-        </div>
-        <button class="btn-save orange" onclick="saveExercise()">Log Exercise</button>
-      </div>
-    </div>
-
-    <div class="log-section">
-      <div class="log-section-hdr"><div class="log-section-title">🩺 Device Vitals</div><div class="log-section-sub">From Omron BP monitor & Xiaomi scale</div></div>
-      <div class="log-section-body">
-        <div class="input-group"><label class="input-label">Blood Pressure</label>
-          <div class="input-row">
-            <div><input type="number" id="l_bps" placeholder="Systolic"><div class="input-hint">mmHg — Omron</div></div>
-            <div><input type="number" id="l_bpd" placeholder="Diastolic"><div class="input-hint">mmHg</div></div>
-          </div>
-        </div>
-        <div class="input-group"><label class="input-label">Weight</label><input type="number" id="l_wt" placeholder="e.g. 72.5" step="0.1"><div class="input-hint">kg — Xiaomi scale</div></div>
-        <button class="btn-save green" onclick="saveVitals()">Save Vitals</button>
-      </div>
-    </div>
-
-    <div class="log-section">
-      <div class="log-section-hdr"><div class="log-section-title">🧬 Lab Results</div><div class="log-section-sub">Enter from lab report — periodic</div></div>
-      <div class="log-section-body">
-        <div class="input-group"><label class="input-label">Blood Glucose</label><input type="number" id="l_gluc" placeholder="e.g. 5.2" step="0.1"><div class="input-hint">mmol/L — fasting</div></div>
-        <div class="input-group"><label class="input-label">Total Cholesterol</label><input type="number" id="l_chol" placeholder="e.g. 4.8" step="0.1"><div class="input-hint">mmol/L</div></div>
-        <div class="input-group"><label class="input-label">Uric Acid</label><input type="number" id="l_ua" placeholder="e.g. 340"><div class="input-hint">µmol/L</div></div>
-        <button class="btn-save grey" onclick="saveLab()">Save Lab Results</button>
-      </div>
-    </div>
+  <!-- HEALTH READINGS -->
+  <div class="sec-hdr">
+    <div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Health Readings</div>
+    <span class="sec-badge grey">OMRON · XIAOMI</span>
   </div>
+  <div class="mgrid" id="g-health"></div>
 
-  <!-- INSIGHTS -->
-  <div id="page-insights" class="page">
-    <div class="insight-hero">
-      <div class="insight-hero-label">AI · Weekly Analysis · Claude</div>
-      <div class="insight-hero-text" id="aiInsightText"><div class="insight-loading"><div class="pulse"></div> Analysing your data...</div></div>
-    </div>
-    <div class="insight-section" id="improvingSection" style="display:none">
-      <div class="insight-section-hdr">↑ Improving</div>
-      <div class="insight-section-body" id="improvingList"></div>
-    </div>
-    <div class="insight-section" id="watchSection" style="display:none">
-      <div class="insight-section-hdr">→ Watch Closely</div>
-      <div class="insight-section-body" id="watchList"></div>
-    </div>
-    <div class="insight-section" id="recSection" style="display:none">
-      <div class="insight-section-hdr">💡 Recommendation</div>
-      <div class="insight-section-body" id="recText" style="font-size:13px;color:var(--text-2);line-height:1.7"></div>
-    </div>
-    <button class="regen-btn" onclick="generateInsights()">🔄 Regenerate Insight</button>
-    <div style="height:8px"></div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--text-3);text-align:center;letter-spacing:1px">POWERED BY CLAUDE · ANTHROPIC</div>
+  <!-- BLOOD MARKERS -->
+  <div class="sec-hdr">
+    <div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.58 16.5h12.85"/></svg>Blood Markers</div>
+    <span class="sec-badge grey">LAB RESULTS</span>
   </div>
-
+  <div class="mgrid" id="g-blood"></div>
 </div>
 
+<!-- WELLBEING -->
+<div id="pg-wellbeing" class="page">
+  <div id="wellbeingCards"></div>
+  <div class="sec-hdr"><div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>7-Night Sleep</div></div>
+  <div class="card" style="padding:12px"><div id="sleepBars"></div></div>
+  <div class="sec-hdr"><div class="sec-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Readiness Trend (30 days)</div></div>
+  <div class="chart-wrap"><canvas id="readinessChart" height="120"></canvas></div>
+  <div class="sec-hdr"><div class="sec-title">Heart Rate & Body Stress</div></div>
+  <div class="chart-wrap"><canvas id="hrChart" height="120"></canvas></div>
+</div>
+
+<!-- RECORDS -->
+<div id="pg-records" class="page">
+  <div class="pr-sport-tabs" id="prTabs">
+    <button class="pr-tab active" onclick="showPR('Run',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/></svg>
+      Running
+    </button>
+    <button class="pr-tab" onclick="showPR('Ride',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+      Cycling
+    </button>
+    <button class="pr-tab" onclick="showPR('Walk',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4v4l2.5 2.5"/><circle cx="12" cy="2" r="1"/><path d="m6 20 2-5 2 2 2-4"/><path d="m18 20-2-5-2 2"/></svg>
+      Walking
+    </button>
+    <button class="pr-tab" onclick="showPR('Strength',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>
+      Strength
+    </button>
+  </div>
+  <div id="prContent"></div>
+</div>
+
+<!-- LOG -->
+<div id="pg-log" class="page">
+  <!-- MORNING CHECK-IN -->
+  <div class="log-sec">
+    <div class="log-sec-hdr">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      <div><div class="log-sec-title">Morning Check-in</div><div class="log-sec-sub">From Polar Flow after syncing your Loop 2</div></div>
+    </div>
+    <div class="log-body">
+      <div class="irow" style="margin-bottom:10px">
+        <div class="ig"><label class="ilbl">Resting HR</label><input type="number" id="l_hr" placeholder="62"><div class="ihint">bpm</div></div>
+        <div class="ig"><label class="ilbl">HRV</label><input type="number" id="l_hrv" placeholder="45"><div class="ihint">ms overnight</div></div>
+      </div>
+      <div class="irow" style="margin-bottom:10px">
+        <div class="ig"><label class="ilbl">Sleep</label><input type="number" id="l_sleep" placeholder="7.5" step="0.5"><div class="ihint">hours</div></div>
+        <div class="ig"><label class="ilbl">Steps</label><input type="number" id="l_steps" placeholder="8500"></div>
+      </div>
+      <button class="btn orange" onclick="saveMorning()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Save Morning Data
+      </button>
+    </div>
+  </div>
+
+  <!-- LOG WORKOUT -->
+  <div class="log-sec">
+    <div class="log-sec-hdr">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>
+      <div><div class="log-sec-title">Log a Workout</div><div class="log-sec-sub">For sessions not in Strava, or weight training detail</div></div>
+    </div>
+    <div class="log-body">
+      <div class="ex-type-grid">
+        <button class="ex-type-btn active" onclick="selEx(this,'Run')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/></svg>
+          <span class="ex-type-lbl">RUN</span>
+        </button>
+        <button class="ex-type-btn" onclick="selEx(this,'Walk')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4v4l2.5 2.5"/><circle cx="12" cy="2" r="1"/><path d="m6 20 2-5 2 2 2-4"/><path d="m18 20-2-5-2 2"/></svg>
+          <span class="ex-type-lbl">WALK</span>
+        </button>
+        <button class="ex-type-btn" onclick="selEx(this,'Ride')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          <span class="ex-type-lbl">CYCLE</span>
+        </button>
+        <button class="ex-type-btn" onclick="selEx(this,'Swim')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M2 12s2-4 5-4 5 4 5 4 2-4 5-4 5 4 5 4"/><path d="M2 20h20"/><path d="M2 20s2-4 5-4 5 4 5 4 2-4 5-4 5 4 5 4"/></svg>
+          <span class="ex-type-lbl">SWIM</span>
+        </button>
+        <button class="ex-type-btn" onclick="selEx(this,'Weights')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>
+          <span class="ex-type-lbl">WEIGHTS</span>
+        </button>
+        <button class="ex-type-btn" onclick="selEx(this,'Other')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span class="ex-type-lbl">OTHER</span>
+        </button>
+      </div>
+
+      <!-- CARDIO FIELDS -->
+      <div id="cardio-fields">
+        <div class="irow" style="margin-bottom:10px">
+          <div class="ig"><label class="ilbl">Distance (km)</label><input type="number" id="l_dist" placeholder="5.2" step="0.1"></div>
+          <div class="ig"><label class="ilbl">Duration (min)</label><input type="number" id="l_dur" placeholder="38"></div>
+        </div>
+        <div class="ig" style="margin-bottom:10px"><label class="ilbl">Avg Heart Rate (bpm)</label><input type="number" id="l_exhr" placeholder="142"></div>
+      </div>
+
+      <!-- WEIGHTS FIELDS -->
+      <div id="weights-fields" style="display:none">
+        <div class="irow" style="margin-bottom:10px">
+          <div class="ig"><label class="ilbl">Duration (min)</label><input type="number" id="l_wtdur" placeholder="60"></div>
+          <div class="ig"><label class="ilbl">Avg HR (bpm)</label><input type="number" id="l_wthr" placeholder="120"></div>
+        </div>
+        <div class="divider"></div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--orange);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase">Exercises</div>
+        <div id="exerciseRows"></div>
+        <button class="add-exercise-btn" onclick="addExRow()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          Add Exercise
+        </button>
+      </div>
+
+      <button class="btn orange" onclick="saveWorkout()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Log Workout
+      </button>
+    </div>
+  </div>
+
+  <!-- MEASUREMENTS -->
+  <div class="log-sec">
+    <div class="log-sec-hdr">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <div><div class="log-sec-title">Measurements</div><div class="log-sec-sub">From Omron BP monitor & Xiaomi scale</div></div>
+    </div>
+    <div class="log-body">
+      <div class="ig" style="margin-bottom:10px"><label class="ilbl">Blood Pressure</label>
+        <div class="irow">
+          <div><input type="number" id="l_bps" placeholder="Systolic"><div class="ihint">mmHg — from Omron</div></div>
+          <div><input type="number" id="l_bpd" placeholder="Diastolic"><div class="ihint">mmHg</div></div>
+        </div>
+      </div>
+      <div class="ig" style="margin-bottom:10px"><label class="ilbl">Weight (kg)</label><input type="number" id="l_wt" placeholder="72.5" step="0.1"><div class="ihint">from Xiaomi scale</div></div>
+      <button class="btn green" onclick="saveMeasurements()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Save Measurements
+      </button>
+    </div>
+  </div>
+
+  <!-- BLOOD TEST RESULTS -->
+  <div class="log-sec">
+    <div class="log-sec-hdr">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+      <div><div class="log-sec-title">Blood Test Results</div><div class="log-sec-sub">Enter from your lab report — periodic</div></div>
+    </div>
+    <div class="log-body">
+      <div class="irow" style="margin-bottom:10px">
+        <div class="ig"><label class="ilbl">Glucose</label><input type="number" id="l_gluc" placeholder="5.2" step="0.1"><div class="ihint">mmol/L fasting</div></div>
+        <div class="ig"><label class="ilbl">Cholesterol</label><input type="number" id="l_chol" placeholder="4.8" step="0.1"><div class="ihint">mmol/L total</div></div>
+      </div>
+      <div class="ig" style="margin-bottom:10px"><label class="ilbl">Uric Acid</label><input type="number" id="l_ua" placeholder="340"><div class="ihint">µmol/L</div></div>
+      <button class="btn grey" onclick="saveBlood()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Save Blood Results
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- INSIGHTS -->
+<div id="pg-insights" class="page">
+  <div class="insight-hero">
+    <div class="insight-lbl">Your Health Story This Week · Claude AI</div>
+    <div class="insight-text" id="aiText"><div class="insight-loading"><div class="pulse"></div> Analysing your data...</div></div>
+  </div>
+  <div class="insight-section" id="improvingSec" style="display:none">
+    <div class="insight-sec-hdr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>What's getting better</div>
+    <div class="insight-sec-body" id="improvingList"></div>
+  </div>
+  <div class="insight-section" id="watchSec" style="display:none">
+    <div class="insight-sec-hdr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Keep an eye on</div>
+    <div class="insight-sec-body" id="watchList"></div>
+  </div>
+  <div class="insight-section" id="recSec" style="display:none">
+    <div class="insight-sec-hdr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>One thing to do today</div>
+    <div class="insight-sec-body" id="recText" style="font-size:12px;color:var(--text-2);line-height:1.7"></div>
+  </div>
+  <button class="regen-btn" onclick="genInsights()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+    Refresh Insight
+  </button>
+  <div style="height:8px"></div>
+  <div style="font-family:var(--mono);font-size:8px;color:var(--text-3);text-align:center;letter-spacing:1px">POWERED BY CLAUDE · ANTHROPIC</div>
+</div>
+
+</div><!-- end app-body -->
+
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon">🏠</span><span class="nav-label">Today</span></button>
-  <button class="nav-item" onclick="showPage('recovery',this)"><span class="nav-icon">💚</span><span class="nav-label">Recovery</span></button>
-  <button class="nav-item" onclick="showPage('log',this)"><span class="nav-icon">➕</span><span class="nav-label">Log</span></button>
-  <button class="nav-item" onclick="showPage('insights',this)"><span class="nav-icon">🧠</span><span class="nav-label">Insights</span></button>
+  <button class="nav-btn active" onclick="goPage('today',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span class="nav-lbl">Today</span>
+  </button>
+  <button class="nav-btn" onclick="goPage('wellbeing',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    <span class="nav-lbl">Wellbeing</span>
+  </button>
+  <button class="nav-btn" onclick="goPage('records',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+    <span class="nav-lbl">Records</span>
+  </button>
+  <button class="nav-btn" onclick="goPage('log',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+    <span class="nav-lbl">Log</span>
+  </button>
+  <button class="nav-btn" onclick="goPage('insights',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a5 5 0 0 1 5 5c0 3-2.5 6-5 8-2.5-2-5-5-5-8a5 5 0 0 1 5-5z"/><path d="M12 15v7"/><path d="M9 19h6"/></svg>
+    <span class="nav-lbl">Insights</span>
+  </button>
 </nav>
 
 <!-- SETTINGS -->
@@ -376,74 +584,142 @@ input:focus,select:focus{border-color:var(--orange);}
     <div class="sheet-handle"></div>
     <div class="sheet-title">Settings</div>
 
-    <div style="margin-bottom:16px">
-      <div style="font-weight:600;font-size:14px;margin-bottom:8px">Strava Connection</div>
-      <div id="stravaConnectionStatus"></div>
-      <div class="input-group" style="margin-top:10px">
-        <label class="input-label">Strava Refresh Token</label>
-        <input type="text" id="stravaTokenInput" placeholder="paste your refresh token here">
-        <div class="input-hint">From the Strava OAuth flow. Stays on your device only.</div>
+    <div class="settings-section">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        Intervals.icu
       </div>
-      <button class="btn-save orange" onclick="saveStravaToken()" style="margin-bottom:8px">Save Strava Token</button>
+      <div id="intervalsStatus" style="margin-bottom:8px"></div>
+      <div class="ig"><label class="ilbl">API Key</label><input type="text" id="s_ikey" placeholder="your intervals.icu API key"><div class="ihint">From intervals.icu → Settings → Developer Settings</div></div>
+      <div class="ig" style="margin-top:8px"><label class="ilbl">Athlete ID</label><input type="text" id="s_iid" placeholder="i33319"><div class="ihint">From the URL when logged in: intervals.icu/athlete/i33319</div></div>
+      <button class="btn orange" onclick="saveIntervals()" style="margin-top:6px">Save Intervals.icu</button>
     </div>
 
     <div class="divider"></div>
 
-    <div style="margin:16px 0">
-      <div style="font-weight:600;font-size:14px;margin-bottom:8px">Backend URL</div>
-      <div class="input-group">
-        <label class="input-label">Vercel Backend</label>
-        <input type="text" id="backendUrlInput" placeholder="https://vitalcore-backend.vercel.app">
-        <div class="input-hint">Your deployed Vercel backend URL.</div>
+    <div class="settings-section" style="margin-top:12px">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a5 5 0 0 1 5 5c0 3-2.5 6-5 8-2.5-2-5-5-5-8a5 5 0 0 1 5-5z"/></svg>
+        Claude AI
       </div>
-      <button class="btn-save grey" onclick="saveBackendUrl()">Save Backend URL</button>
+      <div class="ig"><label class="ilbl">API Key</label><input type="text" id="s_ckey" placeholder="sk-ant-api03-..."><div class="ihint">From console.anthropic.com — stored on device only</div></div>
+      <button class="btn orange" onclick="saveClaudeKey()" style="margin-top:6px">Save Claude Key</button>
     </div>
 
     <div class="divider"></div>
 
-    <div style="margin:16px 0">
-      <div style="font-weight:600;font-size:14px;margin-bottom:8px">Claude API Key</div>
-      <div class="input-group">
-        <input type="text" id="apiKeyInput" placeholder="sk-ant-api03-...">
-        <div class="input-hint">From console.anthropic.com. Stored locally only.</div>
+    <div class="settings-section" style="margin-top:12px">
+      <div class="settings-section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>
+        Backend
       </div>
-      <button class="btn-save orange" onclick="saveApiKey()">Save API Key</button>
+      <div class="ig"><label class="ilbl">Vercel URL</label><input type="text" id="s_burl" placeholder="https://vitalcore-backend.vercel.app"></div>
+      <button class="btn grey" onclick="saveBackend()" style="margin-top:6px">Save Backend URL</button>
     </div>
 
     <div class="divider"></div>
 
-    <div style="margin:16px 0">
-      <div style="font-weight:600;font-size:14px;margin-bottom:8px">Profile</div>
-      <div class="input-row" style="margin-bottom:8px">
+    <div class="settings-section" style="margin-top:12px">
+      <div class="settings-section-title">Profile</div>
+      <div class="irow" style="margin-bottom:8px">
         <input type="number" id="s_age" placeholder="Age">
         <select id="s_sex"><option value="">Sex</option><option value="male">Male</option><option value="female">Female</option></select>
       </div>
       <input type="number" id="s_height" placeholder="Height (cm)" style="margin-bottom:8px">
-      <button class="btn-save grey" onclick="saveProfile()">Save Profile</button>
+      <button class="btn grey" onclick="saveProfile()">Save Profile</button>
     </div>
 
-    <div class="divider"></div>
-    <button class="btn-save grey" onclick="clearAllData()" style="margin-top:12px;color:var(--red)">Clear All Data</button>
+    <div class="divider" style="margin-top:12px"></div>
+    <button class="btn grey" onclick="clearData()" style="margin-top:12px;color:var(--red)">Clear All Data</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const KEY='vc4';
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||{readings:[],exercises:[],stravaActivities:[],profile:{},seeded:false};}catch(e){return{readings:[],exercises:[],stravaActivities:[],profile:{},seeded:false};}}
-function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
-function getApiKey(){return localStorage.getItem('vc_apikey')||'';}
-function getStravaToken(){return localStorage.getItem('vc_strava_token')||'';}
-function getBackendUrl(){return localStorage.getItem('vc_backend_url')||'https://vitalcore-backend.vercel.app';}
+// ── STORE ─────────────────────────────────────────────────────────────────────
+const K='vc5';
+function load(){try{return JSON.parse(localStorage.getItem(K))||{readings:[],workouts:[],intervalsData:{},seeded:false};}catch(e){return{readings:[],workouts:[],intervalsData:{},seeded:false};}}
+function save(d){localStorage.setItem(K,JSON.stringify(d));}
+const gKey=k=>localStorage.getItem(k)||'';
+const sKey=(k,v)=>localStorage.setItem(k,v);
 
-const RANGES={hr:{normal:[50,85],borderline:[85,100]},hrv:{normal:[40,200],borderline:[25,40]},sleep:{normal:[7,9],borderline:[6,7]},steps:{normal:[8000,99999],borderline:[5000,8000]},bp_sys:{normal:[90,120],borderline:[120,140]},bp_dia:{normal:[60,80],borderline:[80,90]},glucose:{normal:[3.9,5.6],borderline:[5.6,7.0]},cholesterol:{normal:[0,5.2],borderline:[5.2,6.2]},uric_acid:{normal:[0,380],borderline:[380,480]}};
-function getStatus(key,val){const r=RANGES[key];if(!r)return'normal';const v=parseFloat(val);if(v>=r.normal[0]&&v<=r.normal[1])return'normal';if(r.borderline&&r.borderline.length&&v>=r.borderline[0]&&v<=r.borderline[1])return'borderline';return'elevated';}
-function bpStatus(s,d){const o=['elevated','borderline','normal'];return o[Math.min(o.indexOf(getStatus('bp_sys',s)),o.indexOf(getStatus('bp_dia',d)))];}
+// ── RANGES ────────────────────────────────────────────────────────────────────
+const RANGES={hr:{n:[50,85],b:[85,100]},hrv:{n:[40,200],b:[25,40]},sleep:{n:[7,9],b:[6,7]},bp_sys:{n:[90,120],b:[120,140]},bp_dia:{n:[60,80],b:[80,90]},glucose:{n:[3.9,5.6],b:[5.6,7.0]},cholesterol:{n:[0,5.2],b:[5.2,6.2]},uric_acid:{n:[0,380],b:[380,480]},weight:{n:[0,999],b:[]}};
+function getSt(key,val){const r=RANGES[key];if(!r)return'normal';const v=parseFloat(val);if(v>=r.n[0]&&v<=r.n[1])return'normal';if(r.b&&r.b.length&&v>=r.b[0]&&v<=r.b[1])return'borderline';return'elevated';}
+function bpSt(s,d){const o=['elevated','borderline','normal'];return o[Math.min(o.indexOf(getSt('bp_sys',s)),o.indexOf(getSt('bp_dia',d)))];}
 
-// ── INTELLIGENCE ─────────────────────────────────────────────────────────────
-function calcRecovery(r){
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fmtDate(ts){return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});}
+function fmtDateStr(s){return new Date(s).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});}
+function fmtDur(s){const m=Math.floor(s/60),h=Math.floor(m/60);return h>0?`${h}h ${m%60}m`:`${m}m`;}
+function fmtPace(secPerKm){const m=Math.floor(secPerKm/60),s=Math.round(secPerKm%60);return`${m}:${s.toString().padStart(2,'0')}/km`;}
+function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return h>0?`${h}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`:`${m}:${sec.toString().padStart(2,'0')}`;}
+function fmtDist(m){return m>=1000?(m/1000).toFixed(1)+'km':Math.round(m)+'m';}
+function latest(arr,m){return arr.filter(r=>r.metric===m).sort((a,b)=>b.ts-a.ts)[0]||null;}
+function last(arr,m,n){return arr.filter(r=>r.metric===m).sort((a,b)=>a.ts-b.ts).slice(-n);}
+function delta(arr){if(arr.length<2)return{t:'',d:'neutral'};const diff=parseFloat(arr[arr.length-1].value)-parseFloat(arr[arr.length-2].value);if(Math.abs(diff)<0.01)return{t:'stable',d:'neutral'};return{t:(diff>0?'↑':'↓')+Math.abs(diff).toFixed(1),d:diff>0?'up':'down'};}
+function gv(id){const el=document.getElementById(id);return el&&el.value.trim()!==''?el.value:null;}
+function clr(...ids){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';})}
+function haptic(){if(navigator.vibrate)navigator.vibrate(8);}
+function isWithin7(dateStr){return Date.now()-new Date(dateStr).getTime()<7*86400000;}
+function isToday(dateStr){return fmtDate(new Date(dateStr).getTime())===fmtDate(Date.now());}
+
+// ── RING ──────────────────────────────────────────────────────────────────────
+function setRing(pct,col){
+  const arc=document.getElementById('readinessArc');if(!arc)return;
+  arc.style.stroke=col;arc.style.strokeDashoffset=226-(pct/100)*226;
+}
+function zoneCol(pct){return pct>=67?'#1A6B3A':pct>=34?'#B8740A':'#C0392B';}
+
+// ── SPARKLINE ─────────────────────────────────────────────────────────────────
+function spark(canvas,vals,col){
+  if(!canvas||vals.length<2)return;
+  const ctx=canvas.getContext('2d'),W=canvas.offsetWidth||140,H=22;
+  canvas.width=W;canvas.height=H;
+  const mn=Math.min(...vals)*0.97,mx=Math.max(...vals)*1.03;
+  const x=i=>(i/(vals.length-1))*W,y=v=>H-((v-mn)/(mx-mn||1))*(H-4)-2;
+  ctx.clearRect(0,0,W,H);ctx.beginPath();
+  vals.forEach((v,i)=>i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v)));
+  ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.lineTo(x(vals.length-1),H);ctx.lineTo(0,H);ctx.closePath();
+  ctx.fillStyle=col+'15';ctx.fill();
+}
+function stCol(s){if(s==='normal')return'#1A6B3A';if(s==='borderline')return'#B8740A';return'#C0392B';}
+
+// ── METRIC CARD ───────────────────────────────────────────────────────────────
+function mkCard(container,name,val,unit,st,sparkVals,delt,src,iconSvg){
+  const el=document.createElement('div');
+  el.className=`mcard s-${st}`;
+  el.innerHTML=`
+    ${iconSvg?`<div class="mcard-ico">${iconSvg}</div>`:''}
+    <div class="mcard-name">${name}</div>
+    <div class="mcard-val">${val||'—'}</div>
+    <div class="mcard-unit">${unit}</div>
+    <div class="spark-wrap"><canvas class="sp"></canvas></div>
+    <div class="mcard-foot">
+      <span class="mcard-delta ${delt?.d||'neutral'}">${delt?.t||''}</span>
+      <span class="mcard-src">${src||''}</span>
+    </div>`;
+  container.appendChild(el);
+  if(sparkVals?.length>1)setTimeout(()=>spark(el.querySelector('.sp'),sparkVals,stCol(st)),60);
+}
+
+// ── EXERCISE ICONS ────────────────────────────────────────────────────────────
+function exIcon(type){
+  const t=(type||'').toLowerCase();
+  if(t.includes('run'))return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/></svg>`;
+  if(t.includes('ride')||t.includes('cycl'))return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>`;
+  if(t.includes('walk'))return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4v4l2.5 2.5"/><circle cx="12" cy="2" r="1"/><path d="m6 20 2-5 2 2 2-4"/><path d="m18 20-2-5-2 2"/></svg>`;
+  if(t.includes('swim'))return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M2 12s2-4 5-4 5 4 5 4 2-4 5-4 5 4 5 4"/></svg>`;
+  if(t.includes('weight')||t.includes('strength')||t.includes('gym'))return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>`;
+  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+}
+
+// ── INTELLIGENCE ──────────────────────────────────────────────────────────────
+function calcReadiness(r,fitness){
   const hrv=last(r,'hrv',14),hr=last(r,'hr',14),sl=last(r,'sleep',14);
+  if(fitness?.readiness)return Math.round(fitness.readiness);
   if(!hrv.length&&!hr.length)return null;
   let s=50;
   if(hrv.length>=2){const b=hrv.slice(0,-1).reduce((a,x)=>a+parseFloat(x.value),0)/Math.max(hrv.length-1,1);s+=(parseFloat(hrv[hrv.length-1].value)/b-1)*60;}
@@ -452,121 +728,45 @@ function calcRecovery(r){
   return Math.max(1,Math.min(100,Math.round(s)));
 }
 
-function calcStrainFromStrava(activities){
-  const week=activities.filter(a=>Date.now()-new Date(a.start_date).getTime()<7*86400000);
-  if(!week.length)return null;
-  let s=6;
-  week.forEach(a=>{
-    const hr=a.average_heartrate||110;
-    const mins=a.moving_time/60;
-    if(hr>150)s+=mins*0.08;
-    else if(hr>130)s+=mins*0.055;
-    else if(hr>110)s+=mins*0.035;
-    else s+=mins*0.02;
-  });
-  return Math.max(1,Math.min(21,parseFloat(s.toFixed(1))));
+function calcSleepScore(r,fitness){
+  if(fitness?.sleep_score)return fitness.sleep_score;
+  const sl=last(r,'sleep',7);if(!sl.length)return null;
+  return Math.max(1,Math.min(100,Math.round(Math.min(parseFloat(sl[sl.length-1].value)/7.5,1)*100)));
 }
 
-function calcSleepScore(r){const sl=last(r,'sleep',7);if(!sl.length)return null;return Math.max(1,Math.min(100,Math.round(Math.min(parseFloat(sl[sl.length-1].value)/7.5,1)*100)));}
-function calcSleepDebt(r){const sl=last(r,'sleep',7);if(sl.length<3)return null;const avg=sl.reduce((a,b)=>a+parseFloat(b.value),0)/sl.length;return Math.max(0,parseFloat(((7.5-avg)*sl.length).toFixed(1)));}
+function calcSleepDebt(r,fitness){
+  const sl=last(r,'sleep',7);if(sl.length<3)return null;
+  const avg=sl.reduce((a,b)=>a+parseFloat(b.value),0)/sl.length;
+  return Math.max(0,parseFloat(((7.5-avg)*sl.length).toFixed(1)));
+}
 
-function ruleBasedInsight(r,rec,strain,slDebt,activities){
+function freshnessMeta(tsb){
+  if(tsb===null||tsb===undefined)return{emoji:'⚡',label:'—',note:'Not enough data yet',col:'#9A9690'};
+  if(tsb>25)return{emoji:'🚀',label:'Very Fresh',note:'Fully rested. Excellent day to race or test your limits.',col:'#1A6B3A'};
+  if(tsb>5)return{emoji:'⚡',label:'Fresh',note:'Well-rested. Good day for a hard session.',col:'#1A6B3A'};
+  if(tsb>-10)return{emoji:'😐',label:'Balanced',note:'Neutral — maintaining fitness. Moderate effort is fine.',col:'#B8740A'};
+  if(tsb>-25)return{emoji:'😓',label:'Carrying Load',note:'Building fitness. Normal fatigue from training. Recover well tonight.',col:'#B8740A'};
+  return{emoji:'😴',label:'Very Tired',note:'High fatigue. Consider a rest day or very easy session only.',col:'#C0392B'};
+}
+
+function ruleInsight(r,readiness,fitness,activities){
   const latHRV=latest(r,'hrv'),latBP=r.filter(x=>x.metric==='bp').sort((a,b)=>b.ts-a.ts)[0];
-  const latGluc=latest(r,'glucose'),latUA=latest(r,'uric_acid');
+  const latUA=latest(r,'uric_acid'),latGluc=latest(r,'glucose');
   const lines=[];
-  if(rec!==null){if(rec>=67)lines.push('Recovery green — body primed. Good day to push.');else if(rec>=34)lines.push('Recovery yellow — moderate readiness. Maintain load.');else lines.push('Recovery red — rest today.');}
-  if(latHRV){const a=last(r,'hrv',7).slice(0,-1);if(a.length){const b=a.reduce((x,y)=>x+parseFloat(y.value),0)/a.length,ratio=parseFloat(latHRV.value)/b;if(ratio>1.1)lines.push('HRV above baseline — ANS well-recovered.');else if(ratio<0.9)lines.push('HRV below baseline — fatigue building.');}}
-  if(slDebt&&slDebt>5)lines.push('Sleep debt at '+slDebt+'h — prioritise earlier bedtime.');
-  if(activities&&activities.length){const recent=activities.filter(a=>Date.now()-new Date(a.start_date).getTime()<2*86400000);if(recent.length)lines.push(`${recent[0].type} session in last 48h — factor recovery time.`);}
-  if(latBP&&bpStatus(latBP.raw_s,latBP.raw_d)==='elevated')lines.push('BP elevated — monitor daily.');
-  if(latUA&&parseFloat(latUA.value)>400)lines.push('Uric acid elevated — reduce red meat and shellfish.');
-  return lines.length?lines.slice(0,3).join(' '):'Log your morning Polar data to activate insights.';
-}
-
-// ── STRAVA SYNC ───────────────────────────────────────────────────────────────
-async function syncStrava(){
-  const token=getStravaToken();
-  if(!token){document.getElementById('stravaStatus').textContent='NO TOKEN';return null;}
-  const backend=getBackendUrl();
-  try{
-    const res=await fetch(`${backend}/api/strava-activities?refresh_token=${token}&days=30`);
-    const data=await res.json();
-    if(data.error)throw new Error(data.error);
-    // Save new refresh token if returned
-    if(data.new_refresh_token)localStorage.setItem('vc_strava_token',data.new_refresh_token);
-    // Save activities
-    const d=load();
-    d.stravaActivities=data.activities||[];
-    d.lastStravaSync=Date.now();
-    save(d);
-    document.getElementById('stravaStatus').textContent='LIVE · '+data.activities.length+' activities';
-    document.getElementById('stravaStatus').className='section-badge green';
-    return data.activities;
-  }catch(e){
-    document.getElementById('stravaStatus').textContent='SYNC ERROR';
-    document.getElementById('stravaStatus').className='section-badge';
-    return null;
+  if(readiness!==null){
+    if(readiness>=67)lines.push('Readiness is high — body primed for a hard session today.');
+    else if(readiness>=34)lines.push('Moderate readiness — maintain current training load.');
+    else lines.push('Low readiness — rest or easy activity only today.');
   }
-}
-
-async function syncAll(){
-  const btn=document.getElementById('syncBtn');
-  btn.textContent='⟳ Syncing...';
-  btn.classList.add('syncing');
-  await syncStrava();
-  renderAll();
-  btn.textContent='⟳ Sync';
-  btn.classList.remove('syncing');
-  toast('Synced ✓');
-}
-
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-function isToday(ts){return fmtDate(ts)===fmtDate(Date.now());}
-function isWithin7Days(ts){return Date.now()-new Date(ts).getTime()<7*86400000;}
-function fmtDate(ts){return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});}
-function fmtDuration(secs){const m=Math.floor(secs/60),h=Math.floor(m/60);return h>0?`${h}h ${m%60}m`:`${m}m`;}
-function fmtDist(m){return m>=1000?(m/1000).toFixed(1)+'km':Math.round(m)+'m';}
-function latest(arr,m){return arr.filter(r=>r.metric===m).sort((a,b)=>b.ts-a.ts)[0]||null;}
-function last(arr,m,n){return arr.filter(r=>r.metric===m).sort((a,b)=>a.ts-b.ts).slice(-n);}
-function delta(arr){if(arr.length<2)return{t:'',d:'neutral'};const diff=parseFloat(arr[arr.length-1].value)-parseFloat(arr[arr.length-2].value);if(Math.abs(diff)<0.01)return{t:'stable',d:'neutral'};return{t:(diff>0?'↑':'↓')+Math.abs(diff).toFixed(1),d:diff>0?'up':'down'};}
-function gv(id){const el=document.getElementById(id);return el&&el.value.trim()!==''?el.value:null;}
-function clr(...ids){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';})}
-function zoneColor(pct){return pct>=67?'#1A6B3A':pct>=34?'#B8740A':'#C0392B';}
-
-function setRing(pct,col){
-  const arc=document.getElementById('recoveryArc');if(!arc)return;
-  arc.style.stroke=col;arc.style.strokeDashoffset=239-(pct/100)*239;
-}
-
-function spark(canvas,vals,col){
-  const ctx=canvas.getContext('2d');const W=canvas.offsetWidth||150,H=24;canvas.width=W;canvas.height=H;
-  if(vals.length<2)return;const mn=Math.min(...vals)*0.97,mx=Math.max(...vals)*1.03;
-  const x=i=>(i/(vals.length-1))*W,y=v=>H-((v-mn)/(mx-mn||1))*(H-4)-2;
-  ctx.clearRect(0,0,W,H);ctx.beginPath();
-  vals.forEach((v,i)=>i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v)));
-  ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
-  ctx.lineTo(x(vals.length-1),H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=col+'18';ctx.fill();
-}
-function sColor(s){if(s==='normal')return'#1A6B3A';if(s==='borderline')return'#B8740A';if(s==='polar')return'#E8500A';return'#C0392B';}
-
-function mkCard(container,name,val,unit,st,sparkVals,delt,src){
-  const el=document.createElement('div');el.className=`mcard s-${st}`;
-  el.innerHTML=`<div class="mcard-name">${name}</div><div class="mcard-val">${val||'—'}</div><div class="mcard-unit">${unit}</div><div class="spark-wrap"><canvas class="sp"></canvas></div><div class="mcard-foot"><span class="mcard-delta ${delt?.d||'neutral'}">${delt?.t||''}</span><span class="mcard-src">${src}</span></div>`;
-  container.appendChild(el);
-  if(sparkVals?.length>1)setTimeout(()=>spark(el.querySelector('.sp'),sparkVals,sColor(st)),50);
-}
-
-// ── EXERCISE ICONS ────────────────────────────────────────────────────────────
-const EX_ICONS={Run:'🏃',Walk:'🚶',Ride:'🚴',Swim:'🏊',WeightTraining:'🏋️',Workout:'💪',Hike:'🥾',Yoga:'🧘',Other:'⚡',Running:'🏃',Walking:'🚶',Cycling:'🚴',Swimming:'🏊'};
-
-function getExIcon(type){return EX_ICONS[type]||'⚡';}
-
-function strainFromActivity(a){
-  const hr=a.average_heartrate||110,mins=a.moving_time/60;
-  if(hr>150)return+(mins*0.08).toFixed(1);
-  if(hr>130)return+(mins*0.055).toFixed(1);
-  if(hr>110)return+(mins*0.035).toFixed(1);
-  return+(mins*0.02).toFixed(1);
+  if(fitness?.tsb!==null&&fitness?.tsb!==undefined){
+    const fm=freshnessMeta(fitness.tsb);
+    lines.push(`Freshness: ${fm.label}. ${fm.note}`);
+  }
+  if(latHRV){const a=last(r,'hrv',7).slice(0,-1);if(a.length){const b=a.reduce((x,y)=>x+parseFloat(y.value),0)/a.length,ratio=parseFloat(latHRV.value)/b;if(ratio<0.9)lines.push('Body stress elevated above your baseline — fatigue building.');}}
+  if(latBP&&bpSt(latBP.raw_s,latBP.raw_d)==='elevated')lines.push('Blood pressure elevated. Monitor closely this week.');
+  if(latUA&&parseFloat(latUA.value)>400)lines.push('Uric acid elevated — reduce red meat and shellfish.');
+  if(latGluc&&parseFloat(latGluc.value)>6.0)lines.push('Glucose above optimal range. Consider fasting re-check.');
+  return lines.length?lines.slice(0,3).join(' '):'Sync your data to activate health insights.';
 }
 
 // ── SEED DATA ─────────────────────────────────────────────────────────────────
@@ -578,9 +778,8 @@ function seed(){
     rr.push({ts,metric:'hr',value:+(62+Math.random()*14).toFixed(0),source:'polar'});
     rr.push({ts,metric:'hrv',value:+(35+Math.random()*35).toFixed(0),source:'polar'});
     rr.push({ts,metric:'sleep',value:+(5.5+Math.random()*3).toFixed(1),source:'polar'});
-    rr.push({ts,metric:'steps',value:Math.round(4000+Math.random()*9000),source:'polar'});
     if(i%4===0){const s=Math.round(108+Math.random()*25),dv=Math.round(68+Math.random()*18);rr.push({ts,metric:'bp',value:`${s}/${dv}`,raw_s:s,raw_d:dv,source:'omron'});}
-    rr.push({ts,metric:'weight',value:+(72+Math.sin(i/4)*2+Math.random()).toFixed(1),source:'xiaomi'});
+    rr.push({ts,metric:'weight',value:+(68+Math.sin(i/4)*1.5+Math.random()*0.5).toFixed(1),source:'xiaomi'});
     if(i%3===0)rr.push({ts,metric:'glucose',value:+(4.3+Math.random()*2).toFixed(1),source:'manual'});
     if(i%7===0)rr.push({ts,metric:'cholesterol',value:+(4.0+Math.random()*2).toFixed(1),source:'manual'});
     if(i%7===0)rr.push({ts,metric:'uric_acid',value:Math.round(260+Math.random()*200),source:'manual'});
@@ -588,300 +787,536 @@ function seed(){
   d.readings=rr;d.seeded=true;save(d);
 }
 
-// ── MAIN RENDER ───────────────────────────────────────────────────────────────
-function renderAll(){
-  const d=load(),r=d.readings,activities=d.stravaActivities||[];
-  ['g-polar','g-vitals','g-lab'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});
+// ── SYNC ──────────────────────────────────────────────────────────────────────
+async function syncAll(){
+  haptic();
+  const btn=document.getElementById('syncBtn');
+  btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg> Syncing...';
+  btn.style.opacity='0.6';
 
-  const rec=calcRecovery(r);
-  const strain=calcStrainFromStrava(activities)||calcStrainManual(r);
-  const slScore=calcSleepScore(r),slDebt=calcSleepDebt(r);
+  const apiKey=gKey('vc_ikey'),athleteId=gKey('vc_iid')||'i33319',backendUrl=gKey('vc_backend')||'https://vitalcore-backend.vercel.app';
+  if(!apiKey){toast('Add your Intervals.icu API key in Settings');resetSyncBtn();return;}
+
+  try{
+    const res=await fetch(`${backendUrl}/api/intervals?api_key=${apiKey}&athlete_id=${athleteId}&days=90`);
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    const d=load();
+    d.intervalsData={activities:data.activities||[],wellness:data.wellness||[],fitness:data.fitness||{},prs:data.prs||{},syncedAt:Date.now()};
+    // Merge wellness into readings
+    if(data.wellness){
+      data.wellness.forEach(w=>{
+        const ts=new Date(w.id).getTime();
+        if(w.restingHR)d.readings.push({ts,metric:'hr',value:w.restingHR,source:'intervals'});
+        if(w.hrv)d.readings.push({ts,metric:'hrv',value:w.hrv,source:'intervals'});
+        if(w.sleepSecs)d.readings.push({ts,metric:'sleep',value:+(w.sleepSecs/3600).toFixed(2),source:'intervals'});
+        if(w.weight)d.readings.push({ts,metric:'weight',value:w.weight,source:'intervals'});
+      });
+    }
+    // Dedup readings by metric+date
+    const seen=new Set();
+    d.readings=d.readings.filter(r=>{const k=`${r.metric}-${fmtDate(r.ts)}`;if(seen.has(k))return false;seen.add(k);return true;});
+    save(d);
+    renderAll();
+    toast('Synced successfully ✓');
+  }catch(e){
+    toast('Sync failed — check your API key');
+  }
+  resetSyncBtn();
+}
+
+function resetSyncBtn(){
+  const btn=document.getElementById('syncBtn');
+  btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg> Sync';
+  btn.style.opacity='1';
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll(){
+  const d=load(),r=d.readings,iv=d.intervalsData||{};
+  const fitness=iv.fitness||{};
+  const activities=iv.activities||[];
+
+  ['g-wearable','g-health','g-blood'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});
+
+  const readiness=calcReadiness(r,fitness);
+  const slScore=calcSleepScore(r,fitness);
+  const slDebt=calcSleepDebt(r,fitness);
+  const ctl=fitness.ctl,atl=fitness.atl,tsb=fitness.tsb;
 
   // RING
-  if(rec!==null){
-    document.getElementById('recVal').textContent=rec;
-    setRing(rec,zoneColor(rec));
-    document.getElementById('recZone').textContent=rec>=67?'Green — Ready':rec>=34?'Yellow — Moderate':'Red — Rest';
-    document.getElementById('recSub').textContent=rec>=67?'Push hard today':rec>=34?'Maintain training load':'Prioritise rest';
+  if(readiness!==null){
+    document.getElementById('readinessVal').textContent=readiness;
+    setRing(readiness,zoneCol(readiness));
+    document.getElementById('readinessZone').textContent=readiness>=67?'🟢 Ready to push hard':readiness>=34?'🟡 Moderate day':'🔴 Rest today';
+    document.getElementById('readinessSub').textContent=readiness>=67?'Your body is primed':readiness>=34?'Maintain your training load':'Prioritise rest and sleep';
   }
 
   // BARS
-  if(strain!==null){
-    document.getElementById('strainBar').style.width=(strain/21)*100+'%';
-    document.getElementById('strainBar').style.background=strain<8?'#E8500A':strain<14?'#B8740A':'#C0392B';
-    document.getElementById('strainBarVal').textContent=strain+'/21';
-  }
-  if(slScore!==null){
-    document.getElementById('sleepBar').style.width=slScore+'%';
-    document.getElementById('sleepBar').style.background=slScore>=70?'#6B3A9A':slScore>=50?'#B8740A':'#C0392B';
-    document.getElementById('sleepBarVal').textContent=slScore+'%';
-  }
+  const strainPct=ctl&&atl?(Math.min(atl/60,1)*100):0;
+  document.getElementById('strainBar').style.width=strainPct+'%';
+  document.getElementById('strainVal').textContent=atl?Math.round(atl)+' load':'—';
+  if(slScore){document.getElementById('sleepBar').style.width=slScore+'%';document.getElementById('sleepVal').textContent=slScore+'%';}
+  if(tsb!==null&&tsb!==undefined){const fp=Math.min(Math.max((tsb+30)/55*100,0),100);document.getElementById('freshBar').style.width=fp+'%';document.getElementById('freshVal').textContent=(tsb>0?'+':'')+Math.round(tsb);}
 
-  document.getElementById('todayInsight').textContent=ruleBasedInsight(r,rec,strain,slDebt||0,activities);
+  // FITNESS CARDS
+  document.getElementById('fitCTL').textContent=ctl?Math.round(ctl):'—';
+  document.getElementById('fitCTLsub').textContent=ctl?(ctl>50?'High fitness':ctl>30?'Building':'Early stage'):'Sync to calculate';
+  document.getElementById('fitATL').textContent=atl?Math.round(atl):'—';
+  document.getElementById('fitATLsub').textContent=atl?(atl>ctl?'Above normal':'Within range'):'—';
+  const fm=freshnessMeta(tsb);
+  document.getElementById('fitEmoji').textContent=fm.emoji;
+  document.getElementById('fitTSB').textContent=tsb!==null&&tsb!==undefined?(tsb>0?'+':'')+Math.round(tsb):'—';
+  document.getElementById('fitTSBsub').textContent=fm.label;
 
-  // POLAR CARDS
-  const gc=document.getElementById('g-polar');
-  ['hr','hrv','sleep','steps'].forEach((m,i)=>{
-    const names=['Heart Rate','HRV','Sleep','Steps'],units=['bpm','ms overnight','hours','today'];
-    const arr=last(r,m,20),lat=arr[arr.length-1];
-    mkCard(gc,names[i],lat?m==='steps'?Number(lat.value).toLocaleString():lat.value:null,units[i],lat?getStatus(m,lat.value):'none',arr.map(x=>parseFloat(x.value)),delta(arr),'Polar');
-  });
+  // INSIGHT
+  document.getElementById('todayInsight').textContent=ruleInsight(r,readiness,fitness,activities);
 
-  // STRAVA EXERCISES
-  renderExercises(activities);
-
-  // VITALS
-  const gv2=document.getElementById('g-vitals');
-  const bpA=r.filter(x=>x.metric==='bp').sort((a,b)=>b.ts-a.ts),latBP=bpA[0];
-  mkCard(gv2,'Blood Pressure',latBP?latBP.value:null,'mmHg',latBP?bpStatus(latBP.raw_s,latBP.raw_d):'none',bpA.slice(0,10).reverse().map(x=>x.raw_s),null,'Omron');
+  // WEARABLE CARDS
+  const gw=document.getElementById('g-wearable');
+  const hrA=last(r,'hr',20),latHR=hrA[hrA.length-1];
+  mkCard(gw,'Resting Heart Rate',latHR?latHR.value:null,'bpm',latHR?getSt('hr',latHR.value):'none',hrA.map(x=>parseFloat(x.value)),delta(hrA),'Polar/Intervals',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`);
+  const hvA=last(r,'hrv',20),latHV=hvA[hvA.length-1];
+  mkCard(gw,'Body Stress (HRV)',latHV?latHV.value:null,'ms overnight',latHV?getSt('hrv',latHV.value):'none',hvA.map(x=>parseFloat(x.value)),delta(hvA),'Polar',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`);
+  const slA=last(r,'sleep',20),latSL=slA[slA.length-1];
+  mkCard(gw,'Sleep',latSL?latSL.value:null,'hours',latSL?getSt('sleep',latSL.value):'none',slA.map(x=>parseFloat(x.value)),delta(slA),'Polar',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`);
+  // Weight — most recent across all sources
   const wtA=last(r,'weight',20),latWT=wtA[wtA.length-1];
-  mkCard(gv2,'Weight',latWT?latWT.value:null,'kg','normal',wtA.map(x=>parseFloat(x.value)),delta(wtA),'Xiaomi');
+  mkCard(gw,'Weight',latWT?latWT.value:null,'kg','normal',wtA.map(x=>parseFloat(x.value)),delta(wtA),latWT?latWT.source:'',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`);
 
-  // LAB
-  const gl=document.getElementById('g-lab');
+  // ACTIVITY
+  renderActivity(activities,d.workouts||[]);
+
+  // HEALTH READINGS
+  const gh=document.getElementById('g-health');
+  const bpA=r.filter(x=>x.metric==='bp').sort((a,b)=>b.ts-a.ts),latBP=bpA[0];
+  mkCard(gh,'Blood Pressure',latBP?latBP.value:null,'mmHg',latBP?bpSt(latBP.raw_s,latBP.raw_d):'none',bpA.slice(0,10).reverse().map(x=>x.raw_s),null,'Omron',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>`);
+  if(fitness.vo2max)mkCard(gh,'VO₂ Max',Math.round(fitness.vo2max),'ml/kg/min','normal',[],null,'Garmin',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>`);
+
+  // BLOOD MARKERS
+  const gb=document.getElementById('g-blood');
   [['glucose','Glucose','mmol/L'],['cholesterol','Cholesterol','mmol/L'],['uric_acid','Uric Acid','µmol/L']].forEach(([m,name,unit])=>{
     const arr=last(r,m,10),lat=arr[arr.length-1];
-    mkCard(gl,name,lat?lat.value:null,unit,lat?getStatus(m,lat.value):'none',arr.map(x=>parseFloat(x.value)),delta(arr),'Manual');
+    mkCard(gb,name,lat?lat.value:null,unit,lat?getSt(m,lat.value):'none',arr.map(x=>parseFloat(x.value)),delta(arr),'Lab',null);
   });
 
-  renderRecovery(r,rec,strain,slScore,slDebt);
+  renderWellbeing(r,readiness,ctl,atl,tsb,slDebt,fitness);
   renderCharts(r);
+  renderPR(iv.prs||{},'Run');
 }
 
-function calcStrainManual(r){
-  const ls=latest(r,'steps'),lc=latest(r,'cals');
-  if(!ls&&!lc)return null;
-  let s=6;
-  if(ls)s+=Math.min(parseFloat(ls.value)/10000*4,5);
-  if(lc)s+=Math.min(parseFloat(lc.value)/600*4,5);
-  return Math.max(1,Math.min(21,parseFloat(s.toFixed(1))));
-}
+function renderActivity(activities,manWorkouts){
+  const el=document.getElementById('g-activity');el.innerHTML='';
+  const week7=activities.filter(a=>isWithin7(a.start_date_local));
+  const todayActs=week7.filter(a=>isToday(a.start_date_local));
+  const pastActs=week7.filter(a=>!isToday(a.start_date_local)).sort((a,b)=>new Date(b.start_date_local)-new Date(a.start_date_local));
+  const manRecent=(manWorkouts||[]).filter(w=>Date.now()-w.ts<7*86400000);
 
-function renderExercises(activities){
-  const exDiv=document.getElementById('g-exercise');
-  exDiv.innerHTML='';
+  if(!week7.length&&!manRecent.length){el.innerHTML='<div class="no-ex">Tap Sync to load your Strava activities</div>';return;}
 
-  const week=activities.filter(a=>isWithin7Days(a.start_date));
-  const todayActs=week.filter(a=>isToday(new Date(a.start_date).getTime()));
-  const pastActs=week.filter(a=>!isToday(new Date(a.start_date).getTime())).sort((a,b)=>new Date(b.start_date)-new Date(a.start_date));
-
-  if(!week.length){
-    // Check manual exercises
-    const d=load();
-    const manEx=(d.exercises||[]).filter(e=>isWithin7Days(e.ts));
-    if(!manEx.length){exDiv.innerHTML='<div class="no-exercise">No activities in last 7 days. Tap ⟳ Sync to load Strava.</div>';return;}
-    renderManualExercises(exDiv,manEx);return;
-  }
-
-  // TODAY hero card
   if(todayActs.length){
     const a=todayActs[0];
-    const strain=strainFromActivity(a);
-    const hero=document.createElement('div');
-    hero.className='ex-today';
+    const hero=document.createElement('div');hero.className='ex-hero';
+    const strainContrib=a.icu_training_load?a.icu_training_load.toFixed(1):a.average_heartrate?(a.average_heartrate>150?'+2.1':a.average_heartrate>130?'+1.4':'+0.8'):'';
     hero.innerHTML=`
-      <div class="ex-today-header">
-        <div class="ex-today-icon">${getExIcon(a.sport_type||a.type)}</div>
-        <div><div class="ex-today-title">${a.name||a.sport_type}</div><div class="ex-today-time">Today · ${fmtDate(new Date(a.start_date).getTime())}</div></div>
+      <div class="ex-hero-top">
+        <div class="ex-ico-wrap">${exIcon(a.type)}</div>
+        <div><div class="ex-title">${a.name||a.type}</div><div class="ex-date">Today</div></div>
       </div>
-      <div class="ex-stats-grid">
-        ${a.distance?`<div class="ex-stat"><div class="ex-stat-val">${fmtDist(a.distance)}</div><div class="ex-stat-label">DISTANCE</div></div>`:''}
-        <div class="ex-stat"><div class="ex-stat-val">${fmtDuration(a.moving_time)}</div><div class="ex-stat-label">DURATION</div></div>
-        ${a.average_heartrate?`<div class="ex-stat"><div class="ex-stat-val">${Math.round(a.average_heartrate)}</div><div class="ex-stat-label">AVG BPM</div></div>`:''}
-        ${a.calories?`<div class="ex-stat"><div class="ex-stat-val">${a.calories}</div><div class="ex-stat-label">CALORIES</div></div>`:''}
-        ${a.total_elevation_gain?`<div class="ex-stat"><div class="ex-stat-val">${Math.round(a.total_elevation_gain)}m</div><div class="ex-stat-label">ELEVATION</div></div>`:''}
+      <div class="ex-stats">
+        ${a.distance?`<div class="ex-stat"><div class="ex-stat-val">${fmtDist(a.distance)}</div><div class="ex-stat-lbl">DISTANCE</div></div>`:''}
+        <div class="ex-stat"><div class="ex-stat-val">${fmtDur(a.moving_time)}</div><div class="ex-stat-lbl">DURATION</div></div>
+        ${a.average_heartrate?`<div class="ex-stat"><div class="ex-stat-val">${Math.round(a.average_heartrate)}</div><div class="ex-stat-lbl">AVG BPM</div></div>`:''}
+        ${a.total_elevation_gain>0?`<div class="ex-stat"><div class="ex-stat-val">${Math.round(a.total_elevation_gain)}m</div><div class="ex-stat-lbl">ELEVATION</div></div>`:''}
+        ${a.calories?`<div class="ex-stat"><div class="ex-stat-val">${a.calories}</div><div class="ex-stat-lbl">CALORIES</div></div>`:''}
       </div>
-      <div class="ex-strain-tag">⚡ Strain contribution: +${strain}</div>`;
-    exDiv.appendChild(hero);
+      ${strainContrib?`<div class="ex-strain">⚡ Training load: ${strainContrib}</div>`:''}`;
+    el.appendChild(hero);
   }
 
-  // PAST 7 DAYS list
   if(pastActs.length){
-    const pastLabel=document.createElement('div');
-    pastLabel.style.cssText='font-family:var(--mono);font-size:9px;color:var(--text-3);letter-spacing:1px;margin:10px 0 6px;text-transform:uppercase';
-    pastLabel.textContent='Previous 7 days';
-    exDiv.appendChild(pastLabel);
-
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--text-3);letter-spacing:1px;margin:8px 0 6px;text-transform:uppercase';
+    lbl.textContent='Previous 7 days';el.appendChild(lbl);
     pastActs.forEach(a=>{
-      const card=document.createElement('div');
-      card.className='ex-list-card';
+      const card=document.createElement('div');card.className='ex-list';
       card.innerHTML=`
-        <div class="ex-list-icon">${getExIcon(a.sport_type||a.type)}</div>
+        <div class="ex-list-ico">${exIcon(a.type)}</div>
         <div class="ex-list-body">
-          <div class="ex-list-date">${fmtDate(new Date(a.start_date).getTime())}</div>
-          <div class="ex-list-type">${a.name||a.sport_type}</div>
-          <div class="ex-list-stats">${a.distance?fmtDist(a.distance)+' · ':''}${fmtDuration(a.moving_time)}${a.calories?' · '+a.calories+'cal':''}</div>
+          <div class="ex-list-date">${fmtDateStr(a.start_date_local)}</div>
+          <div class="ex-list-name">${a.name||a.type}</div>
+          <div class="ex-list-stats">${a.distance?fmtDist(a.distance)+' · ':''}${fmtDur(a.moving_time)}${a.calories?' · '+a.calories+'kcal':''}</div>
         </div>
-        ${a.average_heartrate?`<div class="ex-list-hr">${Math.round(a.average_heartrate)}<br><span style="font-size:8px;color:var(--text-3)">BPM</span></div>`:''}`;
-      exDiv.appendChild(card);
+        ${a.average_heartrate?`<div class="ex-list-hr">${Math.round(a.average_heartrate)}<br><span style="font-size:7px;color:var(--text-3)">BPM</span></div>`:''}`;
+      el.appendChild(card);
     });
   }
 
-  if(!todayActs.length&&!pastActs.length){
-    exDiv.innerHTML='<div class="no-exercise">No activities in Strava this week.</div>';
+  // Manual workouts
+  if(manRecent.length){
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--text-3);letter-spacing:1px;margin:8px 0 6px;text-transform:uppercase';
+    lbl.textContent='Manually logged';el.appendChild(lbl);
+    manRecent.sort((a,b)=>b.ts-a.ts).forEach(w=>{
+      const card=document.createElement('div');card.className='ex-list';
+      const detail=w.type==='Weights'&&w.exercises?.length?w.exercises.map(e=>`${e.name} ${e.sets}×${e.reps||e.secs+'s'}`).join(', '):'';
+      card.innerHTML=`
+        <div class="ex-list-ico">${exIcon(w.type)}</div>
+        <div class="ex-list-body">
+          <div class="ex-list-date">${fmtDate(w.ts)}</div>
+          <div class="ex-list-name">${w.type}</div>
+          <div class="ex-list-stats">${w.dist?w.dist+'km · ':''}${w.dur}min${detail?' · '+detail:''}</div>
+        </div>
+        ${w.hr?`<div class="ex-list-hr">${w.hr}<br><span style="font-size:7px;color:var(--text-3)">BPM</span></div>`:''}`;
+      el.appendChild(card);
+    });
   }
 }
 
-function renderManualExercises(container,exs){
-  exs.sort((a,b)=>b.ts-a.ts).forEach(e=>{
-    const card=document.createElement('div');
-    card.className='ex-list-card';
-    const icon=EX_ICONS[e.type]||'⚡';
-    card.innerHTML=`
-      <div class="ex-list-icon">${icon}</div>
-      <div class="ex-list-body">
-        <div class="ex-list-date">${fmtDate(e.ts)}</div>
-        <div class="ex-list-type">${e.type}</div>
-        <div class="ex-list-stats">${e.dist?e.dist+'km · ':''}${e.dur}min${e.sets?' · '+e.sets+' sets':''}${e.exercises?' · '+e.exercises:''}</div>
-      </div>
-      ${e.avgHr?`<div class="ex-list-hr">${e.avgHr}<br><span style="font-size:8px;color:var(--text-3)">BPM</span></div>`:''}`;
-    container.appendChild(card);
-  });
-}
-
-// ── RECOVERY PAGE ─────────────────────────────────────────────────────────────
-function renderRecovery(r,rec,strain,slScore,slDebt){
-  const rb=document.getElementById('recoveryZoneCards');if(!rb)return;
+// ── WELLBEING PAGE ────────────────────────────────────────────────────────────
+function renderWellbeing(r,readiness,ctl,atl,tsb,slDebt,fitness){
+  const rb=document.getElementById('wellbeingCards');if(!rb)return;
   const latHRV=latest(r,'hrv'),hrvBase=last(r,'hrv',7).slice(0,-1);
-  let hrvNote='Need 7+ days of HRV data to establish baseline.';
-  if(latHRV&&hrvBase.length){const b=hrvBase.reduce((a,x)=>a+parseFloat(x.value),0)/hrvBase.length,ratio=parseFloat(latHRV.value)/b;hrvNote=ratio>1.1?'Above baseline — ANS well-recovered.':ratio<0.9?'Below baseline — fatigue detected.':'Within normal variation.';}
+  let hrvNote='Need 7+ days of data to establish your baseline.';
+  if(latHRV&&hrvBase.length){const b=hrvBase.reduce((a,x)=>a+parseFloat(x.value),0)/hrvBase.length,ratio=parseFloat(latHRV.value)/b;hrvNote=ratio>1.1?'Above your baseline — nervous system well-recovered.':ratio<0.9?'Below your baseline — fatigue or stress detected. Ease off.':'Within normal range. No action needed.';}
+  const fm=freshnessMeta(tsb);
   const items=[
-    {label:'Recovery Score',val:rec!==null?rec+'%':'—',sub:rec!==null?(rec>=67?'GREEN · Ready':rec>=34?'YELLOW · Moderate':'RED · Rest'):'No data',note:rec!==null?(rec>=67?'Body primed. Take on high strain today.':rec>=34?'Moderate readiness. Maintain volume.':'Rest or active recovery only.'):'Log HRV, sleep, and HR to activate.',zone:rec!==null?(rec>=67?'green':rec>=34?'amber':'red'):'grey',bar:rec,barCol:rec!==null?zoneColor(rec):'#9A9690'},
-    {label:'HRV Status',val:latHRV?latHRV.value+' ms':'—',sub:'vs 7-day baseline',note:hrvNote,zone:latHRV?getStatus('hrv',latHRV.value)==='normal'?'green':'amber':'grey',bar:null},
-    {label:'Strain (7d)',val:strain!==null?strain+'/21':'—',sub:'from Strava activities',note:strain!==null?(strain<8?'Light — recovery friendly.':strain<14?'Moderate — sustainable.':'High — strong recovery tonight.'):'Sync Strava to calculate.',zone:strain!==null?(strain<8?'green':strain<14?'orange':'red'):'grey',bar:strain!==null?(strain/21)*100:null,barCol:'#E8500A'},
-    {label:'Sleep Debt',val:slDebt!==null?(slDebt===0?'None':slDebt+'h'):'—',sub:'vs 7.5h target × 7 nights',note:slDebt!==null?(slDebt<2?'Minimal. Well-rested.':slDebt<5?'Moderate deficit. Earlier bedtime helps.':'Significant debt suppressing recovery.'):'Log sleep for 3+ nights.',zone:slDebt!==null?(slDebt<2?'green':slDebt<5?'amber':'red'):'grey',bar:slDebt!==null?Math.max(0,100-slDebt*10):null,barCol:'#6B3A9A'},
+    {lbl:'Readiness',val:readiness!==null?readiness+'%':'—',sub:readiness!==null?(readiness>=67?'Ready to push hard':readiness>=34?'Moderate day':'Rest today'):'No data',note:readiness!==null?(readiness>=67?'Your body is primed. Take on a challenging session.':readiness>=34?'Moderate capacity. Maintain your current load.':'Rest or very easy activity only.'):'Log HRV, sleep, and resting HR to activate.',zone:readiness!==null?(readiness>=67?'green':readiness>=34?'amber':'red'):'grey',bar:readiness,barCol:readiness!==null?zoneCol(readiness):'#9A9690'},
+    {lbl:'Body Stress (HRV)',val:latHRV?latHRV.value+' ms':'—',sub:'vs your 7-day average',note:hrvNote,zone:latHRV?getSt('hrv',latHRV.value)==='normal'?'green':'amber':'grey',bar:null},
+    {lbl:'Freshness',val:tsb!==null&&tsb!==undefined?(tsb>0?'+':'')+Math.round(tsb)+'  '+fm.emoji:'—',sub:'Fitness minus Fatigue',note:fm.note,zone:tsb!==null?(tsb>5?'green':tsb>-10?'amber':'red'):'grey',bar:null},
+    {lbl:'Sleep Balance',val:slDebt!==null?(slDebt===0?'On track':'-'+slDebt+'h deficit'):'—',sub:'vs 7.5h target over 7 nights',note:slDebt!==null?(slDebt<2?'Minimal sleep debt. Well-rested baseline.':slDebt<5?'Some deficit building. Earlier bedtime helps.':'Significant deficit suppressing readiness.'):'Log sleep for 3+ nights.',zone:slDebt!==null?(slDebt<2?'green':slDebt<5?'amber':'red'):'grey',bar:slDebt!==null?Math.max(0,100-slDebt*10):null,barCol:'#6B3A9A'},
   ];
-  rb.innerHTML=items.map(it=>`<div class="zone-card ${it.zone}"><div class="zone-label">${it.label}</div><div class="zone-val">${it.val}</div><div class="zone-sub">${it.sub}</div>${it.bar!==null?`<div class="progress-bar"><div class="progress-fill" style="width:${Math.min(it.bar,100)}%;background:${it.barCol}"></div></div>`:''}<div class="zone-note">${it.note}</div></div>`).join('');
+  if(ctl!==null&&ctl!==undefined)items.push({lbl:'Fitness Level',val:Math.round(ctl),sub:'Built over last 6 weeks',note:ctl>50?'High fitness base. You have significant aerobic capacity built up.':ctl>30?'Moderate fitness. Good base for regular training.':'Building phase. Consistent training will grow this.',zone:ctl>40?'green':ctl>20?'amber':'grey',bar:Math.min(ctl/80*100,100),barCol:'#E8500A'});
+  if(atl!==null&&atl!==undefined)items.push({lbl:'Recent Fatigue',val:Math.round(atl),sub:'From last 7 days of training',note:atl>ctl?'Fatigue exceeding fitness level — rest is important.':atl>40?'Moderate fatigue from recent training. Normal if building.':'Low recent load. Body is well-rested.',zone:atl>ctl?'red':atl>40?'amber':'green',bar:Math.min(atl/80*100,100),barCol:'#B8740A'});
 
+  rb.innerHTML=items.map(it=>`
+    <div class="zone-card ${it.zone}">
+      <div class="zone-lbl">${it.lbl}</div>
+      <div class="zone-val">${it.val}</div>
+      <div class="zone-sub">${it.sub}</div>
+      ${it.bar!==null&&it.bar!==undefined?`<div class="prog-bar"><div class="prog-fill" style="width:${Math.min(it.bar,100)}%;background:${it.barCol||'#E8500A'}"></div></div>`:''}
+      <div class="zone-note">${it.note}</div>
+    </div>`).join('');
+
+  // Sleep bars
   const slArr=last(r,'sleep',7),sb=document.getElementById('sleepBars');if(!sb)return;
-  if(!slArr.length){sb.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:12px">No sleep data yet</div>';return;}
-  sb.innerHTML=slArr.map(x=>{const h=parseFloat(x.value),pct=Math.min(h/9,1)*100,col=h>=7?'#1A6B3A':h>=6?'#B8740A':'#C0392B';return`<div class="sleep-bar-row"><span class="sleep-day">${fmtDate(x.ts)}</span><div class="sleep-track"><div class="sleep-fill" style="width:${pct}%;background:${col}"></div></div><span class="sleep-val">${h}h</span></div>`;}).join('');
+  if(!slArr.length){sb.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:12px;padding:12px">No sleep data yet — sync or log manually</div>';return;}
+  sb.innerHTML=slArr.map(x=>{const h=parseFloat(x.value),pct=Math.min(h/9,1)*100,col=h>=7?'#1A6B3A':h>=6?'#B8740A':'#C0392B';return`<div class="sleep-row"><span class="sleep-day">${fmtDate(x.ts)}</span><div class="sleep-track"><div class="sleep-fill" style="width:${pct}%;background:${col}"></div></div><span class="sleep-val">${h}h</span></div>`;}).join('');
 }
 
 // ── CHARTS ────────────────────────────────────────────────────────────────────
 function lineChart(canvas,labels,datasets,h){
-  const ctx=canvas.getContext('2d');const W=canvas.offsetWidth||340,H=h||130;canvas.width=W;canvas.height=H;
-  const p={t:8,r:8,b:22,l:28},pw=W-p.l-p.r,ph=H-p.t-p.b;ctx.clearRect(0,0,W,H);
-  ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#9A9690';
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d'),W=canvas.offsetWidth||320,H=h||120;
+  canvas.width=W;canvas.height=H;
+  const p={t:8,r:8,b:22,l:28},pw=W-p.l-p.r,ph=H-p.t-p.b;
+  ctx.clearRect(0,0,W,H);ctx.font='7px IBM Plex Mono,monospace';ctx.fillStyle='#9A9690';
   const all=datasets.flatMap(d=>d.data);if(!all.length)return;
   const mn=Math.min(...all)*0.96,mx=Math.max(...all)*1.04;
   const xS=i=>p.l+(i/Math.max(labels.length-1,1))*pw,yS=v=>p.t+ph-((v-mn)/(mx-mn||1))*ph;
   ctx.strokeStyle='#EDE9E3';ctx.lineWidth=0.5;
   for(let g=0;g<=3;g++){const y=p.t+(g/3)*ph;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(W-p.r,y);ctx.stroke();ctx.fillText((mx-(g/3)*(mx-mn)).toFixed(0),2,y+3);}
   const step=Math.ceil(labels.length/5);labels.forEach((l,i)=>{if(i%step===0)ctx.fillText(l,xS(i)-8,H-4);});
-  datasets.forEach(ds=>{ctx.beginPath();ds.data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));ctx.strokeStyle=ds.color;ctx.lineWidth=2;ctx.stroke();const li=ds.data.length-1;ctx.beginPath();ctx.arc(xS(li),yS(ds.data[li]),3,0,Math.PI*2);ctx.fillStyle=ds.color;ctx.fill();});
+  datasets.forEach(ds=>{
+    ctx.beginPath();ds.data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
+    ctx.strokeStyle=ds.color;ctx.lineWidth=2;ctx.stroke();
+    if(ds.data.length){const li=ds.data.length-1;ctx.beginPath();ctx.arc(xS(li),yS(ds.data[li]),3,0,Math.PI*2);ctx.fillStyle=ds.color;ctx.fill();}
+  });
 }
 
 function renderCharts(r){
   const hrD=last(r,'hr',20),hvD=last(r,'hrv',20);
-  if(hrD.length>1)lineChart(document.getElementById('hrChart'),hrD.map(x=>fmtDate(x.ts)),[{label:'RHR',data:hrD.map(x=>parseFloat(x.value)),color:'#C0392B'},...(hvD.length>1?[{label:'HRV',data:hvD.slice(-hrD.length).map(x=>parseFloat(x.value)),color:'#E8500A'}]:[])]);
-  const all=r.slice().sort((a,b)=>a.ts-b.ts),days=[...new Set(all.map(x=>fmtDate(x.ts)))].slice(-20);
-  const recScores=days.map(d=>{const dr=all.filter(x=>fmtDate(x.ts)===d);return calcRecovery(dr)||50;});
-  if(recScores.length>1)lineChart(document.getElementById('recoveryChart'),days,[{label:'Recovery',data:recScores,color:'#E8500A'}]);
+  if(hrD.length>1)lineChart(document.getElementById('hrChart'),hrD.map(x=>fmtDate(x.ts)),[{data:hrD.map(x=>parseFloat(x.value)),color:'#C0392B'},...(hvD.length>1?[{data:hvD.slice(-hrD.length).map(x=>parseFloat(x.value)),color:'#E8500A'}]:[])]);
+  const all=r.slice().sort((a,b)=>a.ts-b.ts);
+  const days=[...new Set(all.map(x=>fmtDate(x.ts)))].slice(-20);
+  if(days.length>1){
+    const scores=days.map(d=>{const dr=all.filter(x=>fmtDate(x.ts)===d);return calcReadiness(dr,{})||50;});
+    lineChart(document.getElementById('readinessChart'),days,[{data:scores,color:'#E8500A'}]);
+  }
+}
+
+// ── PERSONAL RECORDS ──────────────────────────────────────────────────────────
+let currentPRSport='Run';
+function showPR(sport,btn){
+  haptic();
+  currentPRSport=sport;
+  document.querySelectorAll('.pr-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const d=load();
+  renderPR(d.intervalsData?.prs||{},sport);
+}
+
+function renderPR(prs,sport){
+  const el=document.getElementById('prContent');if(!el)return;
+  if(sport==='Strength'){
+    const d=load();
+    const wtWorkouts=(d.workouts||[]).filter(w=>w.type==='Weights').sort((a,b)=>b.ts-a.ts);
+    if(!wtWorkouts.length){el.innerHTML='<div class="pr-empty">No strength sessions logged yet.<br>Log a workout to track your lifts.</div>';return;}
+    el.innerHTML='';
+    wtWorkouts.slice(0,10).forEach(w=>{
+      const card=document.createElement('div');card.className='card';
+      card.style.marginBottom='8px';
+      const exDetail=w.exercises?.length?w.exercises.map(e=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="font-weight:600">${e.name}</span><span style="font-family:var(--mono);font-size:10px;color:var(--text-2)">${e.sets}×${e.reps?e.reps+'reps':e.secs+'s'}${e.weight?' @ '+e.weight+'kg':''}</span></div>`).join(''):'';
+      card.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700;font-size:14px">Strength Session</span><span style="font-family:var(--mono);font-size:9px;color:var(--text-3)">${fmtDate(w.ts)}</span></div>${exDetail}<div style="font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:8px">${w.dur}min${w.hr?' · '+w.hr+' bpm avg':''}`;
+      el.appendChild(card);
+    });
+    return;
+  }
+
+  // Running/Cycling/Walking PRs
+  const distances={Run:['1km','5km','10km','Half Marathon','Marathon'],Ride:['5km','10km','20km','40km','100km'],Walk:['1km','5km','10km']};
+  const dists=distances[sport]||distances.Run;
+  const hasPRs=dists.some(d=>prs[d]);
+
+  el.innerHTML='';
+
+  if(prs.longest&&sport==='Run'){
+    const card=document.createElement('div');card.className='pr-card';
+    card.innerHTML=`<div class="pr-left"><div class="pr-dist">🏆 Longest Run</div><div class="pr-date">${fmtDateStr(prs.longest.date)}</div></div><div class="pr-right"><div class="pr-time">${fmtDist(prs.longest.distance)}</div></div>`;
+    el.appendChild(card);
+  }
+
+  dists.forEach(dist=>{
+    const pr=prs[dist];
+    const card=document.createElement('div');card.className='pr-card';
+    if(pr){
+      card.innerHTML=`
+        <div class="pr-left">
+          <div class="pr-dist">${dist}</div>
+          <div class="pr-date">${fmtDateStr(pr.date)}${pr.hr?' · '+Math.round(pr.hr)+' bpm':''}</div>
+        </div>
+        <div class="pr-right">
+          <div class="pr-time">${fmtTime(pr.time)}</div>
+          <div class="pr-pace">${fmtPace(pr.pace)}</div>
+        </div>`;
+    }else{
+      card.innerHTML=`<div class="pr-left"><div class="pr-dist">${dist}</div><div class="pr-date" style="color:var(--text-3)">No matching activity found</div></div><div class="pr-right"><div class="pr-time" style="color:var(--text-3)">—</div></div>`;
+    }
+    el.appendChild(card);
+  });
+
+  if(!hasPRs&&sport!=='Strength'){
+    const note=document.createElement('div');note.className='pr-empty';
+    note.innerHTML='No PR data yet.<br>Tap Sync to load your activity history from Intervals.icu.';
+    el.appendChild(note);
+  }
+}
+
+// ── LOG HANDLERS ──────────────────────────────────────────────────────────────
+let selExType='Run';
+function selEx(btn,type){
+  haptic();
+  document.querySelectorAll('.ex-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selExType=type;
+  document.getElementById('cardio-fields').style.display=type==='Weights'?'none':'block';
+  document.getElementById('weights-fields').style.display=type==='Weights'?'block':'none';
+  if(type!=='Run'&&type!=='Walk'&&type!=='Ride'&&type!=='Swim')document.getElementById('l_dist').value='';
+}
+
+// EXERCISE LIBRARY
+const HOLD_EXERCISES=['Plank','Side Plank','Dead Hang','Wall Sit','Hollow Body Hold','L-Sit','Superman Hold','Ab Wheel','Dragon Flag'];
+const ALL_EXERCISES=['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Romanian Deadlift','Front Squat','Sumo Deadlift','Power Clean','Hang Clean','Pull-up','Chin-up','Dip','Push-up','Pike Push-up','Muscle-up','Ring Row','Australian Pull-up','Handstand Push-up','Burpee','Jump Squat','Plank','Side Plank','Dead Hang','Wall Sit','Hollow Body Hold','L-Sit','Superman Hold','Ab Wheel','Dragon Flag','Hanging Leg Raise','Leg Press','Lat Pulldown','Cable Row','Chest Fly','Leg Curl','Leg Extension','Shoulder Press Machine','Seated Row','Cable Crossover','Face Pull','Bicep Curl','Tricep Extension','Lateral Raise','Front Raise','Shrug','Calf Raise','Glute Bridge','Hip Thrust','Good Morning','Reverse Fly','Other'];
+
+let exRowCount=0;
+function addExRow(){
+  haptic();
+  const container=document.getElementById('exerciseRows');
+  const id=exRowCount++;
+  const isHold=(name)=>HOLD_EXERCISES.includes(name);
+  const row=document.createElement('div');
+  row.className='wt-exercise-row';row.id=`exrow-${id}`;
+  row.innerHTML=`
+    <div class="wt-row-top">
+      <select id="exname-${id}" onchange="updateExRow(${id})">
+        ${ALL_EXERCISES.map(e=>`<option value="${e}">${e}</option>`).join('')}
+      </select>
+      <button class="wt-remove" onclick="removeExRow(${id})">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="wt-row-fields reps-mode" id="exfields-${id}">
+      <div><div class="wt-field-label">Sets</div><input type="number" id="exsets-${id}" placeholder="3" style="padding:8px 10px;font-size:14px"></div>
+      <div><div class="wt-field-label">Reps</div><input type="number" id="exreps-${id}" placeholder="10" style="padding:8px 10px;font-size:14px"></div>
+      <div><div class="wt-field-label">Weight (kg)</div><input type="number" id="exweight-${id}" placeholder="opt" step="2.5" style="padding:8px 10px;font-size:14px"></div>
+    </div>`;
+  container.appendChild(row);
+}
+
+function updateExRow(id){
+  const name=document.getElementById(`exname-${id}`).value;
+  const fieldsEl=document.getElementById(`exfields-${id}`);
+  const isHold=HOLD_EXERCISES.includes(name);
+  fieldsEl.className=`wt-row-fields ${isHold?'hold-mode':'reps-mode'}`;
+  if(isHold){
+    fieldsEl.innerHTML=`<div><div class="wt-field-label">Sets</div><input type="number" id="exsets-${id}" placeholder="3" style="padding:8px 10px;font-size:14px"></div><div><div class="wt-field-label">Duration (sec)</div><input type="number" id="exsecs-${id}" placeholder="60" style="padding:8px 10px;font-size:14px"></div>`;
+  }else{
+    fieldsEl.innerHTML=`<div><div class="wt-field-label">Sets</div><input type="number" id="exsets-${id}" placeholder="3" style="padding:8px 10px;font-size:14px"></div><div><div class="wt-field-label">Reps</div><input type="number" id="exreps-${id}" placeholder="10" style="padding:8px 10px;font-size:14px"></div><div><div class="wt-field-label">Weight (kg)</div><input type="number" id="exweight-${id}" placeholder="opt" step="2.5" style="padding:8px 10px;font-size:14px"></div>`;
+  }
+}
+
+function removeExRow(id){document.getElementById(`exrow-${id}`)?.remove();}
+
+function saveMorning(){
+  haptic();
+  const d=load();let n=0;const ts=Date.now();
+  [{id:'l_hr',m:'hr'},{id:'l_hrv',m:'hrv'},{id:'l_sleep',m:'sleep'},{id:'l_steps',m:'steps'}].forEach(({id,m})=>{const v=gv(id);if(v){d.readings.push({ts,metric:m,value:+v,source:'polar'});n++;}});
+  clr('l_hr','l_hrv','l_sleep','l_steps');
+  if(!n){toast('No values entered');return;}save(d);renderAll();toast(`${n} reading${n>1?'s':''} saved ✓`);
+}
+
+function saveWorkout(){
+  haptic();
+  const d=load();const ts=Date.now();
+  if(!d.workouts)d.workouts=[];
+  if(selExType==='Weights'){
+    const dur=gv('l_wtdur');if(!dur){toast('Duration is required');return;}
+    const exercises=[];
+    document.querySelectorAll('.wt-exercise-row').forEach(row=>{
+      const id=row.id.split('-')[1];
+      const name=document.getElementById(`exname-${id}`)?.value;
+      if(!name)return;
+      const isHold=HOLD_EXERCISES.includes(name);
+      const sets=gv(`exsets-${id}`);
+      const ex={name,sets:sets?+sets:null};
+      if(isHold){ex.secs=gv(`exsecs-${id}`)?+gv(`exsecs-${id}`):null;}
+      else{ex.reps=gv(`exreps-${id}`)?+gv(`exreps-${id}`):null;ex.weight=gv(`exweight-${id}`)?+gv(`exweight-${id}`):null;}
+      exercises.push(ex);
+    });
+    d.workouts.push({ts,type:'Weights',dur:+dur,hr:gv('l_wthr')?+gv('l_wthr'):null,exercises});
+    clr('l_wtdur','l_wthr');document.getElementById('exerciseRows').innerHTML='';exRowCount=0;
+  }else{
+    const dur=gv('l_dur');if(!dur){toast('Duration is required');return;}
+    d.workouts.push({ts,type:selExType,dist:gv('l_dist')?+gv('l_dist'):null,dur:+dur,hr:gv('l_exhr')?+gv('l_exhr'):null});
+    clr('l_dist','l_dur','l_exhr');
+  }
+  save(d);renderAll();toast(`${selExType} session logged ✓`);
+}
+
+function saveMeasurements(){
+  haptic();
+  const d=load();let n=0;const ts=Date.now();
+  const s=gv('l_bps'),dv=gv('l_bpd');
+  if(s&&dv){d.readings.push({ts,metric:'bp',value:`${s}/${dv}`,raw_s:+s,raw_d:+dv,source:'omron'});clr('l_bps','l_bpd');n++;}
+  const w=gv('l_wt');if(w){d.readings.push({ts,metric:'weight',value:+w,source:'xiaomi'});clr('l_wt');n++;}
+  if(!n){toast('No values entered');return;}save(d);renderAll();toast(`${n} measurement${n>1?'s':''} saved ✓`);
+}
+
+function saveBlood(){
+  haptic();
+  const d=load();let n=0;const ts=Date.now();
+  [{id:'l_gluc',m:'glucose'},{id:'l_chol',m:'cholesterol'},{id:'l_ua',m:'uric_acid'}].forEach(({id,m})=>{const v=gv(id);if(v){d.readings.push({ts,metric:m,value:+v,source:'manual'});n++;}});
+  clr('l_gluc','l_chol','l_ua');
+  if(!n){toast('No values entered');return;}save(d);renderAll();toast(`${n} result${n>1?'s':''} saved ✓`);
 }
 
 // ── AI INSIGHTS ───────────────────────────────────────────────────────────────
-async function generateInsights(){
-  const apiKey=getApiKey(),el=document.getElementById('aiInsightText');
-  el.innerHTML='<div class="insight-loading"><div class="pulse"></div> Analysing with Claude...</div>';
-  ['improvingSection','watchSection','recSection'].forEach(id=>document.getElementById(id).style.display='none');
-  if(!apiKey){el.textContent='No API key. Open ⚙ Settings and add your Claude API key.';return;}
-  const d=load(),r=d.readings,activities=d.stravaActivities||[];
-  const rec=calcRecovery(r),strain=calcStrainFromStrava(activities),slDebt=calcSleepDebt(r);
-  const MNAMES={hr:'Resting HR',hrv:'HRV',sleep:'Sleep',steps:'Steps',bp:'Blood Pressure',weight:'Weight',glucose:'Glucose',cholesterol:'Cholesterol',uric_acid:'Uric Acid'};
-  const MUNITS={hr:'bpm',hrv:'ms',sleep:'hrs',steps:'steps',bp:'mmHg',weight:'kg',glucose:'mmol/L',cholesterol:'mmol/L',uric_acid:'µmol/L'};
+async function genInsights(){
+  haptic();
+  const apiKey=gKey('vc_ckey'),el=document.getElementById('aiText');
+  el.innerHTML='<div class="insight-loading"><div class="pulse"></div> Analysing your health data...</div>';
+  ['improvingSec','watchSec','recSec'].forEach(id=>document.getElementById(id).style.display='none');
+  if(!apiKey){el.textContent='Add your Claude API key in Settings to enable AI insights.';return;}
+  const d=load(),r=d.readings,iv=d.intervalsData||{},fitness=iv.fitness||{};
+  const readiness=calcReadiness(r,fitness),slDebt=calcSleepDebt(r,fitness);
+  const MNAMES={hr:'Resting HR',hrv:'Body Stress (HRV)',sleep:'Sleep',bp:'Blood Pressure',weight:'Weight',glucose:'Glucose',cholesterol:'Cholesterol',uric_acid:'Uric Acid'};
+  const MUNITS={hr:'bpm',hrv:'ms',sleep:'hrs',bp:'mmHg',weight:'kg',glucose:'mmol/L',cholesterol:'mmol/L',uric_acid:'µmol/L'};
   const snap={};Object.keys(MNAMES).forEach(m=>{const recs=r.filter(x=>x.metric===m).sort((a,b)=>b.ts-a.ts).slice(0,7);if(recs.length)snap[m]=recs.map(x=>x.value);});
+  const recentActs=(iv.activities||[]).slice(0,5).map(a=>`${a.type} ${a.distance?fmtDist(a.distance):''} ${fmtDur(a.moving_time)} ${a.average_heartrate?Math.round(a.average_heartrate)+'bpm':''}`).join(', ');
   const p=d.profile||{};
-  const recentEx=activities.slice(0,5).map(a=>`${a.sport_type||a.type} ${a.distance?fmtDist(a.distance):''} ${fmtDuration(a.moving_time)} ${a.average_heartrate?Math.round(a.average_heartrate)+'bpm':''}`).join(', ');
-  const prompt=`Clinical health analyst. User has Polar Loop 2, Omron BP, Xiaomi scale, Strava.\nProfile:${p.age?' age '+p.age:''}${p.sex?' '+p.sex:''}${p.height?' '+p.height+'cm':''}\nRecovery:${rec!==null?rec+'%':'unknown'} Strain:${strain!==null?strain+'/21':'unknown'} Sleep debt:${slDebt!==null?slDebt+'h':'unknown'}\nRecent Strava activities: ${recentEx||'none'}\nBiometrics:\n${Object.entries(snap).map(([k,v])=>`${MNAMES[k]}: ${v.join(', ')} ${MUNITS[k]}`).join('\n')}\n\nReturn ONLY valid JSON:\n{"summary":"2-3 sentence cross-metric clinical narrative","improving":["item1","item2"],"watch":["item1"],"recommendation":"One specific actionable recommendation"}`;
+  const prompt=`You are a clinical health analyst reviewing personal biometric data. The user has multiple wearables (Polar Loop 2, Garmin, Amazfit) all feeding into Intervals.icu.
+
+Profile:${p.age?' age '+p.age:''}${p.sex?' '+p.sex:''}${p.height?' '+p.height+'cm':''}
+Readiness: ${readiness!==null?readiness+'%':'unknown'}
+Fitness Level (CTL): ${fitness.ctl?Math.round(fitness.ctl):'unknown'}
+Recent Fatigue (ATL): ${fitness.atl?Math.round(fitness.atl):'unknown'}
+Freshness (TSB): ${fitness.tsb!==null&&fitness.tsb!==undefined?Math.round(fitness.tsb):'unknown'}
+Sleep debt: ${slDebt!==null?slDebt+'h over 7 nights':'unknown'}
+Recent activities: ${recentActs||'none'}
+
+Biometrics (most recent first):
+${Object.entries(snap).map(([k,v])=>`${MNAMES[k]}: ${v.join(', ')} ${MUNITS[k]}`).join('\n')}
+
+Return ONLY valid JSON, no markdown:
+{"summary":"2-3 sentence clinical narrative connecting readiness, fitness trend, sleep, and health markers","improving":["specific item 1","specific item 2"],"watch":["specific concern 1"],"recommendation":"One specific actionable thing to do today or this week"}`;
+
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:prompt}]})});
     const data=await res.json();
     if(data.error){el.textContent='API error: '+data.error.message;return;}
     const parsed=JSON.parse(data.content?.map(c=>c.text||'').join('').trim());
     el.textContent=parsed.summary;
-    if(parsed.improving?.length){document.getElementById('improvingSection').style.display='block';document.getElementById('improvingList').innerHTML=parsed.improving.map(i=>`<div class="insight-item"><div class="insight-dot green"></div><div class="insight-item-text">${i}</div></div>`).join('');}
-    if(parsed.watch?.length){document.getElementById('watchSection').style.display='block';document.getElementById('watchList').innerHTML=parsed.watch.map(i=>`<div class="insight-item"><div class="insight-dot amber"></div><div class="insight-item-text">${i}</div></div>`).join('');}
-    if(parsed.recommendation){document.getElementById('recSection').style.display='block';document.getElementById('recText').textContent=parsed.recommendation;}
-  }catch(e){el.textContent='Unable to generate insight. Check API key and connection.';}
-}
-
-// ── INPUT HANDLERS ────────────────────────────────────────────────────────────
-let selectedExType='Running';
-function selectEx(el,type){
-  document.querySelectorAll('.ex-type-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');selectedExType=type;
-  document.getElementById('weights-section').style.display=type==='WeightTraining'?'block':'none';
-}
-
-function savePolar(){
-  const d=load();let n=0;const ts=Date.now();
-  [{id:'l_hr',m:'hr'},{id:'l_hrv',m:'hrv'},{id:'l_sleep',m:'sleep'},{id:'l_steps',m:'steps'},{id:'l_cals',m:'cals'}].forEach(({id,m})=>{const v=gv(id);if(v){d.readings.push({ts,metric:m,value:+v,source:'polar'});n++;}});
-  clr('l_hr','l_hrv','l_sleep','l_steps','l_cals');
-  if(!n){toast('No values entered.');return;}save(d);renderAll();toast(`${n} Polar reading${n>1?'s':''} saved ✓`);
-}
-
-function saveExercise(){
-  const d=load();const ts=Date.now();const dur=gv('l_dur');if(!dur){toast('Duration is required.');return;}
-  const ex={ts,type:selectedExType,dist:gv('l_dist')?+gv('l_dist'):null,dur:+dur,avgHr:gv('l_exhr')?+gv('l_exhr'):null};
-  if(selectedExType==='WeightTraining'){ex.sets=gv('l_sets')?+gv('l_sets'):null;ex.reps=gv('l_reps')?+gv('l_reps'):null;ex.exercises=gv('l_exercises')||null;ex.maxWeight=gv('l_maxweight')?+gv('l_maxweight'):null;}
-  if(!d.exercises)d.exercises=[];d.exercises.push(ex);
-  clr('l_dist','l_dur','l_exhr','l_sets','l_reps','l_exercises','l_maxweight');
-  save(d);renderAll();toast(`${selectedExType} logged ✓`);
-}
-
-function saveVitals(){
-  const d=load();let n=0;const ts=Date.now();
-  const s=gv('l_bps'),dv=gv('l_bpd');if(s&&dv){d.readings.push({ts,metric:'bp',value:`${s}/${dv}`,raw_s:+s,raw_d:+dv,source:'omron'});clr('l_bps','l_bpd');n++;}
-  const w=gv('l_wt');if(w){d.readings.push({ts,metric:'weight',value:+w,source:'xiaomi'});clr('l_wt');n++;}
-  if(!n){toast('No values entered.');return;}save(d);renderAll();toast(`${n} vital${n>1?'s':''} saved ✓`);
-}
-
-function saveLab(){
-  const d=load();let n=0;const ts=Date.now();
-  [{id:'l_gluc',m:'glucose'},{id:'l_chol',m:'cholesterol'},{id:'l_ua',m:'uric_acid'}].forEach(({id,m})=>{const v=gv(id);if(v){d.readings.push({ts,metric:m,value:+v,source:'manual'});n++;}});
-  clr('l_gluc','l_chol','l_ua');
-  if(!n){toast('No values entered.');return;}save(d);renderAll();toast(`${n} lab result${n>1?'s':''} saved ✓`);
+    if(parsed.improving?.length){document.getElementById('improvingSec').style.display='block';document.getElementById('improvingList').innerHTML=parsed.improving.map(i=>`<div class="insight-item"><div class="insight-dot green"></div><div class="insight-item-text">${i}</div></div>`).join('');}
+    if(parsed.watch?.length){document.getElementById('watchSec').style.display='block';document.getElementById('watchList').innerHTML=parsed.watch.map(i=>`<div class="insight-item"><div class="insight-dot amber"></div><div class="insight-item-text">${i}</div></div>`).join('');}
+    if(parsed.recommendation){document.getElementById('recSec').style.display='block';document.getElementById('recText').textContent=parsed.recommendation;}
+  }catch(e){el.textContent='Could not generate insight. Check your API key and internet connection.';}
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function openSettings(){
-  const key=getApiKey(),token=getStravaToken(),url=getBackendUrl();
-  if(key)document.getElementById('apiKeyInput').value=key;
-  if(token)document.getElementById('stravaTokenInput').value=token;
-  if(url)document.getElementById('backendUrlInput').value=url;
-  const d=load(),p=d.profile||{};
-  if(p.age)document.getElementById('s_age').value=p.age;
-  if(p.sex)document.getElementById('s_sex').value=p.sex;
-  if(p.height)document.getElementById('s_height').value=p.height;
-  const statusEl=document.getElementById('stravaConnectionStatus');
-  statusEl.innerHTML=token?'<span class="connected-badge">✓ STRAVA CONNECTED</span>':'<span style="font-size:12px;color:var(--text-3)">Not connected</span>';
+  haptic();
+  const ikey=gKey('vc_ikey'),iid=gKey('vc_iid'),ckey=gKey('vc_ckey'),burl=gKey('vc_backend');
+  if(ikey)document.getElementById('s_ikey').value=ikey;
+  document.getElementById('s_iid').value=iid||'i33319';
+  if(ckey)document.getElementById('s_ckey').value=ckey;
+  document.getElementById('s_burl').value=burl||'https://vitalcore-backend.vercel.app';
+  const d=load(),pr=d.profile||{};
+  if(pr.age)document.getElementById('s_age').value=pr.age;
+  if(pr.sex)document.getElementById('s_sex').value=pr.sex;
+  if(pr.height)document.getElementById('s_height').value=pr.height;
+  document.getElementById('intervalsStatus').innerHTML=ikey?'<span class="connected-badge"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Connected</span>':'<span style="font-size:11px;color:var(--text-3)">Not connected</span>';
   document.getElementById('settingsOverlay').classList.add('open');
 }
-function closeSettingsOutside(e){if(e.target.id==='settingsOverlay')document.getElementById('settingsOverlay').classList.remove('open');}
-function saveStravaToken(){const t=document.getElementById('stravaTokenInput').value.trim();if(!t){toast('Please enter a token.');return;}localStorage.setItem('vc_strava_token',t);document.getElementById('settingsOverlay').classList.remove('open');toast('Strava token saved ✓');}
-function saveBackendUrl(){const u=document.getElementById('backendUrlInput').value.trim();if(!u){toast('Please enter a URL.');return;}localStorage.setItem('vc_backend_url',u);document.getElementById('settingsOverlay').classList.remove('open');toast('Backend URL saved ✓');}
-function saveApiKey(){const k=document.getElementById('apiKeyInput').value.trim();if(!k){toast('Please enter an API key.');return;}localStorage.setItem('vc_apikey',k);document.getElementById('settingsOverlay').classList.remove('open');toast('API key saved ✓');}
+function closeSettingsOutside(e){if(e.target.id==='settingsOverlay'){haptic();document.getElementById('settingsOverlay').classList.remove('open');}}
+function saveIntervals(){sKey('vc_ikey',document.getElementById('s_ikey').value.trim());sKey('vc_iid',document.getElementById('s_iid').value.trim()||'i33319');document.getElementById('settingsOverlay').classList.remove('open');toast('Intervals.icu saved ✓');}
+function saveClaudeKey(){sKey('vc_ckey',document.getElementById('s_ckey').value.trim());document.getElementById('settingsOverlay').classList.remove('open');toast('Claude key saved ✓');}
+function saveBackend(){sKey('vc_backend',document.getElementById('s_burl').value.trim());document.getElementById('settingsOverlay').classList.remove('open');toast('Backend URL saved ✓');}
 function saveProfile(){const d=load();d.profile={age:gv('s_age')?+gv('s_age'):null,sex:document.getElementById('s_sex').value||null,height:gv('s_height')?+gv('s_height'):null};save(d);document.getElementById('settingsOverlay').classList.remove('open');toast('Profile saved ✓');}
-function clearAllData(){if(confirm('Clear all health data? Cannot be undone.')){localStorage.removeItem(KEY);document.getElementById('settingsOverlay').classList.remove('open');location.reload();}}
+function clearData(){if(confirm('Clear all health data? This cannot be undone.')){localStorage.removeItem(K);document.getElementById('settingsOverlay').classList.remove('open');location.reload();}}
 
-// ── NAV ───────────────────────────────────────────────────────────────────────
-function showPage(id,btn){
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function goPage(id,btn){
+  haptic();
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id)?.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pg-'+id)?.classList.add('active');
   if(btn)btn.classList.add('active');
-  document.querySelector('.app-body').scrollTop=0;
-  if(id==='insights')generateInsights();
-  if(id==='recovery')setTimeout(()=>renderCharts(load().readings),100);
+  document.getElementById('appBody').scrollTop=0;
+  if(id==='insights')genInsights();
+  if(id==='wellbeing')setTimeout(()=>renderCharts(load().readings),80);
+  if(id==='records'){const d=load();renderPR(d.intervalsData?.prs||{},currentPRSport);}
 }
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+function toast(msg){
+  haptic();
+  const t=document.getElementById('toast');
+  t.innerHTML=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── PULL TO REFRESH ───────────────────────────────────────────────────────────
+let ptStart=0;
+const body=document.getElementById('appBody');
+body.addEventListener('touchstart',e=>{if(body.scrollTop===0)ptStart=e.touches[0].clientY;},{passive:true});
+body.addEventListener('touchend',e=>{
+  if(ptStart>0&&body.scrollTop===0){
+    const diff=e.changedTouches[0].clientY-ptStart;
+    if(diff>60)syncAll();
+  }
+  ptStart=0;
+},{passive:true});
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+document.getElementById('hdrDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
 seed();
 renderAll();
-// Auto-sync Strava on load if token exists
-if(getStravaToken()){syncStrava().then(()=>renderAll());}
+
+// Splash
+setTimeout(()=>document.getElementById('splash').classList.add('hidden'),1800);
+
+// Auto sync if credentials exist
+if(gKey('vc_ikey'))setTimeout(syncAll,2000);
+
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/vitalcore/sw.js');
 window.addEventListener('resize',()=>renderCharts(load().readings));
 </script>
