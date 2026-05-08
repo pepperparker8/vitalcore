@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#2A2A2A">
-<title>VitalCore v6.7</title>
+<title>VitalCore v6.8</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -34,19 +34,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .sp-fill{height:100%;background:var(--gold);animation:spLoad 2s ease-out forwards;}
 @keyframes spLoad{from{width:0}to{width:100%}}
 
-#onboarding{position:fixed;inset:0;background:var(--char);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;display:none;}
-#onboarding.show{display:flex;}
-.ob-step{display:none;width:100%;max-width:360px;text-align:center;}
-.ob-step.active{display:block;}
-.ob-title{font-family:var(--serif);font-size:28px;color:var(--gold);margin-bottom:8px;}
-.ob-sub{font-size:14px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:28px;}
-.ob-inp{width:100%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;font-family:var(--body);font-size:15px;color:white;outline:none;margin-bottom:10px;}
-.ob-label{font-family:var(--mono);font-size:10px;color:rgba(201,168,76,0.6);letter-spacing:1.5px;margin-bottom:6px;display:block;text-align:left;}
-
-/* HEADER & NAV */
-.hdr{position:fixed;top:0;left:0;right:0;height:var(--hdr);background:var(--char);display:flex;align-items:center;padding:0 16px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,0.3);}
+/* UI COMPONENTS */
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--hdr);background:var(--char);display:flex;align-items:center;padding:0 16px;z-index:100;}
 .hdr-logo{font-family:var(--serif);font-size:21px;color:var(--gold);cursor:pointer;}
-.hdr-sub{font-family:var(--mono);font-size:10px;color:rgba(201,168,76,0.45);letter-spacing:1px;}
 .hdr-sync{margin-left:auto;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:8px;cursor:pointer;}
 
 .nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--char-dark);display:flex;align-items:center;justify-content:space-around;z-index:100;border-top:1px solid rgba(255,255,255,0.08);padding-bottom:env(safe-area-inset-bottom);}
@@ -55,19 +45,18 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .nav-item.active{color:var(--gold);}
 .nav-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
 
-/* CARDS & PAGES */
 .pages{position:fixed;top:var(--hdr);left:0;right:0;bottom:var(--nav);overflow:hidden;}
 .page{position:absolute;inset:0;overflow-y:auto;display:none;padding:16px 16px 32px;}
 .page.active{display:block;}
+
 .card{background:var(--sur);border:1px solid var(--bdr);border-radius:16px;padding:18px;box-shadow:var(--sh);margin-bottom:12px;}
 .sec{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
 
-/* BUTTONS */
-.btn-gold{width:100%;padding:14px;background:var(--gold);color:var(--char);font-family:var(--body);font-size:15px;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:transform 0.1s;box-shadow:0 4px 12px rgba(201,168,76,0.2);}
+.btn-gold{width:100%;padding:14px;background:var(--gold);color:var(--char);font-family:var(--body);font-size:15px;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:transform 0.1s;}
 .btn-gold:active{transform:scale(0.96);}
 .btn-muted{width:100%;padding:12px;background:var(--sur2);color:var(--t2);font-family:var(--body);font-size:14px;border:1px solid var(--bdr);border-radius:12px;cursor:pointer;}
 
-/* READINESS RING & HERO */
+/* READINESS HERO */
 .hero-card{background:linear-gradient(145deg,#2A2A2A,#1E1E1E);border:1px solid rgba(201,168,76,0.2);border-radius:20px;padding:24px;margin-bottom:12px;color:white;}
 .ring-con{position:relative;width:120px;height:120px;flex-shrink:0;}
 .ring-con svg{transform:rotate(-90deg);}
@@ -78,118 +67,74 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .peak-pulse{animation:ringPulse 2s infinite ease-in-out;}
 @keyframes ringPulse{0%{filter:drop-shadow(0 0 0px var(--gold))}50%{filter:drop-shadow(0 0 10px rgba(201,168,76,0.5))}100%{filter:drop-shadow(0 0 0px var(--gold))}}
 
-/* LOG SECTIONS */
-.log-sec{background:var(--sur);border:1px solid var(--bdr);border-radius:14px;margin-bottom:10px;overflow:hidden;}
-.log-hdr{display:flex;align-items:center;gap:12px;padding:16px;cursor:pointer;}
-.log-body{display:none;padding:0 16px 16px;}
-.log-sec.open .log-body{display:block;}
-.log-sec.open .log-chev{transform:rotate(180deg);}
-
-/* STATUS BARS */
 .sbars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
 .sbar{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:12px;text-align:center;}
 .sbar-val{font-family:var(--serif);font-size:24px;line-height:1;margin:4px 0;}
 .sbar-prog-bg{height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;margin-top:8px;}
 .sbar-prog-fill{height:100%;transition:width 1s;}
 
-/* TOAST */
-#toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--char);color:white;padding:12px 24px;border-radius:24px;font-size:13px;opacity:0;transition:all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);pointer-events:none;z-index:200;border:1px solid rgba(201,168,76,0.2);}
+/* INPUTS */
+.inp{width:100%;border:1px solid var(--bdr);background:var(--bg);border-radius:10px;padding:12px;font-family:var(--body);font-size:15px;outline:none;margin-bottom:12px;}
+
+#toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--char);color:white;padding:12px 24px;border-radius:24px;font-size:13px;opacity:0;transition:all 0.3s;pointer-events:none;z-index:200;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-/* MODAL */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;align-items:flex-end;}
 .modal-ov.open{display:flex;}
 .modal{background:var(--bg);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-height:90vh;overflow-y:auto;}
-.inp{width:100%;border:1px solid var(--bdr);background:var(--bg);border-radius:10px;padding:12px;font-family:var(--body);font-size:15px;outline:none;}
-
-/* CHART SPACING */
-canvas{width:100% !important;height:80px !important;margin-top:8px;}
 </style>
 </head>
 <body>
 
-<div id="splash"><div class="sp-logo">VitalCore</div><div class="sp-sub">PRO ENDURANCE INTELLIGENCE</div><div class="sp-bar"><div class="sp-fill"></div></div></div>
+<div id="splash"><div class="sp-logo">VitalCore</div><div class="sp-sub">PRO HEALTH INTELLIGENCE</div><div class="sp-bar"><div class="sp-fill"></div></div></div>
 
 <svg style="display:none;">
   <symbol id="icon-today" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></symbol>
   <symbol id="icon-well" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></symbol>
-  <symbol id="icon-hist" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></symbol>
   <symbol id="icon-log" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></symbol>
   <symbol id="icon-ins" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></symbol>
 </svg>
 
 <header class="hdr">
-  <div onclick="openSettings()"><div class="hdr-logo">VitalCore</div><div class="hdr-sub" id="hdrStatus">Initializing...</div></div>
+  <div onclick="openSettings()"><div class="hdr-logo">VitalCore</div><div id="hdrStatus" style="font-family:var(--mono); font-size:9px; color:var(--gold); opacity:0.6;">v6.8 PRO</div></div>
   <button class="hdr-sync" id="syncBtn" onclick="syncAll()">⟳ SYNC</button>
 </header>
 
 <div class="pages">
   <div class="page active" id="pg-today">
     <div class="hero-card">
-      <div id="heroGreeting" style="font-size:16px; margin-bottom:20px;">Hi, Iqbal</div>
+      <div id="heroGreeting" style="font-size:16px; margin-bottom:20px;">Ready for today, Iqbal</div>
       <div style="display:flex; align-items:center; gap:24px;">
         <div class="ring-con" id="ringBox">
           <svg width="120" height="120"><defs><linearGradient id="goldGrad"><stop offset="0%" stop-color="#C9A84C"/><stop offset="100%" stop-color="#E8C96A"/></linearGradient></defs>
             <circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
           <div class="ring-center"><div class="ring-num" id="ringNum">--</div><div style="font-size:9px; color:var(--gold); opacity:0.6; letter-spacing:1.5px;">READY</div></div>
         </div>
-        <div><div id="heroZone" style="font-family:var(--serif); font-size:22px;">Calculating...</div><div id="heroIns" style="font-size:12px; opacity:0.7; margin-top:4px;">Analyzing metrics</div></div>
+        <div><div id="heroZone" style="font-family:var(--serif); font-size:22px;">Calculating...</div><div id="heroIns" style="font-size:12px; opacity:0.7; margin-top:4px;">Analyzing wellness markers</div></div>
       </div>
     </div>
-
     <div class="sbars">
-      <div class="sbar"><div class="sec" style="margin-bottom:4px;">Load</div><div class="sbar-val" id="sbLoad">--</div><div class="sbar-prog-bg"><div class="sbar-prog-fill" id="sbLoadP" style="background:var(--amber); width:0;"></div></div></div>
-      <div class="sbar"><div class="sec" style="margin-bottom:4px;">Sleep</div><div class="sbar-val" id="sbSleep">--</div><div class="sbar-prog-bg"><div class="sbar-prog-fill" id="sbSleepP" style="background:var(--teal); width:0;"></div></div></div>
-      <div class="sbar"><div class="sec" style="margin-bottom:4px;">Fresh</div><div class="sbar-val" id="sbFresh">--</div><div class="sbar-prog-bg"><div class="sbar-prog-fill" id="sbFreshP" style="background:var(--green); width:0;"></div></div></div>
+      <div class="sbar"><div class="sec">Load</div><div class="sbar-val" id="sbLoad" style="color:var(--amber)">--</div><div class="sbar-prog-bg"><div class="sbar-prog-fill" id="sbLoadP" style="background:var(--amber); width:0;"></div></div></div>
+      <div class="sbar"><div class="sec">Sleep</div><div class="sbar-val" id="sbSleep" style="color:var(--teal)">--</div><div class="sbar-prog-bg"><div class="sbar-prog-fill" id="sbSleepP" style="background:var(--teal); width:0;"></div></div></div>
+      <div class="sbar"><div class="sec">Fresh</div><div class="sbar-val" id="sbFresh" style="color:var(--green)">--</div><div class="sbar-prog-bg"><div class="sbar-prog-fill" id="sbFreshP" style="background:var(--green); width:0;"></div></div></div>
     </div>
-
-    <div class="card"><div class="sec">Training Load (TSB)</div><div id="tloadContent">Connect Intervals.icu to see form</div></div>
     <div class="card"><div class="sec">Recent Activity</div><div id="actList"></div></div>
   </div>
 
   <div class="page" id="pg-wellbeing">
-    <div class="card" style="background:var(--char); color:white;"><div class="sec" style="color:var(--gold);">Burnout Risk</div><div style="font-size:32px; font-family:var(--serif);" id="boScore">0</div><div id="boSub" style="font-size:12px; opacity:0.7;">Logging daily check-ins is required</div></div>
-    <div class="card"><div class="sec">Resting HR Trend</div><div id="zHRV" style="font-size:24px; font-weight:600;">-- bpm</div><div id="hrvSpark"></div></div>
-    <div class="card"><canvas id="wtCanvas"></canvas><div id="wtGoalLine" style="font-size:11px; text-align:right; margin-top:4px;"></div></div>
-    <div class="card"><div class="sec">Psychology (7-Day)</div><canvas id="moodCanvas"></canvas></div>
+    <div class="card" style="background:var(--char); color:white;"><div class="sec" style="color:var(--gold);">Burnout Risk</div><div style="font-size:32px; font-family:var(--serif);" id="boScore">0</div><div id="boSub" style="font-size:12px; opacity:0.7;">Logging required</div></div>
+    <div class="card"><div class="sec">Resting HR Proxy</div><div id="zHRV" style="font-size:24px; font-weight:600; color:var(--teal)">-- bpm</div><div id="hrvSpark"></div></div>
+    <div class="card"><div class="sec">Weight Trend</div><canvas id="wtCanvas"></canvas></div>
   </div>
 
   <div class="page" id="pg-log">
-    <div class="log-sec open" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')">🌙 <b>Sleep Last Night</b><span style="margin-left:auto">▾</span></div>
-      <div class="log-body">
-        <div class="sec">Sleep Score</div><input type="number" class="inp" id="slScore" placeholder="0-100">
-        <button class="btn-gold" style="margin-top:12px;" onclick="saveSleep()">Log Sleep</button>
-      </div>
-    </div>
-    <div class="log-sec" id="lMeas"><div class="log-hdr" onclick="tlog('lMeas')">📏 <b>Measurements</b><span style="margin-left:auto">▾</span></div>
-      <div class="log-body">
-        <div class="sec">Weight (kg)</div><input type="number" class="inp" id="wtKg" step="0.1">
-        <div class="sec" style="margin-top:10px;">Resting HR</div><input type="number" class="inp" id="hrVal">
-        <button class="btn-gold" style="margin-top:12px;" onclick="saveMeas()">Save</button>
-      </div>
-    </div>
-    <div class="log-sec" id="lBlood"><div class="log-hdr" onclick="tlog('lBlood')">🧬 <b>Blood Markers</b><span style="margin-left:auto">▾</span></div><div class="log-body" id="bmDisplay"></div></div>
+    <div class="card"><div class="sec">Sleep Last Night</div><input type="number" class="inp" id="slScore" placeholder="Sleep Score (0-100)"><button class="btn-gold" onclick="saveSleep()">Save Sleep</button></div>
+    <div class="card"><div class="sec">Measurements</div><input type="number" class="inp" id="wtKg" placeholder="Weight (kg)"><input type="number" class="inp" id="hrVal" placeholder="Resting HR (bpm)"><button class="btn-gold" onclick="saveMeas()">Save Metrics</button></div>
   </div>
 
   <div class="page" id="pg-insights">
-    <div id="insContent"><button class="btn-gold" onclick="genInsight()">🧠 Generate AI Briefing</button></div>
+    <div id="insContent" style="text-align:center;"><button class="btn-gold" onclick="genInsight()">🧠 Generate AI Briefing</button></div>
     <div id="insHistList" style="margin-top:20px;"></div>
-  </div>
-</div>
-
-<div class="modal-ov" id="setModal">
-  <div class="modal">
-    <div class="sec">Google Cloud Backup</div>
-    <div id="drive_status" style="font-size:12px; margin-bottom:10px;">Not connected</div>
-    <button id="auth_btn" class="btn-gold" style="background:#4285F4; color:white;" onclick="handleAuthClick()">Connect Google Drive</button>
-    <button id="signout_btn" class="btn-muted" style="display:none;" onclick="handleSignoutClick()">Disconnect</button>
-    
-    <div class="sec" style="margin-top:20px;">API Credentials</div>
-    <input type="password" class="inp" id="sClaudeKey" placeholder="Claude API Key" style="margin-bottom:8px;">
-    <input type="password" class="inp" id="sInterKey" placeholder="Intervals.icu Key" style="margin-bottom:8px;">
-    <input type="text" class="inp" id="sInterID" placeholder="Athlete ID">
-    
-    <button class="btn-gold" style="margin-top:20px;" onclick="saveSettings()">Save & Close</button>
   </div>
 </div>
 
@@ -200,20 +145,32 @@ canvas{width:100% !important;height:80px !important;margin-top:8px;}
   <div class="nav-item" onclick="switchTab('insights')" id="nav-insights"><svg><use href="#icon-ins"></use></svg><div class="nav-label">Insights</div></div>
 </nav>
 
+<div class="modal-ov" id="setModal">
+  <div class="modal">
+    <div class="sec">Cloud Connection</div>
+    <div id="drive_status" style="font-size:12px; margin-bottom:12px; color:var(--t3);">Not connected</div>
+    <button id="auth_btn" class="btn-gold" style="background:#4285F4; color:white;" onclick="handleAuthClick()">Connect Google Drive</button>
+    <button id="signout_btn" class="btn-muted" style="display:none;" onclick="handleSignoutClick()">Disconnect</button>
+    <div class="sec" style="margin-top:24px;">API Settings</div>
+    <input type="password" class="inp" id="sClaudeKey" placeholder="Claude API Key">
+    <input type="password" class="inp" id="sInterKey" placeholder="Intervals.icu Key">
+    <input type="text" class="inp" id="sInterID" placeholder="Athlete ID">
+    <button class="btn-gold" style="margin-top:16px;" onclick="saveSettings()">Save & Close</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
-// --- STATE & DEFAULTS ---
+// --- CORE STATE ---
 const DEFAULTS = {
-  profile:{name:'Iqbal', wtGoal:72, hrGoal:55},
-  checkins:[], workouts:[], measurements:[], sleepLogs:[], bloodLogs:[], injuries:[],
-  intervalsData:{ctl:null, atl:null, tsb:null, prs:[]},
-  claudeKey:'', intervalsKey:'', intervalsID:'',
-  lastSync:null, insightLog:[], onboardingDone:true
+  profile:{name:'Iqbal', wtGoal:72},
+  measurements:[], sleepLogs:[], intervalsData:{ctl:null, atl:null, tsb:null},
+  claudeKey:'', intervalsKey:'', intervalsID:''
 };
 let _s = JSON.parse(JSON.stringify(DEFAULTS));
 
-// --- GOOGLE DRIVE CORE ---
+// --- GOOGLE DRIVE INTEGRATION ---
 const CLIENT_ID = '1003749840545-b6ef5bd6fr60sfvi6tjfir6453g90p6v.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 let tokenClient, gapiInited=false, gisInited=false, cloudFileId=null;
@@ -239,7 +196,7 @@ async function driveLoad() {
   if(resp.result.files.length) {
     cloudFileId = resp.result.files[0].id;
     const file = await gapi.client.drive.files.get({ fileId:cloudFileId, alt:'media' });
-    _s = {...DEFAULTS, ...file.result}; recalc(); showToast("Cloud Synced");
+    _s = {...DEFAULTS, ...file.result}; recalc(); showToast("Cloud Synced ✓");
   }
 }
 
@@ -252,13 +209,13 @@ async function persistSave() {
   }
 }
 
-// --- ANDROID HARDWARE BACK ---
+// --- ANDROID NAVIGATION ---
 window.addEventListener('popstate', () => {
   if(document.getElementById('setModal').classList.contains('open')) { closeSettings(); history.pushState(null,null,""); }
 });
 history.pushState(null,null,"");
 
-// --- CORE APP LOGIC ---
+// --- LOGIC ---
 const S=()=>_s;
 const td=()=>new Date().toISOString().split('T')[0];
 
@@ -270,7 +227,7 @@ function switchTab(tab) {
 }
 
 async function syncAll() {
-  const d=S(); if(!d.intervalsKey) return showToast("Set API Key");
+  const d=S(); if(!d.intervalsKey) return showToast("Set Key in Settings");
   document.getElementById('syncBtn').textContent='...';
   try {
     const r = await fetch(`https://intervals.icu/api/v1/athlete/${d.intervalsID}/wellness?oldest=${td()}`, {
@@ -280,33 +237,51 @@ async function syncAll() {
     if(data.length) {
       const l = data[data.length-1];
       d.intervalsData = {ctl:l.ctl, atl:l.atl, tsb:l.tsb};
-      if(l.restingHR) d.measurements.push({date:td(), hr:l.restingHR});
-      save(d); recalc(); showToast("Intervals.icu Synced");
+      if(l.restingHR && !d.measurements.some(m => m.date === td() && m.hr)) d.measurements.push({date:td(), hr:l.restingHR});
+      save(d); recalc(); showToast("Wellness Synced ✓");
     }
-  } catch(e) { showToast("Sync Error"); }
+  } catch(e) { showToast("Sync failed"); }
   finally { document.getElementById('syncBtn').textContent='⟳ SYNC'; }
 }
 
 function recalc() {
-  const d=S(); const readiness = 75; // Simplified for v6.7 core
-  document.getElementById('ringNum').textContent = readiness;
-  const off = 326.7 * (1 - readiness/100);
+  const d=S(); let score = 75;
+  document.getElementById('ringNum').textContent = score;
+  const off = 326.7 * (1 - score/100);
   document.getElementById('ringFill').style.strokeDashoffset = off;
-  if(readiness > 80) document.getElementById('ringBox').classList.add('peak-pulse');
+  if(score > 80) document.getElementById('ringBox').classList.add('peak-pulse');
   
   document.getElementById('sbLoad').textContent = d.intervalsData.ctl || '--';
   document.getElementById('sbSleep').textContent = d.sleepLogs.length ? d.sleepLogs[d.sleepLogs.length-1].score : '--';
   document.getElementById('sbFresh').textContent = d.intervalsData.tsb || '--';
+  
+  const m = d.measurements.filter(x => x.hr).slice(-1)[0];
+  document.getElementById('zHRV').textContent = m ? m.hr + ' bpm' : '-- bpm';
+}
+
+function saveSleep() {
+  const s = +document.getElementById('slScore').value;
+  if(s >= 0 && s <= 100) { S().sleepLogs.push({date:td(), score:s}); save(S()); recalc(); showToast("Sleep saved"); }
+}
+
+function saveMeas() {
+  const wt = +document.getElementById('wtKg').value;
+  const hr = +document.getElementById('hrVal').value;
+  if(wt || hr) { S().measurements.push({date:td(), weight:wt||null, hr:hr||null}); save(S()); recalc(); showToast("Metrics saved"); }
 }
 
 function save(d) { _s=d; persistSave(); }
-function tlog(id) { document.getElementById(id).classList.toggle('open'); }
 function openSettings() { document.getElementById('setModal').classList.add('open'); }
 function closeSettings() { document.getElementById('setModal').classList.remove('open'); }
+function saveSettings() { 
+  _s.claudeKey = document.getElementById('sClaudeKey').value;
+  _s.intervalsKey = document.getElementById('sInterKey').value;
+  _s.intervalsID = document.getElementById('sInterID').value;
+  save(_s); closeSettings(); 
+}
 function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
-// --- INIT ---
-window.onload = () => { gapiLoaded(); gisLoaded(); recalc(); setTimeout(()=>document.getElementById('splash').classList.add('gone'),2000); };
+window.onload = () => { gapiLoaded(); gisLoaded(); setTimeout(()=>document.getElementById('splash').classList.add('gone'),2000); recalc(); };
 </script>
 </body>
 </html>
