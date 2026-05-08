@@ -409,7 +409,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
   <div class="section-label">Daily Activity</div>
   <div class="passive-row">
     <div class="passive-chip"><div class="passive-val" id="passSteps">7,240</div><div class="passive-label">STEPS</div></div>
-    <div class="passive-chip"><div class="passive-val" id="passActive">48min</div><div class="passive-label">ACTIVE</div></div>
+  <div class="passive-chip"><div class="passive-val" id="passActive">48min</div><div class="passive-label">ACTIVE</div></div>
     <div class="passive-chip"><div class="passive-val" id="passCal">1,840</div><div class="passive-label">KCAL</div></div>
   </div>
 
@@ -614,6 +614,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
       <div class="field-group">
         <div class="field-label">DURATION</div>
         <div class="field-row"><input type="number" class="inp inp-sm" id="wDurH" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDurM" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div>
+        <div class="field-hint">e.g. 1h 15min = 75 minutes total</div>
       </div>
       <div class="field-group" id="runFields">
         <div class="field-label">DISTANCE</div>
@@ -758,7 +759,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
       <button class="btn-save" onclick="exportCSV()">Export All Data (CSV)</button>
     </div>
 
-    <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+    <button class="btn-save" style="margin-top:8px" onclick="saveSettings()">Save Settings</button>
+    <button class="btn-repeat" style="margin-top:8px" onclick="closeSettings()">Cancel</button>
   </div>
 </div>
 
@@ -990,7 +992,8 @@ function loadSettingsUI(){
   document.getElementById('sName').value=d.profile.name||'';
   document.getElementById('sHeight').value=d.profile.height||'';
   document.getElementById('sAge').value=d.profile.age||'';
-  document.getElementById('sSlpGoal').value=d.profile.sleepGoal||'';
+  document.getElementById('sSlpGoalH').value=Math.floor(d.profile.sleepGoal)||7;
+  document.getElementById('sSlpGoalM').value=Math.round((d.profile.sleepGoal%1)*60)||30;
   document.getElementById('sWtGoal').value=d.profile.wtGoal||'';
   document.getElementById('sStepGoal').value=d.profile.stepGoal||'';
   document.getElementById('sHRGoal').value=d.profile.hrGoal||'';
@@ -1003,7 +1006,7 @@ function saveSettings(){
   d.profile.name=document.getElementById('sName').value||'Iqbal';
   d.profile.height=+document.getElementById('sHeight').value||170;
   d.profile.age=+document.getElementById('sAge').value||37;
-  d.profile.sleepGoal=+document.getElementById('sSlpGoal').value||7.5;
+  d.profile.sleepGoal=(+document.getElementById('sSlpGoalH').value||7)+(+document.getElementById('sSlpGoalM').value||30)/60;
   d.profile.wtGoal=+document.getElementById('sWtGoal').value||72;
   d.profile.stepGoal=+document.getElementById('sStepGoal').value||8000;
   d.profile.hrGoal=+document.getElementById('sHRGoal').value||55;
@@ -1086,7 +1089,9 @@ function renderTrainingLoad(){
   document.getElementById('sbLoad').textContent=ctl??'—';
   document.getElementById('sbLoadProg').style.width=ctl?Math.min(100,ctl)+'%':'0%';
   const sl=load().sleepLogs;const lastSl=sl[sl.length-1];
-  document.getElementById('sbSleep').textContent=lastSl?.score??'—';
+  const passActive=d.workouts.filter(w=>w.date===new Date().toISOString().split('T')[0]);
+  const totalMin=passActive.reduce((a,w)=>a+w.durMin,0);
+  document.getElementById('passActive').textContent=totalMin>=60?`${Math.floor(totalMin/60)}h ${totalMin%60}min`:totalMin?`${totalMin}min`:'48min';
   document.getElementById('sbSleepProg').style.width=lastSl?.score?lastSl.score+'%':'0%';
   const freshPct=tsb!==null?Math.min(100,Math.max(0,(tsb+20)/40*100)):50;
   document.getElementById('sbFresh').textContent=tsb!==null?(tsb>0?'+':'')+tsb:'—';
