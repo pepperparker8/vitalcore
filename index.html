@@ -1033,7 +1033,7 @@ async function testClaudeKey(){
   if(!key){res.textContent='Enter a key first';res.className='api-test-res fail';return;}
   res.textContent='Testing…';res.className='api-test-res';
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:10,messages:[{role:'user',content:'hi'}]})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:10,messages:[{role:'user',content:'hi'}]})});
     if(r.ok){res.textContent='Connected ✓';res.className='api-test-res ok';}
     else{const e=await r.json();res.textContent=e.error?.message||'Invalid key';res.className='api-test-res fail';}
   }catch(e){res.textContent='Network error';res.className='api-test-res fail';}
@@ -1402,7 +1402,26 @@ IMPORTANT: Only analyse what is available. Note data gaps. Do not invent pattern
 Respond ONLY in valid JSON, no markdown:
 {"archetype":"Peak Readiness|Overreaching|Work Stress Spillover|Chronic Underrecovery|Motivational Dip|Illness Onset Possible","overall":"2-3 sentences","psychological":"2-3 sentences","physical":"2-3 sentences","warnings":"1-2 sentences or empty string","working":"1-2 sentences","today":"one specific action","focus":"this week main focus"}`;
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':d.claudeKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':d.claudeKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    if(!resp.ok){
+      const errTxt=await resp.text();
+      console.error('Claude API error',resp.status,errTxt);
+      throw new Error(`Claude API error ${resp.status}`);
+    }
     if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error');}
     const data=await resp.json();
     const text=data.content[0].text.replace(/```json|```/g,'').trim();
@@ -1444,10 +1463,39 @@ async function syncAll(){
   const d=S();if(!d.intervalsKey||!d.intervalsID){showToast('Add Intervals.icu key in Settings');return;}
   document.getElementById('syncBtn').textContent='…';
   try{
-    const r=await fetch(`https://intervals.icu/api/v1/athlete/${d.intervalsID}/wellness?oldest=2026-04-01`,{headers:{Authorization:'Basic '+btoa('API_KEY:'+d.intervalsKey)},mode:'cors'});
-    if(r.ok){const data=await r.json();if(data?.length){const l=data[data.length-1];d.intervalsData.ctl=l.ctl||d.intervalsData.ctl;d.intervalsData.atl=l.atl||d.intervalsData.atl;d.intervalsData.tsb=l.tsb||d.intervalsData.tsb;}save(d);renderTLoad();showToast('Synced ✓');}
-    else showToast('Sync failed — check credentials');
-  }catch(e){showToast('Sync error — offline?');}
+    const oldest=new Date(Date.now()-90*24*60*60*1000).toISOString().slice(0,10);
+    const r=await fetch(`https://intervals.icu/api/v1/athlete/${encodeURIComponent(d.intervalsID)}/wellness?oldest=${oldest}`,{
+      method:'GET',
+      headers:{
+        'Authorization':'Basic '+btoa(`API_KEY:${d.intervalsKey}`),
+        'Accept':'application/json'
+      },
+      mode:'cors'
+    });
+
+    if(!r.ok){
+      const txt=await r.text();
+      console.error('Intervals sync failed',r.status,txt);
+      throw new Error(`Intervals API error ${r.status}`);
+    }
+
+    const data=await r.json();
+
+    if(Array.isArray(data)&&data.length){
+      const l=data[data.length-1];
+      d.intervalsData.ctl=l.ctl ?? d.intervalsData.ctl;
+      d.intervalsData.atl=l.atl ?? d.intervalsData.atl;
+      d.intervalsData.tsb=l.tsb ?? d.intervalsData.tsb;
+      save(d);
+      renderTLoad();
+      showToast('Intervals synced ✓');
+    }else{
+      showToast('No Intervals data found');
+    }
+  }catch(e){
+    console.error(e);
+    showToast('Intervals sync error — check API key / CORS');
+  }
   finally{document.getElementById('syncBtn').textContent='⟳ SYNC';d.lastSync=new Date().toISOString();save(d);updSyncStatus();}
 }
 function updSyncStatus(){
