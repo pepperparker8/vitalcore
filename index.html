@@ -494,11 +494,40 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
       <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)"><span style="width:12px;height:2px;background:#1A6B3A;display:inline-block;border-radius:1px"></span>Motivation</span>
     </div>
   </div>
+
+  <div class="sec">Correlation Intelligence</div>
+  <div class="card">
+    <div id="corrInsights" style="font-size:13px;line-height:1.8;color:var(--t2)">
+      • Mood, recovery, and training correlations will appear here as you log more data.<br>
+      • Journal patterns will be linked to sleep, stress, and training load.<br>
+      • Psychological trends will improve wellbeing analytics over time.
+    </div>
+  </div>
+
 </div>
 
 <!-- HISTORY -->
 <div class="page page-fade" id="pg-history">
-  <div class="card"><div class="cal-nav"><button class="cal-btn" onclick="calPrev()">‹</button><div class="cal-month" id="calTitle"></div><button class="cal-btn" onclick="calNext()">›</button></div><div class="cal-grid" id="calGrid"></div></div>
+  <div class="card">
+    <div class="cal-nav">
+      <button class="cal-btn" onclick="calPrev()">‹</button>
+      <div class="cal-month" id="calTitle"></div>
+      <button class="cal-btn" onclick="calNext()">›</button>
+    </div>
+
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.6">
+      Full monthly calendar view. Tap any date to review logged workouts, measurements, journal reflections, sleep, and wellbeing data.
+    </div>
+
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec">Selected Day Entries</div>
+    <div id="historyEntries" style="font-size:13px;color:var(--t2);line-height:1.8">
+      Select a calendar date to view all linked entries.
+    </div>
+  </div>
   <div class="day-panel" id="dayPanel"><div class="day-ph"><div class="day-pt" id="dayPT">—</div><button class="day-pc" onclick="closeDayPanel()">×</button></div><div id="dayPB"></div></div>
   <div class="card"><div class="sec">Week Summary</div><div id="weekSum" style="font-size:13px;color:var(--t2);line-height:1.9"></div></div>
   <div class="card"><div class="sec">Personal Records</div><div id="prList"></div></div>
@@ -530,6 +559,47 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
       <div class="fg"><div class="fl">DURATION</div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg" id="wDistFg"><div class="fl">DISTANCE</div><div class="fr"><input type="number" class="inp" id="wDist" placeholder="10.5" step="0.1" min="0"><span class="inp-unit">km</span></div></div>
       <div class="fg"><div class="fl">EFFORT (RPE 1–5)</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select></div>
+      <div class="fg" id="movementFg">
+        <div class="fl">MOVEMENT</div>
+        <select id="wMovement" class="sel-inp">
+          <option value="">Select movement</option>
+          <optgroup label="Push">
+            <option>Bench Press</option>
+            <option>Incline DB Press</option>
+            <option>Overhead Press</option>
+            <option>Dips</option>
+            <option>Push-up</option>
+          </optgroup>
+          <optgroup label="Pull">
+            <option>Pull-up</option>
+            <option>Chin-up</option>
+            <option>Barbell Row</option>
+            <option>Lat Pulldown</option>
+          </optgroup>
+          <optgroup label="Legs">
+            <option>Squat</option>
+            <option>Deadlift</option>
+            <option>Bulgarian Split Squat</option>
+          </optgroup>
+          <optgroup label="Core">
+            <option>Plank</option>
+            <option>Hanging Leg Raise</option>
+          </optgroup>
+          <optgroup label="Calisthenics">
+            <option>Muscle Up</option>
+            <option>Australian Pull-up</option>
+            <option>Pistol Squat</option>
+            <option>L-Sit</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="fr" style="margin-bottom:12px">
+        <input type="number" class="inp" id="wSets" placeholder="Sets">
+        <input type="number" class="inp" id="wReps" placeholder="Reps">
+        <input type="number" class="inp" id="wLoad" placeholder="Load (kg)">
+      </div>
+
       <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Optional — shown in activity list"></div>
       <button class="btn-gold" onclick="saveWorkout()">Record</button>
       <button class="btn-muted" onclick="repeatLast()">↺ Repeat last workout</button>
@@ -558,8 +628,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
       <div class="fg"><div class="fl">GLUCOSE (mg/dL)</div><input type="number" class="inp" id="bmG" placeholder="92" min="20" max="600"></div>
       <div class="fg"><div class="fl">TOTAL CHOLESTEROL (mg/dL)</div><input type="number" class="inp" id="bmC" placeholder="185" min="50" max="500"></div>
       <div class="fg"><div class="fl">URIC ACID (mg/dL)</div><input type="number" class="inp" id="bmU" placeholder="5.2" step="0.1" min="1" max="20"></div>
-      <div class="fg"><div class="fl">HDL (mg/dL)</div><input type="number" class="inp" id="bmH" placeholder="52" min="10" max="150"></div>
-      <div class="fg"><div class="fl">LDL (mg/dL)</div><input type="number" class="inp" id="bmL" placeholder="112" min="10" max="400"></div>
       <button class="btn-gold" onclick="saveBlood()">Save results</button>
     </div>
   </div>
@@ -576,7 +644,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
     </div>
   </div>
 </div>
-
 <!-- INSIGHTS -->
 <div class="page page-fade" id="pg-insights">
   <div class="ins-hdr"><div class="ins-title">Your Health Briefing</div><div class="ins-stamp" id="insStamp">Not yet generated today</div></div>
@@ -2294,5 +2361,1221 @@ updateState = async function(){
 ================================ */
 
 </script>
+
+<script>
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.classList.add('gone');
+      splash.style.display = 'none';
+    }
+
+    const onboarding = document.getElementById('onboarding');
+    if (onboarding && !onboarding.classList.contains('show')) {
+      onboarding.style.display = 'none';
+    }
+
+    const pages = document.querySelector('.pages');
+    if (pages) {
+      pages.style.display = 'block';
+      pages.style.visibility = 'visible';
+      pages.style.opacity = '1';
+    }
+
+    document.querySelectorAll('.page').forEach((p, i) => {
+      if (i === 0 && !document.querySelector('.page.active')) {
+        p.classList.add('active');
+      }
+    });
+
+    console.log('VitalCore failsafe activated');
+  }, 2500);
+});
+</script>
+
+
+<script>
+window.healthData = window.healthData || {
+  training:{},
+  recovery:{},
+  biomarkers:{},
+  psychology:{},
+  journal:{},
+  injuries:{},
+  insights:{}
+};
+
+function saveJournal(){
+  const text = document.getElementById('journalText')?.value || '';
+  const tagsSelect = document.getElementById('journalTags');
+  const tags = Array.from(tagsSelect.selectedOptions).map(o => o.value);
+
+  const entry = {
+    date: new Date().toISOString(),
+    text,
+    tags
+  };
+
+  let journals = JSON.parse(localStorage.getItem('vc_journal') || '[]');
+  journals.unshift(entry);
+
+  if(journals.length > 90){
+    journals = journals.slice(0,90);
+  }
+
+  localStorage.setItem('vc_journal', JSON.stringify(journals));
+
+  const stat = document.getElementById('journalStat');
+  if(stat){
+    stat.textContent = 'Last saved: Today';
+  }
+
+  const corr = document.getElementById('corrInsights');
+  if(corr){
+    corr.innerHTML = `
+      • Journal entries logged: ${journals.length}<br>
+      • Most recent tags: ${tags.join(', ') || 'None'}<br>
+      • Correlation engine ready for mood ↔ sleep ↔ training analysis.
+    `;
+  }
+
+  
+  const historyBox = document.getElementById('historyEntries');
+  if(historyBox){
+    historyBox.innerHTML = `
+      <strong>Latest Journal Entry</strong><br><br>
+      <strong>Tags:</strong> ${tags.join(', ') || 'None'}<br>
+      <strong>Reflection:</strong><br>${text || 'No reflection entered'}
+    `;
+  }
+
+  alert('Journal saved successfully');
+
+}
+</script>
+
+<script>
+window.healthEntries = JSON.parse(localStorage.getItem('vc_daily_entries') || '{}');
+
+function getDateKey(dateStr){
+  if(dateStr) return dateStr;
+  return new Date().toISOString().split('T')[0];
+}
+
+function ensureDateEntry(dateKey){
+  if(!healthEntries[dateKey]){
+    healthEntries[dateKey] = {
+      workouts: [],
+      sleep: null,
+      measurements: null,
+      journal: null,
+      blood: null,
+      injuries: [],
+      checkin: null
+    };
+  }
+  return healthEntries[dateKey];
+}
+
+function persistEntries(){
+  localStorage.setItem('vc_daily_entries', JSON.stringify(healthEntries));
+}
+
+function addEntry(type, payload, dateKey){
+  const key = getDateKey(dateKey);
+  const day = ensureDateEntry(key);
+
+  if(type === 'workouts' || type === 'injuries'){
+    day[type].push(payload);
+  } else {
+    day[type] = payload;
+  }
+
+  persistEntries();
+  renderCalendar();
+}
+
+function renderHistoryEntries(dateKey){
+  const box = document.getElementById('historyEntries');
+  if(!box) return;
+
+  const data = healthEntries[dateKey];
+
+  if(!data){
+    box.innerHTML = 'No entries logged for this date.';
+    return;
+  }
+
+  let html = `<div style="font-weight:600;margin-bottom:10px">${dateKey}</div>`;
+
+  if(data.workouts?.length){
+    html += '<div style="margin-bottom:10px"><strong>🏋 Workouts</strong><br>';
+    data.workouts.forEach(w=>{
+      html += `• ${w.type || 'Workout'} ${w.movement ? '- ' + w.movement : ''}<br>`;
+    });
+    html += '</div>';
+  }
+
+  if(data.sleep){
+    html += `<div style="margin-bottom:10px"><strong>🌙 Sleep</strong><br>
+    Score: ${data.sleep.score || '-'}<br></div>`;
+  }
+
+  if(data.measurements){
+    html += `<div style="margin-bottom:10px"><strong>📏 Measurements</strong><br>
+    Weight: ${data.measurements.weight || '-'} kg<br>
+    Resting HR: ${data.measurements.hr || '-'} bpm<br></div>`;
+  }
+
+  if(data.blood){
+    html += `<div style="margin-bottom:10px"><strong>🧬 Blood</strong><br>
+    Glucose: ${data.blood.glucose || '-'}<br></div>`;
+  }
+
+  if(data.journal){
+    html += `<div style="margin-bottom:10px"><strong>🧠 Mental State</strong><br>
+    Tags: ${(data.journal.tags || []).join(', ')}<br><br>
+    ${data.journal.text || ''}</div>`;
+  }
+
+  if(data.injuries?.length){
+    html += '<div><strong>🩹 Injuries</strong><br>';
+    data.injuries.forEach(i=>{
+      html += `• ${i.part || 'Injury'}<br>`;
+    });
+    html += '</div>';
+  }
+
+  box.innerHTML = html;
+}
+
+function renderCalendar(){
+  const grid = document.getElementById('calGrid');
+  if(!grid) return;
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+
+  const monthName = now.toLocaleString('default',{month:'long'});
+  const title = document.getElementById('calTitle');
+  if(title){
+    title.textContent = `${monthName} ${y}`;
+  }
+
+  grid.innerHTML = '';
+
+  const labels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  labels.forEach(l=>{
+    const d = document.createElement('div');
+    d.className='cal-dlbl';
+    d.textContent=l;
+    grid.appendChild(d);
+  });
+
+  for(let i=0;i<firstDay;i++){
+    const blank = document.createElement('div');
+    blank.className='cal-day empty';
+    grid.appendChild(blank);
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const dateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const div = document.createElement('div');
+    div.className = 'cal-day';
+
+    if(healthEntries[dateKey]){
+      div.classList.add('good','has-dot');
+    }
+
+    div.textContent = d;
+
+    div.onclick = ()=>renderHistoryEntries(dateKey);
+
+    grid.appendChild(div);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderCalendar();
+});
+
+const originalSaveJournal = window.saveJournal;
+window.saveJournal = function(){
+  const text = document.getElementById('journalText')?.value || '';
+  const tags = Array.from(document.getElementById('journalTags').selectedOptions).map(o=>o.value);
+
+  addEntry('journal', {
+    text,
+    tags
+  });
+
+  if(originalSaveJournal){
+    originalSaveJournal();
+  }
+};
+
+window.saveWorkout = function(){
+  const type = window.selectedExercise || 'Workout';
+  const movement = document.getElementById('wMovement')?.value || '';
+  const sets = document.getElementById('wSets')?.value || '';
+  const reps = document.getElementById('wReps')?.value || '';
+  const load = document.getElementById('wLoad')?.value || '';
+  const date = document.getElementById('wDate')?.value || getDateKey();
+
+  addEntry('workouts', {
+    type,
+    movement,
+    sets,
+    reps,
+    load
+  }, date);
+
+  alert('Workout saved to history calendar');
+};
+
+window.saveSleep = function(){
+  addEntry('sleep', {
+    score: document.getElementById('slScore')?.value || ''
+  });
+
+  alert('Sleep saved');
+};
+
+window.saveMeas = function(){
+  addEntry('measurements', {
+    weight: document.getElementById('wtKg')?.value || '',
+    hr: document.getElementById('hrVal')?.value || ''
+  });
+
+  alert('Measurements saved');
+};
+
+window.saveBlood = function(){
+  addEntry('blood', {
+    glucose: document.getElementById('bmG')?.value || '',
+    cholesterol: document.getElementById('bmC')?.value || '',
+    uric: document.getElementById('bmU')?.value || ''
+  });
+
+  alert('Blood markers saved');
+};
+
+window.saveInjury = function(){
+  addEntry('injuries', {
+    part: document.getElementById('injPart')?.value || '',
+    severity: document.getElementById('injSev')?.value || ''
+  });
+
+  alert('Injury logged');
+};
+</script>
+
+<!-- ===== VITALCORE TIER 1 PATCH ===== -->
+<script>
+(function(){
+
+console.log('[VitalCore] Tier 1 Patch Loaded');
+
+const DB_KEY = 'vitalcore_db';
+const DB_VERSION = 1;
+
+const defaultDB = {
+  version: DB_VERSION,
+  profile: {
+    name: '',
+    age: null,
+    height: null,
+    sleepGoal: 450
+  },
+  workouts: [],
+  sleepLogs: [],
+  measurements: [],
+  bloodMarkers: [],
+  checkins: [],
+  injuries: [],
+  journals: [],
+  insights: []
+};
+
+function safeJSONParse(value, fallback){
+  try{
+    return JSON.parse(value);
+  }catch(err){
+    console.error(err);
+    return fallback;
+  }
+}
+
+function migrateDB(db){
+  const migrated = Object.assign({}, structuredClone(defaultDB), db || {});
+  migrated.version = DB_VERSION;
+
+  [
+    'workouts',
+    'sleepLogs',
+    'measurements',
+    'bloodMarkers',
+    'checkins',
+    'injuries',
+    'journals',
+    'insights'
+  ].forEach(k=>{
+    if(!Array.isArray(migrated[k])) migrated[k] = [];
+  });
+
+  return migrated;
+}
+
+function loadDB(){
+  const raw = localStorage.getItem(DB_KEY);
+
+  if(!raw){
+    localStorage.setItem(DB_KEY, JSON.stringify(defaultDB));
+    return structuredClone(defaultDB);
+  }
+
+  const parsed = safeJSONParse(raw, null);
+
+  if(!parsed){
+    return structuredClone(defaultDB);
+  }
+
+  return migrateDB(parsed);
+}
+
+window.DB = loadDB();
+
+function saveDB(){
+  localStorage.setItem(DB_KEY, JSON.stringify(window.DB));
+}
+
+function updateDB(mutator){
+  mutator(window.DB);
+  saveDB();
+
+  if(typeof rerenderApp === 'function'){
+    rerenderApp();
+  }
+}
+
+window.updateDB = updateDB;
+
+window.dateKey = function(date = new Date()){
+  return new Date(date).toISOString().slice(0,10);
+};
+
+window.selectors = {
+
+  workoutsByDate(date){
+    const key = dateKey(date);
+    return DB.workouts.filter(w => w.date === key);
+  },
+
+  sleepByDate(date){
+    const key = dateKey(date);
+    return DB.sleepLogs.find(s => s.date === key);
+  },
+
+  checkinByDate(date){
+    const key = dateKey(date);
+    return DB.checkins.find(c => c.date === key);
+  },
+
+  measurementsByDate(date){
+    const key = dateKey(date);
+    return DB.measurements.find(m => m.date === key);
+  },
+
+  entriesForDate(date){
+    return {
+      workouts: this.workoutsByDate(date),
+      sleep: this.sleepByDate(date),
+      checkin: this.checkinByDate(date),
+      measurements: this.measurementsByDate(date)
+    };
+  },
+
+  hasData(date){
+    const d = this.entriesForDate(date);
+
+    return (
+      d.workouts.length ||
+      d.sleep ||
+      d.checkin ||
+      d.measurements
+    );
+  }
+};
+
+window.rerenderApp = function(){
+
+  if(typeof renderCalendar === 'function'){
+    try{
+      renderCalendar();
+    }catch(err){
+      console.error('renderCalendar failed', err);
+    }
+  }
+
+};
+
+window.renderCalendar = function(){
+
+  const grid = document.getElementById('calGrid');
+
+  if(!grid) return;
+
+  grid.innerHTML = '';
+
+  const title = document.getElementById('calTitle');
+
+  window.calDate = window.calDate || new Date();
+
+  const y = calDate.getFullYear();
+  const m = calDate.getMonth();
+
+  if(title){
+    title.textContent = calDate.toLocaleString('default',{
+      month:'long',
+      year:'numeric'
+    });
+  }
+
+  ['S','M','T','W','T','F','S'].forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'cal-dlbl';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const first = new Date(y,m,1);
+  const startDay = first.getDay();
+  const totalDays = new Date(y,m+1,0).getDate();
+
+  for(let i=0;i<startDay;i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  for(let d=1; d<=totalDays; d++){
+
+    const date = new Date(y,m,d);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
+
+    if(selectors.hasData(date)){
+
+      cell.classList.add('has-dot');
+
+      const e = selectors.entriesForDate(date);
+
+      let score = 0;
+
+      if(e.workouts.length) score++;
+      if(e.sleep) score++;
+      if(e.checkin) score++;
+      if(e.measurements) score++;
+
+      if(score >= 3){
+        cell.classList.add('good');
+      }else if(score >= 2){
+        cell.classList.add('ok');
+      }else{
+        cell.classList.add('low');
+      }
+
+    }
+
+    cell.onclick = ()=>{
+
+      const box = document.getElementById('historyEntries');
+
+      if(!box) return;
+
+      const e = selectors.entriesForDate(date);
+
+      let html = '';
+
+      if(e.sleep){
+        html += '<div class="hist-box"><div class="hist-ttl">SLEEP</div>Score: '+(e.sleep.score || '—')+'</div>';
+      }
+
+      if(e.workouts.length){
+
+        html += '<div class="hist-box"><div class="hist-ttl">WORKOUTS</div>';
+
+        e.workouts.forEach(w=>{
+          html += '<div class="hist-row"><span>'+w.type+'</span><span>'+(w.durationMin || 0)+' min</span></div>';
+        });
+
+        html += '</div>';
+      }
+
+      if(e.measurements){
+        html += '<div class="hist-box"><div class="hist-ttl">MEASUREMENTS</div>Weight: '+(e.measurements.weight || '—')+' kg</div>';
+      }
+
+      if(!html){
+        html = 'No entries for this date';
+      }
+
+      box.innerHTML = html;
+    };
+
+    grid.appendChild(cell);
+  }
+
+};
+
+window.calPrev = function(){
+  calDate.setMonth(calDate.getMonth()-1);
+  renderCalendar();
+};
+
+window.calNext = function(){
+  calDate.setMonth(calDate.getMonth()+1);
+  renderCalendar();
+};
+
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{
+    try{
+      renderCalendar();
+      console.log('[VitalCore] Calendar Patched');
+    }catch(err){
+      console.error(err);
+    }
+  },500);
+});
+
+})();
+</script>
+<!-- ===== END PATCH ===== -->
+
+
+<!-- ===== VITALCORE TIER 2 STABILITY PATCH ===== -->
+<script>
+(function(){
+
+console.log('[VitalCore] Tier 2 Stability Patch Loaded');
+
+function debounce(fn, delay=300){
+  let t;
+  return function(...args){
+    clearTimeout(t);
+    t = setTimeout(()=>fn.apply(this,args), delay);
+  };
+}
+
+window.__vcSaveImmediate = window.saveDB || function(){};
+
+window.saveDB = debounce(function(){
+  try{
+    localStorage.setItem('vitalcore_db', JSON.stringify(window.DB));
+
+    const dot = document.querySelector('.persist-dot');
+
+    if(dot){
+      dot.classList.remove('saving');
+    }
+
+  }catch(err){
+    console.error('[VitalCore] saveDB failed', err);
+
+    try{
+      toast('Storage failed');
+    }catch(e){}
+  }
+}, 250);
+
+window.safeRender = function(name, fn){
+  try{
+    fn();
+  }catch(err){
+    console.error('[VitalCore] Render failure:', name, err);
+  }
+};
+
+window.rerenderApp = function(){
+
+  const renders = [
+    ['calendar', ()=>window.renderCalendar && renderCalendar()],
+    ['activity', ()=>window.renderActivity && renderActivity()],
+    ['history', ()=>window.renderHistory && renderHistory()],
+    ['wellbeing', ()=>window.renderWellbeing && renderWellbeing()],
+    ['insights', ()=>window.renderInsights && renderInsights()],
+    ['readiness', ()=>window.renderReadiness && renderReadiness()]
+  ];
+
+  renders.forEach(([name, fn])=>{
+    safeRender(name, fn);
+  });
+
+};
+
+window.repairDB = function(){
+
+  if(!window.DB || typeof window.DB !== 'object'){
+    console.warn('[VitalCore] DB corrupted. Resetting.');
+    location.reload();
+    return;
+  }
+
+  const requiredArrays = [
+    'workouts',
+    'sleepLogs',
+    'measurements',
+    'bloodMarkers',
+    'checkins',
+    'injuries',
+    'journals',
+    'insights'
+  ];
+
+  requiredArrays.forEach(key=>{
+
+    if(!Array.isArray(DB[key])){
+      console.warn('[VitalCore] Repairing array:', key);
+      DB[key] = [];
+    }
+
+  });
+
+};
+
+repairDB();
+
+window.validateWorkout = function(w){
+
+  if(!w) return false;
+
+  if(!w.date) return false;
+
+  if(!w.type) return false;
+
+  return true;
+};
+
+window.validateSleep = function(s){
+
+  if(!s) return false;
+
+  if(!s.date) return false;
+
+  return true;
+};
+
+window.validateMeasurement = function(m){
+
+  if(!m) return false;
+
+  if(!m.date) return false;
+
+  return true;
+};
+
+window.cleanupCorruptedEntries = function(){
+
+  DB.workouts = DB.workouts.filter(validateWorkout);
+  DB.sleepLogs = DB.sleepLogs.filter(validateSleep);
+  DB.measurements = DB.measurements.filter(validateMeasurement);
+
+};
+
+cleanupCorruptedEntries();
+
+window.showPersistIndicator = function(){
+
+  let dot = document.querySelector('.persist-dot');
+
+  if(!dot){
+
+    const hdr = document.getElementById('hdrStatus');
+
+    if(hdr){
+
+      dot = document.createElement('span');
+      dot.className = 'persist-dot saving';
+
+      hdr.appendChild(dot);
+
+    }
+
+  }else{
+    dot.classList.add('saving');
+  }
+
+};
+
+const originalUpdateDB = window.updateDB;
+
+window.updateDB = function(mutator){
+
+  try{
+
+    showPersistIndicator();
+
+    originalUpdateDB(mutator);
+
+  }catch(err){
+
+    console.error('[VitalCore] updateDB failed', err);
+
+    try{
+      toast('Update failed');
+    }catch(e){}
+
+  }
+
+};
+
+window.safeCanvas = function(canvasId){
+
+  const canvas = document.getElementById(canvasId);
+
+  if(!canvas) return null;
+
+  const ctx = canvas.getContext('2d');
+
+  ctx.setTransform(1,0,0,1,0,0);
+
+  return ctx;
+};
+
+window.safeHistoryRender = function(){
+
+  const box = document.getElementById('historyEntries');
+
+  if(!box) return;
+
+  if(!box.innerHTML.trim()){
+    box.innerHTML = 'Select a calendar date to view entries.';
+  }
+
+};
+
+window.addEventListener('error', function(e){
+
+  console.error('[VitalCore] Global error:', e.error);
+
+});
+
+window.addEventListener('unhandledrejection', function(e){
+
+  console.error('[VitalCore] Promise rejection:', e.reason);
+
+});
+
+window.healthDiagnostics = function(){
+
+  return {
+
+    workouts: DB.workouts.length,
+    sleepLogs: DB.sleepLogs.length,
+    measurements: DB.measurements.length,
+    corruptedWorkouts: DB.workouts.filter(w=>!validateWorkout(w)).length,
+    corruptedSleep: DB.sleepLogs.filter(s=>!validateSleep(s)).length,
+
+    storageKB: (
+      JSON.stringify(DB).length / 1024
+    ).toFixed(2)
+
+  };
+
+};
+
+window.runDiagnostics = function(){
+
+  console.table(healthDiagnostics());
+
+  try{
+    toast('Diagnostics printed to console');
+  }catch(e){}
+
+};
+
+window.addEventListener('load', ()=>{
+
+  setTimeout(()=>{
+
+    try{
+
+      repairDB();
+      cleanupCorruptedEntries();
+      safeHistoryRender();
+
+      console.log('[VitalCore] Tier 2 initialized');
+      console.table(healthDiagnostics());
+
+    }catch(err){
+
+      console.error('[VitalCore] Tier 2 init failed', err);
+
+    }
+
+  }, 700);
+
+});
+
+})();
+</script>
+<!-- ===== END TIER 2 PATCH ===== -->
+
+
+<!-- ===== VITALCORE TIER 3 INTELLIGENCE PATCH ===== -->
+<script>
+(function(){
+
+console.log('[VitalCore] Tier 3 Intelligence Patch Loaded');
+
+window.aiConfidenceScore = function(){
+
+  let score = 0;
+
+  if(DB.workouts.length >= 5) score += 25;
+  if(DB.sleepLogs.length >= 5) score += 25;
+  if(DB.measurements.length >= 3) score += 20;
+  if(DB.checkins.length >= 5) score += 20;
+  if(DB.journals.length >= 3) score += 10;
+
+  return Math.min(score,100);
+};
+
+window.aiConfidenceLabel = function(score){
+
+  if(score >= 80) return 'HIGH';
+  if(score >= 50) return 'MEDIUM';
+
+  return 'LOW';
+};
+
+window.getRecentWorkload = function(days = 7){
+
+  const cutoff = Date.now() - (days * 86400000);
+
+  return DB.workouts
+    .filter(w => {
+      try{
+        return new Date(w.date).getTime() >= cutoff;
+      }catch(e){
+        return false;
+      }
+    })
+    .reduce((sum,w)=>{
+
+      const duration = w.durationMin || 0;
+      const rpe = w.rpe || 1;
+
+      return sum + (duration * rpe);
+
+    },0);
+};
+
+window.getRecoveryScore = function(){
+
+  const sleep = DB.sleepLogs.slice(0,7);
+
+  if(!sleep.length) return null;
+
+  const avg = sleep.reduce((a,b)=>a+(b.score || 0),0) / sleep.length;
+
+  return Math.round(avg);
+};
+
+window.getBurnoutRisk = function(){
+
+  const workload = getRecentWorkload(7);
+  const recovery = getRecoveryScore();
+
+  if(recovery === null){
+    return {
+      score: 50,
+      label: 'UNKNOWN'
+    };
+  }
+
+  let risk = 0;
+
+  if(workload > 1800) risk += 40;
+  else if(workload > 1200) risk += 25;
+  else if(workload > 700) risk += 10;
+
+  if(recovery < 55) risk += 40;
+  else if(recovery < 70) risk += 20;
+
+  risk = Math.min(risk,100);
+
+  let label = 'LOW';
+
+  if(risk >= 70) label = 'HIGH';
+  else if(risk >= 40) label = 'MODERATE';
+
+  return {
+    score: risk,
+    label
+  };
+};
+
+window.detectPatterns = function(){
+
+  const findings = [];
+
+  const recovery = getRecoveryScore();
+  const workload = getRecentWorkload();
+
+  if(recovery !== null){
+
+    if(recovery < 60){
+      findings.push('Recovery quality trending low.');
+    }
+
+    if(recovery >= 80){
+      findings.push('Recovery quality strong this week.');
+    }
+
+  }
+
+  if(workload > 1800){
+    findings.push('Training load is very high.');
+  }else if(workload > 1200){
+    findings.push('Training load elevated.');
+  }
+
+  const hrValues = DB.measurements
+    .map(x=>x.restingHR)
+    .filter(Boolean)
+    .slice(0,5);
+
+  if(hrValues.length >= 3){
+
+    const avg = hrValues.reduce((a,b)=>a+b,0)/hrValues.length;
+
+    if(avg > 70){
+      findings.push('Resting HR elevated — monitor fatigue.');
+    }
+
+  }
+
+  if(!findings.length){
+    findings.push('Not enough strong patterns detected yet.');
+  }
+
+  return findings;
+};
+
+window.generateInsightCard = function(){
+
+  const confidence = aiConfidenceScore();
+  const label = aiConfidenceLabel(confidence);
+
+  const patterns = detectPatterns();
+
+  const burnout = getBurnoutRisk();
+
+  return {
+    generatedAt: new Date().toISOString(),
+    confidence,
+    confidenceLabel: label,
+    burnout,
+    patterns
+  };
+};
+
+window.renderTier3Insights = function(){
+
+  const target = document.getElementById('insContent');
+
+  if(!target) return;
+
+  const insight = generateInsightCard();
+
+  let html = '';
+
+  html += `
+    <div class="ins-block">
+      <div class="ins-bt">DATA CONFIDENCE</div>
+      <div class="ins-text">
+        Confidence Score:
+        <strong>${insight.confidence}/100</strong>
+        (${insight.confidenceLabel})
+      </div>
+    </div>
+  `;
+
+  html += `
+    <div class="ins-block">
+      <div class="ins-bt">BURNOUT RISK</div>
+      <div class="ins-text">
+        Risk:
+        <strong>${insight.burnout.score}/100</strong>
+        (${insight.burnout.label})
+      </div>
+    </div>
+  `;
+
+  html += `
+    <div class="ins-block">
+      <div class="ins-bt">PATTERN DETECTION</div>
+      <div class="ins-text">
+        <ul style="padding-left:18px;line-height:1.8">
+          ${insight.patterns.map(p=>'<li>'+p+'</li>').join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+
+  if(insight.confidence < 50){
+
+    html += `
+      <div class="ins-block">
+        <div class="ins-bt">INSUFFICIENT DATA</div>
+        <div class="ins-text">
+          Continue logging sleep, workouts, measurements,
+          and check-ins to improve analytics accuracy.
+        </div>
+      </div>
+    `;
+
+  }
+
+  target.innerHTML = html;
+
+};
+
+window.renderTier3Dashboard = function(){
+
+  const burnout = getBurnoutRisk();
+
+  const boScore = document.getElementById('boScore');
+  const boLabel = document.getElementById('boLabel');
+  const boBreak = document.getElementById('boBreak');
+
+  if(boScore){
+    boScore.textContent = burnout.score;
+  }
+
+  if(boLabel){
+    boLabel.textContent = burnout.label;
+  }
+
+  if(boBreak){
+    boBreak.textContent =
+      'Recovery vs training balance analyzed from unified DB.';
+  }
+
+};
+
+window.renderCorrelations = function(){
+
+  const box = document.getElementById('corrInsights');
+
+  if(!box) return;
+
+  const patterns = detectPatterns();
+
+  box.innerHTML = patterns
+    .map(p=>'• ' + p)
+    .join('<br>');
+};
+
+const oldRerender = window.rerenderApp;
+
+window.rerenderApp = function(){
+
+  try{
+    oldRerender();
+  }catch(e){
+    console.error(e);
+  }
+
+  try{
+    renderTier3Insights();
+  }catch(e){
+    console.error(e);
+  }
+
+  try{
+    renderTier3Dashboard();
+  }catch(e){
+    console.error(e);
+  }
+
+  try{
+    renderCorrelations();
+  }catch(e){
+    console.error(e);
+  }
+
+};
+
+window.genInsight = function(){
+
+  try{
+
+    renderTier3Insights();
+
+    const insight = generateInsightCard();
+
+    updateDB(db=>{
+
+      db.insights.unshift(insight);
+
+      if(db.insights.length > 30){
+        db.insights = db.insights.slice(0,30);
+      }
+
+    });
+
+    try{
+      toast('Insight generated');
+    }catch(e){}
+
+  }catch(err){
+
+    console.error('[VitalCore] Insight generation failed', err);
+
+    try{
+      toast('Insight generation failed');
+    }catch(e){}
+
+  }
+
+};
+
+window.addEventListener('load', ()=>{
+
+  setTimeout(()=>{
+
+    try{
+
+      renderTier3Insights();
+      renderTier3Dashboard();
+      renderCorrelations();
+
+      console.log('[VitalCore] Tier 3 intelligence initialized');
+
+    }catch(err){
+
+      console.error('[VitalCore] Tier 3 init failed', err);
+
+    }
+
+  }, 1000);
+
+});
+
+})();
+</script>
+<!-- ===== END TIER 3 PATCH ===== -->
+
 </body>
+
 </html>
