@@ -52,6 +52,7 @@ const td=()=>ymd(new Date());
 const dAgo=n=>{const x=new Date();x.setDate(x.getDate()-n);return ymd(x);};
 const daysAgo=date=>Math.round((new Date(td()+'T00:00:00')-new Date(date+'T00:00:00'))/864e5);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const last=a=>a[a.length-1];
 const $=id=>document.getElementById(id);
 const ciFull=c=>!!(c&&c.energy&&c.mood&&c.stress&&c.motivation);

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#2A2A2A">
+<script>try{var t=localStorage.getItem("vc-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="assets/mark.svg">
@@ -137,10 +138,10 @@
     <div class="sec">Mood &amp; energy</div>
     <canvas id="moodCanvas" style="width:100%;height:110px;display:block;"></canvas>
     <div class="legend">
-      <span><i style="background:#1A6B3A"></i>Mood</span>
-      <span><i style="background:#D97706"></i>Energy</span>
-      <span><i style="background:#5A5550"></i>Calm</span>
-      <span><i style="background:#2A2A2A"></i>Motivation</span>
+      <span><i style="background:var(--green)"></i>Mood</span>
+      <span><i style="background:var(--amber)"></i>Energy</span>
+      <span><i style="background:var(--t2)"></i>Calm</span>
+      <span><i style="background:var(--text)"></i>Motivation</span>
     </div>
     <div class="set-note" id="moodNote"></div>
   </div>
@@ -291,6 +292,8 @@
       <button class="btn-gold" style="margin-top:0" id="accBtn" onclick="openAuth()">Sign in</button>
     </div>
 
+    <div class="set-sec"><div class="set-title">Appearance</div>
+      <div class="fg"><div class="fl">THEME</div><select class="sel-inp" id="sTheme" onchange="setTheme(this.value)"><option value="auto">Match my phone</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div>
     <div class="set-sec"><div class="set-title">Profile</div>
       <div class="fg"><div class="fl">NAME</div><input type="text" class="inp" id="sName" placeholder="Your name"></div>
       <div class="fg"><div class="fl">HEIGHT (cm)</div><input type="number" class="inp" id="sHeight" placeholder="170"></div>
