@@ -1,5 +1,5 @@
-const CACHE = 'vitalcore-v7';
-const SHELL = ['./', './index.html', './manifest.json', './icon-96.png', './icon-192.png', './icon-512.png'];
+const CACHE = 'vitalcore-v8';
+const SHELL = ['./', './index.html', './manifest.json', './css/app.css', './js/core.js', './js/sync.js', './js/log.js', './js/settings.js', './js/render.js', './js/insights.js', './js/app.js', './icon-96.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

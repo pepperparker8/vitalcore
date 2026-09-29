@@ -1,0 +1,67 @@
+// ── SETTINGS / BACKUP ────────────────────────────────────────────────────────
+function openSettings(){$('setModal').classList.add('open');loadSetUI();}
+function closeSettings(){$('setModal').classList.remove('open');}
+function loadSetUI(){
+  const d=S();
+  $('sName').value=d.profile.name||'';$('sHeight').value=d.profile.height||'';$('sAge').value=d.profile.age||'';
+  $('sSlpH').value=Math.floor(d.profile.sleepGoal)||7;$('sSlpM').value=Math.round(((d.profile.sleepGoal||7.5)%1)*60)||0;
+  $('sWt').value=d.profile.wtGoal||'';$('sSteps').value=d.profile.stepGoal||'';$('sHR').value=d.profile.hrGoal||'';
+  $('sClaudeKey').value=d.claudeKey||'';$('sInterKey').value=d.intervalsKey||'';$('sInterID').value=d.intervalsID||'';
+  $('claudeTestRes').textContent='';$('icuTestRes').textContent='';
+  const n=Object.keys(d.pending).length;
+  if(_auth){
+    $('accBox').innerHTML=`<b>Signed in as ${esc(_auth.user.email||'your account')}</b>${n?`${n} change${n>1?'s':''} waiting to upload.`:'Everything is backed up online.'}`;
+    $('accBtn').textContent='Sign out';$('accBtn').onclick=signOut;$('accBtn').className='btn-out';$('accBtn').style.marginTop='0';
+  }else{
+    $('accBox').innerHTML=`<b>Saved on this phone only</b>Sign in and your data is backed up online, so you never lose it.`;
+    $('accBtn').textContent='Sign in';$('accBtn').onclick=openAuth;$('accBtn').className='btn-gold';$('accBtn').style.marginTop='0';
+  }
+}
+function saveSettings(){
+  const d=S();
+  d.profile.name=$('sName').value.trim();
+  d.profile.height=+$('sHeight').value||170;d.profile.age=+$('sAge').value||37;
+  d.profile.sleepGoal=(+$('sSlpH').value||7)+(+$('sSlpM').value||0)/60;
+  d.profile.wtGoal=+$('sWt').value||72;d.profile.stepGoal=+$('sSteps').value||8000;d.profile.hrGoal=+$('sHR').value||55;
+  const icuChanged=d.intervalsKey!==$('sInterKey').value.trim()||d.intervalsID!==$('sInterID').value.trim();
+  d.claudeKey=$('sClaudeKey').value.trim();d.intervalsKey=$('sInterKey').value.trim();d.intervalsID=$('sInterID').value.trim();
+  save(d);markProfile();closeSettings();renderGreeting();showToast('Settings saved');
+  if(icuChanged&&d.intervalsKey&&d.intervalsID)syncAll(true);
+}
+function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
+function backupJSON(){
+  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.pending;delete d.tomb;
+  download(`vitalcore-backup-${td()}.json`,'application/json',JSON.stringify(d));
+  showToast('Backup downloaded');
+}
+function restoreBackup(inp){
+  const f=inp.files[0];inp.value='';if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const b=JSON.parse(rd.result);
+      if(!Array.isArray(b.checkins)||!Array.isArray(b.workouts))throw new Error('bad');
+      if(!confirm('Replace the data on this phone with this backup?'))return;
+      const d=S();
+      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey};
+      _s={...JSON.parse(JSON.stringify(DEFAULTS)),...b,...keep,pending:{},tomb:[],onboardingDone:true};
+      migrate();
+      for(const [n,T] of Object.entries(TBL))_s[T.k].forEach(r=>{_s.pending[n+'|'+r.id]=r.ts||Date.now();});
+      _s.insightLog.forEach(e=>{_s.pending['insight|'+e.date]=e.ts;});
+      _s.pending['profile|1']=Date.now();_s.profileTs=Date.now();
+      save(_s);queuePush();closeSettings();initUI();showToast('Backup restored ✓');
+    }catch(e){showToast('That file is not a VitalCore backup');}
+  };
+  rd.readAsText(f);
+}
+function exportCSV(){
+  const d=S(),q=v=>`"${String(v??'').replace(/"/g,'""')}"`;let csv='Date,Type,Value,Detail\n';
+  d.checkins.forEach(c=>{csv+=`${c.date},Check-in,${c.mood??''},energy ${c.energy??''} / stress ${c.stress??''} / motivation ${c.motivation??''} / mindful ${c.mindfulMin||0} min ${q(c.gratitude)}\n`;});
+  d.workouts.forEach(w=>csv+=`${w.date},Workout,${q(w.type)},${w.durMin||0} min ${w.distKm||0} km RPE ${w.rpe||''} ${q(w.notes)}\n`);
+  d.sleepLogs.forEach(s=>csv+=`${s.date},Sleep score,${s.score??''},\n`);
+  d.measurements.forEach(m=>csv+=`${m.date},Measurement,${m.weight??''},BP ${m.bpSys??''}/${m.bpDia??''} HR ${m.hr??''}\n`);
+  d.bloodLogs.forEach(b=>csv+=`${b.date},Blood mg/dL,,glucose ${b.glucose??''} chol ${b.chol??''} uric ${b.uric??''} hdl ${b.hdl??''} ldl ${b.ldl??''}\n`);
+  d.injuries.forEach(i=>csv+=`${i.date},Injury,${q(i.part)},severity ${i.sev}\n`);
+  download('vitalcore-export.csv','text/csv',csv);showToast('CSV exported');
+}
+
