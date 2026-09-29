@@ -22,7 +22,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 
 ### State shape
 ```
-profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal}
+profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal, goalName, goalDate}
 checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, mindfulMin, gratitude, reflection, isEx}
 workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke})
 sleepLogs[]    {date, score 0-100, deepH, deepM, remH, remM, rested, isEx}

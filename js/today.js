@@ -59,3 +59,21 @@ function saveReflect(){
   const rec=ciRec();rec.reflection=JSON.stringify({g,d:dr});
   put('checkins',rec);showToast('Reflection saved 🌙');refreshAll();
 }
+
+// countdown to the next race or goal (profile.goalName / goalDate)
+function renderGoal(){
+  const p=S().profile,el=$('goalCard');if(!el)return;
+  if(!p.goalDate){el.style.display='none';return;}
+  const n=Math.round((new Date(p.goalDate+'T00:00:00')-new Date(td()+'T00:00:00'))/864e5);
+  if(n<-3){el.style.display='none';return;}
+  const nm=esc(p.goalName||'Your goal');
+  let big,sub;
+  if(n<0){big='Done';sub='Well done. Set your next goal in Settings.';}
+  else if(n===0){big='Today';sub='Race day. Trust your training.';}
+  else{
+    big=n+(n===1?' day':' days');
+    sub=n>=56?'Base phase: build steady volume.':n>=28?'Build phase: add quality sessions.':n>=14?'Peak phase: your hardest weeks.':n>=7?'Taper begins: cut volume, keep some intensity.':'Race week: rest, sleep and fuel well.';
+  }
+  el.style.display='';
+  el.innerHTML=`<div class="gl-row"><div><div class="gl-n">${nm}</div><div class="gl-s">${sub}</div></div><div class="gl-big">${big}</div></div>`;
+}
