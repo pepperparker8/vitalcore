@@ -1065,11 +1065,11 @@ function renderWtChart(){
   const gy=H-6-(goal-minV)*yScale;
   ctx.beginPath();ctx.strokeStyle='rgba(201,168,76,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.moveTo(10,gy);ctx.lineTo(W-10,gy);ctx.stroke();ctx.setLineDash([]);
   // weight line
-  ctx.beginPath();ctx.strokeStyle='var(--teal)';ctx.lineWidth=1.5;ctx.lineJoin='round';
+  ctx.beginPath();ctx.strokeStyle='#0D7A6B';ctx.lineWidth=1.5;ctx.lineJoin='round';
   pts.forEach((m,i)=>{const x=i*xScale+10,y=H-6-(m.weight-minV)*yScale;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
   ctx.stroke();
   // dots
-  pts.forEach((m,i)=>{const x=i*xScale+10,y=H-6-(m.weight-minV)*yScale;ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle=m.weight<=goal?'var(--teal)':'var(--amber)';ctx.fill();});
+  pts.forEach((m,i)=>{const x=i*xScale+10,y=H-6-(m.weight-minV)*yScale;ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle=m.weight<=goal?'#0D7A6B':'#B8740A';ctx.fill();});
   const latest=vals[vals.length-1];
   gl.textContent=`Current: ${latest.toFixed(1)} kg · Goal: ${goal} kg · ${latest<=goal?'✓ At goal':(latest-goal).toFixed(1)+' kg to go'}`;
 }
