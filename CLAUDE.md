@@ -14,7 +14,8 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 - AI: Anthropic Messages API with the user's own key.
 
 ## Architecture
-- Single file: `index.html` (HTML + CSS + vanilla JS). No framework, no build step. Keep it that way until Phase 1–3 (Supabase sync) is done.
+- Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
+- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, trends, health, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
 - External: Google Fonts only (IBM Plex Mono, Outfit, DM Serif Display).
 - State: one in-memory object `_s`, accessed via `S()` and written via `save(d)`, which triggers a 400ms debounced persist.
 - Charts: hand-drawn on `<canvas>` (mood trend, weight trend) and DOM bars (sleep, HRV sparkline, blood sparklines).
@@ -22,7 +23,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 ### State shape
 ```
 profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal}
-checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, isEx}
+checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, mindfulMin, gratitude, reflection, isEx}
 workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke})
 sleepLogs[]    {date, score 0-100, deepH, deepM, remH, remM, rested, isEx}
 measurements[] {date, bpSys, bpDia, weight, hr, isEx}
@@ -42,23 +43,15 @@ exDismissed, hasRealData, onboardingDone
 - **Stress is inverted** everywhere it feeds a score: 1 = calm (good), 4 = very stressed (bad). Always use `5 - stress`.
 - Blood scoring (`scoreBM`): normal 90, borderline 55, high 20.
 
-## Phase 1–3 (Supabase sync): blockers (fix first, in this order)
-1. **Persistence.** Replace `window.storage` (claude.ai only) with IndexedDB, or localStorage as a simpler first step. Keep the `persistLoad()` / `persistSave()` interface so nothing else changes.
-2. **Anthropic API header.** Add `'anthropic-dangerous-direct-browser-access': 'true'` to both fetch calls (`genInsight`, `testClaudeKey`). Update the model string from `claude-sonnet-4-20250514` to a current Sonnet model.
-3. **Intervals.icu proxy.** Browser calls likely fail on CORS. Add a small serverless proxy (Vercel function at `/api/intervals`) that forwards requests with Basic auth. Point `syncAll()` at it.
-4. **CSS calc bugs.** `calc(100%+6px)` and `calc(var(--nav)+12px)` need spaces around `+`. Affects `.sb-tip` and `#toast`.
-5. **Canvas colours.** `renderWtChart()` passes `'var(--teal)'` and `'var(--amber)'` to canvas. Canvas can't read CSS variables. Use hex values or read them with `getComputedStyle`.
-6. **Hardcoded dates.** `syncAll()` uses `oldest=2026-04-01`. Make it relative (last 90 days).
-7. **PWA.** Create `manifest.json` (name, icons, theme `#2A2A2A`, display standalone) and a real `sw.js` with cache-first for the shell. Register from the correct path.
+## Status
+Done: persistence, Anthropic header and model, PWA, Supabase sync, file split, strength/swim logger, Today redesign, Trends, Health tab. Redesign plan: `docs/REDESIGN_PLAN.md`.
+Open: Intervals.icu proxy if browser CORS fails, offline check on the S24, real passive activity (steps, kcal).
+Verify after each change; don't batch.
 
-Verify after each fix. Don't batch.
-
-## Phase 4 backlog (after Phase 1–3 (Supabase sync))
-- Real passive activity (steps, kcal) from Intervals.icu wellness data instead of example values.
-- Blood marker 90-day trend chart on tap.
+## Backlog
 - Weekly digest (same seven insight sections).
-- Read-only share view for a coach or doctor.
-- Split into modules only if the file becomes hard to maintain.
+- Read-only share link for a coach or doctor.
+- Rest timer between sets, reminders.
 
 ## Design system (do not change without asking)
 - Charcoal `#2A2A2A`, gold `#C9A84C`, cream background `#F7F5F0`, teal `#0D7A6B` for sleep and HRV only.

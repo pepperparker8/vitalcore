@@ -326,13 +326,13 @@
   <div class="modal">
     <div class="modal-title">Sign in <button class="modal-close" onclick="closeAuth()">×</button></div>
     <div id="authStep1">
-      <div class="set-note" style="font-size:13px;margin-bottom:12px;color:var(--t2)">Enter your email. We'll send a sign-in code. No password needed, and it's a one-time step on this phone.</div>
+      <div class="set-note" style="font-size:13px;margin-bottom:12px;color:var(--t2)">Enter your email. We'll email you a sign-in link. Tap it on this phone and you're in. No password needed.</div>
       <div class="fg"><div class="fl">EMAIL</div><input type="email" class="inp" id="authEmail" placeholder="you@example.com" autocomplete="email" autocapitalize="off"></div>
-      <button class="btn-gold" onclick="sendCode()" id="authSend">Send code</button>
+      <button class="btn-gold" onclick="sendCode()" id="authSend">Send link</button>
     </div>
     <div id="authStep2" style="display:none">
       <div class="set-note" style="font-size:13px;margin-bottom:12px;color:var(--t2)" id="authSent"></div>
-      <div class="fg"><div class="fl">CODE FROM THE EMAIL</div><input type="text" class="inp" id="authCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10"></div>
+      <div class="fg"><div class="fl">CODE (ONLY IF THE EMAIL SHOWS ONE)</div><input type="text" class="inp" id="authCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10"></div>
       <button class="btn-gold" onclick="verifyCode()" id="authVerify">Sign in</button>
       <button class="btn-muted" onclick="authBack()">Use a different email</button>
     </div>

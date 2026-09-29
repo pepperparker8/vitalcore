@@ -1,4 +1,4 @@
-// ── AUTH (email code, no password) ───────────────────────────────────────────
+// ── AUTH (email link or code, no password) ───────────────────────────────────────────
 let _auth=null;
 function loadAuth(){try{_auth=JSON.parse(localStorage.getItem('vitalcore-auth')||'null');}catch(e){_auth=null;}}
 function setAuth(a){_auth=a;try{a?localStorage.setItem('vitalcore-auth',JSON.stringify(a)):localStorage.removeItem('vitalcore-auth');}catch(e){}}
@@ -12,14 +12,14 @@ async function sendCode(){
   try{
     const r=await fetch(SB_URL+'/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,create_user:true})});
     if(!r.ok){const m=await errMsg(r);$('authErr').textContent=r.status===429?'Too many emails sent. Wait a few minutes and try again.':m;return;}
-    $('authSent').textContent=`We sent an email to ${email}. Type the code from it below (or tap the link in the email).`;
+    $('authSent').textContent=`We sent an email to ${email}. Tap the sign-in link in it on this phone. If the email shows a number code instead, type it below.`;
     $('authStep1').style.display='none';$('authStep2').style.display='block';$('authCode').focus();
   }catch(e){$('authErr').textContent='No internet connection.';}
-  finally{$('authSend').textContent='Send code';}
+  finally{$('authSend').textContent='Send link';}
 }
 async function verifyCode(){
   const email=$('authEmail').value.trim().toLowerCase(),token=$('authCode').value.trim();
-  if(token.length<6){$('authErr').textContent='Enter the code from the email.';return;}
+  if(token.length<6){$('authErr').textContent='Tap the link in the email, or enter the code if it shows one.';return;}
   $('authErr').textContent='';$('authVerify').textContent='Checking…';
   try{
     const r=await fetch(SB_URL+'/auth/v1/verify',{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({type:'email',email,token})});

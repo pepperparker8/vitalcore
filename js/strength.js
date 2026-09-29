@@ -193,9 +193,10 @@ function strBests(){
   });
   return rows;
 }
-function weeklySets(){
+function weeklySets(days=7){
   const c=Object.fromEntries(MUSCLES.map(m=>[m,0]));
-  S().workouts.forEach(w=>{if(daysAgo(w.date)>=0&&daysAgo(w.date)<7)(w.sets||[]).filter(isWork).forEach(s=>{if(c[s.muscle]!==undefined)c[s.muscle]++;});});
+  S().workouts.forEach(w=>{if(daysAgo(w.date)>=0&&daysAgo(w.date)<days)(w.sets||[]).filter(isWork).forEach(s=>{if(c[s.muscle]!==undefined)c[s.muscle]++;});});
+  if(days>7)Object.keys(c).forEach(m=>c[m]=Math.round(c[m]/(days/7)));
   return c;
 }
 
@@ -208,7 +209,8 @@ function renderStrTrend(){
     $('strMuscles').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No strength data yet</div><div class="empty-sub">Log a Weights or Calisthenics workout with sets and your progress shows here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';
     $('strSel').style.display='none';$('strCanvas').style.display='none';$('strSum').textContent='';return;
   }
-  const wk=weeklySets();
+  const wk=weeklySets(_range);
+  const tt=document.querySelector('#strCard .tr-sum');if(tt)tt.textContent=_range>7?`avg sets per week per muscle, last ${_range} days`:'sets per muscle, last 7 days';
   $('strMuscles').innerHTML=MUSCLES.map(m=>{
     const n=wk[m],col=n<10?'var(--amber)':n<=20?'var(--green)':'var(--red)',lbl=n===0?'none':n<10?'low':n<=20?'on target':'high';
     return`<div class="mu-row"><span class="mu-n">${m}</span><span class="mu-bar"><span class="mu-fill" style="display:block;width:${Math.min(100,n/20*100)}%;background:${col}"></span></span><span class="mu-v" style="color:${col}">${n} · ${lbl}</span></div>`;
