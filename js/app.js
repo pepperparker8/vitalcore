@@ -24,7 +24,7 @@ function toggleWhy(id){$(id).classList.toggle('open');}
 let _toastT=null;
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),3200);}
 function recalc(){
-  const s=calcReadiness();renderRing(s);renderZone(s);renderGreeting();
+  const s=calcReadiness();recordReadiness(s);renderRing(s);renderZone(s);renderGreeting();
   renderWhy();renderNext();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
