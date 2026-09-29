@@ -266,6 +266,7 @@
 <!-- INSIGHTS -->
 <div class="page page-fade" id="pg-insights">
   <div class="ins-hdr"><div class="ins-title">Your Health Briefing</div><div class="ins-stamp" id="insStamp">Not yet generated today</div></div>
+  <div class="card" id="digestCard"></div>
   <div class="ins-toggle"><button class="ins-tog active" onclick="selPeriod('weekly',this)">Weekly</button><button class="ins-tog" onclick="selPeriod('monthly',this)">Monthly</button></div>
   <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="font-size:32px;margin-bottom:12px">🧠</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI Insight Ready</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">Claude analyses your logged data and generates a personalised health briefing.</div><button class="ins-gen" onclick="genInsight()">Generate Briefing</button></div></div>
   <div class="ins-hist-sec" id="insHistSec" style="display:none">
@@ -370,6 +371,7 @@
 <script src="js/render.js"></script>
 <script src="js/trends.js"></script>
 <script src="js/health.js"></script>
+<script src="js/digest.js"></script>
 <script src="js/insights.js"></script>
 <script src="js/app.js"></script>
 </body>

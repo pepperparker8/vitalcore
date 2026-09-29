@@ -15,7 +15,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
-- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, trends, health, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
+- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, trends, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
 - External: Google Fonts only (IBM Plex Mono, Outfit, DM Serif Display).
 - State: one in-memory object `_s`, accessed via `S()` and written via `save(d)`, which triggers a 400ms debounced persist.
 - Charts: hand-drawn on `<canvas>` (mood trend, weight trend) and DOM bars (sleep, HRV sparkline, blood sparklines).
@@ -49,7 +49,6 @@ Open: Intervals.icu proxy if browser CORS fails, offline check on the S24, real 
 Verify after each change; don't batch.
 
 ## Backlog
-- Weekly digest (same seven insight sections).
 - Read-only share link for a coach or doctor.
 - Reminders.
 
