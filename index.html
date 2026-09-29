@@ -630,21 +630,21 @@ const DEFAULTS={
   insightLog:[],lastInsight:null
 };
 
-// ── PERSISTENCE via window.storage ─────────────────────────────────────────
+// ── PERSISTENCE via localStorage ─────────────────────────────────────────
 let _s=JSON.parse(JSON.stringify(DEFAULTS));
 let _saveTimer=null;
 
 async function persistLoad(){
   try{
-    const r=await window.storage.get('vitalcore-data');
-    if(r&&r.value){_s={...DEFAULTS,...JSON.parse(r.value)};return true;}
+    const v=localStorage.getItem('vitalcore-data');
+    if(v){_s={...DEFAULTS,...JSON.parse(v)};return true;}
   }catch(e){console.log('Storage load:',e.message);}
   return false;
 }
 function persistSave(){
   if(_saveTimer)clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
-    try{await window.storage.set('vitalcore-data',JSON.stringify(_s));}
+    try{localStorage.setItem('vitalcore-data',JSON.stringify(_s));}
     catch(e){console.log('Storage save:',e.message);}
   },400);
 }
