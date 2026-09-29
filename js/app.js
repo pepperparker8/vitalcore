@@ -11,8 +11,7 @@ let _tab='today';
 function refreshActive(){
   const tab=_tab;
   if(tab==='today')recalc();
-  if(tab==='wellbeing'){renderWeekBanner();renderBurnout();renderSleepBars();renderHRVSpark();requestAnimationFrame(()=>{renderTrends();renderWtChart();renderStrTrend();});}
-  if(tab==='history'){renderCalendar();renderBests();renderWeekSum();}
+  if(tab==='trends')renderTrendsTab();
   if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderSleepBars();}
   if(tab==='insights'){renderInsightHistory();showTodayInsight();}
 }
@@ -29,7 +28,7 @@ function recalc(){
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth)pushAll().catch(()=>{});updSyncStatus();});
-window.addEventListener('resize',()=>{if(_tab==='wellbeing'){renderTrends();renderWtChart();renderStrTrend();}});
+window.addEventListener('resize',()=>{if(_tab==='trends')renderTrendsTab();});
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 function initUI(){

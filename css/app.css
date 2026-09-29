@@ -443,3 +443,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .nx-dots{display:flex;gap:6px;justify-content:center;}
 .nx-dot{width:24px;height:4px;border-radius:2px;background:var(--bdr);}
 .nx-dot.done{background:var(--gold);}
+
+.seg{display:flex;background:var(--sur2);border-radius:10px;padding:3px;margin-bottom:12px;}
+.seg button{flex:1;min-height:44px;border:none;background:none;border-radius:8px;font-family:var(--body);font-size:13px;color:var(--t2);cursor:pointer;}
+.seg button.active{background:var(--sur);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.chip-row.sp{flex-wrap:nowrap;gap:4px;}.chip-row.sp .chip{flex:1;padding:0 2px;font-size:11px;min-width:0;white-space:nowrap;}

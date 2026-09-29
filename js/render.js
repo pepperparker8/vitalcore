@@ -60,8 +60,8 @@ function renderStreak(){
 function barsHTML(vals,cls,max){
   const n=vals.length,tight=n>14;
   const bars=vals.map(v=>`<div class="bar-c"><div class="bar ${v.v?cls:''}" style="height:${v.v?Math.max(6,Math.round(v.v/max*100)):5}%"></div></div>`).join('');
-  const L=['S','M','T','W','T','F','S'];
-  const lbl=vals.map((v,i)=>{const dt=new Date(v.date+'T12:00:00');return`<span>${n<=7?L[dt.getDay()]:(i%7===0||i===n-1?dt.getDate():'')}</span>`;}).join('');
+  const L=['S','M','T','W','T','F','S'],wk=vals[0]?.wk;
+  const lbl=vals.map((v,i)=>{const dt=new Date(v.date+'T12:00:00');return`<span>${wk?(i%2===0?dt.getDate():''):n<=7?L[dt.getDay()]:(i%7===0||i===n-1?dt.getDate():'')}</span>`;}).join('');
   return`<div class="bars ${tight?'tight':''}">${bars}</div><div class="bar-l ${tight?'tight':''}">${lbl}</div>`;
 }
 function seriesFor(n,fn){return Array.from({length:n},(_,i)=>{const date=dAgo(n-1-i);return{date,v:fn(date)};});}
@@ -109,16 +109,21 @@ function renderActList(){
 
 // ── RENDER: WELLBEING ────────────────────────────────────────────────────────
 let _range=7;
-function setRange(n){_range=n;$('rng7').classList.toggle('active',n===7);$('rng30').classList.toggle('active',n===30);renderTrends();}
+function setRange(n){_range=n;[7,30,90].forEach(x=>$('rng'+x).classList.toggle('active',n===x));renderTrendsTab();}
+function bucket(ser){
+  if(ser.length<=30)return ser;
+  const out=[];
+  for(let e=ser.length;e>0;e-=7){const ch=ser.slice(Math.max(0,e-7),e);out.unshift({date:ch[0].date,v:ch.reduce((a,x)=>a+x.v,0),wk:true});}
+  return out;
+}
 function renderTrends(){
   renderMoodChart();
-  const mind=seriesFor(_range,mindOn),train=seriesFor(_range,trainOn);
-  const tm=mind.reduce((a,x)=>a+x.v,0),tt=train.reduce((a,x)=>a+x.v,0),days=mind.filter(x=>x.v).length;
+  const mr=seriesFor(_range,mindOn),tr=seriesFor(_range,trainOn),mind=bucket(mr),train=bucket(tr),k=mind[0].wk?7:1;
+  const tm=mr.reduce((a,x)=>a+x.v,0),tt=tr.reduce((a,x)=>a+x.v,0),days=mr.filter(x=>x.v).length,tdays=tr.filter(x=>x.v).length;
   $('mindSum').textContent=tm?`${fmtDur(tm)} · ${days} day${days!==1?'s':''}`:'none logged';
-  $('mindBars').innerHTML=barsHTML(mind,'mind',Math.max(15,...mind.map(x=>x.v)));
-  const tdays=train.filter(x=>x.v).length;
+  $('mindBars').innerHTML=barsHTML(mind,'mind',Math.max(15*k,...mind.map(x=>x.v)));
   $('trainSum').textContent=tt?`${fmtDur(tt)} · ${tdays} day${tdays!==1?'s':''}`:'none logged';
-  $('trainBars').innerHTML=barsHTML(train,'train',Math.max(30,...train.map(x=>x.v)));
+  $('trainBars').innerHTML=barsHTML(train,'train',Math.max(30*k,...train.map(x=>x.v)));
 }
 function renderSleepBars(){
   const d=S(),L=['S','M','T','W','T','F','S'];let html='';
