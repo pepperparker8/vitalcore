@@ -51,7 +51,7 @@ Verify after each change; don't batch.
 ## Backlog
 - Weekly digest (same seven insight sections).
 - Read-only share link for a coach or doctor.
-- Rest timer between sets, reminders.
+- Reminders.
 
 ## Design system (do not change without asking)
 - Charcoal `#2A2A2A`, gold `#C9A84C`, cream background `#F7F5F0`, teal `#0D7A6B` for sleep and HRV only.

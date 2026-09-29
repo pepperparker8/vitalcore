@@ -478,3 +478,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
   .rp-x,.rp-actions{display:none!important;}
   .report-sheet{max-width:none;padding:0;}
 }
+
+/* rest timer */
+#restBar{display:none;position:fixed;left:8px;right:8px;bottom:calc(var(--nav) + 8px);z-index:150;background:var(--char);color:#fff;border:1px solid rgba(201,168,76,.4);border-radius:14px;padding:6px 8px 6px 14px;align-items:center;gap:8px;box-shadow:var(--sh);}
+#restBar.show{display:flex;}
+#restBar.done{background:var(--gold);color:var(--char);}
+.rest-l{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--gold);}
+#restBar.done .rest-l{color:var(--char);}
+#restTime{font-family:var(--serif);font-size:24px;min-width:52px;}
+.rest-p{display:flex;gap:2px;flex:1;justify-content:flex-end;}
+.rest-p button,.rest-x{min-height:44px;min-width:40px;background:none;border:none;color:inherit;font-family:var(--mono);font-size:11px;cursor:pointer;opacity:.75;}
+.rest-x{opacity:1;color:var(--gold);}
+#restBar.done .rest-x{color:var(--char);}

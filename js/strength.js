@@ -98,7 +98,7 @@ function cycRir(i,j){const s=_sess[i].sets[j];s.rir=s.rir===null?0:s.rir>=3?null
 function cycKind(i,j){const s=_sess[i].sets[j];s.kind=KINDS[(KINDS.indexOf(s.kind)+1)%3];renderStrength();}
 function addSet(i){
   const a=_sess[i].sets,p=a[a.length-1]||blankSet();
-  a.push({kg:p.kg,reps:p.reps,secs:p.secs,rir:p.rir,kind:'work'});renderStrength();
+  a.push({kg:p.kg,reps:p.reps,secs:p.secs,rir:p.rir,kind:'work'});renderStrength();restStart();
 }
 function rmSet(i,j){_sess[i].sets.splice(j,1);if(!_sess[i].sets.length)_sess[i].sets.push(blankSet());renderStrength();}
 function rmEx(i){_sess.splice(i,1);renderStrength();}
@@ -233,3 +233,14 @@ function renderStrTrend(){
   const l=last(a),best=Math.max(...a.map(val));
   $('strSum').textContent=vals.length<2?`Log ${_strEx} once more to see a trend. Latest: ${Math.round(val(l))} ${unit}.`:`${_strEx}: latest ${Math.round(val(l))} ${unit} · best ${Math.round(best)} · ${a.length} sessions`;
 }
+
+// ---- rest timer: starts when you add the next set; end time based so it survives screen-off ----
+let _restEnd=0,_restTick=null,_restLen=+(()=>{try{return localStorage.getItem('vc-rest')}catch(e){return 0}})()||90;
+function restStart(){_restEnd=Date.now()+_restLen*1000;$('restBar').classList.add('show');clearInterval(_restTick);_restTick=setInterval(restTick,250);restTick();}
+function restTick(){
+  const left=Math.ceil((_restEnd-Date.now())/1000);
+  if(left<=0){clearInterval(_restTick);$('restTime').textContent='Go!';$('restBar').classList.add('done');try{navigator.vibrate?.([300,120,300]);}catch(e){}setTimeout(restStop,4000);return;}
+  $('restTime').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+}
+function restStop(){clearInterval(_restTick);$('restBar').classList.remove('show','done');}
+function restLen(n){_restLen=n;try{localStorage.setItem('vc-rest',n);}catch(e){}if($('restBar').classList.contains('show'))restStart();else showToast('Rest set to '+fmtDur(n/60|0)+(n%60?' '+n%60+'s':''));}

@@ -356,6 +356,9 @@
   <div class="nav-item" onclick="switchTab('health')" id="nav-health"><div class="nav-icon">🩺</div><div class="nav-label">Health</div></div>
   <div class="nav-item" onclick="switchTab('insights')" id="nav-insights"><div class="nav-icon">🧠</div><div class="nav-label">Insights</div></div>
 </nav>
+<div id="restBar"><div class="rest-l">REST</div><div id="restTime">1:30</div>
+  <div class="rest-p"><button onclick="restLen(60)">1:00</button><button onclick="restLen(90)">1:30</button><button onclick="restLen(120)">2:00</button><button onclick="restLen(180)">3:00</button></div>
+  <button class="rest-x" onclick="restStop()">Skip</button></div>
 <div id="toast"></div>
 
 <script src="js/core.js"></script>
