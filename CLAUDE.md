@@ -45,7 +45,8 @@ exDismissed, hasRealData, onboardingDone
 
 ## Status
 Done: persistence, Anthropic header and model, PWA, Supabase sync, file split, strength/swim logger, Today redesign, Trends, Health tab. Redesign plan: `docs/REDESIGN_PLAN.md`.
-Open: Intervals.icu proxy if browser CORS fails, offline check on the S24, real passive activity (steps, kcal).
+Intervals.icu allows browser calls from the site origin (checked: CORS allows Authorization), so no proxy is needed.
+Open: verify the Intervals.icu connection with real keys, offline check on the S24, real passive activity (steps, kcal).
 Verify after each change; don't batch.
 
 ## Backlog
