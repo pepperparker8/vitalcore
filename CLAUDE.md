@@ -15,10 +15,10 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
-- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, trends, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
+- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, form, trends, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
 - External: Google Fonts only (IBM Plex Mono, Outfit, DM Serif Display).
 - State: one in-memory object `_s`, accessed via `S()` and written via `save(d)`, which triggers a 400ms debounced persist.
-- Charts: hand-drawn on `<canvas>` (mood trend, weight trend) and DOM bars (sleep, HRV sparkline, blood sparklines).
+- Charts: hand-drawn on `<canvas>` (mood, weight, fitness/fatigue/form and readiness trend via `lineChart()` in `js/form.js`). Canvas colours come from `cssv('--name')`, so they follow the theme. Readiness is snapshotted daily in `readHist` (local only) and DOM bars (sleep, HRV sparkline, blood sparklines).
 
 ### State shape
 ```
@@ -53,9 +53,12 @@ Verify after each change; don't batch.
 - Read-only share link for a coach or doctor.
 - Reminders.
 
-## Design system (do not change without asking)
-- Charcoal `#2A2A2A`, gold `#C9A84C`, cream background `#F7F5F0`, teal `#0D7A6B` for sleep and HRV only.
+## Design system (changed with the owner's approval; ask before further changes)
+- Light: cream background `#F7F5F0`, charcoal text. Dark: `#141414` background, `#1E1E1E` surfaces. Dark follows the phone or Settings > Appearance (`vc-theme`: auto/light/dark). All colours are CSS variables with dark overrides; never hardcode colours in JS, use `cssv()`.
+- Gold `#D4AF37` (`--gold-dk` `#B08F1E`), amber `#D97706` (warnings, distinct from gold), teal `#0D7A6B` for sleep and HRV only.
 - Gold is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
+- Logo: white and orange-red V mark (`assets/mark.svg`, gradient `#FF8A1F` to `#FF3B2E`), not gold. Icons on `#1A1A1A`, incl. maskable.
+- Icons: inline SVG line icons (1.8 stroke, currentColor) for nav; sport grid still uses emoji.
 - DM Serif Display for scores and headings, IBM Plex Mono for labels and data, Outfit for body.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.
