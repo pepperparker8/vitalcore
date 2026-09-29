@@ -58,7 +58,7 @@ async function genInsight(){
   if(!d.claudeKey){showToast('Add your Claude API key in Settings first');openSettings();return;}
   if(showTodayInsight())return;
   $('insContent').innerHTML='<div class="ins-loading">🧠 Analysing your data…</div>';
-  const ci=d.checkins.slice(-14).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,mindfulMin:c.mindfulMin||0,grateful:c.gratitude||null}));
+  const ci=d.checkins.slice(-14).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,mindfulMin:c.mindfulMin||0,grateful:c.gratitude||null,reflection:reflOf(c)}));
   const sl=d.sleepLogs.slice(-7).map(s=>({date:s.date,score:s.score??null,deepH:s.deepH??null,remH:s.remH??null}));
   const wk=d.workouts.filter(w=>daysAgo(w.date)<14).map(w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,rpe:w.rpe,notes:w.notes,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?w.sub:undefined}));
   const wkSets=weeklySets();

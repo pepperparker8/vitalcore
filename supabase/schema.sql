@@ -18,6 +18,7 @@ create table if not exists checkins (
   motivation int check (motivation between 1 and 4),
   mindful_min int default 0,
   gratitude text,
+  reflection text,
   updated_at timestamptz not null default now()
 );
 
@@ -36,6 +37,7 @@ create table if not exists workouts (
 );
 alter table workouts add column if not exists sets jsonb;
 alter table workouts add column if not exists sub jsonb;
+alter table checkins add column if not exists reflection text;
 
 create table if not exists sleep_logs (
   id text primary key,

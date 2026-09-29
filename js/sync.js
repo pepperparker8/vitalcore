@@ -76,8 +76,8 @@ async function sbFetch(path,opts={},retry=true){
 // ── CLOUD SYNC ───────────────────────────────────────────────────────────────
 let _pushT=null,_pushing=false,_syncing=false;
 function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(()=>{}),1500);}
-const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub')&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
-const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub')&&x[b]==null)continue;r[a]=x[b];}return r;};
+const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub'||a==='reflection')&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
+const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub'||a==='reflection')&&x[b]==null)continue;r[a]=x[b];}return r;};
 
 async function pushAll(){
   if(!_auth||_pushing)return;

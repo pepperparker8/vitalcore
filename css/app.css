@@ -428,3 +428,18 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 /* check-in: right = better on every row */
 .ci-row{flex-wrap:wrap;row-gap:2px;}
 .ci-ends{width:calc(100% - 100px);margin-left:100px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.04em;}
+
+/* today: reasons, next step, reflection */
+.hero-why{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;}
+.why{font-family:var(--mono);font-size:10px;padding:5px 9px;border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);}
+.why.up{color:#7fd6a4;}.why.down{color:#f0a08c;}
+.hero-miss{font-size:11px;color:rgba(255,255,255,.45);margin-top:8px;}
+.next-card{border-color:var(--gold);}
+.nx-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--t2);margin-bottom:8px;}
+.nx-row{display:flex;gap:12px;align-items:center;}
+.nx-ico{font-size:28px;}
+.nx-t{font-family:var(--serif);font-size:19px;}
+.nx-s{font-size:12px;color:var(--t2);margin-top:2px;}
+.nx-dots{display:flex;gap:6px;justify-content:center;}
+.nx-dot{width:24px;height:4px;border-radius:2px;background:var(--bdr);}
+.nx-dot.done{background:var(--gold);}

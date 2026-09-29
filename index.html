@@ -50,7 +50,10 @@
       </div>
       <div><div class="hero-zone" id="heroZone">Loading…</div><div class="hero-ins" id="heroIns">Calculating…</div></div>
     </div>
+    <div class="hero-why" id="heroWhy"></div><div class="hero-miss" id="heroMissing"></div>
   </div>
+
+  <div class="card next-card" id="nextCard"></div>
 
   <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
   <div class="habits" id="habits"></div>
@@ -89,6 +92,13 @@
     <div id="qxDur"><div class="mini-lbl">HOW LONG?</div><div class="chip-row" id="qxChips"></div></div>
     <button class="btn-gold" id="qxSave" style="margin-top:4px" onclick="saveQuick()">Save workout</button>
     <div class="set-note">Need distance, sets, effort or a note? Use the Log tab.</div>
+  </div>
+
+  <div class="card" id="reflCard" style="display:none">
+    <div class="sec">Evening reflection</div>
+    <div class="fl">WHAT GAVE ME ENERGY TODAY</div><input type="text" class="inp" id="reflGave" maxlength="200" placeholder="A long walk, a good talk…" style="margin-bottom:12px">
+    <div class="fl">WHAT DRAINED ME</div><input type="text" class="inp" id="reflDrain" maxlength="200" placeholder="Back-to-back meetings…" style="margin-bottom:12px">
+    <button class="btn-gold" id="reflBtn" onclick="saveReflect()">Save reflection</button>
   </div>
 
   <div class="card">
@@ -333,6 +343,7 @@
 <script src="js/sync.js"></script>
 <script src="js/strength.js"></script>
 <script src="js/log.js"></script>
+<script src="js/today.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/render.js"></script>
 <script src="js/insights.js"></script>
