@@ -58,7 +58,7 @@ Verify after each change; don't batch.
 - Gold `#D4AF37` (`--gold-dk` `#B08F1E`), amber `#D97706` (warnings, distinct from gold), teal `#0D7A6B` for sleep and HRV only.
 - Gold is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - Logo: white and orange-red V mark (`assets/mark.svg`, gradient `#FF8A1F` to `#FF3B2E`), not gold. Icons on `#1A1A1A`, incl. maskable.
-- Icons: inline SVG line icons (1.8 stroke, currentColor) for nav; sport grid still uses emoji.
+- Icons: inline SVG line icons (1.8 stroke, currentColor) for nav and sports (`SPORTS`/`ICON` in core.js). Check-in emoticons stay emoji.
 - DM Serif Display for scores and headings, IBM Plex Mono for labels and data, Outfit for body.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.

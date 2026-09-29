@@ -153,12 +153,13 @@ async function syncAll(manual){
 function syncBtn(){if(!_auth&&!(S().intervalsKey&&S().intervalsID)){openAuth();return;}syncAll(true);}
 function updSyncStatus(){
   const d=S(),n=Object.keys(d.pending).length+d.tomb.length;
-  let t;
-  if(!_auth)t='Saved on this phone only';
-  else if(n)t=`${n} change${n>1?'s':''} waiting to upload`;
-  else if(d.lastSync){const m=Math.floor((Date.now()-new Date(d.lastSync))/60000);t=m<2?'Backed up just now':m<60?`Backed up ${m}m ago`:m<1440?`Backed up ${Math.round(m/60)}h ago`:'Backed up';}
-  else t='Cloud backup on';
-  $('hdrStatus').textContent=t;
+  let t,c='--amber';
+  if(!_auth)t='On this phone only';
+  else if(!navigator.onLine){t=n?`${n} to upload`:'Offline';}
+  else if(n)t=`${n} to upload`;
+  else if(d.lastSync){c='--green';const m=Math.floor((Date.now()-new Date(d.lastSync))/60000);t=m<2?'Synced now':m<60?`Synced ${m}m ago`:m<1440?`Synced ${Math.round(m/60)}h ago`:'Synced';}
+  else{c='--green';t='Cloud backup on';}
+  const el=$('hdrStatus');el.textContent=t;el.style.setProperty('--dot',`var(${c})`);
   $('syncBtn').textContent=_syncing?'…':_auth?'⟳ SYNC':'☁ SIGN IN';
   const sb=$('signBan');if(sb)sb.classList.toggle('hidden',!!_auth||d.signBanOff||!d.onboardingDone);
 }

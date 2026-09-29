@@ -335,7 +335,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 /* ── v7 additions ── */
 #toast{white-space:normal;max-width:calc(100% - 32px);text-align:center;width:max-content;}
 .hdr-sync{min-height:44px;padding:0 14px;}
-.hdr-sub{max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-sub{color:rgba(255,255,255,.72);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hdr-logo{min-height:28px;}
 .ob-inp{width:100%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;font-family:var(--body);font-size:15px;color:white;outline:none;margin-bottom:10px;}
 .ob-inp::placeholder{color:rgba(255,255,255,0.3);}
@@ -522,3 +522,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .fm-why{margin-top:8px;font-size:12px;color:var(--t2);line-height:1.5;}
 .fm-why summary{cursor:pointer;min-height:32px;display:flex;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);}
 #formNote a{color:var(--gold-dk);}
+.hdr-sub::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dot,var(--amber));margin-right:6px;vertical-align:1px;}
+.sp-ico{width:1.15em;height:1.15em;vertical-align:-0.2em;flex-shrink:0;}
+.ex-ico .sp-ico{width:24px;height:24px;vertical-align:middle;}
+.act-icon .sp-ico{width:20px;height:20px;}
+.act-icon.today{color:#1A1A1A;}
+.chip .sp-ico{width:16px;height:16px;vertical-align:-3px;}
+#syncBtn{white-space:nowrap;}
