@@ -6,17 +6,18 @@
 <meta name="theme-color" content="#2A2A2A">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/svg+xml" href="assets/mark.svg">
 <title>VitalCore</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<div id="splash"><div class="sp-logo">VitalCore</div><div class="sp-sub">PERSONAL HEALTH INTELLIGENCE</div><div class="sp-bar"><div class="sp-fill"></div></div></div>
+<div id="splash"><img src="assets/mark.svg" class="sp-mark" alt=""><div class="sp-logo">VitalCore</div><div class="sp-sub">PERSONAL HEALTH INTELLIGENCE</div><div class="sp-bar"><div class="sp-fill"></div></div></div>
 
 <div id="offlineBar">⚠ Offline — your entries are saved on this phone and upload when you're back online</div>
 
 <header class="hdr">
-  <div><div class="hdr-logo" onclick="openSettings()">VitalCore</div><div class="hdr-sub" id="hdrStatus">Loading…</div></div>
+  <div class="hdr-brand" onclick="openSettings()"><img src="assets/mark.svg" class="hdr-mark" alt=""><div><div class="hdr-logo">VitalCore</div><div class="hdr-sub" id="hdrStatus">Loading…</div></div></div>
   <div class="hdr-mid"><div class="hdr-date" id="hdrDate"></div></div>
   <button class="hdr-sync" id="syncBtn" onclick="syncBtn()">⟳ SYNC</button>
 </header>

@@ -17,7 +17,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 /* SPLASH */
 #splash{position:fixed;inset:0;background:var(--char);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.5s;}
 #splash.gone{opacity:0;pointer-events:none;}
-.sp-logo{font-family:var(--serif);font-size:42px;color:var(--gold);}
+.sp-mark{width:72px;height:72px;margin-bottom:12px;}
+.sp-logo{font-family:var(--serif);font-size:42px;color:#fff;}
 .sp-sub{font-family:var(--mono);font-size:10px;color:rgba(201,168,76,0.45);letter-spacing:4px;margin-top:4px;}
 .sp-bar{width:52px;height:2px;background:rgba(201,168,76,0.2);border-radius:1px;margin-top:44px;overflow:hidden;}
 .sp-fill{height:100%;background:var(--gold);animation:spLoad 2s ease-out forwards;}
@@ -28,9 +29,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 #offlineBar.show{display:block;}
 
 .hdr{position:fixed;top:0;left:0;right:0;height:var(--hdr);background:var(--char);display:flex;align-items:center;padding:0 16px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,0.3);}
-.hdr-logo{font-family:var(--serif);font-size:21px;color:var(--gold);cursor:pointer;}
+.hdr-brand{display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px;}
+.hdr-mark{width:30px;height:30px;flex:none;}
+.hdr-logo{font-family:var(--serif);font-size:21px;color:#fff;line-height:1.1;}
 .hdr-sub{font-family:var(--mono);font-size:10px;color:rgba(201,168,76,0.45);letter-spacing:1px;margin-top:1px;}
-.hdr-mid{flex:1;text-align:center;}
+.hdr-mid{flex:1;text-align:right;padding-right:8px;white-space:nowrap;}
 .hdr-date{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.4);}
 .hdr-sync{background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:4px;cursor:pointer;}
 
@@ -312,7 +315,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 /* ── v7 additions ── */
 #toast{white-space:normal;max-width:calc(100% - 32px);text-align:center;width:max-content;}
 .hdr-sync{min-height:44px;padding:0 14px;}
-.hdr-sub{max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-sub{max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hdr-logo{min-height:28px;}
 .ob-inp{width:100%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;font-family:var(--body);font-size:15px;color:white;outline:none;margin-bottom:10px;}
 .ob-inp::placeholder{color:rgba(255,255,255,0.3);}
