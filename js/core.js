@@ -17,7 +17,7 @@ let _saveTimer=null;
 // tables: local list name -> Supabase table + field map (local -> column)
 const TBL={
   checkins:{k:'checkins',t:'checkins',f:{energy:'energy',mood:'mood',stress:'stress',motivation:'motivation',mindfulMin:'mindful_min',gratitude:'gratitude'}},
-  workouts:{k:'workouts',t:'workouts',f:{type:'type',distKm:'dist_km',durMin:'dur_min',rpe:'rpe',notes:'notes'}},
+  workouts:{k:'workouts',t:'workouts',f:{type:'type',distKm:'dist_km',durMin:'dur_min',rpe:'rpe',notes:'notes',sets:'sets',sub:'sub'}},
   sleep:{k:'sleepLogs',t:'sleep_logs',f:{score:'score',deepH:'deep_h',deepM:'deep_m',remH:'rem_h',remM:'rem_m',rested:'rested'}},
   meas:{k:'measurements',t:'measurements',f:{bpSys:'bp_sys',bpDia:'bp_dia',weight:'weight',hr:'hr'}},
   blood:{k:'bloodLogs',t:'blood_logs',f:{glucose:'glucose',chol:'chol',uric:'uric',hdl:'hdl',ldl:'ldl'}},
@@ -62,9 +62,10 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','😴','😐','⚡','🚀'],mood:['','😔','😐','😊','😄'],stress:['','😌','😐','😬','😰'],motivation:['','😩','😐','💪','🔥']};
-const SPORTS=[['Run','🏃'],['Cycle','🚴'],['Weights','🏋️'],['Hike','🥾'],['Yoga','🧘'],['Walk','🚶'],['Ball sport','⚽'],['Other','⚡']];
+const SPORTS=[['Run','🏃'],['Cycle','🚴'],['Swim','🏊'],['Weights','🏋️'],['Calisthenics','🤸'],['Hike','🥾'],['Walk','🚶'],['Yoga','🧘'],['Other','⚡']];
 const ICON=Object.fromEntries(SPORTS);
 const HAS_DIST=['Run','Cycle','Hike','Walk'];
+const IS_STR=t=>t==='Weights'||t==='Calisthenics';
 const mkId=()=>'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
 // ── RECORD STORE (every change is queued for the cloud) ──────────────────────

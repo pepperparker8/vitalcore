@@ -74,13 +74,15 @@ function stopMind(){finishMind(false);}
 let _qx='Run',_qd=30;
 function renderQuick(){
   $('qxGrid').innerHTML=SPORTS.map(([n,i])=>`<div class="ex-btn ${n===_qx?'sel':''}" onclick="selQx('${n}')"><div class="ex-ico">${i}</div><div class="ex-nm">${n}</div></div>`).join('');
-  $('qxDur').style.display=_qx==='Weights'?'none':'block';
+  const st=IS_STR(_qx);
+  $('qxDur').style.display=st?'none':'block';$('qxStr').style.display=st?'block':'none';
+  $('qxSave').textContent=st?'Log sets in the Log tab':'Save workout';
   $('qxChips').innerHTML=[20,30,45,60,90].map(m=>`<button class="chip ${m===_qd?'sel':''}" onclick="_qd=${m};renderQuick()">${fmtDur(m)}</button>`).join('');
 }
 function selQx(n){_qx=n;renderQuick();}
 function saveQuick(){
-  const wt=_qx==='Weights';
-  put('workouts',{id:mkId(),date:td(),type:_qx,distKm:0,durMin:wt?0:_qd,rpe:3,notes:''});
+  if(IS_STR(_qx)){_selEx=_qx;switchTab('log');openLog('lWorkout');renderExGrid();return;}
+  put('workouts',{id:mkId(),date:td(),type:_qx,distKm:0,durMin:_qd,rpe:3,notes:''});
   showToast(`${_qx} saved 💪`);refreshAll();
 }
 
@@ -105,28 +107,48 @@ function setStages(dH,dM,rH,rM){
 let _selEx='Run';
 function renderExGrid(){
   $('exGrid').innerHTML=SPORTS.map(([n,i])=>`<div class="ex-btn ${n===_selEx?'sel':''}" onclick="selEx('${n}')"><div class="ex-ico">${i}</div><div class="ex-nm">${n}</div></div>`).join('');
-  $('wDistFg').style.display=HAS_DIST.includes(_selEx)?'block':'none';
-  $('wDurFg').style.display=_selEx==='Weights'?'none':'block';
+  const st=IS_STR(_selEx),sw=_selEx==='Swim';
+  $('wDistFg').style.display=HAS_DIST.includes(_selEx)||sw?'block':'none';
+  $('wDistU').textContent=sw?'m':'km';$('wDist').placeholder=sw?'1500':'10.5';$('wDist').step=sw?'50':'0.1';
+  $('wDurFg').style.display=st?'none':'block';
+  $('wSwim').style.display=sw?'block':'none';$('wStr').style.display=st?'block':'none';
+  if(st)renderStrength();
 }
-function selEx(t){_selEx=t;renderExGrid();}
+function selEx(t){if(IS_STR(t)&&t!==_selEx)_sess=[];_selEx=t;renderExGrid();}
+function swimPace(){
+  const m=+$('wDist').value||0,dur=(+$('wDH').value||0)*60+(+$('wDM').value||0);
+  $('wPace').textContent=m>0&&dur>0?`Pace: ${fmtPace(dur/(m/100))} per 100 m`:'';
+}
+function fmtPace(min){const s=Math.round(min*60);return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
 function saveWorkout(){
   const date=$('wDate').value||td();
   if(date>td()){showToast('That date is in the future');return;}
-  const wt=_selEx==='Weights';
+  const st=IS_STR(_selEx),sw=_selEx==='Swim';
   const dur=(+$('wDH').value||0)*60+(+$('wDM').value||0);
-  if(!wt&&!dur){showToast('Enter how long it took');return;}
+  if(!st&&!dur){showToast('Enter how long it took');return;}
   if(dur>720){showToast('Duration looks too long — max 12 h');return;}
-  const dist=HAS_DIST.includes(_selEx)?(+$('wDist').value||0):0;
+  let dist=HAS_DIST.includes(_selEx)?(+$('wDist').value||0):0,sets=null,sub=null,prs=[];
   if(dist>500){showToast('Distance looks too high');return;}
-  put('workouts',{id:mkId(),date,type:_selEx,distKm:dist,durMin:wt?0:dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()});
-  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';
-  $('wkStat').textContent='✓ Saved';showToast('Workout recorded 💪');refreshAll();
+  if(sw){
+    const m=+$('wDist').value||0;
+    if(m>25000){showToast('Swim distance is in metres — that looks too high');return;}
+    dist=Math.round(m)/1000;sub={pool:$('wPool').value,stroke:$('wStroke').value};
+  }
+  if(st){
+    const r=collectSets();if(r.err){showToast(r.err);return;}
+    sets=r.sets;prs=findPRs(sets);
+  }
+  const rec={id:mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()};
+  if(sets)rec.sets=sets;if(sub)rec.sub=sub;
+  put('workouts',rec);
+  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';
+  $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best 🏆 ${prs[0]}`:'Workout recorded 💪');refreshAll();
 }
 function repeatLast(){
   const w=last(S().workouts);if(!w){showToast('No previous workout');return;}
-  _selEx=w.type;renderExGrid();
+  _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
   $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
-  $('wDist').value=w.distKm||'';$('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
+  $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}$('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
   showToast('Last workout loaded — change the date and record');
 }
 function delWorkout(id){

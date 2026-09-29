@@ -67,6 +67,8 @@ function barsHTML(vals,cls,max){
 function seriesFor(n,fn){return Array.from({length:n},(_,i)=>{const date=dAgo(n-1-i);return{date,v:fn(date)};});}
 const moodOn=date=>{const c=S().checkins.find(x=>x.date===date);return c?.mood||0;};
 const mindOn=date=>S().checkins.find(x=>x.date===date)?.mindfulMin||0;
+const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):'';
+const wkDetail=w=>w.sets?setsText(w):'';
 const trainOn=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);
 function renderWeekTrends(){
   const mood=seriesFor(7,moodOn),mind=seriesFor(7,mindOn),train=seriesFor(7,trainOn);
@@ -95,7 +97,7 @@ function renderActList(){
   for(let i=0;i<7;i++){
     const date=dAgo(i),isToday=i===0,ws=d.workouts.filter(w=>w.date===date);
     if(!ws.length)rows.push(`<div class="act-item"><div class="act-icon past" style="font-size:13px;color:var(--t3)">—</div><div><div class="act-name" style="color:var(--t3);font-weight:400">Nothing logged</div><div class="act-meta">${isToday?'Today':date}</div></div></div>`);
-    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||'⚡'}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.durMin?' · '+fmtDur(w.durMin):''}${w.distKm?' · '+w.distKm+'km':''} · effort ${w.rpe||3}/5</div>${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
+    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||'⚡'}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.sets?'':(w.durMin?' · '+fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}${w.sets?(n=>' · '+n+' set'+(n===1?'':'s'))(setsByEx(w).reduce((n,e)=>n+e[1].length,0)):''} · effort ${w.rpe||3}/5</div>${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
   }
   $('actList').innerHTML=rows.join('');
   const tm=trainOn(t),mm=mindOn(t),wl=d.wellness[t]||d.wellness[dAgo(1)];
@@ -242,7 +244,7 @@ function openDay(date){
   if(ciFull(ci))html+=row('Energy',EM.energy[ci.energy])+row('Mood',EM.mood[ci.mood])+row('Stress',EM.stress[ci.stress])+row('Motivation',EM.motivation[ci.motivation]);
   if(ci?.mindfulMin)html+=row('Mindfulness',fmtDur(ci.mindfulMin));
   if(ci?.gratitude)html+=row('Grateful for',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(ci.gratitude)}</span>`);
-  ws.forEach(w=>{html+=row(esc(w.type),`${w.durMin?fmtDur(w.durMin):''}${w.distKm?' · '+w.distKm+'km':''}<button class="day-del" onclick="delWorkout('${w.id}')">Delete</button>`);if(w.notes)html+=row('<i>Note</i>',`<span style="font-size:11px;opacity:.7">${esc(w.notes)}</span>`);});
+  ws.forEach(w=>{html+=row(esc(w.type),`${w.sets?'':(w.durMin?fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}<button class="day-del" onclick="delWorkout('${w.id}')">Delete</button>`);if(w.sets)html+=row('<i>Sets</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${esc(setsText(w))}</span>`);if(w.notes)html+=row('<i>Note</i>',`<span style="font-size:11px;opacity:.7">${esc(w.notes)}</span>`);});
   if(!html)html='<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px 0">Nothing logged for this day.</div>';
   $('dayPB').innerHTML=html;
   const p=$('dayPanel');p.classList.add('open');setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
@@ -250,12 +252,13 @@ function openDay(date){
 function closeDayPanel(){$('dayPanel').classList.remove('open');}
 function renderBests(){
   const d=S(),out=[];
-  ['Run','Cycle','Hike'].forEach(t=>{
+  ['Run','Cycle','Swim','Hike'].forEach(t=>{
     const ws=d.workouts.filter(w=>w.type===t&&w.distKm>0);if(!ws.length)return;
     const b=ws.reduce((a,w)=>w.distKm>a.distKm?w:a);
-    out.push([ICON[t],`Longest ${t==='Cycle'?'ride':t.toLowerCase()}`,b.date,`${b.distKm} km`]);
+    out.push([ICON[t],`Longest ${t==='Cycle'?'ride':t.toLowerCase()}`,b.date,fmtDist(b)]);
   });
-  const lw=d.workouts.filter(w=>w.durMin>0);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push(['⏱','Longest session',b.date,fmtDur(b.durMin)]);}
+  strBests().forEach(r=>out.push(r));
+  const lw=d.workouts.filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push(['⏱','Longest session',b.date,fmtDur(b.durMin)]);}
   const bm=d.checkins.filter(c=>c.mindfulMin>0);if(bm.length){const b=bm.reduce((a,c)=>c.mindfulMin>a.mindfulMin?c:a);out.push(['🧘','Longest mindfulness day',b.date,fmtDur(b.mindfulMin)]);}
   const bs=bestStreak();if(bs>1)out.push(['🔥','Best streak','',`${bs} days`]);
   $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${dt}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="switchTab('today');go('qwCard')">Log a workout</button></div>`;
@@ -266,6 +269,6 @@ function renderWeekSum(){
   const sl=d.sleepLogs.filter(s=>s.score).slice(-7),avg=sl.length?Math.round(sl.reduce((a,s)=>a+s.score,0)/sl.length):0;
   const delta=tw.length-lw.length,ds=delta>0?` ↑ +${delta} vs last week`:delta<0?` ↓ ${Math.abs(delta)} vs last week`:' = same as last week';
   const mm=seriesFor(7,mindOn).reduce((a,x)=>a+x.v,0);
-  $('weekSum').innerHTML=`${tw.length} workout${tw.length!==1?'s':''} this week${ds}<br>${dur?fmtDur(dur)+' total':'0 min'} · ${dist.toFixed(1)} km<br>Mindfulness: ${mm?fmtDur(mm):'—'}<br>Sleep avg: ${avg?avg+'/100':'—'}`;
+  $('weekSum').innerHTML=`${tw.length} workout${tw.length!==1?'s':''} this week${ds}<br>${dur?fmtDur(dur)+' total':'0 min'} · ${dist.toFixed(1)} km<br>${tw.some(w=>w.sets)?'Strength sets: '+tw.reduce((n,w)=>n+(w.sets||[]).filter(isWork).length,0)+'<br>':''}Mindfulness: ${mm?fmtDur(mm):'—'}<br>Sleep avg: ${avg?avg+'/100':'—'}`;
 }
 

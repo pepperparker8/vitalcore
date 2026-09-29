@@ -84,10 +84,11 @@
 
   <div class="card" id="qwCard">
     <div class="sec">Quick workout</div>
-    <div class="ex-grid four" id="qxGrid"></div>
+    <div class="ex-grid" id="qxGrid"></div>
+    <div class="set-note" id="qxStr" style="display:none">Weights and calisthenics need sets. Tap below to log them.</div>
     <div id="qxDur"><div class="mini-lbl">HOW LONG?</div><div class="chip-row" id="qxChips"></div></div>
-    <button class="btn-gold" style="margin-top:4px" onclick="saveQuick()">Save workout</button>
-    <div class="set-note">Need distance, effort or a note? Use the Log tab.</div>
+    <button class="btn-gold" id="qxSave" style="margin-top:4px" onclick="saveQuick()">Save workout</button>
+    <div class="set-note">Need distance, sets, effort or a note? Use the Log tab.</div>
   </div>
 
   <div class="card">
@@ -133,6 +134,11 @@
 
   <div class="card"><div class="tr-head"><div class="tr-title">Mindfulness</div><div class="tr-sum" id="mindSum">—</div></div><div id="mindBars"></div></div>
   <div class="card"><div class="tr-head"><div class="tr-title">Training</div><div class="tr-sum" id="trainSum">—</div></div><div id="trainBars"></div></div>
+  <div class="card" id="strCard"><div class="tr-head"><div class="tr-title">Strength</div><div class="tr-sum">sets per muscle, last 7 days</div></div>
+    <div id="strMuscles"></div>
+    <select class="sel-inp" id="strSel" style="margin-top:12px" onchange="_strEx=this.value;renderStrTrend()"></select>
+    <canvas id="strCanvas" height="90" style="margin-top:8px"></canvas><div class="set-note" id="strSum"></div>
+    <div class="set-note">10–20 hard sets per muscle per week is a common target for building strength.</div></div>
 
   <div class="burnout-card">
     <div class="sec" style="color:rgba(201,168,76,0.5)">BURNOUT RISK</div>
@@ -174,9 +180,15 @@
   <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico">🏃</div><div><div class="log-title">Log a Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev">▾</div></div>
     <div class="log-body">
       <div class="fg"><div class="fl">DATE</div><input type="date" class="inp" id="wDate"></div>
-      <div class="fg"><div class="fl">TYPE</div><div class="ex-grid four" id="exGrid"></div></div>
-      <div class="fg" id="wDurFg"><div class="fl">DURATION</div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
-      <div class="fg" id="wDistFg"><div class="fl">DISTANCE</div><div class="fr"><input type="number" class="inp" id="wDist" placeholder="10.5" step="0.1" min="0"><span class="inp-unit">km</span></div></div>
+      <div class="fg"><div class="fl">TYPE</div><div class="ex-grid" id="exGrid"></div></div>
+      <div class="fg" id="wDurFg"><div class="fl">DURATION</div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" oninput="swimPace()" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" oninput="swimPace()" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
+      <div class="fg" id="wDistFg"><div class="fl">DISTANCE</div><div class="fr"><input type="number" class="inp" id="wDist" placeholder="10.5" step="0.1" min="0" oninput="swimPace()"><span class="inp-unit" id="wDistU">km</span></div></div>
+      <div id="wSwim" style="display:none"><div class="fg"><div class="fl">WHERE</div><select class="sel-inp" id="wPool"><option value="pool">Pool</option><option value="open">Open water</option></select></div>
+        <div class="fg"><div class="fl">MAIN STROKE</div><select class="sel-inp" id="wStroke"><option>Freestyle</option><option>Breaststroke</option><option>Backstroke</option><option>Butterfly</option><option>Mixed</option></select></div>
+        <div class="set-note" id="wPace"></div></div>
+      <div id="wStr" style="display:none"><div class="fl" id="strLbl">EXERCISES</div>
+        <input type="text" class="inp" id="strSearch" placeholder="Search or type a new exercise" oninput="strPick()" style="margin-bottom:8px">
+        <div class="str-picks" id="strPick"></div><div id="strList"></div></div>
       <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select></div>
       <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Optional — shown in activity list"></div>
       <button class="btn-gold" onclick="saveWorkout()">Record</button>
@@ -319,6 +331,7 @@
 
 <script src="js/core.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/strength.js"></script>
 <script src="js/log.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/render.js"></script>

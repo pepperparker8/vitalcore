@@ -6,7 +6,7 @@ VitalCore is a personal health intelligence PWA. It combines training load, slee
 Current version: **7.0**. Built iteratively in claude.ai as an artifact. This repo is the move to a standalone, deployable app.
 
 ## User context
-- Single user: an endurance athlete (running, cycling, hiking, weights, yoga). Does not swim.
+- Single user: an endurance athlete (running, cycling, hiking, weights, yoga). Swims (Swim is allowed, distance in metres).
 - Primary device: Samsung Galaxy S24 (Android, Chrome). Minimum viewport 360px.
 - Wearable: Polar Loop 2. Polar API is not accessible (403). Do not rebuild a Polar connection.
 - Training data: Intervals.icu (CTL, ATL, TSB, PRs).
@@ -23,7 +23,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 ```
 profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal}
 checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, isEx}
-workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, isEx}
+workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke})
 sleepLogs[]    {date, score 0-100, deepH, deepM, remH, remM, rested, isEx}
 measurements[] {date, bpSys, bpDia, weight, hr, isEx}
 bloodLogs[]    {date, glucose, chol, uric, hdl, ldl, isEx}
@@ -75,7 +75,7 @@ Verify after each fix. Don't batch.
 - Empty states always explain what to do next and link to the fix.
 
 ## Do not reintroduce
-Polar connection section, Swim in the exercise grid, duration/HR fields for weight training, decimal sleep hours, numeric check-in buttons, "Rest day" label for unlogged days.
+Polar connection section, duration/HR fields for weight training, decimal sleep hours, numeric check-in buttons, "Rest day" label for unlogged days.
 
 ## Testing checklist
 - Fresh install: onboarding appears, finishing clears example data.

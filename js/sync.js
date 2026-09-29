@@ -76,8 +76,8 @@ async function sbFetch(path,opts={},retry=true){
 // ── CLOUD SYNC ───────────────────────────────────────────────────────────────
 let _pushT=null,_pushing=false,_syncing=false;
 function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(()=>{}),1500);}
-const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f))o[b]=r[a]===undefined?null:r[a];return o;};
-const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f))r[a]=x[b];return r;};
+const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub')&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
+const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub')&&x[b]==null)continue;r[a]=x[b];}return r;};
 
 async function pushAll(){
   if(!_auth||_pushing)return;
@@ -164,7 +164,7 @@ function updSyncStatus(){
 }
 
 // ── INTERVALS.ICU ────────────────────────────────────────────────────────────
-const ICU_TYPE={Run:'Run',TrailRun:'Run',VirtualRun:'Run',Ride:'Cycle',VirtualRide:'Cycle',GravelRide:'Cycle',MountainBikeRide:'Cycle',EBikeRide:'Cycle',WeightTraining:'Weights',Hike:'Hike',Walk:'Walk',Yoga:'Yoga'};
+const ICU_TYPE={Run:'Run',TrailRun:'Run',VirtualRun:'Run',Ride:'Cycle',VirtualRide:'Cycle',GravelRide:'Cycle',MountainBikeRide:'Cycle',EBikeRide:'Cycle',WeightTraining:'Weights',Swim:'Swim',OpenWaterSwim:'Swim',Hike:'Hike',Walk:'Walk',Yoga:'Yoga',Workout:'Calisthenics'};
 const icuHdr=key=>({Authorization:'Basic '+btoa('API_KEY:'+key.trim())});
 const icuBase=id=>`https://intervals.icu/api/v1/athlete/${encodeURIComponent(id.trim())}`;
 function icuErr(status){
@@ -196,7 +196,7 @@ async function pullIntervals(){
     for(const a of acts){
       const id='icu-'+a.id,date=(a.start_date_local||'').slice(0,10);
       if(!a.id||!date||d.workouts.some(w=>w.id===id)||d.tomb.some(t=>t.id===id))continue;
-      const type=ICU_TYPE[a.type]||'Other',wt=type==='Weights';
+      const type=ICU_TYPE[a.type]||'Other',wt=IS_STR(type);
       put('workouts',{id,date,type,distKm:!wt&&a.distance?Math.round(a.distance/100)/10:0,durMin:wt?0:Math.round((a.moving_time||a.elapsed_time||0)/60),rpe:a.icu_rpe?Math.max(1,Math.min(5,Math.round(a.icu_rpe/2))):3,notes:a.name||''});n++;
     }
   }

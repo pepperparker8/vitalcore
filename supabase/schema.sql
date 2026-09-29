@@ -30,8 +30,12 @@ create table if not exists workouts (
   dur_min int,
   rpe int check (rpe between 1 and 5),
   notes text,
+  sets jsonb,
+  sub jsonb,
   updated_at timestamptz not null default now()
 );
+alter table workouts add column if not exists sets jsonb;
+alter table workouts add column if not exists sub jsonb;
 
 create table if not exists sleep_logs (
   id text primary key,
