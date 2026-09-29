@@ -17,7 +17,7 @@ function fillCI(){
   const c=todayCI();
   ['energy','mood','stress','motivation'].forEach(k=>{
     _ci[k]=c?.[k]||null;
-    document.querySelectorAll(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).forEach((b,i)=>b.classList.toggle('sel',c?.[k]===i+1));
+    document.querySelectorAll(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).forEach(b=>b.classList.toggle('sel',c?.[k]===+b.getAttribute('onclick').match(/,(\d),this/)[1]));
   });
   $('ciGrat').value=c?.gratitude||'';
   const done=ciFull(c);

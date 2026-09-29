@@ -1,4 +1,4 @@
-const CACHE = 'vitalcore-v9';
+const CACHE = 'vitalcore-v10';
 const SHELL = ['./', './index.html', './manifest.json', './css/app.css', './js/core.js', './js/sync.js', './js/log.js', './js/strength.js', './js/settings.js', './js/render.js', './js/insights.js', './js/app.js', './icon-96.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
