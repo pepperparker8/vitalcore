@@ -1282,7 +1282,8 @@ async function syncAll(){
   const d=S();if(!d.intervalsKey||!d.intervalsID){showToast('Add Intervals.icu key in Settings');return;}
   document.getElementById('syncBtn').textContent='…';
   try{
-    const r=await fetch(`https://intervals.icu/api/v1/athlete/${d.intervalsID}/wellness?oldest=2026-04-01`,{headers:{Authorization:'Basic '+btoa('API_KEY:'+d.intervalsKey)},mode:'cors'});
+    const oldest=new Date(Date.now()-90*864e5).toISOString().split('T')[0];
+    const r=await fetch(`https://intervals.icu/api/v1/athlete/${d.intervalsID}/wellness?oldest=${oldest}`,{headers:{Authorization:'Basic '+btoa('API_KEY:'+d.intervalsKey)},mode:'cors'});
     if(r.ok){const data=await r.json();if(data?.length){const l=data[data.length-1];d.intervalsData.ctl=l.ctl||d.intervalsData.ctl;d.intervalsData.atl=l.atl||d.intervalsData.atl;d.intervalsData.tsb=l.tsb||d.intervalsData.tsb;}save(d);renderTLoad();showToast('Synced ✓');}
     else showToast('Sync failed — check credentials');
   }catch(e){showToast('Sync error — offline?');}
