@@ -226,9 +226,9 @@ function renderStrTrend(){
   const vals=a.slice(-20).map(val);
   if(vals.length>=2){
     const mn=Math.min(...vals),mx=Math.max(...vals),span=mx-mn||1,xs=(W-20)/(vals.length-1),Y=v=>H-12-(v-mn)/span*(H-24);
-    ctx.beginPath();ctx.strokeStyle='#C9A84C';ctx.lineWidth=2;ctx.lineJoin='round';
+    ctx.beginPath();ctx.strokeStyle='#D4AF37';ctx.lineWidth=2;ctx.lineJoin='round';
     vals.forEach((v,i)=>{const x=10+i*xs,y=Y(v);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
-    vals.forEach((v,i)=>{ctx.beginPath();ctx.arc(10+i*xs,Y(v),3,0,Math.PI*2);ctx.fillStyle='#C9A84C';ctx.fill();});
+    vals.forEach((v,i)=>{ctx.beginPath();ctx.arc(10+i*xs,Y(v),3,0,Math.PI*2);ctx.fillStyle='#D4AF37';ctx.fill();});
   }
   const l=last(a),best=Math.max(...a.map(val));
   $('strSum').textContent=vals.length<2?`Log ${_strEx} once more to see a trend. Latest: ${Math.round(val(l))} ${unit}.`:`${_strEx}: latest ${Math.round(val(l))} ${unit} · best ${Math.round(best)} · ${a.length} sessions`;

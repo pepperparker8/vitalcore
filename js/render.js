@@ -166,10 +166,10 @@ function renderWtChart(){
   if(pts.length<2){gl.textContent=pts.length?`Current: ${pts[0].weight} kg — log again to see a trend`:'Log your weight in the Log tab to see a trend';return;}
   const vals=pts.map(m=>m.weight),minV=Math.min(...vals,goal)-0.5,maxV=Math.max(...vals,goal)+0.5;
   const xs=(W-20)/(pts.length-1),ys=(H-12)/(maxV-minV),Y=v=>H-6-(v-minV)*ys;
-  ctx.beginPath();ctx.strokeStyle='rgba(201,168,76,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.moveTo(10,Y(goal));ctx.lineTo(W-10,Y(goal));ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.strokeStyle='rgba(212,175,55,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.moveTo(10,Y(goal));ctx.lineTo(W-10,Y(goal));ctx.stroke();ctx.setLineDash([]);
   ctx.beginPath();ctx.strokeStyle='#0D7A6B';ctx.lineWidth=1.5;ctx.lineJoin='round';
   pts.forEach((m,i)=>{const x=i*xs+10,y=Y(m.weight);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
-  pts.forEach((m,i)=>{ctx.beginPath();ctx.arc(i*xs+10,Y(m.weight),2,0,Math.PI*2);ctx.fillStyle=m.weight<=goal?'#0D7A6B':'#B8740A';ctx.fill();});
+  pts.forEach((m,i)=>{ctx.beginPath();ctx.arc(i*xs+10,Y(m.weight),2,0,Math.PI*2);ctx.fillStyle=m.weight<=goal?'#0D7A6B':'#D97706';ctx.fill();});
   const l=vals[vals.length-1];
   gl.textContent=`Current: ${l.toFixed(1)} kg · Goal: ${goal} kg · ${l<=goal?'✓ At goal':(l-goal).toFixed(1)+' kg to go'}`;
 }
@@ -198,14 +198,14 @@ function renderMoodChart(){
   ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
   for(let g=0;g<4;g++){const y=8+g*(H-24)/3;ctx.beginPath();ctx.moveTo(6,y);ctx.lineTo(W-6,y);ctx.stroke();}
   const X=i=>6+(n===1?0:i*(W-12)/(n-1)),Y=v=>8+(4-v)/3*(H-24);
-  [{k:'motivation',col:'#2A2A2A'},{k:'energy',col:'#B8740A'},{k:'calm',col:'#5A5550'},{k:'mood',col:'#1A6B3A'}].forEach(({k,col})=>{
+  [{k:'motivation',col:'#2A2A2A'},{k:'energy',col:'#D97706'},{k:'calm',col:'#5A5550'},{k:'mood',col:'#1A6B3A'}].forEach(({k,col})=>{
     const val=c=>k==='calm'?5-c.stress:c[k];
     ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=k==='mood'?2.5:1.5;ctx.lineJoin='round';
     ctx.beginPath();let pen=false;
     pts.forEach((c,i)=>{if(!c){return;}const x=X(i),y=Y(val(c));pen?ctx.lineTo(x,y):ctx.moveTo(x,y);pen=true;});ctx.stroke();
     pts.forEach((c,i)=>{if(!c)return;ctx.beginPath();ctx.arc(X(i),Y(val(c)),k==='mood'?3:2,0,Math.PI*2);ctx.fill();});
   });
-  ctx.fillStyle='#9A9690';ctx.font='9px IBM Plex Mono, monospace';
+  ctx.fillStyle='#767169';ctx.font='9px IBM Plex Mono, monospace';
   ctx.textAlign='left';ctx.fillText(days[0].slice(5),6,H-4);ctx.textAlign='right';ctx.fillText('today',W-6,H-4);
 }
 function renderWeekBanner(){
