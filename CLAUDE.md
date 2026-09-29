@@ -3,7 +3,7 @@
 ## Project
 VitalCore is a personal health intelligence PWA. It combines training load, sleep, daily psychology check-ins, body measurements, blood markers and injuries into one readiness score and an AI-generated daily briefing.
 
-Current version: **6.4**. Built iteratively in claude.ai as an artifact. This repo is the move to a standalone, deployable app.
+Current version: **7.0**. Built iteratively in claude.ai as an artifact. This repo is the move to a standalone, deployable app.
 
 ## User context
 - Single user: an endurance athlete (running, cycling, hiking, weights, yoga). Does not swim.
@@ -14,7 +14,7 @@ Current version: **6.4**. Built iteratively in claude.ai as an artifact. This re
 - AI: Anthropic Messages API with the user's own key.
 
 ## Architecture
-- Single file: `index.html` (HTML + CSS + vanilla JS). No framework, no build step. Keep it that way until Phase 0 is done.
+- Single file: `index.html` (HTML + CSS + vanilla JS). No framework, no build step. Keep it that way until Phase 1–3 (Supabase sync) is done.
 - External: Google Fonts only (IBM Plex Mono, Outfit, DM Serif Display).
 - State: one in-memory object `_s`, accessed via `S()` and written via `save(d)`, which triggers a 400ms debounced persist.
 - Charts: hand-drawn on `<canvas>` (mood trend, weight trend) and DOM bars (sleep, HRV sparkline, blood sparklines).
@@ -42,7 +42,7 @@ exDismissed, hasRealData, onboardingDone
 - **Stress is inverted** everywhere it feeds a score: 1 = calm (good), 4 = very stressed (bad). Always use `5 - stress`.
 - Blood scoring (`scoreBM`): normal 90, borderline 55, high 20.
 
-## Phase 0: blockers (fix first, in this order)
+## Phase 1–3 (Supabase sync): blockers (fix first, in this order)
 1. **Persistence.** Replace `window.storage` (claude.ai only) with IndexedDB, or localStorage as a simpler first step. Keep the `persistLoad()` / `persistSave()` interface so nothing else changes.
 2. **Anthropic API header.** Add `'anthropic-dangerous-direct-browser-access': 'true'` to both fetch calls (`genInsight`, `testClaudeKey`). Update the model string from `claude-sonnet-4-20250514` to a current Sonnet model.
 3. **Intervals.icu proxy.** Browser calls likely fail on CORS. Add a small serverless proxy (Vercel function at `/api/intervals`) that forwards requests with Basic auth. Point `syncAll()` at it.
@@ -53,7 +53,7 @@ exDismissed, hasRealData, onboardingDone
 
 Verify after each fix. Don't batch.
 
-## Phase 4 backlog (after Phase 0)
+## Phase 4 backlog (after Phase 1–3 (Supabase sync))
 - Real passive activity (steps, kcal) from Intervals.icu wellness data instead of example values.
 - Blood marker 90-day trend chart on tap.
 - Weekly digest (same seven insight sections).
