@@ -28,6 +28,36 @@ const fmtKg=k=>String(Math.round(k*100)/100);
 
 // ---- session being built in the Log tab ----
 let _sess=[],_pickList=[],_customHold=false;
+let _gym=false,_cur={};
+try{_gym=localStorage.getItem('vc-gym')==='1';}catch(e){}
+function toggleGym(){_gym=!_gym;try{localStorage.setItem('vc-gym',_gym?'1':'0');}catch(e){}renderStrength();}
+const stepOf=(it,f)=>f==='kg'?(it.cal?1:2.5):f==='secs'?5:1;
+function nudge(i,j,f,dir){
+  const it=_sess[i],s=it.sets[j],v=(+s[f]||0)+dir*stepOf(it,f);
+  s[f]=Math.max(0,Math.round(v*10)/10);delete s.pend;renderStrength();
+}
+function gymDone(i){
+  const a=_sess[i].sets,c=Math.min(_cur[i]??a.length-1,a.length-1),p=a[c];
+  delete p.pend;delete _cur[i];
+  a.push({kg:p.kg,reps:p.reps,secs:p.secs,rir:p.rir,kind:'work',pend:true});
+  renderStrength();restStart();
+}
+function gymPick(i,j){_cur[i]=j;renderStrength();}
+function gymCard(it,i){
+  const a=it.sets,c=Math.min(_cur[i]??a.length-1,a.length-1),s=a[c],f2=it.hold?'secs':'reps';
+  const lt=lastTime(it.ex),last=lt?`Last time (${lt.date}): ${lt.sets.map(fmtSet).join(', ')}`:'First time logging this';
+  const done=a.map((x,j)=>j===c||x.pend?'':`<button class="gym-chip" onclick="gymPick(${i},${j})" aria-label="Edit set ${j+1}">${j+1} · ${fmtSet(x)}</button>`).join('');
+  const big=(f,lbl)=>`<div class="gym-f"><div class="gym-l">${lbl}</div><div class="gym-b">
+    <button onclick="nudge(${i},${c},'${f}',-1)" aria-label="Less">−</button>
+    <input type="number" inputmode="decimal" value="${s[f]}" placeholder="0" oninput="setVal(${i},${c},'${f}',this.value);delete _sess[${i}].sets[${c}].pend">
+    <button onclick="nudge(${i},${c},'${f}',1)" aria-label="More">+</button></div></div>`;
+  return`<div class="str-card"><div class="str-h"><div><div class="str-nm">${esc(it.ex)}</div><div class="str-mu">${it.muscle.toUpperCase()}${it.hold?' · TIMED':''} · SET ${c+1}</div></div><button class="x" style="min-width:44px;min-height:44px;background:none;border:none;color:var(--t3);font-size:20px" onclick="rmEx(${i})" aria-label="Remove exercise">×</button></div>
+    <div class="str-last">${esc(last)}</div>
+    ${big('kg',it.cal?'ADDED KG':'KG')}${big(f2,it.hold?'SECONDS':'REPS')}
+    <div class="gym-row"><button onclick="cycRir(${i},${c})">RIR ${RIR_TXT[s.rir===null?0:s.rir+1]}</button><button class="kind ${s.kind}" onclick="cycKind(${i},${c})">${KIND_TXT[s.kind]}</button><button onclick="rmSet(${i},${c})" aria-label="Remove set">Delete</button></div>
+    <button class="gym-done" onclick="gymDone(${i})">Set done ✓</button>
+    ${done?`<div class="gym-chips">${done}</div>`:''}</div>`;
+}
 const blankSet=()=>({kg:'',reps:'',secs:'',rir:null,kind:'work'});
 
 function lastTime(ex){
@@ -77,6 +107,8 @@ function renderStrength(){
   $('strLbl').textContent=_selEx==='Calisthenics'?'BODYWEIGHT EXERCISES':'EXERCISES';
   strPick();
   if(!_sess.length){$('strList').innerHTML='<div class="set-note" style="margin-bottom:10px">Pick an exercise above. Each set: weight × reps, how many reps you had left (RIR), and whether it was a warm-up.</div>';return;}
+  $('gymTgl').classList.toggle('on',_gym);
+  if(_gym){$('strList').innerHTML=_sess.map(gymCard).join('');return;}
   $('strList').innerHTML=_sess.map((it,i)=>{
     const lt=lastTime(it.ex);
     const last=lt?`Last time (${lt.date}): ${lt.sets.map(fmtSet).join(', ')}`:'First time logging this';
@@ -111,6 +143,7 @@ function collectSets(){
   for(const it of _sess){
     let n=0;
     for(const s of it.sets){
+      if(s.pend)continue;
       const kg=+s.kg||0,reps=+s.reps||0,secs=+s.secs||0;
       if(!kg&&!reps&&!secs)continue;
       if(it.hold?!secs:!reps)return{err:`${it.ex}: enter ${it.hold?'seconds':'reps'} for every set you log`};
