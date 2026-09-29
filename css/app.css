@@ -534,3 +534,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .gl-n{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);overflow-wrap:anywhere;}
 .gl-s{font-size:13px;color:var(--t2);margin-top:2px;}
 .gl-big{font-family:var(--serif,'DM Serif Display',serif);font-size:28px;white-space:nowrap;color:var(--text);}
+.sug-card{padding:14px 16px;}
+.sg-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--t2);margin-bottom:8px;}
+.sg-row{display:flex;gap:12px;align-items:flex-start;}
+.sg-ico{width:40px;height:40px;border-radius:10px;background:var(--sur2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sg-ico .sp-ico{width:22px;height:22px;}
+.sg-t{font-weight:600;font-size:15px;}
+.sg-s{font-size:13px;color:var(--t2);margin-top:2px;line-height:1.4;}
+.sg-btn{margin-top:12px;width:100%;min-height:44px;}
