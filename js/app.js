@@ -12,6 +12,7 @@ function refreshActive(){
   const tab=_tab;
   if(tab==='today')recalc();
   if(tab==='trends')renderTrendsTab();
+  if(tab==='health')renderHealth();
   if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderSleepBars();}
   if(tab==='insights'){renderInsightHistory();showTodayInsight();}
 }

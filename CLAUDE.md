@@ -65,7 +65,7 @@ Verify after each fix. Don't batch.
 - Gold is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - DM Serif Display for scores and headings, IBM Plex Mono for labels and data, Outfit for body.
 - 8px spacing grid. Tap targets minimum 44px.
-- Tabs: Today, Trends (charts + calendar & bests), Log, Insights (Health tab planned). Settings opens from the logo.
+- Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.
 
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.

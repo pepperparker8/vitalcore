@@ -180,6 +180,18 @@
 </div><!-- /trCal -->
 </div><!-- /pg-trends -->
 
+<!-- HEALTH -->
+<div class="page page-fade" id="pg-health">
+  <div class="card"><div class="sec">Your baselines</div><div class="hist-box" id="hBase"></div></div>
+  <div class="sec">Blood markers</div>
+  <div id="hBlood"></div>
+  <div class="card" style="margin-top:12px"><div class="sec">Active injuries</div><div id="hInj"></div></div>
+  <div class="card"><div class="sec">Report for your doctor or coach</div>
+    <div class="set-note" style="margin-bottom:12px">A clean one-page summary of sleep, body, training, mood, blood results and injuries. Save it as a PDF and share it.</div>
+    <button class="btn-gold" onclick="openReport(30)">Last 30 days</button>
+    <button class="btn-muted" onclick="openReport(90)">Last 90 days</button></div>
+</div>
+
 <!-- LOG -->
 <div class="page page-fade" id="pg-log">
   <div class="log-sec open" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico">🌙</div><div><div class="log-title">Sleep Last Night</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev">▾</div></div>
@@ -265,6 +277,8 @@
 
 </div><!-- /pages -->
 
+<div class="report-ov" id="reportOv"><div class="report-sheet"><div id="reportBody"></div><div class="rp-actions"><button class="btn-gold" onclick="printReport()">Save as PDF / Print</button><button class="btn-muted" onclick="closeReport()">Close</button></div></div></div>
+
 <!-- SETTINGS -->
 <div class="modal-ov" id="setModal">
   <div class="modal">
@@ -339,6 +353,7 @@
   <div class="nav-item active" onclick="switchTab('today')" id="nav-today"><div class="nav-icon">🏠</div><div class="nav-label">Today</div></div>
   <div class="nav-item" onclick="switchTab('trends')" id="nav-trends"><div class="nav-icon">📈</div><div class="nav-label">Trends</div></div>
   <div class="nav-item" onclick="switchTab('log')" id="nav-log"><div class="nav-icon">✏️</div><div class="nav-label">Log</div></div>
+  <div class="nav-item" onclick="switchTab('health')" id="nav-health"><div class="nav-icon">🩺</div><div class="nav-label">Health</div></div>
   <div class="nav-item" onclick="switchTab('insights')" id="nav-insights"><div class="nav-icon">🧠</div><div class="nav-label">Insights</div></div>
 </nav>
 <div id="toast"></div>
@@ -351,6 +366,7 @@
 <script src="js/settings.js"></script>
 <script src="js/render.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/health.js"></script>
 <script src="js/insights.js"></script>
 <script src="js/app.js"></script>
 </body>
