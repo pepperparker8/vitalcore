@@ -557,3 +557,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .gym-done{width:100%;min-height:60px;border:none;border-radius:12px;background:var(--gold);color:#1A1A1A;font-family:var(--body);font-size:17px;font-weight:600;cursor:pointer;}
 .gym-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
 .gym-chip{min-height:44px;padding:0 12px;border-radius:22px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);font-family:var(--mono);font-size:12px;cursor:pointer;}
+.rec-card{padding:14px 16px;}
+.rc-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--t2);margin-bottom:6px;}
+.rc-head{font-family:var(--serif);font-size:20px;margin-bottom:8px;}
+.rc-row summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;border-top:1px solid var(--bdr);}
+.rc-row summary::-webkit-details-marker{display:none;}
+.rc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--t3);}
+.rc-dot.ok{background:var(--green);}.rc-dot.warn{background:var(--amber);}.rc-dot.bad{background:var(--red);}
+.rc-name{flex:1;font-size:14px;}
+.rc-val{font-family:var(--mono);font-size:13px;}
+.rc-more{font-size:13px;color:var(--t2);line-height:1.5;padding:0 0 12px 20px;}

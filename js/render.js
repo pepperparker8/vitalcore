@@ -30,6 +30,7 @@ function calcReadiness(){
   if(sl)s=sl.score*0.5+35;
   if(tsb!==null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:-tsb*0.3)));
   if(ci){const psy=(ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100;s=s*0.7+psy*0.3;}
+  s+=recoveryAdj();
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));s=Math.max(20,s-m*8);}
   return Math.round(Math.min(100,Math.max(20,s)));
