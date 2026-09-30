@@ -156,13 +156,7 @@
 
   <div class="card">
     <div class="sec">Mood &amp; energy</div>
-    <canvas id="moodCanvas" style="width:100%;height:110px;display:block;"></canvas>
-    <div class="legend">
-      <span><i style="background:var(--green)"></i>Mood</span>
-      <span><i style="background:var(--amber)"></i>Energy</span>
-      <span><i style="background:var(--t2)"></i>Calm</span>
-      <span><i style="background:var(--text)"></i>Motivation</span>
-    </div>
+    <div id="moodCanvas"></div>
     <div class="set-note" id="moodNote"></div>
   </div>
 
@@ -171,7 +165,7 @@
   <div class="card" id="strCard"><div class="tr-head"><div class="tr-title">Strength</div><div class="tr-sum">sets per muscle, last 7 days</div></div>
     <div id="strMuscles"></div>
     <select class="sel-inp" id="strSel" style="margin-top:12px" onchange="_strEx=this.value;renderStrTrend()"></select>
-    <canvas id="strCanvas" height="90" style="margin-top:8px"></canvas><div class="set-note" id="strSum"></div>
+    <div id="strCanvas" style="margin-top:8px"></div><div class="set-note" id="strSum"></div>
     <div class="set-note">10–20 hard sets per muscle per week is a common target for building strength.</div></div>
 
   <div class="card" id="sportCard"><div class="tr-head"><div class="tr-title">Distance per week</div><div class="tr-sum" id="spSum">—</div></div>
@@ -191,7 +185,7 @@
   <div class="card"><div class="sleep-bars" id="sleepBars"></div><div class="set-note" id="sleepDebt" style="margin-bottom:8px"></div><div class="sleep-stages"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
 
   <div class="sec">Body Weight — 30 Days</div>
-  <div class="card"><canvas id="wtCanvas" style="width:100%;height:80px;display:block;"></canvas><div class="wt-goal-line" id="wtGoalLine"></div></div>
+  <div class="card"><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
 
 </div><!-- /trCharts -->
 <div id="trCal" style="display:none">

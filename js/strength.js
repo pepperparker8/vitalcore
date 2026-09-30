@@ -240,7 +240,7 @@ function renderStrTrend(){
   const hist=exHistory();
   if(!hist.size){
     $('strMuscles').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No strength data yet</div><div class="empty-sub">Log a Weights or Calisthenics workout with sets and your progress shows here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';
-    $('strSel').style.display='none';$('strCanvas').style.display='none';$('strSum').textContent='';return;
+    $('strSel').style.display='none';$('strCanvas').innerHTML='';$('strSum').textContent='';return;
   }
   const wk=weeklySets(_range);
   const tt=document.querySelector('#strCard .tr-sum');if(tt)tt.textContent=_range>7?`avg sets per week per muscle, last ${_range} days`:'sets per muscle, last 7 days';
@@ -254,15 +254,9 @@ function renderStrTrend(){
   sel.innerHTML=names.map(n=>`<option ${n===_strEx?'selected':''}>${esc(n)}</option>`).join('');
   const a=hist.get(_strEx),weighted=a.some(x=>x.e1>0),timed=!weighted&&a.some(x=>x.secs);
   const val=x=>weighted?x.e1:timed?x.secs:x.reps,unit=weighted?'kg (est. 1RM)':timed?'sec':'reps';
-  const c=$('strCanvas');c.style.display='block';
-  const{ctx,W}=sizeCanvas(c,90),H=90;
+  const cv=$('strCanvas'),fu=v=>Math.round(v)+' '+(weighted?'kg':timed?'s':'reps');
+  if(a.length>=2)mountChart('strCanvas',{key:'str'+_strEx,H:170,span:180,wide:true,yfmt:v=>Math.round(v),series:[{pts:a.map(x=>({d:x.date,v:val(x)})),color:'--gold-dk',name:_strEx,fmt:fu}]});else cv.innerHTML='';
   const vals=a.slice(-20).map(val);
-  if(vals.length>=2){
-    const mn=Math.min(...vals),mx=Math.max(...vals),span=mx-mn||1,xs=(W-20)/(vals.length-1),Y=v=>H-12-(v-mn)/span*(H-24);
-    ctx.beginPath();ctx.strokeStyle=cssv('--gold');ctx.lineWidth=2;ctx.lineJoin='round';
-    vals.forEach((v,i)=>{const x=10+i*xs,y=Y(v);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
-    vals.forEach((v,i)=>{ctx.beginPath();ctx.arc(10+i*xs,Y(v),3,0,Math.PI*2);ctx.fillStyle=cssv('--gold');ctx.fill();});
-  }
   const l=last(a),best=Math.max(...a.map(val));
   $('strSum').textContent=vals.length<2?`Log ${_strEx} once more to see a trend. Latest: ${Math.round(val(l))} ${unit}.`:`${_strEx}: latest ${Math.round(val(l))} ${unit} · best ${Math.round(best)} · ${a.length} sessions`;
 }

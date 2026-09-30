@@ -163,17 +163,12 @@ function sizeCanvas(c,H){
   const ctx=c.getContext('2d');ctx.scale(r,r);ctx.clearRect(0,0,W,H);return{ctx,W};
 }
 function renderWtChart(){
-  const d=S(),c=$('wtCanvas');if(!c)return;
-  const pts=d.measurements.filter(m=>m.weight).slice(-30),goal=d.profile.wtGoal||72,gl=$('wtGoalLine');
-  const{ctx,W}=sizeCanvas(c,80),H=80;
-  if(pts.length<2){gl.textContent=pts.length?`Current: ${pts[0].weight} kg — log again to see a trend`:'Log your weight in the Log tab to see a trend';return;}
-  const vals=pts.map(m=>m.weight),minV=Math.min(...vals,goal)-0.5,maxV=Math.max(...vals,goal)+0.5;
-  const xs=(W-20)/(pts.length-1),ys=(H-12)/(maxV-minV),Y=v=>H-6-(v-minV)*ys;
-  ctx.beginPath();ctx.strokeStyle='rgba(212,175,55,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.moveTo(10,Y(goal));ctx.lineTo(W-10,Y(goal));ctx.stroke();ctx.setLineDash([]);
-  ctx.beginPath();ctx.strokeStyle=cssv('--teal');ctx.lineWidth=1.5;ctx.lineJoin='round';
-  pts.forEach((m,i)=>{const x=i*xs+10,y=Y(m.weight);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
-  pts.forEach((m,i)=>{ctx.beginPath();ctx.arc(i*xs+10,Y(m.weight),2,0,Math.PI*2);ctx.fillStyle=m.weight<=goal?cssv('--teal'):cssv('--amber');ctx.fill();});
-  const l=vals[vals.length-1];
+  const d=S(),host=$('wtCanvas');if(!host)return;
+  const all=d.measurements.filter(m=>m.weight).sort((a,b)=>a.date<b.date?-1:1),goal=d.profile.wtGoal||72,gl=$('wtGoalLine');
+  if(all.length<2){host.innerHTML='';gl.textContent=all.length?`Current: ${all[0].weight} kg — log again to see a trend`:'Log your weight in the Log tab to see a trend';return;}
+  const f1=v=>(Math.round(v*10)/10)+' kg';
+  mountChart('wtCanvas',{key:'wt',H:170,span:120,wide:true,yfmt:v=>Math.round(v*10)/10,ref:[{v:goal,label:'Goal '+goal}],series:[{pts:all.map(m=>({d:m.date,v:m.weight})),color:'--teal',name:'Weight',fmt:f1}]});
+  const l=all[all.length-1].weight;
   gl.textContent=`Current: ${l.toFixed(1)} kg · Goal: ${goal} kg · ${l<=goal?'✓ At goal':(l-goal).toFixed(1)+' kg to go'}`;
 }
 function calcBurnout(){
@@ -192,24 +187,13 @@ function renderBurnout(){
   $('boBreak').textContent=b.psy||b.phys?`Psychological: ${b.psy} · Physical: ${b.phys}`:'';
 }
 function renderMoodChart(){
-  const d=S(),c=$('moodCanvas');if(!c)return;
-  const{ctx,W}=sizeCanvas(c,110),H=110,n=_range;
-  const days=Array.from({length:n},(_,i)=>dAgo(n-1-i));
-  const pts=days.map(x=>d.checkins.find(c=>c.date===x&&ciFull(c)));
-  $('moodNote').textContent=pts.some(Boolean)?'Higher is better for every line. Calm is the opposite of stress.':'Your trends appear after your first check-in on the Today tab.';
-  // gridlines
-  ctx.strokeStyle=cssv('--bdr');ctx.lineWidth=1;
-  for(let g=0;g<4;g++){const y=8+g*(H-24)/3;ctx.beginPath();ctx.moveTo(6,y);ctx.lineTo(W-6,y);ctx.stroke();}
-  const X=i=>6+(n===1?0:i*(W-12)/(n-1)),Y=v=>8+(4-v)/3*(H-24);
-  [{k:'motivation',col:cssv('--text')},{k:'energy',col:cssv('--amber')},{k:'calm',col:cssv('--t2')},{k:'mood',col:cssv('--green')}].forEach(({k,col})=>{
-    const val=c=>k==='calm'?5-c.stress:c[k];
-    ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=k==='mood'?2.5:1.5;ctx.lineJoin='round';
-    ctx.beginPath();let pen=false;
-    pts.forEach((c,i)=>{if(!c){return;}const x=X(i),y=Y(val(c));pen?ctx.lineTo(x,y):ctx.moveTo(x,y);pen=true;});ctx.stroke();
-    pts.forEach((c,i)=>{if(!c)return;ctx.beginPath();ctx.arc(X(i),Y(val(c)),k==='mood'?3:2,0,Math.PI*2);ctx.fill();});
-  });
-  ctx.fillStyle=cssv('--t3');ctx.font='9px Inter, sans-serif';
-  ctx.textAlign='left';ctx.fillText(days[0].slice(5),6,H-4);ctx.textAlign='right';ctx.fillText('today',W-6,H-4);
+  const d=S(),host=$('moodCanvas');if(!host)return;
+  const cis=d.checkins.filter(ciFull).sort((a,b)=>a.date<b.date?-1:1);
+  $('moodNote').textContent=cis.length?'Higher is better for every line. Calm is the opposite of stress.':'Your trends appear after your first check-in on the Today tab.';
+  if(cis.length<2){host.innerHTML='';return;}
+  const L=['','Low','Fair','Good','Great'],f=v=>L[Math.round(v)]||'';
+  const mk=(name,color,fn)=>({name,color,fmt:f,pts:cis.map(c=>({d:c.date,v:fn(c)}))});
+  mountChart('moodCanvas',{key:'mood',H:170,min:1,max:4,span:30,yfmt:f,series:[mk('Mood','--green',c=>c.mood),mk('Energy','--amber',c=>c.energy),mk('Calm','--t2',c=>5-c.stress),mk('Motivation','--text',c=>c.motivation)]});
 }
 function renderWeekBanner(){
   const d=S(),wk=d.workouts.filter(w=>daysAgo(w.date)<7).length;

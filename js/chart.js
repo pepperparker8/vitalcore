@@ -68,7 +68,7 @@ function chDraw(id){
   st.L=cfg.wide?40:34;st.R=10;const L=st.L,R=st.R,T=10,B=22,[a,b]=st.view;
   const X=d=>L+(d-a)*(W-L-R)/(b-a);
   // y range from visible points
-  const vis=cfg.series.flatMap(s=>s.pts.filter(p=>{const d=DN(p.d);return d>=a-1&&d<=b+1;}).map(p=>p.v));
+  const vis=cfg.series.flatMap(s=>s.pts.filter(p=>{const d=DN(p.d);return d>=a-1&&d<=b+1;}).map(p=>p.v)).concat((cfg.ref||[]).map(f=>f.v));
   let mn=cfg.min,mx=cfg.max;
   if(vis.length&&(mn==null||mx==null)){const lo=Math.min(...vis),hi=Math.max(...vis),pad=(hi-lo)*0.12||Math.abs(hi)*0.08||1;if(mn==null)mn=lo-pad;if(mx==null)mx=hi+pad;if(cfg.zero){mn=Math.min(mn,0);mx=Math.max(mx,0);}}
   if(mn==null){mn=0;mx=1;}
@@ -82,6 +82,7 @@ function chDraw(id){
   ctx.textBaseline='alphabetic';ctx.textAlign='center';ctx.fillStyle=cssv('--t3');
   chTicks(a,b).forEach(([d,l])=>{const x=X(d);if(x<L+8||x>W-R-8)return;ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.globalAlpha=1;ctx.fillText(l,x,H-6);});
   ctx.save();ctx.beginPath();ctx.rect(L,0,W-L-R,H-B+2);ctx.clip();
+  (cfg.ref||[]).forEach(f=>{if(f.v<mn||f.v>mx)return;ctx.strokeStyle=cssv('--gold');ctx.globalAlpha=.7;ctx.setLineDash([5,4]);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(L,Y(f.v));ctx.lineTo(W-R,Y(f.v));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.fillStyle=cssv('--gold-dk');ctx.textAlign='left';ctx.font='600 10px Inter,sans-serif';ctx.fillText(f.label||'',L+4,Y(f.v)-4);});
   const dots=(b-a)<=60;
   cfg.series.forEach((s,si)=>{
     const q=s.pts.map(p=>[X(DN(p.d)),Y(p.v),p]);if(!q.length)return;
