@@ -56,22 +56,9 @@
     <div class="hero-why" id="heroWhy"></div><div class="hero-miss" id="heroMissing"></div>
   </div>
 
+  <div class="cc-h" id="verdictCard" style="display:none;margin:0 0 12px"></div>
   <div class="card sug-card" id="reviewCard" style="display:none"></div>
-  <div class="card rec-card" id="recCard"></div>
-
-  <div class="card goal-card" id="goalCard" style="display:none"></div>
   <div class="card sug-card" id="sugCard" style="display:none"></div>
-  <div class="card sug-card" id="planCard"></div>
-  <div class="card next-card" id="nextCard"></div>
-
-  <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
-  <div class="habits" id="habits"></div>
-
-  <div class="streak-card">
-    <div class="streak-top"><div style="font-size:22px">🔥</div><div><div class="streak-num" id="streakNum">0</div></div><div style="flex:1"><div style="font-size:13px;font-weight:600" id="streakTxt">Day streak</div><div style="font-size:11px;color:var(--t2)" id="streakSub">Check in or meditate to keep it going</div></div></div>
-    <div class="wk-strip" id="wkStrip"></div>
-  </div>
-
   <div class="ci-card" id="ciCard">
     <div class="sec">How are you today?</div>
     <div class="ci-row"><div class="ci-metric">ENERGY</div><div class="ci-btns" data-k="energy"><button class="ci-btn" onclick="selCI('energy',1,this)">😴</button><button class="ci-btn" onclick="selCI('energy',2,this)">😐</button><button class="ci-btn" onclick="selCI('energy',3,this)">⚡</button><button class="ci-btn" onclick="selCI('energy',4,this)">🚀</button></div><div class="ci-ends"><span>Drained</span><span>Charged ▸</span></div></div>
@@ -82,16 +69,6 @@
     <input type="text" class="ci-note" id="ciGrat" placeholder="A good coffee, a quiet run…" maxlength="200">
     <div class="ci-sum" id="ciSum"></div>
     <button class="ci-cta" id="ciCta" onclick="submitCI()">Save check-in</button>
-  </div>
-
-  <div class="card" id="mindCard">
-    <div class="sec">Mindfulness</div>
-    <div class="mind-big"><span id="mindToday">0</span><small>MIN TODAY</small></div>
-    <div class="mini-lbl">ALREADY MEDITATED? ADD MINUTES</div>
-    <div class="chip-row"><button class="chip" onclick="addMind(5)">+5</button><button class="chip" onclick="addMind(10)">+10</button><button class="chip" onclick="addMind(15)">+15</button><button class="chip" onclick="addMind(20)">+20</button></div>
-    <div class="mini-lbl">OR BREATHE WITH A GUIDED TIMER</div>
-    <div class="chip-row"><button class="chip dark" onclick="startMind(3)">▶ 3 min</button><button class="chip dark" onclick="startMind(5)">▶ 5 min</button><button class="chip dark" onclick="startMind(10)">▶ 10 min</button></div>
-    <div style="text-align:right"><button class="api-test-btn" onclick="undoMind()">Reset today's minutes</button></div>
   </div>
 
   <div class="card" id="qwCard">
@@ -108,6 +85,31 @@
     <div class="fl">WHAT GAVE ME ENERGY TODAY</div><input type="text" class="inp" id="reflGave" maxlength="200" placeholder="A long walk, a good talk…" style="margin-bottom:12px">
     <div class="fl">WHAT DRAINED ME</div><input type="text" class="inp" id="reflDrain" maxlength="200" placeholder="Back-to-back meetings…" style="margin-bottom:12px">
     <button class="btn-gold" id="reflBtn" onclick="saveReflect()">Save reflection</button>
+  </div>
+
+  <details class="more-today" id="moreToday"><summary>More today</summary>
+  <div class="card rec-card" id="recCard"></div>
+
+  <div class="card goal-card" id="goalCard" style="display:none"></div>
+  <div class="card sug-card" id="planCard"></div>
+  <div class="card next-card" id="nextCard"></div>
+
+  <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
+  <div class="habits" id="habits"></div>
+
+  <div class="streak-card">
+    <div class="streak-top"><div style="font-size:22px">🔥</div><div><div class="streak-num" id="streakNum">0</div></div><div style="flex:1"><div style="font-size:13px;font-weight:600" id="streakTxt">Day streak</div><div style="font-size:11px;color:var(--t2)" id="streakSub">Check in or meditate to keep it going</div></div></div>
+    <div class="wk-strip" id="wkStrip"></div>
+  </div>
+
+  <div class="card" id="mindCard">
+    <div class="sec">Mindfulness</div>
+    <div class="mind-big"><span id="mindToday">0</span><small>MIN TODAY</small></div>
+    <div class="mini-lbl">ALREADY MEDITATED? ADD MINUTES</div>
+    <div class="chip-row"><button class="chip" onclick="addMind(5)">+5</button><button class="chip" onclick="addMind(10)">+10</button><button class="chip" onclick="addMind(15)">+15</button><button class="chip" onclick="addMind(20)">+20</button></div>
+    <div class="mini-lbl">OR BREATHE WITH A GUIDED TIMER</div>
+    <div class="chip-row"><button class="chip dark" onclick="startMind(3)">▶ 3 min</button><button class="chip dark" onclick="startMind(5)">▶ 5 min</button><button class="chip dark" onclick="startMind(10)">▶ 10 min</button></div>
+    <div style="text-align:right"><button class="api-test-btn" onclick="undoMind()">Reset today's minutes</button></div>
   </div>
 
   <div class="card">
@@ -132,6 +134,7 @@
 
   <div class="card"><div class="sec">Training — Last 7 Days</div><div id="actList"></div></div>
   <div class="card"><div class="sec">Training Load</div><div id="tloadContent"></div></div>
+  </details>
 </div>
 
 <!-- TRENDS -->

@@ -670,3 +670,10 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .rv-k{font-size:10px;color:var(--t3);font-weight:600}.rv-v{font-size:13px;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rv-pr{background:var(--gold-l);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px}
 .rv-b{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:12px}
+
+.more-today{margin-top:4px}
+.more-today>summary{list-style:none;cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--bdr);border-radius:12px;font-size:13px;font-weight:600;color:var(--t2);margin-bottom:12px}
+.more-today>summary::-webkit-details-marker{display:none}
+.more-today>summary::after{content:'›';transform:rotate(90deg);font-size:16px}
+.more-today[open]>summary::after{transform:rotate(-90deg)}
+.more-today[open]>summary{margin-bottom:12px}

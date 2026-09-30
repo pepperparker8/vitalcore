@@ -44,6 +44,7 @@ exDismissed, hasRealData, onboardingDone
 - AI briefing (`genInsight`): prompt includes 12 weekly trends (`insightTrends`), recovery drivers, all blood results with change (`insightBlood`) and code-computed Pearson correlations (`insightCorrelations`, needs 8+ paired days). Model must not diagnose.
 - Weekly plan (`js/plan.js`, stored in `profile.plan`): planned vs done per weekday; `suggestWorkout()` follows it when readiness allows and bends it (with a reason) when not. Trends has an interactive load chart (`renderLoad`) and Progress & PRs chart (`js/progress.js`); `lineChart()` supports touch scrubbing, PR `marks`, `yfmt`, `extra`.
 - Coach view (`js/coach.js`, top of Insights): verdict (green, hold, back off) from readiness plus hard flags (severe injury, very low form, high burnout); rows for today, plan, load; "Things to watch" list.
+- Today order: ring, verdict strip (`renderVerdict`, Train / Hold steady / Rest from `coachVerdict()`), weekly review, suggestion, check-in, quick workout, reflection, then a collapsed "More today" holding everything else.
 - Weekly review (`js/review.js`): Today card Mon to Wed summarising the previous Mon-Sun (sessions, distance, plan adherence, sleep, readiness, new bests); dismissed via `profile.reviewSeen` (week key, synced). "Plan this week" opens the plan editor.
 - Blood scoring (`scoreBM`): normal 90, borderline 55, high 20.
 

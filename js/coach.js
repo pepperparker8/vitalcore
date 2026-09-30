@@ -10,6 +10,19 @@ function coachFlags(){
   const ci=d.checkins.find(c=>c.date===td()&&ciFull(c));if(!ci)fl.push({st:'info',t:'No check-in today',a:'A 20-second check-in makes readiness more accurate.'});
   return fl;
 }
+function coachVerdict(){
+  const sc=calcReadiness();if(sc===null)return null;
+  const fl=coachFlags(),bad=fl.filter(f=>f.hard).length,warn=fl.filter(f=>f.st==='warn'||f.st==='bad').length;
+  const lvl=sc<45||bad?'bad':sc<65||warn>=1?'warn':'ok';
+  const head={ok:['Train','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady','Train, but keep it controlled. Do not add extra load today.'],bad:['Rest','Recovery is the priority. Easy movement or rest.']}[lvl];
+  return{lvl,head,sc};
+}
+function renderVerdict(){
+  const el=$('verdictCard');if(!el)return;
+  const v=coachVerdict();if(!v){el.style.display='none';return;}
+  el.style.display='block';el.className='cc-h cc-'+v.lvl;
+  el.innerHTML=`<div class="cc-t">${v.head[0]} today</div><div class="cc-s">${v.head[1]}</div>`;
+}
 function renderCoach(){
   const el=$('coachCard');if(!el)return;
   const d=S(),sc=calcReadiness();
