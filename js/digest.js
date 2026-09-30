@@ -37,6 +37,7 @@ function renderDigest(){
   const row=(l,v,extra)=>`<div class="dg-r"><span>${l}</span><span class="dg-v">${v}${extra||''}</span></div>`;
   let h='<div class="sec">Your week in numbers <small style="font-weight:400;color:var(--t3)">last 7 days, change vs the week before</small></div>';
   h+=row('Active days',`${t.days} of 7`,dl(t.days,p.days,n0,true));
+  if(typeof planWeek==='function'){const pw=planWeek();if(pw.planned)h+=row('Plan followed',`${pw.done} of ${pw.planned}`,'<span class="dg-d">this week</span>');}
   h+=row('Workouts',t.sessions,dl(t.sessions,p.sessions,n0,null));
   h+=row('Training time',fmtDur(t.min),dl(t.min,p.min,m=>fmtDur(Math.round(m)),null));
   if(t.km||p.km)h+=row('Distance',r1(t.km)+' km',dl(t.km,p.km,v=>r1(v)+' km',null));
