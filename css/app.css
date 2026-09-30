@@ -570,3 +570,4 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 
 .bt-more{min-height:44px;width:100%;background:none;border:0;border-top:1px solid var(--bdr);margin-top:8px;font:500 11px 'IBM Plex Mono',monospace;color:var(--t2);cursor:pointer}
 .bt-panel{display:none;padding-top:8px}.bt-panel.open{display:block}
+.dg-out{margin-top:10px;padding:10px 12px;border-left:3px solid var(--amber);background:var(--sur2);border-radius:6px;font-size:12px;line-height:1.5;color:var(--t2)}.dg-out b{color:var(--text)}

@@ -13,6 +13,9 @@ function digestWeek(from,to){
     sleep:A(sl.map(s=>s.score)),nSleep:sl.length,
     mood:A(ci.map(c=>c.mood)),energy:A(ci.map(c=>c.energy)),calm:A(ci.map(c=>5-c.stress)),nCi:ci.length,
     mindful:d.checkins.filter(In).reduce((a,c)=>a+(c.mindfulMin||0),0),
+    sleepMin:A(d.sleepLogs.filter(In).filter(s=>s.durMin).map(s=>s.durMin)),
+    hrv:A(Object.entries(d.wellness||{}).filter(([dt,w])=>w.hrv&&In({date:dt})).map(([,w])=>w.hrv)),
+    rhr:A(Object.entries(d.wellness||{}).filter(([dt,w])=>w.rhr&&In({date:dt})).map(([,w])=>w.rhr)),
     weight:wt.length?last(wt).weight:null,
     days:new Set([...ws,...d.checkins.filter(In)].map(x=>x.date)).size
   };
@@ -40,12 +43,23 @@ function renderDigest(){
   if(t.swimM||p.swimM)h+=row('Swim',n0(t.swimM)+' m',dl(t.swimM,p.swimM,v=>n0(v)+' m',null));
   if(t.sets||p.sets)h+=row('Hard sets',t.sets,dl(t.sets,p.sets,n0,null));
   h+=row('Sleep score',t.sleep!=null?`${n0(t.sleep)}/100`:'—',dl(t.sleep,p.sleep,n0,true));
+  if(t.sleepMin!=null)h+=row('Time asleep (avg)',fmtDur(Math.round(t.sleepMin)),dl(t.sleepMin,p.sleepMin,m=>fmtDur(Math.round(m)),true));
+  if(t.hrv!=null)h+=row('HRV (avg)',n0(t.hrv)+' ms',dl(t.hrv,p.hrv,n0,true));
+  if(t.rhr!=null)h+=row('Resting HR (avg)',n0(t.rhr)+' bpm',dl(t.rhr,p.rhr,r1,false));
   h+=row('Mood (1–4)',t.mood!=null?r1(t.mood):'—',dl(t.mood,p.mood,r1,true));
   h+=row('Energy (1–4)',t.energy!=null?r1(t.energy):'—',dl(t.energy,p.energy,r1,true));
   h+=row('Calm (4 = very calm)',t.calm!=null?r1(t.calm):'—',dl(t.calm,p.calm,r1,true));
   h+=row('Mindfulness',t.mindful?fmtDur(t.mindful):'—',dl(t.mindful,p.mindful,m=>fmtDur(Math.round(m)),true));
   if(t.weight!=null)h+=row('Weight',t.weight+' kg');
   const notes=[];
+  const stood=[];
+  if(t.sleepMin!=null&&p.sleepMin&&t.sleepMin<p.sleepMin-20)stood.push(`You slept ${fmtDur(Math.round(p.sleepMin-t.sleepMin))} less per night than the week before.`);
+  if(t.hrv!=null&&p.hrv&&t.hrv<p.hrv*0.93)stood.push('HRV dipped, a sign your body was under more strain.');
+  if(t.min>p.min*1.3&&p.min>0)stood.push('Training time rose by more than 30%. Watch recovery next week.');
+  if(t.mood!=null&&p.mood&&t.mood<p.mood-0.4)stood.push('Mood fell noticeably. Compare it with sleep and training above.');
+  const dr=(typeof recoveryDrivers==='function'?recoveryDrivers():[]).find(x=>x.k==='debt'&&x.st!=='ok');
+  if(dr)stood.push(dr.txt);
+  if(stood.length)h+=`<div class="dg-out"><b>What stood out</b><br>${stood.map(esc).join('<br>')}</div>`;
   if(t.nCi<4)notes.push(`Only ${t.nCi} full check-in${t.nCi===1?'':'s'} this week, so mood averages are rough.`);
   if(t.nSleep<4)notes.push(`Only ${t.nSleep} night${t.nSleep===1?'':'s'} of sleep logged.`);
   if(notes.length)h+=`<div class="set-note" style="margin-top:8px">${notes.join(' ')}</div>`;
