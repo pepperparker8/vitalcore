@@ -242,7 +242,8 @@
         <div class="str-picks" id="strPick"></div><div id="strList"></div></div>
       <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select></div>
       <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Optional — shown in activity list"></div>
-      <button class="btn-gold" onclick="saveWorkout()">Record</button>
+      <button class="btn-gold" id="wSave" onclick="saveWorkout()">Record</button>
+      <button class="btn-out" id="wCancel" style="display:none" onclick="cancelEdit()">Cancel editing</button>
       <button class="btn-muted" onclick="repeatLast()">↺ Repeat last workout</button>
     </div>
   </div>

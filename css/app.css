@@ -659,3 +659,7 @@ body{font-feature-settings:'cv11','ss01','tnum'}
 button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .ci-cta{min-height:48px}
+
+#toast.act{pointer-events:auto}
+.toast-act{margin-left:10px;min-height:36px;padding:0 12px;border:0;border-radius:14px;background:var(--gold);color:var(--char);font:700 13px var(--body);cursor:pointer}
+.day-del{min-height:44px;min-width:44px}

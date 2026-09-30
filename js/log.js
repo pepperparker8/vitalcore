@@ -114,8 +114,9 @@ function saveSleep(){
 }
 function delSleep(){
   const date=$('slDate').value||td(),x=S().sleepLogs.find(s=>s.date===date);
-  if(!x||!confirm('Delete this night?'))return;
-  del('sleep',x.id);loadSleepFor(date);renderSleepBars();refreshAll();showToast('Sleep deleted');
+  if(!x)return;
+  const copy={...x};del('sleep',x.id);loadSleepFor(date);renderSleepBars();refreshAll();
+  showToast('Sleep deleted',{label:'Undo',fn:()=>{put('sleep',copy);loadSleepFor(date);renderSleepBars();refreshAll();showToast('Sleep restored');}});
 }
 function editSleep(date){closeDayPanel();switchTab('log');openLog('lSleep');loadSleepFor(date);$('lSleep').scrollIntoView({behavior:'smooth'});}
 function setStages(dH,dM,rH,rM){
@@ -159,12 +160,26 @@ function saveWorkout(){
     const r=collectSets();if(r.err){showToast(r.err);return;}
     sets=r.sets;prs=findPRs(sets);
   }
-  const rec={id:mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()};
+  const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()};
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
-  put('workouts',rec);
+  const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Record';$('wCancel').style.display='none';
   ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';
-  $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best 🏆 ${prs[0]}`:'Workout recorded 💪');refreshAll();
+  $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best 🏆 ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded 💪');refreshAll();
 }
+let _editId=null;
+function editWorkout(id){
+  const w=S().workouts.find(x=>x.id===id);if(!w)return;
+  closeDayPanel();switchTab('log');lgOpen('lWorkout');
+  _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
+  $('wDate').value=w.date;
+  $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
+  $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');
+  if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}
+  $('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
+  _editId=id;$('wSave').textContent='Update workout';$('wCancel').style.display='block';
+  showToast('Editing '+w.type+' from '+w.date);
+}
+function cancelEdit(){_editId=null;$('wSave').textContent='Record';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(IS_STR(_selEx))renderStrength();}
 function repeatLast(){
   const w=last(S().workouts);if(!w){showToast('No previous workout');return;}
   _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
@@ -173,9 +188,10 @@ function repeatLast(){
   showToast('Last workout loaded — change the date and record');
 }
 function delWorkout(id){
-  if(!confirm('Delete this workout?'))return;
-  const w=S().workouts.find(x=>x.id===id);
-  del('workouts',id);if(w)openDay(w.date);refreshAll();showToast('Workout deleted');
+  const w=S().workouts.find(x=>x.id===id);if(!w)return;
+  const copy=JSON.parse(JSON.stringify(w));
+  del('workouts',id);openDay(w.date);refreshAll();
+  showToast('Workout deleted',{label:'Undo',fn:()=>{put('workouts',copy);openDay(copy.date);refreshAll();showToast('Workout restored');}});
 }
 
 // ── MEASUREMENTS ─────────────────────────────────────────────────────────────

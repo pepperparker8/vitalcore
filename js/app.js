@@ -23,7 +23,9 @@ function tlog(id){const e=$(id),was=e.classList.contains('open');document.queryS
 function lgOpen(id){document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));const e=$(id);e.classList.add('open');setTimeout(()=>e.scrollIntoView({behavior:'smooth',block:'start'}),60);}
 function toggleWhy(id){$(id).classList.toggle('open');}
 let _toastT=null;
-function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),3200);}
+let _toastAct=null;
+function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.innerHTML=esc(msg)+(act?` <button class="toast-act" onclick="toastDo()">${esc(act.label)}</button>`:'');t.classList.toggle('act',!!act);t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show','act'),act?7000:3200);}
+function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderZone(s);renderGreeting();
   renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
