@@ -41,6 +41,7 @@ exDismissed, hasRealData, onboardingDone
 - `calcReadiness()`: sleep score base, adjusted by TSB, blended 70/30 with latest check-in, HRV and resting HR nudge vs your 30-day baseline (`recoveryAdj()`, only with 7+ days of data), minus 8 per injury severity level. Clamped 20 to 100.
 - `calcBurnout()`: 60% psychological (7-day check-in averages), 40% physical (ATL, TSB).
 - **Stress is inverted** everywhere it feeds a score: 1 = calm (good), 4 = very stressed (bad). Always use `5 - stress`.
+- AI briefing (`genInsight`): prompt includes 12 weekly trends (`insightTrends`), recovery drivers, all blood results with change (`insightBlood`) and code-computed Pearson correlations (`insightCorrelations`, needs 8+ paired days). Model must not diagnose.
 - Blood scoring (`scoreBM`): normal 90, borderline 55, high 20.
 
 ## Status
