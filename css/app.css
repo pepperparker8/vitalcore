@@ -606,3 +606,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 
 body{font-family:var(--body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
 .vc-nav .vc-win{white-space:nowrap;font-size:10px;padding:0 2px}
+
+.cc-h{border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--bdr)}
+.cc-t{font:400 24px var(--serif)}.cc-s{font-size:13px;color:var(--t2);margin-top:2px}
+.cc-ok{background:var(--green-l)}.cc-warn{background:var(--amber-l)}.cc-bad{background:var(--red-l)}
+.cc-r{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--bdr);font-size:13px}
+.cc-k{color:var(--t2);width:104px;flex:none}.cc-v{flex:1;font-weight:600;min-width:0}
+.cc-d{width:10px;height:10px;border-radius:50%;flex:none;margin-top:4px}
+.cc-r .cc-d{margin-top:0}
+span.cc-ok{background:var(--green)}span.cc-warn{background:var(--amber)}span.cc-bad{background:var(--red)}span.cc-info{background:var(--t3)}
+.cc-f{display:flex;gap:10px;padding:8px 0;font-size:13px;align-items:flex-start}

@@ -14,7 +14,7 @@ function refreshActive(){
   if(tab==='trends')renderTrendsTab();
   if(tab==='health')renderHealth();
   if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderSleepBars();}
-  if(tab==='insights'){renderDigest();renderInsightHistory();showTodayInsight();}
+  if(tab==='insights'){renderCoach();renderDigest();renderInsightHistory();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
 function go(id){const e=$(id);if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}
