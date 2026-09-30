@@ -58,7 +58,7 @@ Verify after each change; don't batch.
 - Light: cream background `#F7F5F0`, charcoal text. Dark: `#141414` background, `#1E1E1E` surfaces. Dark follows the phone or Settings > Appearance (`vc-theme`: auto/light/dark). All colours are CSS variables with dark overrides; never hardcode colours in JS, use `cssv()`.
 - Gold `#D4AF37` (`--gold-dk` `#B08F1E`), amber `#D97706` (warnings, distinct from gold), teal `#0D7A6B` for sleep and HRV only.
 - Gold is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
-- Logo: white and orange-red V mark (`assets/mark.svg`, gradient `#FF8A1F` to `#FF3B2E`), not gold. Icons on `#1A1A1A`, incl. maskable.
+- Logo: white ring with an orange-red pulse line (`assets/mark.svg`, gradient `#FF8A1F` to `#FF3B2E`), not gold. Icons on `#1A1A1A`, incl. maskable.
 - Icons: inline SVG line icons (1.8 stroke, currentColor) for nav and sports (`SPORTS`/`ICON` in core.js). Check-in emoticons stay emoji.
 - DM Serif Display for scores and headings, IBM Plex Mono for labels and data, Outfit for body.
 - 8px spacing grid. Tap targets minimum 44px.
