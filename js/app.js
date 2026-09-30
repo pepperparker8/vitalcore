@@ -25,7 +25,7 @@ let _toastT=null;
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),3200);}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderRing(s);renderZone(s);renderGreeting();
-  renderWhy();renderNext();renderGoal();renderRecovery();renderSuggest();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
+  renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth)pushAll().catch(()=>{});updSyncStatus();});

@@ -112,6 +112,17 @@ function suggestWorkout(){
     type=endur;title=`Quality ${endur.toLowerCase()}, ${r5(med(endur))} min with harder intervals`;
     why='You are fresh and well slept. A good day to push.';
   }
+  // fit the weekly plan: follow it when recovered, otherwise say why the plan is being bent
+  const pl=planOf((new Date().getDay()+6)%7);
+  if(pl){
+    const recover=type==='Yoga',easy=/^Easy/.test(title);
+    if(pl.type==='Rest'&&!recover){type='Yoga';title='Planned rest day';why='Your plan says rest. Recovery is when you adapt. Gentle mobility is fine.';}
+    else if(pl.type!=='Rest'){
+      if(recover)why+=` Your plan says ${pl.type}${pl.note?' ('+pl.note+')':''}. Skip it today and move it a day.`;
+      else if(easy){why+=` Plan: ${pl.type}. Keep it easy today.`;if(pl.type!==type&&!lowerHurt){type=pl.type;title=`Easy ${pl.type.toLowerCase()}, ${pl.note||'short and relaxed'}`;}}
+      else if(!lowerHurt){type=pl.type;title=`As planned: ${pl.type}${pl.note?', '+pl.note:''}`;why='On your plan, and you are recovered enough to do it well.';}
+    }
+  }
   if(lowerHurt&&type!=='Yoga')why+=' Low impact because of your leg injury.';
   return{type,title,why};
 }

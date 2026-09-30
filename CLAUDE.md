@@ -15,14 +15,14 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
-- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, recovery, form, trends, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
+- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, recovery, form, trends, progress, plan, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
 - External: Google Fonts only (IBM Plex Mono, Outfit, DM Serif Display).
 - State: one in-memory object `_s`, accessed via `S()` and written via `save(d)`, which triggers a 400ms debounced persist.
 - Charts: hand-drawn on `<canvas>` (mood, weight, fitness/fatigue/form and readiness trend via `lineChart()` in `js/form.js`). Canvas colours come from `cssv('--name')`, so they follow the theme. Readiness is snapshotted daily in `readHist` (local only) and DOM bars (sleep, HRV sparkline, blood sparklines).
 
 ### State shape
 ```
-profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal, goalName, goalDate}
+profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal, goalName, goalDate, plan {0-6 Mon-Sun: {type, note}}}
 checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, mindfulMin, gratitude, reflection, isEx}
 workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke})
 sleepLogs[]    {date, score 0-100, durMin, deepH, deepM, remH, remM, rested, isEx}
@@ -42,6 +42,7 @@ exDismissed, hasRealData, onboardingDone
 - `calcBurnout()`: 60% psychological (7-day check-in averages), 40% physical (ATL, TSB).
 - **Stress is inverted** everywhere it feeds a score: 1 = calm (good), 4 = very stressed (bad). Always use `5 - stress`.
 - AI briefing (`genInsight`): prompt includes 12 weekly trends (`insightTrends`), recovery drivers, all blood results with change (`insightBlood`) and code-computed Pearson correlations (`insightCorrelations`, needs 8+ paired days). Model must not diagnose.
+- Weekly plan (`js/plan.js`, stored in `profile.plan`): planned vs done per weekday; `suggestWorkout()` follows it when readiness allows and bends it (with a reason) when not. Trends has an interactive load chart (`renderLoad`) and Progress & PRs chart (`js/progress.js`); `lineChart()` supports touch scrubbing, PR `marks`, `yfmt`, `extra`.
 - Blood scoring (`scoreBM`): normal 90, borderline 55, high 20.
 
 ## Status
