@@ -567,3 +567,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .rc-name{flex:1;font-size:14px;}
 .rc-val{font-family:var(--mono);font-size:13px;}
 .rc-more{font-size:13px;color:var(--t2);line-height:1.5;padding:0 0 12px 20px;}
+
+.bt-more{min-height:44px;width:100%;background:none;border:0;border-top:1px solid var(--bdr);margin-top:8px;font:500 11px 'IBM Plex Mono',monospace;color:var(--t2);cursor:pointer}
+.bt-panel{display:none;padding-top:8px}.bt-panel.open{display:block}

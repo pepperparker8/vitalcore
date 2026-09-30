@@ -4,6 +4,35 @@ const BM=[
   ['Total cholesterol','chol','under 200 mg/dL'],
   ['Uric acid','uric','3.5–7.2 mg/dL']
 ];
+const BM_NOTE={
+  glucose:'Moves with: sleep (a poor night raises fasting glucose), refined carbs and sugary drinks late in the evening, stress, and regular training, which improves how your body handles sugar. Fast 8+ hours before the test for a fair reading.',
+  chol:'Moves with: saturated fat, fibre (oats, beans, vegetables), body weight and regular aerobic exercise. Changes take 6–12 weeks to show, so retest no sooner than that.',
+  uric:'Moves with: hydration, alcohol (especially beer), red and organ meat, seafood, sugary drinks and rapid weight loss. Hard training with dehydration can push it up briefly. Water and steady weight help.'
+};
+function toggleBT(k){
+  const p=$('btp_'+k);if(!p)return;const open=p.classList.toggle('open');
+  const b=$('btb_'+k);if(b)b.textContent=open?'Hide trend ▴':'Trend & what moves it ▾';
+  if(open)drawBloodChart(k);
+}
+// time-scaled chart of every result for one marker, with the reference band shaded
+function drawBloodChart(k){
+  const c=$('btc_'+k);if(!c)return;
+  const pts=S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:1).map(x=>({t:new Date(x.date+'T12:00:00').getTime(),v:x[k],date:x.date}));
+  const{ctx,W}=sizeCanvas(c,150),H=150,L=32,R=12,T=10,B=20;
+  const rng={glucose:[70,100],chol:[0,200],uric:[3.5,7.2]}[k];
+  let mn=Math.min(...pts.map(p=>p.v),rng[0]||0),mx=Math.max(...pts.map(p=>p.v),rng[1]);
+  const pad=(mx-mn)*0.15||1;mn=Math.max(0,mn-pad);mx+=pad;
+  const t0=pts[0].t,t1=Math.max(last(pts).t,t0+30*864e5);
+  const X=t=>L+(t-t0)*(W-L-R)/(t1-t0),Y=v=>T+(mx-v)*(H-T-B)/(mx-mn);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=cssv('--green');ctx.globalAlpha=0.12;ctx.fillRect(L,Y(rng[1]),W-L-R,Y(Math.max(rng[0],mn))-Y(rng[1]));ctx.globalAlpha=1;
+  ctx.font='9px "IBM Plex Mono",monospace';ctx.textBaseline='middle';ctx.textAlign='right';
+  for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3,y=Y(v);ctx.strokeStyle=cssv('--bdr');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillStyle=cssv('--t3');ctx.fillText(Math.round(v*10)/10,L-4,y);}
+  ctx.textAlign='center';ctx.fillStyle=cssv('--t3');
+  [pts[0],last(pts)].forEach((p,i)=>{if(i&&pts.length<2)return;ctx.textAlign=i?'right':'left';ctx.fillText(p.date.slice(2),i?W-R:L,H-6);});
+  ctx.strokeStyle=cssv('--text');ctx.lineWidth=1.5;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(X(p.t),Y(p.v)):ctx.moveTo(X(p.t),Y(p.v)));ctx.stroke();
+  pts.forEach(p=>{const st=scoreBM(p.v,k).status;ctx.fillStyle=cssv(st==='ok'?'--green':st==='warn'?'--amber':'--red');ctx.beginPath();ctx.arc(X(p.t),Y(p.v),4,0,7);ctx.fill();});
+}
 const stCol=s=>s==='ok'?'var(--green)':s==='warn'?'var(--amber)':'var(--red)';
 const stTxt=s=>s==='ok'?'In range':s==='warn'?'Borderline':'Out of range';
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
@@ -49,7 +78,9 @@ function renderHealth(){
       const dif=prev?r1(cur[k]-prev[k]):null;
       const bars=pts.map(p=>{const ss=scoreBM(p[k],k);return`<div class="bt-c"><div class="bt-v">${p[k]}</div><div class="bt-b" style="height:${Math.round(p[k]/mx*44)+4}px;background:${stCol(ss.status)}"></div><div class="bt-d">${p.date.slice(2,7).replace('-','/')}</div></div>`;}).join('');
       return`<div class="bt-card"><div class="bt-h"><div><div class="bm-name">${name}</div><div class="bm-unit">Reference: ${ref}</div></div><div style="text-align:right"><div class="bt-now" style="color:${stCol(s.status)}">${cur[k]}</div><div class="bt-st" style="color:${stCol(s.status)}">${stTxt(s.status)}</div></div></div>
-        <div class="bt-row">${bars}</div>${dif!==null?`<div class="set-note" style="margin-top:6px">${dif===0?'Unchanged':(dif>0?'Up ':'Down ')+Math.abs(dif)} since ${prev.date}.</div>`:'<div class="set-note" style="margin-top:6px">First result. Add another test to see the change.</div>'}</div>`;
+        <div class="bt-row">${bars}</div>${dif!==null?`<div class="set-note" style="margin-top:6px">${dif===0?'Unchanged':(dif>0?'Up ':'Down ')+Math.abs(dif)} since ${prev.date}.</div>`:'<div class="set-note" style="margin-top:6px">First result. Add another test to see the change.</div>'}
+        <button class="bt-more" id="btb_${k}" onclick="toggleBT('${k}')">Trend & what moves it ▾</button>
+        <div class="bt-panel" id="btp_${k}"><canvas id="btc_${k}" style="width:100%;height:150px;display:block"></canvas><div class="set-note" style="margin-top:8px">${pts.length<2?'One result so far. The chart becomes useful after your second test. ':'Green band is the reference range. '}${BM_NOTE[k]}</div></div></div>`;
     }).join('')+'<div class="set-note">Reference ranges are general adult guides. Your doctor decides what is right for you.</div>';
   }
   const inj=d.injuries.filter(i=>i.active);
