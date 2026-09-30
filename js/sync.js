@@ -56,7 +56,7 @@ async function handleAuthHash(){
     setAuth({access_token:at,refresh_token:p.get('refresh_token'),expires_at:Math.floor(Date.now()/1000)+(+p.get('expires_in')||3600),user:{id:u.id,email:u.email}});
     history.replaceState(null,'',location.pathname);
     afterSignIn();
-  }catch(e){}
+  }catch(e){showToast('Sign-in link failed. Try signing in again.');}
 }
 async function sbRefresh(){
   if(!_auth?.refresh_token)throw new Error('signed-out');
