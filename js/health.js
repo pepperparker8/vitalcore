@@ -26,7 +26,7 @@ function drawBloodChart(k){
   const X=t=>L+(t-t0)*(W-L-R)/(t1-t0),Y=v=>T+(mx-v)*(H-T-B)/(mx-mn);
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle=cssv('--green');ctx.globalAlpha=0.12;ctx.fillRect(L,Y(rng[1]),W-L-R,Y(Math.max(rng[0],mn))-Y(rng[1]));ctx.globalAlpha=1;
-  ctx.font='9px "IBM Plex Mono",monospace';ctx.textBaseline='middle';ctx.textAlign='right';
+  ctx.font='9px Inter,sans-serif';ctx.textBaseline='middle';ctx.textAlign='right';
   for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3,y=Y(v);ctx.strokeStyle=cssv('--bdr');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillStyle=cssv('--t3');ctx.fillText(Math.round(v*10)/10,L-4,y);}
   ctx.textAlign='center';ctx.fillStyle=cssv('--t3');
   [pts[0],last(pts)].forEach((p,i)=>{if(i&&pts.length<2)return;ctx.textAlign=i?'right':'left';ctx.fillText(p.date.slice(2),i?W-R:L,H-6);});

@@ -208,7 +208,7 @@ function renderMoodChart(){
     pts.forEach((c,i)=>{if(!c){return;}const x=X(i),y=Y(val(c));pen?ctx.lineTo(x,y):ctx.moveTo(x,y);pen=true;});ctx.stroke();
     pts.forEach((c,i)=>{if(!c)return;ctx.beginPath();ctx.arc(X(i),Y(val(c)),k==='mood'?3:2,0,Math.PI*2);ctx.fill();});
   });
-  ctx.fillStyle=cssv('--t3');ctx.font='9px IBM Plex Mono, monospace';
+  ctx.fillStyle=cssv('--t3');ctx.font='9px Inter, sans-serif';
   ctx.textAlign='left';ctx.fillText(days[0].slice(5),6,H-4);ctx.textAlign='right';ctx.fillText('today',W-6,H-4);
 }
 function renderWeekBanner(){

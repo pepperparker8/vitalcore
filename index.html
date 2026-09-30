@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="assets/mark.svg">
 <title>VitalCore</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -142,12 +142,7 @@
   <div class="card">
     <div class="sec">Fitness, fatigue &amp; form</div>
     <div class="tr-sum" id="formSum"></div>
-    <canvas id="formCanvas" style="width:100%;height:130px;display:block;"></canvas>
-    <div class="legend">
-      <span><i style="background:var(--text)"></i>Fitness</span>
-      <span><i style="background:var(--amber)"></i>Fatigue</span>
-      <span><i style="background:var(--teal)"></i>Form</span>
-    </div>
+    <div id="formCanvas"></div>
     <div class="set-note" id="formNote"></div>
     <details class="fm-why"><summary>Why this matters</summary><p>Fitness (CTL) is your slow-building training base. Fatigue (ATL) is what you have done lately. Form (TSB) is fitness minus fatigue: above zero you are fresh, well below zero you are carrying a lot of tiredness.</p></details>
   </div>
@@ -155,7 +150,7 @@
   <div class="card" id="progCard"></div>
   <div class="card">
     <div class="sec">Readiness trend</div>
-    <canvas id="readCanvas" style="width:100%;height:110px;display:block;"></canvas>
+    <div id="readCanvas"></div>
     <div class="set-note" id="readNote"></div>
   </div>
 
@@ -404,6 +399,7 @@
 <script src="js/settings.js"></script>
 <script src="js/render.js"></script>
 <script src="js/recovery.js"></script>
+<script src="js/chart.js"></script>
 <script src="js/form.js"></script>
 <script src="js/trends.js"></script>
 <script src="js/progress.js"></script>

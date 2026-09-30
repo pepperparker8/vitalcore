@@ -1,5 +1,5 @@
 // ── PROGRESS & PRs: per lift or sport, tap/drag to inspect, gold rings mark new bests ──
-let _prKey='',_prMet='',_prRng=180;
+let _prKey='',_prMet='',_prRng=0;
 const PR_SPORT=['Run','Cycle','Swim','Hike','Walk'];
 function prOptions(){
   const d=S(),h=exHistory();
@@ -41,17 +41,18 @@ function renderProgress(){
   const opt=`<optgroup label="Lifts">${lifts.map(n=>`<option ${n===_prKey?'selected':''}>${esc(n)}</option>`).join('')}</optgroup><optgroup label="Endurance">${sp.map(n=>`<option ${n===_prKey?'selected':''}>${n}</option>`).join('')}</optgroup>`;
   const seg=(items,cur,fn)=>items.map(([v,l])=>`<button class="${cur===v?'active':''}" onclick="${fn}('${v}')">${l}</button>`).join('');
   let h=`<div class="sec">Progress &amp; PRs</div><select class="sel-inp" onchange="_prKey=this.value;renderProgress()">${opt}</select>
-    <div class="ld-seg">${seg(mets,_prMet,'setPrM')}</div><div class="ld-seg">${seg([['90','3 mo'],['180','6 mo'],['365','1 yr'],['0','All']],String(_prRng),'setPrR')}</div>`;
+    <div class="ld-seg">${seg(mets,_prMet,'setPrM')}</div>`;
   if(pts.length<1){el.innerHTML=h+'<div class="set-note">No sessions with this measure in the period. Try a longer range.</div>';return;}
-  h+='<canvas id="prCanvas" style="width:100%;height:150px;display:block;margin-top:6px"></canvas>';
+  h+='<div id="prCanvas" style="margin-top:6px"></div>';
   // running bests
   let best=-Infinity;const marks=[];pts.forEach((p,i)=>{if(p.v>best+1e-9){if(i>0)marks.push(i);best=p.v;}});
   const bi=pts.reduce((b,p,i)=>p.v>pts[b].v?i:b,0),b=pts[bi],l=last(pts);
   h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${b.date}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${l.date}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">${marks.length} new best${marks.length===1?'':'s'}</div></div></div>`;
-  h+=`<div class="set-note">${prNext(_prKey,_prMet,b,l,pts)}</div><div class="set-note">Gold rings are sessions where you set a new best. Touch or drag the chart to read a session.</div>`;
+  h+=`<div class="set-note">${prNext(_prKey,_prMet,b,l,pts)}</div><div class="set-note">Gold rings are sessions where you set a new best. Drag the chart to move through time, pinch to zoom.</div>`;
   el.innerHTML=h;
-  const c=$('prCanvas'),n=pts.length,vs=pts.map(p=>p.v),mn=Math.min(...vs),mx=Math.max(...vs),pad=(mx-mn)*0.15||Math.abs(mx)*0.1||1;
-  lineChart(c,150,[{pts:pts.map((p,i)=>({i,v:p.v})),color:'--text',name:_prKey,fmt:v=>{const p=pts.find(q=>q.v===v);return p?p.txt:v;},marks}],{n:Math.max(n,2),min:mn-pad,max:mx+pad,label:i=>(pts[Math.min(i,n-1)]||pts[0]).date.slice(2),yfmt:sr.yf,extra:i=>pts[i]?pts[i].sub:''});
+  const byD=new Map(pts.map(p=>[p.date,p]));
+  mountChart('prCanvas',{key:'pr'+_prKey+_prMet,H:190,span:365,wide:true,yfmt:sr.yf,marks:marks.map(i=>pts[i].date),extra:dt=>{const p=byD.get(dt);return p?p.sub:'';},
+    series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:v=>{const p=pts.find(q=>q.v===v);return p?p.txt:v;}}]});
 }
 function setPrM(v){_prMet=v;renderProgress();}
 function setPrR(v){_prRng=+v;renderProgress();}

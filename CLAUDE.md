@@ -15,7 +15,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
-- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, recovery, form, trends, progress, plan, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
+- Layout: `index.html` (shell), `css/app.css`, `js/` classic scripts sharing globals, loaded in this order: core, sync, strength, log, today, settings, render, recovery, chart, form, trends, progress, plan, health, digest, insights, app. `sw.js` caches the shell (add new files to SHELL and bump the cache name).
 - External: Google Fonts only (IBM Plex Mono, Outfit, DM Serif Display).
 - State: one in-memory object `_s`, accessed via `S()` and written via `save(d)`, which triggers a 400ms debounced persist.
 - Charts: hand-drawn on `<canvas>` (mood, weight, fitness/fatigue/form and readiness trend via `lineChart()` in `js/form.js`). Canvas colours come from `cssv('--name')`, so they follow the theme. Readiness is snapshotted daily in `readHist` (local only) and DOM bars (sleep, HRV sparkline, blood sparklines).
@@ -61,9 +61,11 @@ Verify after each change; don't batch.
 - Gold is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - Logo: white ring with an orange-red pulse line (`assets/mark.svg`, gradient `#FF8A1F` to `#FF3B2E`), not gold. Icons on `#1A1A1A`, incl. maskable.
 - Icons: inline SVG line icons (1.8 stroke, currentColor) for nav and sports (`SPORTS`/`ICON` in core.js). Check-in emoticons stay emoji.
-- DM Serif Display for scores and headings, IBM Plex Mono for labels and data, Outfit for body.
+- DM Serif Display for scores and headings, Inter (tabular numerals) for everything else: labels, data, body. Changed from IBM Plex Mono/Outfit with the owner's request.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.
+
+- Time charts (`js/chart.js`, `mountChart(id,cfg)`): real date axis, drag to pan, pinch/wheel to zoom, 1M/3M/6M/1Y/All chips, ‹ › to move, tap to inspect. Used by fitness/fatigue/form, readiness and Progress & PRs.
 
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.
