@@ -210,6 +210,10 @@
 
 <!-- LOG -->
 <div class="page page-fade" id="pg-log">
+  <div class="lg-top"><div class="lg-h">Log</div><div class="lg-s">Pick what you want to record. Takes under a minute.</div>
+    <div class="lg-tiles">
+      <button onclick="lgOpen('lSleep')"><span>🌙</span>Sleep</button><button onclick="lgOpen('lWorkout')"><span>🏃</span>Workout</button><button onclick="lgOpen('lMeas')"><span>📏</span>Body</button><button onclick="lgOpen('lBlood')"><span>🧬</span>Blood</button><button onclick="lgOpen('lInjury')"><span>🩹</span>Injury</button>
+    </div></div>
   <div class="log-sec open" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico">🌙</div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev">▾</div></div>
     <div class="log-body">
       <div class="fg"><div class="fl">NIGHT ENDING ON</div><input type="date" class="inp" id="slDate" onchange="loadSleepFor(this.value)"><div class="set-note" id="slNote"></div></div>

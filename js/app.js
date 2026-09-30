@@ -18,8 +18,9 @@ function refreshActive(){
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
 function go(id){const e=$(id);if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}
-function openLog(id){const e=$(id);if(e)e.classList.add('open');}
-function tlog(id){$(id).classList.toggle('open');}
+function openLog(id){const e=$(id);if(e){document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));e.classList.add('open');}}
+function tlog(id){const e=$(id),was=e.classList.contains('open');document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));if(!was){e.classList.add('open');setTimeout(()=>e.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
+function lgOpen(id){document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));const e=$(id);e.classList.add('open');setTimeout(()=>e.scrollIntoView({behavior:'smooth',block:'start'}),60);}
 function toggleWhy(id){$(id).classList.toggle('open');}
 let _toastT=null;
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),3200);}

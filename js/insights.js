@@ -140,7 +140,11 @@ Respond ONLY in valid JSON, no markdown:
     const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':d.claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:1600,messages:[{role:'user',content:prompt}]})});
     if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error');}
     const data=await resp.json();
-    const ins=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    const raw=(data.content||[]).filter(b=>b&&typeof b.text==='string').map(b=>b.text).join('');
+    if(!raw)throw new Error(data.stop_reason==='max_tokens'?'The answer was cut off. Try again.':'The AI returned no text. Try again.');
+    const a=raw.indexOf('{'),z=raw.lastIndexOf('}');
+    if(a<0||z<a)throw new Error('The AI reply was not in the expected format. Try again.');
+    const ins=JSON.parse(raw.slice(a,z+1));
     saveInsightToLog(ins,_insPeriod);showTodayInsight();updateInsNudge();
   }catch(e){
     $('insContent').innerHTML=`<div class="ins-block"><div class="ins-bt">RULE-BASED ANALYSIS</div><div class="ins-text">${esc(buildFallback())}</div></div><div style="font-size:11px;color:var(--t3);margin:8px 0">${esc(e.message)}</div><button class="ins-gen" onclick="genInsight()">Try again</button>`;
