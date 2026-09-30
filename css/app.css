@@ -642,3 +642,20 @@ span.cc-ok{background:var(--green)}span.cc-warn{background:var(--amber)}span.cc-
 .ex-btn{border-radius:12px}
 body{font-feature-settings:'cv11','ss01','tnum'}
 .log-hdr>div:nth-child(2){flex:1;min-width:0}.log-chev{font-size:16px;padding-right:2px}
+
+/* update banner + tap targets + a11y */
+#updBar{display:none;align-items:center;justify-content:center;gap:12px;background:var(--gold);color:var(--char);font-size:13px;font-weight:600;padding:6px 12px}
+#updBar.show{display:flex}
+#updBar button{min-height:44px;padding:0 16px;border:0;border-radius:10px;background:var(--char);color:var(--gold);font:600 13px var(--body);cursor:pointer}
+.vc-chips button,.vc-nav button{position:relative}
+.vc-chips button::after,.vc-nav button::after,.zone-why::after{content:'';position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
+.zone-why{position:relative;padding:8px 0}
+.w-skip{min-height:44px}
+.api-test-btn{min-height:44px}
+.empty-btn{min-height:44px;padding:0 20px;font:600 13px var(--body);border-radius:10px}
+.ins-tog{min-height:44px;font-weight:500}
+.btn-muted{min-height:44px}
+.pl-d,.sb-wrap,.ld-b{min-height:44px}
+button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.ci-cta{min-height:48px}

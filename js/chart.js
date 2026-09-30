@@ -95,6 +95,7 @@ function chDraw(id){
   if(st.hover!=null){const x=X(st.hover);ctx.strokeStyle=cssv('--t2');ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.setLineDash([]);
     cfg.series.forEach(s=>{const p=chNear(s,st.hover);if(!p)return;ctx.fillStyle=cssv(s.color);ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),4.5,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();});}
   ctx.restore();
+  c.setAttribute('aria-label',(cfg.label||'Chart')+': '+cfg.series.map(s=>s.name+' latest '+(s.pts.length?(s.fmt?s.fmt(s.pts[s.pts.length-1].v):Math.round(s.pts[s.pts.length-1].v*10)/10):'none')).join(', ')+'. Drag to move through dates.');
   chReadout(id);
 }
 function chNear(s,day){let best=null,bd=99;s.pts.forEach(p=>{const k=Math.abs(DN(p.d)-day);if(k<bd){bd=k;best=p;}});return bd<=(_chTol(s))?best:null;}

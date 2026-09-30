@@ -25,7 +25,7 @@ function toggleWhy(id){$(id).classList.toggle('open');}
 let _toastT=null;
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),3200);}
 function recalc(){
-  const s=calcReadiness();recordReadiness(s);renderRing(s);renderZone(s);renderGreeting();
+  const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderZone(s);renderGreeting();
   renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
@@ -56,4 +56,20 @@ async function init(){
   else if(_auth&&Object.keys(d.pending).length)queuePush();
 }
 init();
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e.message)));
+if('serviceWorker' in navigator){
+  const had=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had)$('updBar').classList.add('show');});
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e.message)));
+}
+
+// accessibility: make click-only elements keyboard/screen-reader operable
+function a11y(){
+  document.querySelectorAll('[onclick]:not(button):not(a):not(input):not(select):not([role])').forEach(e=>{e.setAttribute('role','button');e.tabIndex=0;});
+  document.querySelectorAll('.nav-item').forEach(e=>{if(!e.getAttribute('aria-label'))e.setAttribute('aria-label',e.textContent.trim());});
+  document.querySelectorAll('.log-hdr').forEach(h=>h.setAttribute('aria-expanded',h.parentElement.classList.contains('open')));
+  document.querySelectorAll('.ci-btn:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.textContent.trim()||'option'));
+  document.querySelectorAll('.vc-cv').forEach(c=>{if(!c.getAttribute('role')){c.setAttribute('role','img');}});
+}
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[role=button]:not(button)')){e.preventDefault();e.target.click();}});
+let _a11yT=null;new MutationObserver(()=>{clearTimeout(_a11yT);_a11yT=setTimeout(a11y,250);}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+a11y();
