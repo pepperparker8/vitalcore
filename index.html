@@ -188,7 +188,7 @@
   <div class="zone-card"><div class="zone-top" style="background:var(--green)"></div><div class="zone-body"><div class="zone-title">How Fresh You Are</div><div class="zone-sub">Training Stress Balance (CTL − ATL)</div><div class="zone-row"><div class="zone-val" id="zTSB" style="color:var(--green)">—</div><div style="flex:1"><div class="zone-desc" id="zTSBd">Connect Intervals.icu to see freshness.</div><div class="zone-why" onclick="toggleWhy('wTSB')">ⓘ Why this matters ▾</div><div class="zone-exp" id="wTSB">TSB = CTL − ATL. Positive = fresh. Negative = fatigued. Optimal race-day TSB is +5 to +20. Deeply negative signals overtraining risk.</div></div></div></div></div>
 
   <div class="sec" style="margin-top:4px">Sleep — Last 7 Nights</div>
-  <div class="card"><div class="sleep-bars" id="sleepBars"></div><div class="sleep-stages"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
+  <div class="card"><div class="sleep-bars" id="sleepBars"></div><div class="set-note" id="sleepDebt" style="margin-bottom:8px"></div><div class="sleep-stages"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
 
   <div class="sec">Body Weight — 30 Days</div>
   <div class="card"><canvas id="wtCanvas" style="width:100%;height:80px;display:block;"></canvas><div class="wt-goal-line" id="wtGoalLine"></div></div>
@@ -216,13 +216,16 @@
 
 <!-- LOG -->
 <div class="page page-fade" id="pg-log">
-  <div class="log-sec open" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico">🌙</div><div><div class="log-title">Sleep Last Night</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec open" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico">🌙</div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev">▾</div></div>
     <div class="log-body">
+      <div class="fg"><div class="fl">NIGHT ENDING ON</div><input type="date" class="inp" id="slDate" onchange="loadSleepFor(this.value)"><div class="set-note" id="slNote"></div></div>
+      <div class="fg"><div class="fl">TIME ASLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slTH" placeholder="7" min="0" max="16"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slTM" placeholder="10" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">SLEEP SCORE</div><div class="fr"><input type="number" class="inp inp-sm" id="slScore" placeholder="74" min="0" max="100"><span class="inp-unit">/ 100</span></div></div>
       <div class="fg"><div class="fl">DEEP SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slDH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slDM" placeholder="32" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">REM SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slRH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slRM" placeholder="18" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">HOW RESTED?</div><div class="ci-btns"><button class="ci-btn" onclick="selCI('rested',1,this)">😴</button><button class="ci-btn" onclick="selCI('rested',2,this)">😐</button><button class="ci-btn" onclick="selCI('rested',3,this)">😊</button><button class="ci-btn" onclick="selCI('rested',4,this)">😄</button></div></div>
-      <button class="btn-gold" onclick="saveSleep()">Log it</button>
+      <button class="btn-gold" onclick="saveSleep()">Save sleep</button>
+      <button class="btn-out" id="slDel" style="display:none;margin-top:8px" onclick="delSleep()">Delete this night</button>
     </div>
   </div>
 
@@ -267,8 +270,6 @@
       <div class="fg"><div class="fl">GLUCOSE (mg/dL)</div><input type="number" class="inp" id="bmG" placeholder="92" min="20" max="600"></div>
       <div class="fg"><div class="fl">TOTAL CHOLESTEROL (mg/dL)</div><input type="number" class="inp" id="bmC" placeholder="185" min="50" max="500"></div>
       <div class="fg"><div class="fl">URIC ACID (mg/dL)</div><input type="number" class="inp" id="bmU" placeholder="5.2" step="0.1" min="1" max="20"></div>
-      <div class="fg"><div class="fl">HDL (mg/dL)</div><input type="number" class="inp" id="bmH" placeholder="52" min="10" max="150"></div>
-      <div class="fg"><div class="fl">LDL (mg/dL)</div><input type="number" class="inp" id="bmL" placeholder="112" min="10" max="400"></div>
       <button class="btn-gold" onclick="saveBlood()">Save results</button>
     </div>
   </div>

@@ -134,6 +134,8 @@ function renderSleepBars(){
     html+=`<div class="sb-wrap" onclick="tapSB(this)"><div class="sb-tip">${L[dt.getDay()]} · ${score?score+'/100':'no data'}</div><div class="sb-bar" style="height:${h}px;background:${col}"></div><div class="sb-lbl">${L[dt.getDay()]}</div></div>`;
   }
   $('sleepBars').innerHTML=html;
+  const goal=Math.round((d.profile.sleepGoal||7.5)*60),wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7);
+  $('sleepDebt').textContent=wk.length?(()=>{const avg=Math.round(wk.reduce((a,s)=>a+s.durMin,0)/wk.length),debt=wk.reduce((a,s)=>a+(goal-s.durMin),0);return`Average ${fmtDur(avg)} over ${wk.length} night${wk.length>1?'s':''} (goal ${fmtDur(goal)}). `+(debt>0?`Sleep debt: ${fmtDur(debt)}.`:`Ahead of goal by ${fmtDur(-debt)}.`);})():'Add time asleep to see your sleep debt against your goal.';
   const l=last(d.sleepLogs);
   if(l)setStages(l.deepH||0,l.deepM||0,l.remH||0,l.remM||0);
   const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=t?'✓ Logged today':'Not logged today';
@@ -245,7 +247,7 @@ function openDay(date){
   $('dayPT').textContent=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
   const row=(l,v)=>`<div class="day-row"><span class="day-lbl">${l}</span><span class="day-val">${v}</span></div>`;
   let html='';
-  if(sl)html+=row('Sleep score',(sl.score||'—')+'/100')+((sl.deepH||sl.deepM)?row('Deep sleep',fmtHM(sl.deepH||0,sl.deepM||0)):'')+((sl.remH||sl.remM)?row('REM sleep',fmtHM(sl.remH||0,sl.remM||0)):'');
+  if(sl)html+=row('Sleep',`${sl.durMin?fmtDur(sl.durMin)+' · ':''}${sl.score?sl.score+'/100':'no score'}<button class="day-del" style="color:var(--text)" onclick="editSleep('${date}')">Edit</button>`)+((sl.deepH||sl.deepM)?row('Deep sleep',fmtHM(sl.deepH||0,sl.deepM||0)):'')+((sl.remH||sl.remM)?row('REM sleep',fmtHM(sl.remH||0,sl.remM||0)):'');
   if(ciFull(ci))html+=row('Energy',EM.energy[ci.energy])+row('Mood',EM.mood[ci.mood])+row('Stress',EM.stress[ci.stress])+row('Motivation',EM.motivation[ci.motivation]);
   if(ci?.mindfulMin)html+=row('Mindfulness',fmtDur(ci.mindfulMin));
   if(reflOf(ci)){const r=reflOf(ci);if(r.gave)html+=row('Gave energy',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(r.gave)}</span>`);if(r.drained)html+=row('Drained me',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(r.drained)}</span>`);}

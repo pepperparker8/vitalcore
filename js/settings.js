@@ -63,7 +63,7 @@ function exportCSV(){
   d.workouts.forEach(w=>csv+=`${w.date},Workout,${q(w.type)},${w.durMin||0} min ${w.distKm||0} km RPE ${w.rpe||''} ${q(w.notes)} ${q(w.sets?setsText(w):'')}\n`);
   d.sleepLogs.forEach(s=>csv+=`${s.date},Sleep score,${s.score??''},\n`);
   d.measurements.forEach(m=>csv+=`${m.date},Measurement,${m.weight??''},BP ${m.bpSys??''}/${m.bpDia??''} HR ${m.hr??''}\n`);
-  d.bloodLogs.forEach(b=>csv+=`${b.date},Blood mg/dL,,glucose ${b.glucose??''} chol ${b.chol??''} uric ${b.uric??''} hdl ${b.hdl??''} ldl ${b.ldl??''}\n`);
+  d.bloodLogs.forEach(b=>csv+=`${b.date},Blood mg/dL,,glucose ${b.glucose??''} chol ${b.chol??''} uric ${b.uric??''}\n`);
   d.injuries.forEach(i=>csv+=`${i.date},Injury,${q(i.part)},severity ${i.sev}\n`);
   download('vitalcore-export.csv','text/csv',csv);showToast('CSV exported');
 }

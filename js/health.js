@@ -2,8 +2,6 @@
 const BM=[
   ['Glucose','glucose','70–100 mg/dL (fasting)'],
   ['Total cholesterol','chol','under 200 mg/dL'],
-  ['LDL','ldl','under 100 mg/dL'],
-  ['HDL','hdl','40 mg/dL or higher'],
   ['Uric acid','uric','3.5–7.2 mg/dL']
 ];
 const stCol=s=>s==='ok'?'var(--green)':s==='warn'?'var(--amber)':'var(--red)';

@@ -87,16 +87,37 @@ function saveQuick(){
 }
 
 // ── SLEEP ────────────────────────────────────────────────────────────────────
+function loadSleepFor(date){
+  date=date||td();$('slDate').value=date;
+  const x=S().sleepLogs.find(s=>s.date===date),t=x?.durMin||0;
+  $('slScore').value=x?.score??'';
+  $('slTH').value=t?Math.floor(t/60):'';$('slTM').value=t?t%60:'';
+  $('slDH').value=x?.deepH||'';$('slDM').value=x?.deepM||'';$('slRH').value=x?.remH||'';$('slRM').value=x?.remM||'';
+  _ci.rested=x?.rested??null;
+  document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
+  $('slDel').style.display=x?'':'none';
+  $('slNote').textContent=x?'Editing the saved night. Change anything and save.':'Nothing saved for this night yet.';
+}
 function saveSleep(){
+  const date=$('slDate').value||td();
+  if(date>td()){showToast('That date is in the future');return;}
   const score=+$('slScore').value||null;
   if(score!==null&&(score<0||score>100)){showToast('Sleep score should be 0–100');return;}
+  const tH=+$('slTH').value||0,tM=+$('slTM').value||0,dur=tH*60+tM;
+  if(dur>16*60){showToast('Sleep over 16 hours looks off');return;}
   const dH=+$('slDH').value||0,dM=+$('slDM').value||0,rH=+$('slRH').value||0,rM=+$('slRM').value||0;
-  if(!score&&!dH&&!dM&&!rH&&!rM&&!_ci.rested){showToast('Enter at least a sleep score');return;}
-  const date=td();
-  put('sleep',{id:'sl-'+date,date,score,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested});
-  $('sleepStat').textContent='✓ Logged today';
-  setStages(dH,dM,rH,rM);renderSleepBars();showToast('Sleep logged');refreshAll();
+  if(dH*60+dM+rH*60+rM>(dur||16*60)){showToast('Deep + REM cannot be longer than time asleep');return;}
+  if(!score&&!dur&&!dH&&!dM&&!rH&&!rM&&!_ci.rested){showToast('Enter time asleep or a sleep score');return;}
+  const old=S().sleepLogs.find(s=>s.date===date);
+  put('sleep',{id:old?.id||'sl-'+date,date,score,durMin:dur||null,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested??null});
+  loadSleepFor(date);renderSleepBars();showToast('Sleep saved');refreshAll();
 }
+function delSleep(){
+  const date=$('slDate').value||td(),x=S().sleepLogs.find(s=>s.date===date);
+  if(!x||!confirm('Delete this night?'))return;
+  del('sleep',x.id);loadSleepFor(date);renderSleepBars();refreshAll();showToast('Sleep deleted');
+}
+function editSleep(date){closeDayPanel();switchTab('log');openLog('lSleep');loadSleepFor(date);$('lSleep').scrollIntoView({behavior:'smooth'});}
 function setStages(dH,dM,rH,rM){
   $('stDeep').textContent=fmtHM(dH,dM);$('stREM').textContent=fmtHM(rH,rM);
   const lm=Math.max(0,480-(dH*60+dM)-(rH*60+rM));
@@ -208,7 +229,7 @@ function clearInjury(id){
 
 // ── BLOOD MARKERS ────────────────────────────────────────────────────────────
 function scoreBM(v,t){
-  const r={glucose:{ok:[70,100],warn:[100,125]},chol:{ok:[0,200],warn:[200,239]},uric:{ok:[3.5,7.2],warn:[7.2,8.0]},hdl:{ok:[40,999],warn:[35,40]},ldl:{ok:[0,100],warn:[100,130]}};
+  const r={glucose:{ok:[70,100],warn:[100,125]},chol:{ok:[0,200],warn:[200,239]},uric:{ok:[3.5,7.2],warn:[7.2,8.0]}};
   const rng=r[t];if(!rng||!v)return{score:null,status:'—'};
   if(v>=rng.ok[0]&&v<=rng.ok[1])return{score:90,status:'ok'};
   if(v>=rng.warn[0]&&v<=rng.warn[1])return{score:55,status:'warn'};
@@ -216,12 +237,12 @@ function scoreBM(v,t){
 }
 function saveBlood(){
   const date=$('bmDate').value||td();
-  const v={glucose:+$('bmG').value||null,chol:+$('bmC').value||null,uric:+$('bmU').value||null,hdl:+$('bmH').value||null,ldl:+$('bmL').value||null};
+  const v={glucose:+$('bmG').value||null,chol:+$('bmC').value||null,uric:+$('bmU').value||null};
   if(!Object.values(v).some(Boolean)){showToast('Enter at least one marker');return;}
   if(v.glucose&&(v.glucose<20||v.glucose>600)){showToast('Glucose value seems off (mg/dL)');return;}
   if(v.chol&&(v.chol<50||v.chol>500)){showToast('Cholesterol value seems off (mg/dL)');return;}
   put('blood',{id:mkId(),date,...v});
-  ['bmG','bmC','bmU','bmH','bmL'].forEach(i=>$(i).value='');
+  ['bmG','bmC','bmU'].forEach(i=>$(i).value='');
   $('bloodStat').textContent=`Last tested: ${date}`;
   renderBloodDisplay();showToast('Blood results saved');
 }
@@ -230,7 +251,7 @@ function renderBloodDisplay(){
   const el=$('bmDisplay');if(!el)return;
   if(!b){el.innerHTML='<div class="hist-ttl">NO RESULTS YET</div><div style="font-size:12px;color:var(--t3)">Enter your latest lab results below (mg/dL).</div>';return;}
   $('bloodStat').textContent=`Last tested: ${b.date}`;
-  const markers=[['Glucose','glucose'],['Cholesterol','chol'],['Uric Acid','uric'],['HDL','hdl'],['LDL','ldl']];
+  const markers=[['Glucose','glucose'],['Cholesterol','chol'],['Uric Acid','uric']];
   const C=2*Math.PI*12;
   el.innerHTML=`<div class="hist-ttl">LAST RESULTS · ${b.date}</div>`+markers.filter(([,k])=>b[k]).map(([name,k])=>{
     const s=scoreBM(b[k],k);

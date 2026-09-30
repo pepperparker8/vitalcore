@@ -70,7 +70,7 @@ Check-ins, 1-4 scale (stress: 1 = calm, 4 = very stressed; null = no data): ${JS
 Sleep (null = no data): ${JSON.stringify(sl)}
 Workouts (strength sessions list sets as kg×reps; calisthenics + = added kg; swim distKm is km): ${JSON.stringify(wk)}
 Hard sets per muscle group, last 7 days (10-20 is a typical target): ${JSON.stringify(wkSets)}
-Blood markers, mg/dL (null = not measured): ${JSON.stringify({glucose:bl.glucose??null,chol:bl.chol??null,uric:bl.uric??null,hdl:bl.hdl??null,ldl:bl.ldl??null})}
+Blood markers, mg/dL (null = not measured): ${JSON.stringify({glucose:bl.glucose??null,chol:bl.chol??null,uric:bl.uric??null})}
 Training load: CTL=${d.intervalsData.ctl??'unavailable'}, ATL=${d.intervalsData.atl??'unavailable'}, TSB=${d.intervalsData.tsb??'unavailable'}
 Active injuries: ${inj.length?JSON.stringify(inj):'none'}
 IMPORTANT: Only analyse what is available. Note data gaps. Do not invent patterns from null values. Comment on the link between mindfulness minutes, mood and stress when the data shows one.

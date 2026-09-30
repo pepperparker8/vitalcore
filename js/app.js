@@ -36,7 +36,7 @@ function initUI(){
   const now=new Date();
   $('hdrDate').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
   $('wDate').value=td();$('bmDate').value=td();$('injDate').value=td();
-  $('wDate').max=td();
+  $('wDate').max=td();$('slDate').max=td();loadSleepFor(td());
   $('welcome').style.display=S().onboardingDone?'none':'block';
   renderExGrid();fillCI();renderBloodDisplay();updMeasHist();renderInjuryDisplay();renderInsightHistory();
   updSyncStatus();recalc();

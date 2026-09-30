@@ -186,9 +186,11 @@ async function pullIntervals(){
   let latest=null;
   for(const w of wl){
     const date=w.id;if(!date)continue;
-    d.wellness[date]={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,sleepScore:w.sleepScore??null,ctl:w.ctl??null,atl:w.atl??null};
+    d.wellness[date]={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,ctl:w.ctl??null,atl:w.atl??null};
     if(w.ctl!=null&&w.atl!=null)latest=w;
-    if(w.sleepScore&&!d.sleepLogs.some(s=>s.date===date)){put('sleep',{id:'sl-'+date,date,score:Math.round(w.sleepScore),deepH:0,deepM:0,remH:0,remM:0,rested:null});n++;}
+    const sm=w.sleepSecs?Math.round(w.sleepSecs/60):null,ex=d.sleepLogs.find(s=>s.date===date);
+    if((w.sleepScore||sm)&&!ex){put('sleep',{id:'sl-'+date,date,score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,deepH:0,deepM:0,remH:0,remM:0,rested:null});n++;}
+    else if(ex&&sm&&!ex.durMin){put('sleep',{...ex,durMin:sm});n++;}
     if(w.weight&&!d.measurements.some(m=>m.date===date&&m.weight)){put('meas',{id:'mi-'+date,date,bpSys:null,bpDia:null,weight:Math.round(w.weight*10)/10,hr:w.restingHR||null});n++;}
   }
   if(latest){const ctl=Math.round(latest.ctl),atl=Math.round(latest.atl);d.intervalsData={ctl,atl,tsb:ctl-atl};}
