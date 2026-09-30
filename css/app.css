@@ -677,3 +677,8 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .more-today>summary::after{content:'›';transform:rotate(90deg);font-size:16px}
 .more-today[open]>summary::after{transform:rotate(-90deg)}
 .more-today[open]>summary{margin-bottom:12px}
+
+.gl-bar{height:8px;border-radius:4px;background:var(--sur2);margin-top:12px;overflow:hidden}.gl-bar>div{height:100%;background:var(--text);border-radius:4px}
+.gl-t{font-size:12px;color:var(--t2);margin-top:6px}
+.gl-ph{display:flex;gap:4px;margin-top:10px}.gl-ph span{flex:1;text-align:center;font-size:10px;font-weight:600;padding:6px 0;border-radius:8px;background:var(--sur2);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gl-ph span.past{opacity:.6}.gl-ph span.on{background:var(--text);color:var(--bg)}

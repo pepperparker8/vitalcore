@@ -45,6 +45,7 @@ exDismissed, hasRealData, onboardingDone
 - Weekly plan (`js/plan.js`, stored in `profile.plan`): planned vs done per weekday; `suggestWorkout()` follows it when readiness allows and bends it (with a reason) when not. Trends has an interactive load chart (`renderLoad`) and Progress & PRs chart (`js/progress.js`); `lineChart()` supports touch scrubbing, PR `marks`, `yfmt`, `extra`.
 - Coach view (`js/coach.js`, top of Insights): verdict (green, hold, back off) from readiness plus hard flags (severe injury, very low form, high burnout); rows for today, plan, load; "Things to watch" list.
 - Today order: ring, verdict strip (`renderVerdict`, Train / Hold steady / Rest from `coachVerdict()`), weekly review, suggestion, check-in, quick workout, reflection, then a collapsed "More today" holding everything else.
+- Race mode (`js/today.js`): `racePhase()` from `profile.goalDate` (Base 56+ days, Build 28-55, Peak 14-27, Taper 7-13, Race week), `raceLoad()` compares this week's minutes to a phase target (4-week mean x phase multiplier). Goal card sits under the suggestion on Today.
 - Weekly review (`js/review.js`): Today card Mon to Wed summarising the previous Mon-Sun (sessions, distance, plan adherence, sleep, readiness, new bests); dismissed via `profile.reviewSeen` (week key, synced). "Plan this week" opens the plan editor.
 - Blood scoring (`scoreBM`): normal 90, borderline 55, high 20.
 
