@@ -61,8 +61,8 @@ Verify after each change; don't batch.
 
 ## Design system (changed with the owner's approval; ask before further changes)
 - Light: cream background `#F7F5F0`, charcoal text. Dark: `#141414` background, `#1E1E1E` surfaces. Dark follows the phone or Settings > Appearance (`vc-theme`: auto/light/dark). All colours are CSS variables with dark overrides; never hardcode colours in JS, use `cssv()`.
-- Gold `#D4AF37` (`--gold-dk` `#B08F1E`), amber `#D97706` (warnings, distinct from gold), teal `#0D7A6B` for sleep and HRV only.
-- Gold is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
+- Accent is orange-red to match the logo (changed with the owner's approval): `--gold` `#FF6B1F` (variable name kept), `--gold-dk` `#D4470F` (light) / `#FF8A4C` (dark), amber now yellow `#C99A06` (warnings, kept distinct from the accent), teal `#0D7A6B` for sleep and HRV only.
+- The accent (`--gold`) is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - Logo (changed with the owner's choice, concept C): white pulse line on an orange-red gradient tile (`assets/mark.svg`, `#FF8A1F` to `#FF3B2E`, 22% corner radius). App icons use the same tile and line; the maskable icon is full-bleed with the line inside the safe zone. No ring.
 - Icons: inline SVG line icons (1.8 stroke, currentColor) for nav and sports (`SPORTS`/`ICON` in core.js). Check-in emoticons stay emoji.
 - DM Serif Display for scores and headings, Inter (tabular numerals) for everything else: labels, data, body. Changed from IBM Plex Mono/Outfit with the owner's request.
