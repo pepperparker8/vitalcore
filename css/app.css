@@ -827,3 +827,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .btn-out:active,.btn-muted:active,.chip:active{background:var(--sur2);border-color:var(--t3)}
 .btn-gold:focus-visible,.btn-out:focus-visible,.btn-muted:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+/* Empty states (v71): icon in a soft round backdrop */
+.empty-icon{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:var(--sur2);display:flex;align-items:center;justify-content:center}
+.empty-icon .ui-i{width:28px;height:28px}
