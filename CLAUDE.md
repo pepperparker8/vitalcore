@@ -70,7 +70,7 @@ Verify after each change; don't batch.
 - Chrome is light and flat (owner asked for a cleaner, lighter look): header, nav and hero use `--chrome*` / `--hero-*` / `--ring-trk` variables (dark overrides keep the charcoal look). Nav and small labels are sentence case, no letter-spacing. Primary buttons (`.btn-gold`) are flat, 48px; secondary (`.btn-out`) and chips are transparent with a hairline border.
 - The accent (`--gold`) is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - Logo (changed with the owner's choice, concept C): white pulse line on an orange-red gradient tile (`assets/mark.svg`, `#FF8A1F` to `#FF3B2E`, 22% corner radius). App icons use the same tile and line; the maskable icon is full-bleed with the line inside the safe zone. No ring.
-- Icons: inline SVG line icons from Lucide (MIT, source files and LICENSE in `assets/icons/lucide/`; inlined into the `UI` map and `SPORTS`/`ICON` in core.js and the nav in index.html; 1.8 stroke, currentColor). Check-in emoticons stay emoji.
+- Icons: inline SVG line icons from Lucide (MIT, source files and LICENSE in `assets/icons/lucide/`; inlined into the `UI` map and `SPORTS`/`ICON` in core.js and the nav in index.html; 1.8 stroke, currentColor). Check-in faces are hand-drawn line icons (v77, owner asked): one circle with eyes/mouth per level, `aria-label` with the word; `EM` in core.js holds the matching words (used in summaries). No emoji anywhere.
 - Inter (sans-serif, weight 600 for scores and headings; owner dislikes serif)  with tabular numerals for everything: labels, data, body. Changed from IBM Plex Mono/Outfit with the owner's request.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.
@@ -78,11 +78,11 @@ Verify after each change; don't batch.
 - Charts take an optional `band` (shaded usual range, from `rollBand()` in form.js: mean ± 1 SD of the prior 28 days). Used on readiness, HRV and resting HR (Trends).
 - Time charts (`js/chart.js`, `mountChart(id,cfg)`): real date axis, drag to pan, pinch/wheel to zoom, 1M/3M/6M/1Y/All chips, ‹ › to move, tap to inspect. Used by fitness/fatigue/form, readiness and Progress & PRs.
 
-- **Data-first style (v66, owner-approved; v72 put sections back into white cards):** big plain numbers; sections are white cards on the grey page; verdict, reminder and week banners use a 3px coloured left rule instead of a fill. No emoji in the UI chrome: use the `UI` line-icon set in `js/core.js` (`UI.flame`, `UI.moon`, ...) and `SPORTS`/`ICON`. Check-in emoticons stay emoji. Form inputs keep their filled boxes (tap targets). Overrides live at the end of `css/app.css`.
+- **Data-first style (v66, owner-approved; v72 put sections back into white cards):** big plain numbers; sections are white cards on the grey page; verdict, reminder and week banners use a 3px coloured left rule instead of a fill. No emoji in the UI chrome: use the `UI` line-icon set in `js/core.js` (`UI.flame`, `UI.moon`, ...) and `SPORTS`/`ICON`. Form inputs keep their filled boxes (tap targets). Overrides live at the end of `css/app.css`.
 
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.
-- Check-in uses emoticons, never numbers.
+- Check-in uses face icons, never numbers.
 - Plain English labels ("How Fresh You Are", not "TSB") with a "Why this matters" expandable for the technical term.
 - Validate inputs against physiological ranges with a friendly toast, never a silent save.
 - Empty states always explain what to do next and link to the fix.
