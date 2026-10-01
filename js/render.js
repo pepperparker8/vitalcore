@@ -6,12 +6,37 @@ function renderGreeting(){
   $('heroGreeting').textContent=`${g}${name?', '+name:''} ${em}`;
 }
 function renderRing(score){
-  const C=326.7,fill=$('ringFill'),el=$('ringNum');
+  const fill=$('ringFill'),el=$('ringNum'),C=+fill.getAttribute('stroke-dasharray');
   clearInterval(renderRing.t);
   if(score===null){fill.style.strokeDashoffset=C;el.textContent='—';return;}
   fill.style.strokeDashoffset=C*(1-Math.min(score,100)/100);
   let cur=+el.textContent||0;const step=(score-cur)/20;
   renderRing.t=setInterval(()=>{cur+=step;if((step>=0&&cur>=score)||(step<0&&cur<=score)||!step){cur=score;clearInterval(renderRing.t);}el.textContent=Math.round(cur);},16);
+}
+const GC=213.6;
+function strainOf(load){const ref=strainRef();return Math.round(21*(1-Math.exp(-load/(1.2*ref)))*10)/10;}
+function strainRef(){
+  const ls=[];for(let i=1;i<=60;i++){const l=dayLoad(ymd(new Date(Date.now()-i*864e5)));if(l>0)ls.push(l);}
+  if(ls.length<3)return 200;
+  ls.sort((a,b)=>a-b);return ls[Math.floor(ls.length*0.75)];
+}
+function strainTarget(){
+  const v=coachVerdict();if(!v)return null;
+  return v.lvl==='bad'?[0,5]:v.lvl==='warn'?[6,11]:v.sc>=80?[13,17]:[10,14];
+}
+function setGauge(id,numId,frac,txt){
+  const f=$(id),n=$(numId);if(!f||!n)return;
+  f.style.strokeDashoffset=GC*(1-Math.max(0,Math.min(1,frac)));n.textContent=txt;
+}
+function renderGauges(){
+  const d=S(),load=dayLoad(td()),st=strainOf(load),tg=strainTarget();
+  setGauge('strFill','strNum',st/21,load?st.toFixed(1):'0');
+  $('gStrSub').textContent=tg?`Aim ${tg[0]}–${tg[1]}`:'\u00a0';
+  const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
+  if(sl){const goal=(d.profile.sleepGoal||8)*60,pc=Math.round(sl.durMin/goal*100);
+    setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
+  else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
+  const sc=calcReadiness();$('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function renderZone(score){
   let z,ins;

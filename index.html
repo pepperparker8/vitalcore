@@ -45,14 +45,13 @@
 
   <div class="hero-card">
     <div class="hero-greeting" id="heroGreeting">Good morning ☀️</div>
-    <div class="hero-ring-wrap">
-      <div class="ring-con">
-        <svg width="120" height="120" viewBox="0 0 120 120"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF8A1F"/><stop offset="100%" stop-color="#FF3B2E"/></linearGradient></defs>
-          <circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
-        <div class="ring-center"><div class="ring-num" id="ringNum">—</div><div class="ring-lbl">READY</div></div>
-      </div>
-      <div><div class="hero-zone" id="heroZone">Loading…</div><div class="hero-ins" id="heroIns">Calculating…</div></div>
+    <div class="g3">
+      <div class="g"><div class="g-ring"><svg viewBox="0 0 80 80"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF8A1F"/><stop offset="100%" stop-color="#FF3B2E"/></linearGradient></defs><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="ring-fill g-fill" id="ringFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="ringNum" style="color:var(--gold-dk)">—</div></div><div class="g-lbl">Recovery</div><div class="g-sub" id="gRecSub">&nbsp;</div></div>
+      <div class="g"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-strain" id="strFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="strNum">—</div></div><div class="g-lbl">Strain</div><div class="g-sub" id="gStrSub">&nbsp;</div></div>
+      <div class="g"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-sleep" id="slpFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="slpNum">—</div></div><div class="g-lbl">Sleep</div><div class="g-sub" id="gSlpSub">&nbsp;</div></div>
     </div>
+    <div class="hero-txt"><div class="hero-zone" id="heroZone">Loading…</div><div class="hero-ins" id="heroIns">Calculating…</div></div>
+    <details class="g-why"><summary>What do these mean?</summary><div><b>Recovery</b> is how ready you are to train. <b>Strain</b> is how much you have trained today (0 to 21), with a target range based on your recovery. <b>Sleep</b> is last night's sleep against your sleep goal.</div></details>
     <div class="hero-why" id="heroWhy"></div><div class="hero-miss" id="heroMissing"></div>
   </div>
 

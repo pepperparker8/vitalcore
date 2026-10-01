@@ -27,7 +27,7 @@ let _toastAct=null;
 function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.innerHTML=esc(msg)+(act?` <button class="toast-act" onclick="toastDo()">${esc(act.label)}</button>`:'');t.classList.toggle('act',!!act);t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show','act'),act?7000:3200);}
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
-  const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderZone(s);renderGreeting();
+  const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
   renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
