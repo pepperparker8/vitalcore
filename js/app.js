@@ -28,7 +28,7 @@ function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.inn
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
-  renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
+  renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderRemind();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth)pushAll().catch(()=>{});updSyncStatus();});

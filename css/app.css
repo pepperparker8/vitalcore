@@ -739,3 +739,8 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 
 .rv-sub{margin-top:2px;font-size:11px}.rv-d{color:var(--t3)}.rv-d.up{color:var(--green)}.rv-d.down{color:var(--red)}
 .rv-g2{grid-template-columns:1fr 1fr}
+
+.rm-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin:0 0 12px;border:1px solid var(--bdr);border-left:3px solid var(--gold);border-radius:12px;background:var(--sur)}
+.rm-bar div{display:flex;flex-direction:column;min-width:0}.rm-bar b{font-size:14px;font-weight:600}.rm-bar span{font-size:12px;color:var(--t2);margin-top:2px}
+.rm-bar .btn-gold{width:auto;flex-shrink:0;padding:0 16px;min-height:44px}
+.nav-item.dot{position:relative}.nav-item.dot::after{content:"";position:absolute;top:6px;left:calc(50% + 8px);width:8px;height:8px;border-radius:50%;background:var(--gold);border:2px solid var(--chrome)}

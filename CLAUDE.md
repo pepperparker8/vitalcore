@@ -44,7 +44,8 @@ exDismissed, hasRealData, onboardingDone
 - AI briefing (`genInsight`): prompt includes 12 weekly trends (`insightTrends`), recovery drivers, all blood results with change (`insightBlood`) and code-computed Pearson correlations (`insightCorrelations`, needs 8+ paired days). Model must not diagnose.
 - Weekly plan (`js/plan.js`, stored in `profile.plan`): planned vs done per weekday; `suggestWorkout()` follows it when readiness allows and bends it (with a reason) when not. Trends has an interactive load chart (`renderLoad`) and Progress & PRs chart (`js/progress.js`); `lineChart()` supports touch scrubbing, PR `marks`, `yfmt`, `extra`.
 - Coach view (`js/coach.js`, top of Insights): verdict (green, hold, back off) from readiness plus hard flags (severe injury, very low form, high burnout); rows for today, plan, load; "Things to watch" list.
-- Today order: three gauges (Recovery ring, Strain, Sleep; `renderGauges()` in render.js. Strain = 21*(1-exp(-load/(1.2*ref))) from `dayLoad`, ref = 75th percentile of the last 60 days; target range comes from `coachVerdict()`; Sleep = last night vs `sleepGoal`; "Asleep by" line from `profile.wakeTime` minus `sleepNeed()` = goal + up to 45 min for strain + half of recent debt, capped 45), verdict strip (`renderVerdict`, Train / Hold steady / Rest from `coachVerdict()`), weekly review, suggestion, check-in, quick workout, reflection, then a collapsed "More today" holding everything else.
+- Check-in reminder: `profile.remind {on,time}` (default on, 19:00), strip + nav dot on Today via `renderRemind()` (today.js), optional notification when the app is opened after that time. Save guardrails in log.js use `sane()` (confirm, not block).
+- Today order: reminder strip, three gauges (Recovery ring, Strain, Sleep; `renderGauges()` in render.js. Strain = 21*(1-exp(-load/(1.2*ref))) from `dayLoad`, ref = 75th percentile of the last 60 days; target range comes from `coachVerdict()`; Sleep = last night vs `sleepGoal`; "Asleep by" line from `profile.wakeTime` minus `sleepNeed()` = goal + up to 45 min for strain + half of recent debt, capped 45), verdict strip (`renderVerdict`, Train / Hold steady / Rest from `coachVerdict()`), weekly review, suggestion, check-in, quick workout, reflection, then a collapsed "More today" holding everything else.
 - Race mode (`js/today.js`): `racePhase()` from `profile.goalDate` (Base 56+ days, Build 28-55, Peak 14-27, Taper 7-13, Race week), `raceLoad()` compares this week's minutes to a phase target (4-week mean x phase multiplier). Goal card sits under the suggestion on Today.
 - Monthly review (`js/review.js`, `renderMonthly`): Today card on the 1st to 3rd for the previous calendar month vs the month before; dismissed via `profile.monthSeen`.
 - Weekly review (`js/review.js`): Today card Mon to Wed summarising the previous Mon-Sun (sessions, distance, plan adherence, sleep, readiness, new bests); dismissed via `profile.reviewSeen` (week key, synced). "Plan this week" opens the plan editor.
@@ -57,7 +58,7 @@ Open: verify the Intervals.icu connection with real keys, offline check on the S
 Verify after each change; don't batch.
 
 ## Backlog
-- Reminders.
+- Real push notifications (needs a push server; the in-app check-in reminder is done).
 
 ## Design system (changed with the owner's approval; ask before further changes)
 - Light: cream background `#F7F5F0`, charcoal text. Dark: `#141414` background, `#1E1E1E` surfaces. Dark follows the phone or Settings > Appearance (`vc-theme`: auto/light/dark). All colours are CSS variables with dark overrides; never hardcode colours in JS, use `cssv()`.

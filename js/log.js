@@ -98,6 +98,8 @@ function loadSleepFor(date){
   $('slDel').style.display=x?'':'none';
   $('slNote').textContent=x?'Editing the saved night. Change anything and save.':'Nothing saved for this night yet.';
 }
+// soft guardrail: unusual but possible values get a friendly confirm instead of a block
+const sane=m=>confirm(m+'\n\nSave it anyway?');
 function saveSleep(){
   const date=$('slDate').value||td();
   if(date>td()){showToast('That date is in the future');return;}
@@ -105,6 +107,8 @@ function saveSleep(){
   if(score!==null&&(score<0||score>100)){showToast('Sleep score should be 0–100');return;}
   const tH=+$('slTH').value||0,tM=+$('slTM').value||0,dur=tH*60+tM;
   if(dur>16*60){showToast('Sleep over 16 hours looks off');return;}
+  if(dur>12*60&&!sane(`That is ${fmtDur(dur)} of sleep, which is unusually long.`))return;
+  if(dur>0&&dur<2*60&&!sane(`That is only ${fmtDur(dur)} of sleep.`))return;
   const dH=+$('slDH').value||0,dM=+$('slDM').value||0,rH=+$('slRH').value||0,rM=+$('slRM').value||0;
   if(dH*60+dM+rH*60+rM>(dur||16*60)){showToast('Deep + REM cannot be longer than time asleep');return;}
   if(!score&&!dur&&!dH&&!dM&&!rH&&!rM&&!_ci.rested){showToast('Enter time asleep or a sleep score');return;}
@@ -151,6 +155,10 @@ function saveWorkout(){
   if(dur>720){showToast('Duration looks too long — max 12 h');return;}
   let dist=HAS_DIST.includes(_selEx)?(+$('wDist').value||0):0,sets=null,sub=null,prs=[];
   if(dist>500){showToast('Distance looks too high');return;}
+  if(!st&&dur>360&&!sane(`That is ${fmtDur(dur)} of training, which is a very long session.`))return;
+  if(!st&&dur>0&&dur<5&&!sane('That session is under 5 minutes.'))return;
+  const spd={Run:[24,'a run'],Cycle:[60,'a ride'],Walk:[9,'a walk'],Hike:[9,'a hike']}[_selEx];
+  if(spd&&dist&&dur&&dist/(dur/60)>spd[0]&&!sane(`${Math.round(dist*10)/10} km in ${fmtDur(dur)} is faster than ${spd[0]} km/h for ${spd[1]}.`))return;
   if(sw){
     const m=+$('wDist').value||0;
     if(m>25000){showToast('Swim distance is in metres — that looks too high');return;}
@@ -203,6 +211,8 @@ function saveMeas(){
   const wt=+$('wtKg').value||null,hr=+$('hrVal').value||null;
   if(wt&&(wt<30||wt>250)){showToast('Weight: 30–250 kg');return;}
   if(hr&&(hr<30||hr>200)){showToast('Resting HR: 30–200 bpm');return;}
+  const pw=last(S().measurements.filter(m=>m.weight&&!m.isEx&&daysAgo(m.date)<=7));
+  if(wt&&pw&&Math.abs(wt-pw.weight)>=4&&!sane(`${wt} kg is ${Math.round(Math.abs(wt-pw.weight)*10)/10} kg different from your last weigh-in (${pw.weight} kg).`))return;
   if(!sN&&!wt&&!hr){showToast('Enter at least one measurement');return;}
   put('meas',{id:mkId(),date:td(),bpSys:sN||null,bpDia:dN||null,weight:wt,hr});
   ['bpSys','bpDia','wtKg','hrVal'].forEach(i=>$(i).value='');
