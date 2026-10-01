@@ -66,7 +66,7 @@ Verify after each change; don't batch.
 - The accent (`--gold`) is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - Logo (changed with the owner's choice, concept C): white pulse line on an orange-red gradient tile (`assets/mark.svg`, `#FF8A1F` to `#FF3B2E`, 22% corner radius). App icons use the same tile and line; the maskable icon is full-bleed with the line inside the safe zone. No ring.
 - Icons: inline SVG line icons (1.8 stroke, currentColor) for nav and sports (`SPORTS`/`ICON` in core.js). Check-in emoticons stay emoji.
-- DM Serif Display for scores and headings, Inter (tabular numerals) for everything else: labels, data, body. Changed from IBM Plex Mono/Outfit with the owner's request.
+- Inter (sans-serif, weight 600 for scores and headings; owner dislikes serif)  with tabular numerals for everything: labels, data, body. Changed from IBM Plex Mono/Outfit with the owner's request.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.
 
