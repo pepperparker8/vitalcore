@@ -76,9 +76,9 @@ function calcReadiness(){
 function renderHabits(){
   const d=S(),t=td(),ci=todayCI();
   const items=[
-    [UI.chat,'CHECK-IN',ciFull(ci),'go(\'ciCard\')'],
-    [UI.lotus,'MINDFUL',(ci?.mindfulMin||0)>0,'go(\'mindCard\')',ci?.mindfulMin?ci.mindfulMin+'m':''],
-    [UI.run,'MOVE',d.workouts.some(w=>w.date===t),'go(\'qwCard\')'],
+    [UI.chat,'CHECK-IN',ciFull(ci),'logGo(\'lCheckin\')'],
+    [UI.lotus,'MINDFUL',(ci?.mindfulMin||0)>0,'logGo(\'lMind\')',ci?.mindfulMin?ci.mindfulMin+'m':''],
+    [UI.run,'MOVE',d.workouts.some(w=>w.date===t),'logGo(\'lWorkout\')'],
     [UI.moon,'SLEEP',d.sleepLogs.some(s=>s.date===t),'switchTab(\'log\');openLog(\'lSleep\')']
   ];
   $('habits').innerHTML=items.map(([i,l,ok,go,txt])=>`<button class="hab ${ok?'done':''}" onclick="${go}"><div class="hab-i">${i}</div><div class="hab-l">${l}</div><div class="hab-s">${ok?(txt||'✓'):'Tap'}</div></button>`).join('');

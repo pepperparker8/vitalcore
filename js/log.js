@@ -21,7 +21,7 @@ function fillCI(){
   });
   $('ciGrat').value=c?.gratitude||'';
   const done=ciFull(c);
-  $('ciCard').classList.toggle('done',done);
+  $('ciCard').classList.toggle('done',done);$('ciStat').textContent=done?'Done today':'Not done today';
   $('ciCta').textContent=done?'Update check-in':'Save check-in';
   const sum=$('ciSum');
   if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}`;sum.classList.add('show');}
@@ -44,7 +44,7 @@ function undoMind(){
   const c=todayCI();if(!c||!c.mindfulMin){showToast('Nothing to reset');return;}
   c.mindfulMin=0;put('checkins',c);renderMind();refreshAll();showToast('Minutes reset');
 }
-function renderMind(){$('mindToday').textContent=todayCI()?.mindfulMin||0;}
+function renderMind(){const m=todayCI()?.mindfulMin||0;$('mindToday').textContent=m;$('mindStat').textContent=m?m+' min today':'0 min today';}
 let _mind=null,_wake=null;
 function startMind(min){
   _mind={min,start:Date.now(),end:Date.now()+min*60000};
@@ -87,11 +87,16 @@ function saveQuick(){
 }
 
 // ── SLEEP ────────────────────────────────────────────────────────────────────
+// minutes between bedtime and wake-up, crossing midnight when wake is earlier
+function slSpan(b,w){const m=x=>{const[h,n]=x.split(':').map(Number);return h*60+n;};let d=m(w)-m(b);if(d<=0)d+=1440;return d;}
+function slCalc(){const b=$('slBed').value,w=$('slWake').value,el=$('slDur');if(!el)return;
+  if(b&&w)el.textContent='Time asleep: '+fmtDur(slSpan(b,w));
+  else{const x=S().sleepLogs.find(s=>s.date===$('slDate').value);el.textContent=x?.durMin?'Saved: '+fmtDur(x.durMin)+'. Add times to change it.':'Enter when you fell asleep and woke up.';}}
 function loadSleepFor(date){
   date=date||td();$('slDate').value=date;
   const x=S().sleepLogs.find(s=>s.date===date),t=x?.durMin||0;
   $('slScore').value=x?.score??'';
-  $('slTH').value=t?Math.floor(t/60):'';$('slTM').value=t?t%60:'';
+  $('slBed').value=x?.bed||'';$('slWake').value=x?.wake||'';slCalc();
   $('slDH').value=x?.deepH||'';$('slDM').value=x?.deepM||'';$('slRH').value=x?.remH||'';$('slRM').value=x?.remM||'';
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
@@ -105,7 +110,9 @@ function saveSleep(){
   if(date>td()){showToast('That date is in the future');return;}
   const score=+$('slScore').value||null;
   if(score!==null&&(score<0||score>100)){showToast('Sleep score should be 0–100');return;}
-  const tH=+$('slTH').value||0,tM=+$('slTM').value||0,dur=tH*60+tM;
+  const bed=$('slBed').value,wake=$('slWake').value,old0=S().sleepLogs.find(s=>s.date===date);
+  if(!!bed!==!!wake){showToast('Enter both bedtime and wake-up time');return;}
+  const dur=bed?slSpan(bed,wake):(old0?.durMin||0);
   if(dur>16*60){showToast('Sleep over 16 hours looks off');return;}
   if(dur>12*60&&!sane(`That is ${fmtDur(dur)} of sleep, which is unusually long.`))return;
   if(dur>0&&dur<2*60&&!sane(`That is only ${fmtDur(dur)} of sleep.`))return;
@@ -113,7 +120,7 @@ function saveSleep(){
   if(dH*60+dM+rH*60+rM>(dur||16*60)){showToast('Deep + REM cannot be longer than time asleep');return;}
   if(!score&&!dur&&!dH&&!dM&&!rH&&!rM&&!_ci.rested){showToast('Enter time asleep or a sleep score');return;}
   const old=S().sleepLogs.find(s=>s.date===date);
-  put('sleep',{id:old?.id||'sl-'+date,date,score,durMin:dur||null,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested??null});
+  put('sleep',{id:old?.id||'sl-'+date,date,score,durMin:dur||null,bed:bed||null,wake:wake||null,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested??null});
   loadSleepFor(date);renderSleepBars();showToast('Sleep saved');refreshAll();
 }
 function delSleep(){

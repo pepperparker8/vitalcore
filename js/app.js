@@ -17,6 +17,7 @@ function refreshActive(){
   if(tab==='insights'){renderCoach();renderDigest();renderInsightHistory();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
+function logGo(id){switchTab('log');setTimeout(()=>lgOpen(id),80);}
 function go(id){const e=$(id);if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}
 function openLog(id){const e=$(id);if(e){document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));e.classList.add('open');}}
 function tlog(id){const e=$(id),was=e.classList.contains('open');document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));if(!was){e.classList.add('open');setTimeout(()=>e.scrollIntoView({behavior:'smooth',block:'start'}),60);}}

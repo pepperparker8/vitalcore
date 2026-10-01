@@ -25,9 +25,9 @@ function renderWhy(){
 function nextStep(){
   const d=S(),t=td(),ci=todayCI(),h=new Date().getHours();
   const steps=[
-    {done:ciFull(ci),ico:UI.chat,t:'Check in',s:'Four taps: energy, mood, stress, motivation.',go:"go('ciCard')",btn:'Check in'},
+    {done:ciFull(ci),ico:UI.chat,t:'Check in',s:'Four taps: energy, mood, stress, motivation.',go:"logGo('lCheckin')",btn:'Check in'},
     {done:(ci?.mindfulMin||0)>0,ico:UI.lotus,t:'Breathe for a few minutes',s:'Even 3 minutes counts toward your streak.',go:"startMind(3)",btn:'Start 3 min'},
-    {done:d.workouts.some(w=>w.date===t),ico:UI.run,t:'Move',s:readinessAdvice(),go:"go('qwCard')",btn:'Log a workout'}
+    {done:d.workouts.some(w=>w.date===t),ico:UI.run,t:'Move',s:readinessAdvice(),go:"logGo('lWorkout')",btn:'Log a workout'}
   ];
   return{steps,next:steps.find(x=>!x.done)};
 }
@@ -37,7 +37,7 @@ function readinessAdvice(){
   return s>=80?'You are ready for a hard session.':s>=65?'Normal training is fine today.':s>=50?'Keep it moderate today.':'A walk, yoga or rest is the smart call.';
 }
 function renderNext(){
-  const{steps,next}=nextStep(),el=$('nextCard');
+  const el=$('nextCard');if(!el)return;const{steps,next}=nextStep();
   const dots=steps.map(x=>`<span class="nx-dot ${x.done?'done':''}"></span>`).join('');
   if(!next){el.innerHTML=`<div class="nx-row"><div class="nx-ico">${UI.check}</div><div style="flex:1"><div class="nx-t">Today is complete</div><div class="nx-s">Check-in, mindfulness and movement are all done.</div></div><div class="nx-dots">${dots}</div></div>`;return;}
   el.innerHTML=`<div class="nx-lbl">NEXT UP · ${steps.filter(x=>x.done).length} OF 3 DONE</div><div class="nx-row"><div class="nx-ico">${next.ico}</div><div style="flex:1"><div class="nx-t">${next.t}</div><div class="nx-s">${esc(next.s)}</div></div></div><button class="btn-gold" style="margin:12px 0 0" onclick="${next.go}">${next.btn}</button><div class="nx-dots" style="margin-top:10px">${dots}</div>`;
@@ -47,8 +47,7 @@ function renderNext(){
 const reflOf=c=>{if(!c?.reflection)return null;try{const o=JSON.parse(c.reflection);return{gave:o.g||'',drained:o.d||''};}catch(e){return{gave:c.reflection,drained:''};}};
 function renderReflect(){
   const c=todayCI(),r=reflOf(c),show=!!r||new Date().getHours()>=17;
-  $('reflCard').style.display=show?'block':'none';
-  if(!show)return;
+  $('reflCard').style.display='block';
   if(document.activeElement!==$('reflGave'))$('reflGave').value=r?.gave||'';
   if(document.activeElement!==$('reflDrain'))$('reflDrain').value=r?.drained||'';
   $('reflBtn').textContent=r?'Update reflection':'Save reflection';
@@ -172,7 +171,7 @@ function renderRemind(){
   const due=remDue();
   if(nav)nav.classList.toggle('dot',due);
   el.style.display=due?'flex':'none';
-  if(due){el.innerHTML=`<div><b>Time for your check-in</b><span>Four taps, takes ten seconds.</span></div><button class="btn-gold" style="margin:0" onclick="go('ciCard')">Check in</button>`;remNotify();}
+  if(due){el.innerHTML=`<div><b>Time for your check-in</b><span>Four taps, takes ten seconds.</span></div><button class="btn-gold" style="margin:0" onclick="logGo('lCheckin')">Check in</button>`;remNotify();}
 }
 function remNotify(){
   try{
