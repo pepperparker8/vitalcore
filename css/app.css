@@ -821,3 +821,4 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .log-sec.done .log-stat::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:6px;vertical-align:1px}
 .sl-more{margin:4px 0 16px}.sl-more summary{min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer}
 .log-sec{border-top:0;border-bottom:1px solid var(--bdr)}.log-sec:first-of-type{border-top:0}
+.log-chev .ui-i{width:18px;height:18px;color:var(--t3)}

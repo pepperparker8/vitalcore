@@ -66,7 +66,7 @@ Verify after each change; don't batch.
 - Chrome is light and flat (owner asked for a cleaner, lighter look): header, nav and hero use `--chrome*` / `--hero-*` / `--ring-trk` variables (dark overrides keep the charcoal look). Nav and small labels are sentence case, no letter-spacing. Primary buttons (`.btn-gold`) are flat, 48px; secondary (`.btn-out`) and chips are transparent with a hairline border.
 - The accent (`--gold`) is reserved for: readiness ring, active nav, primary buttons, PRs, streaks.
 - Logo (changed with the owner's choice, concept C): white pulse line on an orange-red gradient tile (`assets/mark.svg`, `#FF8A1F` to `#FF3B2E`, 22% corner radius). App icons use the same tile and line; the maskable icon is full-bleed with the line inside the safe zone. No ring.
-- Icons: inline SVG line icons (1.8 stroke, currentColor) for nav and sports (`SPORTS`/`ICON` in core.js). Check-in emoticons stay emoji.
+- Icons: inline SVG line icons from Lucide (MIT, source files and LICENSE in `assets/icons/lucide/`; inlined into the `UI` map and `SPORTS`/`ICON` in core.js and the nav in index.html; 1.8 stroke, currentColor). Check-in emoticons stay emoji.
 - Inter (sans-serif, weight 600 for scores and headings; owner dislikes serif)  with tabular numerals for everything: labels, data, body. Changed from IBM Plex Mono/Outfit with the owner's request.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.

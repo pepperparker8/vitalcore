@@ -16,7 +16,7 @@
 <div id="splash"><img src="assets/mark.svg" class="sp-mark" alt=""><div class="sp-logo">VitalCore</div><div class="sp-sub">PERSONAL HEALTH INTELLIGENCE</div><div class="sp-bar"><div class="sp-fill"></div></div></div>
 
 <div id="updBar" role="status"><span>A new version is ready.</span><button onclick="location.reload()">Refresh</button></div>
-<div id="offlineBar"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg> Offline — your entries are saved on this phone and upload when you're back online</div>
+<div id="offlineBar"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg> Offline — your entries are saved on this phone and upload when you're back online</div>
 
 <header class="hdr">
   <div class="hdr-brand" onclick="openSettings()"><img src="assets/mark.svg" class="hdr-mark" alt=""><div><div class="hdr-logo">VitalCore</div><div class="hdr-sub" id="hdrStatus">Loading…</div></div></div>
@@ -38,7 +38,7 @@
   </div>
 
   <div class="signin-ban hidden" id="signBan" onclick="openAuth()">
-    <div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8 5.5 5.5 0 0 1 10.6 1.3A3.4 3.4 0 0 1 17 18z"/></svg></div>
+    <div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /></svg></div>
     <div style="flex:1"><b>Back up your data online</b><small>Sign in with your email so nothing is lost if you lose or reset your phone.</small></div>
     <div style="color:var(--t3);font-size:18px">›</div>
   </div>
@@ -67,7 +67,7 @@
   <div class="habits" id="habits"></div>
 
   <div class="streak-card">
-    <div class="streak-top"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg></div><div><div class="streak-num" id="streakNum">0</div></div><div style="flex:1"><div style="font-size:13px;font-weight:600" id="streakTxt">Day streak</div><div style="font-size:11px;color:var(--t2)" id="streakSub">Check in or meditate to keep it going</div></div></div>
+    <div class="streak-top"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></svg></div><div><div class="streak-num" id="streakNum">0</div></div><div style="flex:1"><div style="font-size:13px;font-weight:600" id="streakTxt">Day streak</div><div style="font-size:11px;color:var(--t2)" id="streakSub">Check in or meditate to keep it going</div></div></div>
     <div class="wk-strip" id="wkStrip"></div>
   </div>
 
@@ -95,7 +95,7 @@
     <div class="sbar"><div class="sbar-lbl">FRESH</div><div class="sbar-val" id="sbFresh" style="color:var(--green)">—</div><div class="sbar-zone" id="sbFreshZ" style="color:var(--green)">—</div><div class="sbar-track"><div class="sbar-prog" id="sbFreshP" style="background:var(--green);width:0"></div></div></div>
   </div>
 
-  <div class="ins-nudge" id="insNudge" onclick="switchTab('insights')"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="flex:1"><div style="font-size:13px;font-weight:600">Today's briefing not generated</div><div style="font-size:12px;color:var(--t2)">Tap to analyse your data →</div></div></div>
+  <div class="ins-nudge" id="insNudge" onclick="switchTab('insights')"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" /></svg></div><div style="flex:1"><div style="font-size:13px;font-weight:600">Today's briefing not generated</div><div style="font-size:12px;color:var(--t2)">Tap to analyse your data →</div></div></div>
 
   <div class="card"><div class="sec">Training — Last 7 Days</div><div id="actList"></div></div>
   <div class="card"><div class="sec">Training Load</div><div id="tloadContent"></div></div>
@@ -189,7 +189,7 @@
 <div class="page page-fade" id="pg-log">
   <div class="lg-top"><div class="lg-h">Log</div><div class="lg-s">Start with what is still open today.</div><div class="lg-prog" id="lgProg"></div></div>
   <div class="lg-grp">Every day</div>
-  <div class="log-sec" id="lCheckin"><div class="log-hdr" onclick="tlog('lCheckin')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div><div><div class="log-title">Check-in</div><div class="log-stat" id="ciStat">Not done today</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lCheckin"><div class="log-hdr" onclick="tlog('lCheckin')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" /></svg></div><div><div class="log-title">Check-in</div><div class="log-stat" id="ciStat">Not done today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
   <div class="ci-card" id="ciCard">
     <div class="sec">How are you today?</div>
@@ -214,7 +214,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg></div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg></div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="fg"><div class="fl">NIGHT ENDING ON</div><input type="date" class="inp" id="slDate" onchange="loadSleepFor(this.value)"><div class="set-note" id="slNote"></div></div>
       <div class="fg"><div class="fl">BEDTIME AND WAKE-UP</div><div class="fr"><input type="time" class="inp" id="slBed" oninput="slCalc()" aria-label="Fell asleep at"><span class="inp-unit">to</span><input type="time" class="inp" id="slWake" oninput="slCalc()" aria-label="Woke up at"></div><div class="set-note" id="slDur">Enter when you fell asleep and woke up.</div></div>
@@ -229,7 +229,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="14" cy="4.5" r="1.8"/><path d="M9 21l3-6 3 2 1.5-5.5-4-2-3 3.5-2.5-1M12 15l-1 6"/></svg></div><div><div class="log-title">Log a Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg></div><div><div class="log-title">Log a Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
   <div class="card" id="qwCard">
     <div class="sec">Quick workout</div>
@@ -259,7 +259,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lMind"><div class="log-hdr" onclick="tlog('lMind')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c2 2 3 4 3 6s-1 4-3 5c-2-1-3-3-3-5s1-4 3-6zM3 11c3 0 5 1 6 3M21 11c-3 0-5 1-6 3M5 18c3 0 5-.5 7-1M19 18c-3 0-5-.5-7-1"/></svg></div><div><div class="log-title">Mindfulness</div><div class="log-stat" id="mindStat">0 min today</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lMind"><div class="log-hdr" onclick="tlog('lMind')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.8 19.6A2 2 0 1 0 14 16H2" /><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2" /><path d="M9.8 4.4A2 2 0 1 1 11 8H2" /></svg></div><div><div class="log-title">Mindfulness</div><div class="log-stat" id="mindStat">0 min today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
   <div class="card" id="mindCard">
     <div class="sec">Mindfulness</div>
@@ -276,7 +276,7 @@
   </div>
 
   <div class="lg-grp">Now and then</div>
-  <div class="log-sec" id="lMeas"><div class="log-hdr" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg></div><div><div class="log-title">Measurements</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lMeas"><div class="log-hdr" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" /><path d="m14.5 12.5 2-2" /><path d="m11.5 9.5 2-2" /><path d="m8.5 6.5 2-2" /><path d="m17.5 15.5 2-2" /></svg></div><div><div class="log-title">Measurements</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="hist-box"><div class="hist-ttl">RECENT</div>
         <div class="hist-row"><span>Blood Pressure</span><span class="hist-val" id="bpRec">—</span></div>
@@ -291,7 +291,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lBlood"><div class="log-hdr" onclick="tlog('lBlood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 21c0-3 2-4.5 5-4.5M17 21c0-3-2-4.5-5-4.5"/></svg></div><div><div class="log-title">Blood Markers</div><div class="log-stat" id="bloodStat">Last tested: —</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lBlood"><div class="log-hdr" onclick="tlog('lBlood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 16 1.5 1.5" /><path d="m14 8-1.5-1.5" /><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" /><path d="m16.5 10.5 1 1" /><path d="m17 6-2.891-2.891" /><path d="M2 15c6.667-6 13.333 0 20-6" /><path d="m20 9 .891.891" /><path d="M3.109 14.109 4 15" /><path d="m6.5 12.5 1 1" /><path d="m7 18 2.891 2.891" /><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" /></svg></div><div><div class="log-title">Blood Markers</div><div class="log-stat" id="bloodStat">Last tested: —</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="hist-box" id="bmDisplay"></div>
       <div class="fg"><div class="fl">TEST DATE</div><input type="date" class="inp" id="bmDate"></div>
@@ -302,7 +302,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lInjury"><div class="log-hdr" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10.5 10.5h.01M13.5 13.5h.01"/></svg></div><div><div class="log-title">Injury Log</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev">▾</div></div>
+  <div class="log-sec" id="lInjury"><div class="log-hdr" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 10.01h.01" /><path d="M10 14.01h.01" /><path d="M14 10.01h.01" /><path d="M14 14.01h.01" /><path d="M18 6v12" /><path d="M6 6v12" /><rect x="2" y="6" width="20" height="12" rx="2" /></svg></div><div><div class="log-title">Injury Log</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="hist-box" id="injDisplay"><div class="hist-ttl">ACTIVE / RECENT</div><div style="font-size:12px;color:var(--t3);padding:4px 0">No injuries logged</div></div>
       <div class="fg"><div class="fl">BODY PART</div><input type="text" class="inp" id="injPart" placeholder="e.g. Left knee, Right hamstring"></div>
@@ -402,7 +402,7 @@
 
 <!-- MINDFULNESS TIMER -->
 <div id="mindOv">
-  <div class="mo-close" onclick="stopMind()"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+  <div class="mo-close" onclick="stopMind()"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></div>
   <div class="mo-title">Breathe</div>
   <div class="mo-orb"></div>
   <div class="mo-phase" id="moPhase">Breathe in</div>
@@ -410,11 +410,11 @@
 </div>
 
 <nav class="nav">
-  <div class="nav-item active" onclick="switchTab('today')" id="nav-today"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg><div class="nav-label">Today</div></div>
-  <div class="nav-item" onclick="switchTab('trends')" id="nav-trends"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg><div class="nav-label">Trends</div></div>
-  <div class="nav-item" onclick="switchTab('log')" id="nav-log"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg><div class="nav-label">Log</div></div>
-  <div class="nav-item" onclick="switchTab('health')" id="nav-health"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg><div class="nav-label">Health</div></div>
-  <div class="nav-item" onclick="switchTab('insights')" id="nav-insights"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2 5.5L19.5 10 14 12l-2 5.5L10 12 4.5 10 10 8.5z"/><path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/></svg><div class="nav-label">Insights</div></div>
+  <div class="nav-item active" onclick="switchTab('today')" id="nav-today"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg><div class="nav-label">Today</div></div>
+  <div class="nav-item" onclick="switchTab('trends')" id="nav-trends"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></svg><div class="nav-label">Trends</div></div>
+  <div class="nav-item" onclick="switchTab('log')" id="nav-log"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M8 12h8" /><path d="M12 8v8" /></svg><div class="nav-label">Log</div></div>
+  <div class="nav-item" onclick="switchTab('health')" id="nav-health"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" /></svg><div class="nav-label">Health</div></div>
+  <div class="nav-item" onclick="switchTab('insights')" id="nav-insights"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" /></svg><div class="nav-label">Insights</div></div>
 </nav>
 <div id="restBar"><div class="rest-l">REST</div><div id="restTime">1:30</div>
   <div class="rest-p"><button onclick="restLen(60)">1:00</button><button onclick="restLen(90)">1:30</button><button onclick="restLen(120)">2:00</button><button onclick="restLen(180)">3:00</button></div>
