@@ -32,13 +32,13 @@ function submitCI(){
   if(!_ci.energy||!_ci.mood||!_ci.stress||!_ci.motivation){showToast('Tap one face for each of the four rows');return;}
   const rec={...ciRec(),energy:_ci.energy,mood:_ci.mood,stress:_ci.stress,motivation:_ci.motivation,gratitude:$('ciGrat').value.trim()};
   put('checkins',rec);
-  fillCI();showToast('Check-in saved 👍');refreshAll();
+  fillCI();showToast('Check-in saved');refreshAll();
 }
 
 // ── MINDFULNESS ──────────────────────────────────────────────────────────────
 function addMind(m){
   const rec=ciRec();rec.mindfulMin=(rec.mindfulMin||0)+m;
-  put('checkins',rec);renderMind();showToast(`+${m} min mindfulness 🧘`);refreshAll();
+  put('checkins',rec);renderMind();showToast(`+${m} min mindfulness`);refreshAll();
 }
 function undoMind(){
   const c=todayCI();if(!c||!c.mindfulMin){showToast('Nothing to reset');return;}
@@ -83,7 +83,7 @@ function selQx(n){_qx=n;renderQuick();}
 function saveQuick(){
   if(IS_STR(_qx)){_selEx=_qx;switchTab('log');openLog('lWorkout');renderExGrid();return;}
   put('workouts',{id:mkId(),date:td(),type:_qx,distKm:0,durMin:_qd,rpe:3,notes:''});
-  showToast(`${_qx} saved 💪`);refreshAll();
+  showToast(`${_qx} saved`);refreshAll();
 }
 
 // ── SLEEP ────────────────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ function saveWorkout(){
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
   const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Record';$('wCancel').style.display='none';
   ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';
-  $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best 🏆 ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded 💪');refreshAll();
+  $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded');refreshAll();
 }
 let _editId=null;
 function editWorkout(id){

@@ -3,7 +3,7 @@ let _insPeriod='weekly';
 function selPeriod(p,btn){_insPeriod=p;document.querySelectorAll('.ins-tog').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 function updateInsNudge(){const n=$('insNudge');if(n)n.classList.toggle('hidden',S().insightLog.some(e=>e.date===td()));}
 function insHTML(ins,inj){
-  return`<div class="ins-block"><div class="ins-arch">🧠 ${esc(ins.archetype)}</div><div class="ins-bt">OVERALL STATUS</div><div class="ins-text">${esc(ins.overall)}</div></div>
+  return`<div class="ins-block"><div class="ins-arch">${UI.spark}${esc(ins.archetype)}</div><div class="ins-bt">OVERALL STATUS</div><div class="ins-text">${esc(ins.overall)}</div></div>
     <div class="ins-block"><div class="ins-bt">PSYCHOLOGICAL PATTERN</div><div class="ins-text">${esc(ins.psychological)}</div></div>
     <div class="ins-block"><div class="ins-bt">PHYSICAL READINESS</div><div class="ins-text">${esc(ins.physical)}</div></div>
     ${ins.warnings?`<div class="ins-block" style="border-color:rgba(184,116,10,0.3)"><div class="ins-bt" style="color:var(--amber)">EARLY WARNINGS</div><div class="ins-text">${esc(ins.warnings)}</div></div>`:''}
@@ -112,7 +112,7 @@ async function genInsight(){
   const d=S();
   if(!d.claudeKey){showToast('Add your Claude API key in Settings first');openSettings();return;}
   if(showTodayInsight())return;
-  $('insContent').innerHTML='<div class="ins-loading">🧠 Analysing your data…</div>';
+  $('insContent').innerHTML='<div class="ins-loading">Analysing your data…</div>';
   const ci=d.checkins.slice(-14).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,mindfulMin:c.mindfulMin||0,grateful:c.gratitude||null,reflection:reflOf(c)}));
   const sl=d.sleepLogs.slice(-7).map(s=>({date:s.date,score:s.score??null,deepH:s.deepH??null,remH:s.remH??null}));
   const wk=d.workouts.filter(w=>daysAgo(w.date)<14).map(w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,rpe:w.rpe,notes:w.notes,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?w.sub:undefined}));

@@ -74,6 +74,8 @@ Verify after each change; don't batch.
 - Charts take an optional `band` (shaded usual range, from `rollBand()` in form.js: mean ± 1 SD of the prior 28 days). Used on readiness, HRV and resting HR (Trends).
 - Time charts (`js/chart.js`, `mountChart(id,cfg)`): real date axis, drag to pan, pinch/wheel to zoom, 1M/3M/6M/1Y/All chips, ‹ › to move, tap to inspect. Used by fitness/fatigue/form, readiness and Progress & PRs.
 
+- **Data-first style (v66, owner-approved):** no card boxes. Sections are separated by 1px `--bdr` top rules; big plain numbers on the background; verdict, reminder and week banners use a 3px coloured left rule instead of a fill. No emoji in the UI chrome: use the `UI` line-icon set in `js/core.js` (`UI.flame`, `UI.moon`, ...) and `SPORTS`/`ICON`. Check-in emoticons stay emoji. Form inputs keep their filled boxes (tap targets). Overrides live at the end of `css/app.css`.
+
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.
 - Check-in uses emoticons, never numbers.

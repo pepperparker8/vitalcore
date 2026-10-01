@@ -220,9 +220,9 @@ function strBests(){
   const rows=[];
   [...exHistory().entries()].sort((a,b)=>last(b[1]).date<last(a[1]).date?-1:1).slice(0,8).forEach(([ex,a])=>{
     const w=a.reduce((x,y)=>y.e1>x.e1?y:x,a[0]);
-    if(w.e1>0){const b=a.reduce((x,y)=>y.e1>x.e1?y:x);rows.push(['🏋️',ex,b.date,`~${Math.round(b.e1)} kg 1RM`]);}
-    else if(a.some(x=>x.secs)){const b=a.reduce((x,y)=>y.secs>x.secs?y:x);rows.push(['🤸',ex,b.date,`${b.secs}s hold`]);}
-    else{const b=a.reduce((x,y)=>y.reps>x.reps?y:x);if(b.reps)rows.push(['🤸',ex,b.date,`${b.reps} reps`]);}
+    if(w.e1>0){const b=a.reduce((x,y)=>y.e1>x.e1?y:x);rows.push([UI.weight,ex,b.date,`~${Math.round(b.e1)} kg 1RM`]);}
+    else if(a.some(x=>x.secs)){const b=a.reduce((x,y)=>y.secs>x.secs?y:x);rows.push([UI.hold,ex,b.date,`${b.secs}s hold`]);}
+    else{const b=a.reduce((x,y)=>y.reps>x.reps?y:x);if(b.reps)rows.push([UI.hold,ex,b.date,`${b.reps} reps`]);}
   });
   return rows;
 }

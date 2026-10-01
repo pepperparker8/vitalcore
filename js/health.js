@@ -68,7 +68,7 @@ function renderHealth(){
 
   const bl=d.bloodLogs.slice().sort((a,b)=>a.date<b.date?-1:1);
   if(!bl.length){
-    $('hBlood').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-icon">🧬</div><div class="empty-title">No blood results yet</div><div class="empty-sub">Enter your latest lab results (mg/dL) and each marker gets a timeline against its reference range.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lBlood\')">Add lab results</button></div>';
+    $('hBlood').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-icon">'+UI.dna+'</div><div class="empty-title">No blood results yet</div><div class="empty-sub">Enter your latest lab results (mg/dL) and each marker gets a timeline against its reference range.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lBlood\')">Add lab results</button></div>';
   }else{
     $('hBlood').innerHTML=BM.map(([name,k,ref])=>{
       const pts=bl.filter(x=>x[k]).slice(-8);

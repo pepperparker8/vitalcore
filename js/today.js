@@ -25,9 +25,9 @@ function renderWhy(){
 function nextStep(){
   const d=S(),t=td(),ci=todayCI(),h=new Date().getHours();
   const steps=[
-    {done:ciFull(ci),ico:'💭',t:'Check in',s:'Four taps: energy, mood, stress, motivation.',go:"go('ciCard')",btn:'Check in'},
-    {done:(ci?.mindfulMin||0)>0,ico:'🧘',t:'Breathe for a few minutes',s:'Even 3 minutes counts toward your streak.',go:"startMind(3)",btn:'Start 3 min'},
-    {done:d.workouts.some(w=>w.date===t),ico:'🏃',t:'Move',s:readinessAdvice(),go:"go('qwCard')",btn:'Log a workout'}
+    {done:ciFull(ci),ico:UI.chat,t:'Check in',s:'Four taps: energy, mood, stress, motivation.',go:"go('ciCard')",btn:'Check in'},
+    {done:(ci?.mindfulMin||0)>0,ico:UI.lotus,t:'Breathe for a few minutes',s:'Even 3 minutes counts toward your streak.',go:"startMind(3)",btn:'Start 3 min'},
+    {done:d.workouts.some(w=>w.date===t),ico:UI.run,t:'Move',s:readinessAdvice(),go:"go('qwCard')",btn:'Log a workout'}
   ];
   return{steps,next:steps.find(x=>!x.done)};
 }
@@ -39,7 +39,7 @@ function readinessAdvice(){
 function renderNext(){
   const{steps,next}=nextStep(),el=$('nextCard');
   const dots=steps.map(x=>`<span class="nx-dot ${x.done?'done':''}"></span>`).join('');
-  if(!next){el.innerHTML=`<div class="nx-row"><div class="nx-ico">✅</div><div style="flex:1"><div class="nx-t">Today is complete</div><div class="nx-s">Check-in, mindfulness and movement are all done.</div></div><div class="nx-dots">${dots}</div></div>`;return;}
+  if(!next){el.innerHTML=`<div class="nx-row"><div class="nx-ico">${UI.check}</div><div style="flex:1"><div class="nx-t">Today is complete</div><div class="nx-s">Check-in, mindfulness and movement are all done.</div></div><div class="nx-dots">${dots}</div></div>`;return;}
   el.innerHTML=`<div class="nx-lbl">NEXT UP · ${steps.filter(x=>x.done).length} OF 3 DONE</div><div class="nx-row"><div class="nx-ico">${next.ico}</div><div style="flex:1"><div class="nx-t">${next.t}</div><div class="nx-s">${esc(next.s)}</div></div></div><button class="btn-gold" style="margin:12px 0 0" onclick="${next.go}">${next.btn}</button><div class="nx-dots" style="margin-top:10px">${dots}</div>`;
 }
 
@@ -57,7 +57,7 @@ function saveReflect(){
   const g=$('reflGave').value.trim(),dr=$('reflDrain').value.trim();
   if(!g&&!dr){showToast('Write a few words in either box');return;}
   const rec=ciRec();rec.reflection=JSON.stringify({g,d:dr});
-  put('checkins',rec);showToast('Reflection saved 🌙');refreshAll();
+  put('checkins',rec);showToast('Reflection saved');refreshAll();
 }
 
 // countdown to the next race or goal (profile.goalName / goalDate) with a phase plan

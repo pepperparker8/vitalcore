@@ -745,3 +745,65 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .rm-bar .btn-gold{width:auto;flex-shrink:0;padding:0 16px;min-height:44px}
 .nav-item.dot{position:relative}.nav-item.dot::after{content:"";position:absolute;top:6px;left:calc(50% + 8px);width:8px;height:8px;border-radius:50%;background:var(--gold);border:2px solid var(--chrome)}
 .g-base{margin-top:12px;padding:8px 12px;border-radius:10px;background:var(--hero-chip);font-size:12px;line-height:1.5;color:var(--hero-dim)}
+
+/* ── DATA-FIRST (v66): no boxes; hairline dividers, big plain numbers ── */
+.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.rm-bar,.g-bed,.cc-h{background:transparent;border:0;border-radius:0;box-shadow:none}
+.card,.ci-card,.zone-card,.ins-block,.arch-trend,.prof-bar,.acc-box,.bt-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.log-sec,.cc-h,.rm-bar{border-top:1px solid var(--bdr);padding:20px 0;margin-bottom:0}
+.hero-card{padding:8px 0 20px;margin-bottom:0}
+.ci-card.done,.hab.done{background:transparent}
+.zone-card{overflow:visible}
+.log-sec{overflow:visible}.log-sec.open{border-color:var(--bdr)}
+.log-hdr{padding:12px 0;min-height:64px}
+.log-ico{background:none;width:28px;height:28px;border-radius:0;color:var(--t2)}
+.log-ico svg,.lg-tiles svg,.hab-i svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lg-tiles button{border-top:1px solid var(--bdr);min-height:72px;color:var(--t2)}
+.lg-tiles button span{font-size:0;display:flex}
+.hab{border-top:1px solid var(--bdr);color:var(--t2)}
+.hab.done{color:var(--text);box-shadow:inset 0 -2px 0 var(--gold)}
+.hab-i{display:flex;justify-content:center}
+.sbars{gap:0}.sbar{padding:12px 4px;border-top:1px solid var(--bdr)}
+.passive-chip{padding:10px 4px}
+.sbar-val{font-size:28px}
+.g-num{font-size:30px}
+.g-base,.why,.rv-pr,.rv-t,.ins-hi-arch,.ins-hist-cnt{background:transparent;border-radius:0;padding-left:0;padding-right:0}
+.why{padding:0;margin-right:10px;border:0}
+.rv-t{border-top:1px solid var(--bdr)}
+.rv-pr{color:var(--gold-dk);padding-top:0}
+.ins-hi{border-top:1px solid var(--bdr);padding:0}
+.ins-hi-arch{border:0;padding:0}
+.act-icon,.act-icon.past{background:none;color:var(--t2)}
+.act-icon.today{background:none;color:var(--gold-dk)}
+.str-chip,.gym-tgl{border-radius:8px}
+
+/* verdict strip: coloured rule, no fill */
+.cc-h{border-top:0;border-left:3px solid var(--bdr);padding:4px 0 4px 14px;margin-bottom:16px}
+.cc-h.cc-ok{border-left-color:var(--green)}.cc-h.cc-warn{border-left-color:var(--amber)}.cc-h.cc-bad{border-left-color:var(--red)}
+.cc-ok:not(span),.cc-warn:not(span),.cc-bad:not(span){background:transparent}
+.cc-t{font-size:26px;letter-spacing:-.02em}
+.rm-bar{border-top:0;border-left:3px solid var(--gold);padding:4px 0 4px 14px;margin-bottom:16px}
+.signin-ban{border-style:solid;border-width:1px 0 0;border-color:var(--bdr)}
+.streak-card,.streak-ban,.ins-nudge{background:transparent}
+
+/* line icons in place of emoji */
+.ui-i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-4px}
+.ui-i.lg{width:28px;height:28px}
+.streak-top .ui-i,.ins-nudge .ui-i{color:var(--gold-dk);width:22px;height:22px}
+.empty-icon .ui-i{width:32px;height:32px;color:var(--t3)}
+.rv-pr .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
+.ins-arch .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
+#offlineBar .ui-i{width:14px;height:14px;margin-right:4px;vertical-align:-2px}
+.g-num{font-size:26px}
+.g-bed{padding:4px 0 8px}
+.signin-ban{border-top:0;padding-top:8px}
+.week-ban{background:transparent;border:0;border-left:3px solid var(--gold);border-radius:0;padding:2px 0 2px 14px;margin-bottom:16px}
+.week-ban-lbl{color:var(--t3)}
+.week-ban #weekStats{color:var(--text)!important;font-size:15px!important;font-weight:600}
+.hist-box{background:transparent;border:0;border-radius:0;padding:0}
+.chip{background:transparent;border-radius:8px;border-color:var(--bdr);color:var(--t2)}
+.chip.on,.chip.active,.chip.sel{background:transparent;color:var(--gold-dk);border-color:var(--gold)}
+.seg{background:transparent;border-bottom:1px solid var(--bdr);border-radius:0;padding:0}
+.seg button{border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px}
+.seg button.active{background:none;box-shadow:none;color:var(--text);border-bottom-color:var(--gold)}
+.ins-hdr{background:transparent;border:0;border-radius:0;padding:4px 0 16px}
+.ins-title{color:var(--text);font-size:26px;letter-spacing:-.02em}
+.ins-stamp{color:var(--t3);letter-spacing:0}

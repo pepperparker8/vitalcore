@@ -2,8 +2,7 @@
 function renderGreeting(){
   const hr=new Date().getHours(),name=S().profile.name;
   const g=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  const em=hr<12?'☀️':hr<17?'🌤':'🌙';
-  $('heroGreeting').textContent=`${g}${name?', '+name:''} ${em}`;
+  $('heroGreeting').textContent=`${g}${name?', '+name:''}`;
 }
 function renderRing(score){
   const fill=$('ringFill'),el=$('ringNum'),C=+fill.getAttribute('stroke-dasharray');
@@ -77,10 +76,10 @@ function calcReadiness(){
 function renderHabits(){
   const d=S(),t=td(),ci=todayCI();
   const items=[
-    ['💭','CHECK-IN',ciFull(ci),'go(\'ciCard\')'],
-    ['🧘','MINDFUL',(ci?.mindfulMin||0)>0,'go(\'mindCard\')',ci?.mindfulMin?ci.mindfulMin+'m':''],
-    ['🏃','MOVE',d.workouts.some(w=>w.date===t),'go(\'qwCard\')'],
-    ['🌙','SLEEP',d.sleepLogs.some(s=>s.date===t),'switchTab(\'log\');openLog(\'lSleep\')']
+    [UI.chat,'CHECK-IN',ciFull(ci),'go(\'ciCard\')'],
+    [UI.lotus,'MINDFUL',(ci?.mindfulMin||0)>0,'go(\'mindCard\')',ci?.mindfulMin?ci.mindfulMin+'m':''],
+    [UI.run,'MOVE',d.workouts.some(w=>w.date===t),'go(\'qwCard\')'],
+    [UI.moon,'SLEEP',d.sleepLogs.some(s=>s.date===t),'switchTab(\'log\');openLog(\'lSleep\')']
   ];
   $('habits').innerHTML=items.map(([i,l,ok,go,txt])=>`<button class="hab ${ok?'done':''}" onclick="${go}"><div class="hab-i">${i}</div><div class="hab-l">${l}</div><div class="hab-s">${ok?(txt||'✓'):'Tap'}</div></button>`).join('');
   $('habitsN').textContent=`${items.filter(x=>x[2]).length} of 4 done`;
@@ -122,7 +121,7 @@ function renderWeekTrends(){
 }
 function renderTLoad(){
   const d=S(),{ctl,atl,tsb}=d.intervalsData;
-  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
+  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
   else{$('tloadContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div class="sbar"><div class="sbar-lbl">FITNESS</div><div class="sbar-val" style="color:var(--teal)">${ctl}</div><div class="sbar-zone" style="color:var(--teal)">CTL</div></div><div class="sbar"><div class="sbar-lbl">FATIGUE</div><div class="sbar-val" style="color:var(--red)">${atl}</div><div class="sbar-zone" style="color:var(--amber)">${zL(atl,'atl')}</div></div><div class="sbar"><div class="sbar-lbl">FORM</div><div class="sbar-val" style="color:var(--green)">${tsb>0?'+':''}${tsb}</div><div class="sbar-zone" style="color:var(--green)">${zL(tsb,'tsb')}</div></div></div>`;}
   $('sbLoad').textContent=ctl??'—';$('sbLoadZ').textContent=ctl?zL(ctl,'atl'):'—';$('sbLoadP').style.width=ctl?Math.min(100,ctl)+'%':'0';
   const sl=last(d.sleepLogs.filter(s=>s.score));
@@ -137,7 +136,7 @@ function renderActList(){
   for(let i=0;i<7;i++){
     const date=dAgo(i),isToday=i===0,ws=d.workouts.filter(w=>w.date===date);
     if(!ws.length)rows.push(`<div class="act-item"><div class="act-icon past" style="font-size:13px;color:var(--t3)">—</div><div><div class="act-name" style="color:var(--t3);font-weight:400">Nothing logged</div><div class="act-meta">${isToday?'Today':date}</div></div></div>`);
-    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||'⚡'}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.sets?'':(w.durMin?' · '+fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}${w.sets?(n=>' · '+n+' set'+(n===1?'':'s'))(setsByEx(w).reduce((n,e)=>n+e[1].length,0)):''} · effort ${w.rpe||3}/5</div>${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
+    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.sets?'':(w.durMin?' · '+fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}${w.sets?(n=>' · '+n+' set'+(n===1?'':'s'))(setsByEx(w).reduce((n,e)=>n+e[1].length,0)):''} · effort ${w.rpe||3}/5</div>${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
   }
   $('actList').innerHTML=rows.join('');
   const tm=trainOn(t),mm=mindOn(t),wl=d.wellness[t]||d.wellness[dAgo(1)];
@@ -291,8 +290,8 @@ function renderBests(){
   });
   strBests().forEach(r=>out.push(r));
   const lw=d.workouts.filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push(['⏱','Longest session',b.date,fmtDur(b.durMin)]);}
-  const bm=d.checkins.filter(c=>c.mindfulMin>0);if(bm.length){const b=bm.reduce((a,c)=>c.mindfulMin>a.mindfulMin?c:a);out.push(['🧘','Longest mindfulness day',b.date,fmtDur(b.mindfulMin)]);}
-  const bs=bestStreak();if(bs>1)out.push(['🔥','Best streak','',`${bs} days`]);
+  const bm=d.checkins.filter(c=>c.mindfulMin>0);if(bm.length){const b=bm.reduce((a,c)=>c.mindfulMin>a.mindfulMin?c:a);out.push([UI.lotus,'Longest mindfulness day',b.date,fmtDur(b.mindfulMin)]);}
+  const bs=bestStreak();if(bs>1)out.push([UI.flame,'Best streak','',`${bs} days`]);
   $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${dt}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="switchTab('today');go('qwCard')">Log a workout</button></div>`;
 }
 function renderWeekSum(){
