@@ -1,6 +1,6 @@
 // ── CHART ENGINE: time-based line charts you can zoom, pan and inspect ───────
 // Drag to pan, pinch (or wheel) to zoom, tap to inspect a day. Range chips jump to 1M/3M/6M/1Y/All.
-// mountChart(id, cfg): cfg = {series:[{name,color,dash,fill,fmt,pts:[{d:'YYYY-MM-DD',v}]}], H, yfmt, min, max, zero, marks:[dates], extra(date), empty, sub}
+// mountChart(id, cfg): cfg = {series:[{name,color,dash,fill,fmt,pts:[{d:'YYYY-MM-DD',v}]}], H, yfmt, min, max, zero, band:[{d,lo,hi}], marks:[dates], extra(date), empty, sub}
 const _ch={};
 const DN=s=>Math.floor(Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5);
 const ND=n=>new Date(n*864e5).toISOString().slice(0,10);
@@ -68,7 +68,7 @@ function chDraw(id){
   st.L=cfg.wide?40:34;st.R=10;const L=st.L,R=st.R,T=10,B=22,[a,b]=st.view;
   const X=d=>L+(d-a)*(W-L-R)/(b-a);
   // y range from visible points
-  const vis=cfg.series.flatMap(s=>s.pts.filter(p=>{const d=DN(p.d);return d>=a-1&&d<=b+1;}).map(p=>p.v)).concat((cfg.ref||[]).map(f=>f.v));
+  const vis=cfg.series.flatMap(s=>s.pts.filter(p=>{const d=DN(p.d);return d>=a-1&&d<=b+1;}).map(p=>p.v)).concat((cfg.ref||[]).map(f=>f.v),(cfg.band||[]).filter(p=>{const d=DN(p.d);return d>=a-1&&d<=b+1;}).flatMap(p=>[p.lo,p.hi]));
   let mn=cfg.min,mx=cfg.max;
   if(vis.length&&(mn==null||mx==null)){const lo=Math.min(...vis),hi=Math.max(...vis),pad=(hi-lo)*0.12||Math.abs(hi)*0.08||1;if(mn==null)mn=lo-pad;if(mx==null)mx=hi+pad;if(cfg.zero){mn=Math.min(mn,0);mx=Math.max(mx,0);}}
   if(mn==null){mn=0;mx=1;}
@@ -82,6 +82,7 @@ function chDraw(id){
   ctx.textBaseline='alphabetic';ctx.textAlign='center';ctx.fillStyle=cssv('--t3');
   chTicks(a,b).forEach(([d,l])=>{const x=X(d);if(x<L+8||x>W-R-8)return;ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.globalAlpha=1;ctx.fillText(l,x,H-6);});
   ctx.save();ctx.beginPath();ctx.rect(L,0,W-L-R,H-B+2);ctx.clip();
+  if(cfg.band&&cfg.band.length>1){const q=cfg.band.map(p=>[X(DN(p.d)),Y(p.lo),Y(p.hi)]);ctx.globalAlpha=.16;ctx.fillStyle=cssv('--teal');ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p[0],p[2]):ctx.moveTo(p[0],p[2]));for(let i=q.length-1;i>=0;i--)ctx.lineTo(q[i][0],q[i][1]);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
   (cfg.ref||[]).forEach(f=>{if(f.v<mn||f.v>mx)return;ctx.strokeStyle=cssv('--gold');ctx.globalAlpha=.7;ctx.setLineDash([5,4]);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(L,Y(f.v));ctx.lineTo(W-R,Y(f.v));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.fillStyle=cssv('--gold-dk');ctx.textAlign='left';ctx.font='600 10px Inter,sans-serif';ctx.fillText(f.label||'',L+4,Y(f.v)-4);});
   const dots=(b-a)<=60;
   cfg.series.forEach((s,si)=>{

@@ -70,6 +70,7 @@ Verify after each change; don't batch.
 - 8px spacing grid. Tap targets minimum 44px.
 - Tabs: Today, Trends (charts + calendar & bests), Log, Health (baselines, blood timeline, doctor/coach report), Insights. Settings opens from the logo.
 
+- Charts take an optional `band` (shaded usual range, from `rollBand()` in form.js: mean ± 1 SD of the prior 28 days). Used on readiness, HRV and resting HR (Trends).
 - Time charts (`js/chart.js`, `mountChart(id,cfg)`): real date axis, drag to pan, pinch/wheel to zoom, 1M/3M/6M/1Y/All chips, ‹ › to move, tap to inspect. Used by fitness/fatigue/form, readiness and Progress & PRs.
 
 ## Conventions

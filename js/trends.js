@@ -9,7 +9,7 @@ function setTrView(v){
 function renderTrendsTab(){
   if(_trView==='cal'){renderCalendar();renderBests();renderWeekSum();return;}
   renderWeekBanner();renderBurnout();renderSleepBars();renderHRVSpark();
-  requestAnimationFrame(()=>{renderTrends();renderWtChart();renderStrTrend();renderSportTrend();renderFormChart();renderReadTrend();renderLoad();renderProgress();});
+  requestAnimationFrame(()=>{renderTrends();renderWtChart();renderStrTrend();renderSportTrend();renderFormChart();renderReadTrend();renderRecTrend();renderLoad();renderProgress();});
 }
 // weekly distance for one sport, over the selected range (at least 4 weeks)
 function renderSportTrend(){
