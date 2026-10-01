@@ -47,11 +47,11 @@ function baseline(field,days){
 }
 function baseRow(label,b,unit,fmt=v=>v,goodLow=null){
   if(!b)return`<div class="hist-row"><span>${label}</span><span class="hist-val">—</span></div>`;
-  let note='<small style="color:var(--t3)"> · first entries</small>';
+  let note='<small style="color:var(--t3)">first entries</small>';
   if(b.avg!==null){
     const diff=b.cur-b.avg,ad=Math.abs(diff)<0.05?0:diff;
     const col=ad===0||goodLow===null?'var(--t2)':((ad<0)===goodLow?'var(--green)':'var(--amber)');
-    note=`<small style="color:${col}"> · ${ad===0?'same as':ad>0?'+'+r1(ad):'−'+r1(-ad)+' vs'} your ${b.n>1?'30-day ':''}avg ${fmt(r1(b.avg))}</small>`;
+    note=`<small style="color:${col}">${ad===0?'same as':ad>0?'+'+r1(ad):'−'+r1(-ad)+' vs'} your ${b.n>1?'30-day ':''}avg ${fmt(r1(b.avg))}</small>`;
   }
   return`<div class="hist-row"><span>${label}</span><span class="hist-val">${fmt(b.cur)} ${unit}${note}</span></div>`;
 }
@@ -60,10 +60,10 @@ function renderHealth(){
   const bp=(()=>{const ms=d.measurements.filter(m=>m.bpSys);if(!ms.length)return null;const c=last(ms),o=ms.filter(m=>m!==c&&daysAgo(m.date)<=30);return{cur:c,avgS:o.length?avg(o.map(m=>m.bpSys)):null,avgD:o.length?avg(o.map(m=>m.bpDia)):null};})();
   const goal=d.profile.wtGoal;
   $('hBase').innerHTML=
-    baseRow('Resting heart rate',baseline('hr',30),'bpm',v=>v,true)+
-    baseRow('Weight',baseline('weight',30),'kg',v=>v,null)+
+    baseRow('Resting heart rate',baseline('hr',30),'bpm',Math.round,true)+
+    baseRow('Weight',baseline('weight',30),'kg',r1,null)+
     (bp?`<div class="hist-row"><span>Blood pressure</span><span class="hist-val">${bp.cur.bpSys}/${bp.cur.bpDia} mmHg${bp.avgS!==null?`<small style="color:var(--t2)"> · avg ${Math.round(bp.avgS)}/${Math.round(bp.avgD)}</small>`:''}</span></div>`:baseRow('Blood pressure',null,''))+
-    (goal&&last(d.measurements.filter(m=>m.weight))?`<div class="hist-row"><span>Weight goal</span><span class="hist-val">${goal} kg<small style="color:var(--t2)"> · ${r1(last(d.measurements.filter(m=>m.weight)).weight-goal)>0?r1(last(d.measurements.filter(m=>m.weight)).weight-goal)+' kg to lose':'reached'}</small></span></div>`:'');
+    (goal&&last(d.measurements.filter(m=>m.weight))?`<div class="hist-row"><span>Weight goal</span><span class="hist-val">${goal} kg<small style="color:var(--t2)">${r1(last(d.measurements.filter(m=>m.weight)).weight-goal)>0?r1(last(d.measurements.filter(m=>m.weight)).weight-goal)+' kg to lose':'reached'}</small></span></div>`:'');
   if(!d.measurements.length)$('hBase').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No measurements yet</div><div class="empty-sub">Log weight, blood pressure or resting heart rate and your personal baseline builds here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lMeas\')">Add a measurement</button></div>';
 
   const bl=d.bloodLogs.slice().sort((a,b)=>a.date<b.date?-1:1);
