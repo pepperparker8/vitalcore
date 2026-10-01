@@ -9,7 +9,7 @@ function reviewData(from,to){
   const ws=d.workouts.filter(In).filter(w=>!w.isEx);
   const pr=[];
   const h=exHistory();
-  h.forEach((a,ex)=>{let best=0;a.forEach(x=>{if(x.date<from)best=Math.max(best,x.e1);});a.filter(In).forEach(x=>{if(x.e1>best+0.01&&best>0){pr.push(`${ex} ~${Math.round(x.e1*10)/10} kg 1RM`);best=x.e1;}});});
+  h.forEach((a,ex)=>{let best=0,top=0;a.forEach(x=>{if(x.date<from)best=Math.max(best,x.e1);});a.filter(In).forEach(x=>{if(x.e1>best+0.01&&best>0&&x.e1>top)top=x.e1;});if(top)pr.push(`${ex} ~${Math.round(top*10)/10} kg 1RM`);});
   ['Run','Cycle','Hike','Walk'].forEach(t=>{
     const all=d.workouts.filter(w=>w.type===t&&w.distKm>0),prev=Math.max(0,...all.filter(w=>w.date<from).map(w=>w.distKm)),wk=all.filter(In).sort((x,y)=>y.distKm-x.distKm)[0];
     if(wk&&prev>0&&wk.distKm>prev)pr.push(`Longest ${t.toLowerCase()} ${Math.round(wk.distKm*10)/10} km`);

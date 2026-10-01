@@ -29,7 +29,7 @@ function renderCoach(){
   if(sc===null){el.innerHTML='<div class="sec">Coach view</div><div class="empty-state" style="padding:8px 0"><div class="empty-title">Not enough to coach you yet</div><div class="empty-sub">Log last night\'s sleep or do a check-in and this page tells you whether to push, hold or rest.</div><button class="empty-btn" onclick="switchTab(\'today\')">Go to Today</button></div>';return;}
   const fl=coachFlags(),bad=fl.filter(f=>f.hard).length,warn=fl.filter(f=>f.st==='warn'||f.st==='bad').length;
   const lvl=sc<45||bad?'bad':sc<65||warn>=1?'warn':'ok';
-  const head={ok:['Green light','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady','Train, but keep it controlled. Do not add extra load today.'],bad:['Back off today','Recovery is the priority. Easy movement or rest.']}[lvl];
+  const head={ok:['Train today','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady today','Train, but keep it controlled. Do not add extra load today.'],bad:['Rest today','Recovery is the priority. Easy movement or rest.']}[lvl];
   const ex=isExampleOnly(),n=daysLogged(14);
   const basis=`<div class="set-note" style="margin:-4px 0 10px">${ex?'Based on example data. Log your own sleep, check-ins and workouts to make this yours.':n<4?`Early estimate: only ${n} of the last 14 days have data.`:`Based on ${n} of the last 14 days with data.`}</div>`;
   const sg=suggestWorkout(),pw=planWeek();

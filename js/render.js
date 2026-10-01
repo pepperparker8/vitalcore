@@ -36,7 +36,8 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderBed();const sc=calcReadiness();$('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
+  renderBed();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
+  $('gRecSub').textContent=isExampleOnly()?'Example data':sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function sleepNeed(st){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60;
