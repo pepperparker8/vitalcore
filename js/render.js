@@ -35,7 +35,7 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderBed();renderFactors();renderSleepStages();renderDays7();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
+  renderBed();renderFactors();renderSleepStages();renderDays7();renderWeekLoad();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
   $('gRecSub').textContent=isExampleOnly()?'Example data':sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function readinessFactors(){
@@ -91,6 +91,25 @@ function renderDay7Det(){
   const sl=d.sleepLogs.find(x=>x.date===k&&x.durMin),ws=d.workouts.filter(w=>w.date===k),ci=d.checkins.find(c=>c.date===k);
   const parts=[v!=null?'Recovery '+v:'No recovery score',sl?'Sleep '+fmtDur(sl.durMin):'No sleep logged',ws.length?ws.map(w=>w.type+(w.durMin?' '+fmtDur(w.durMin):'')).join(', '):'No workout',ci&&ciFull(ci)?'Checked in':'No check-in'];
   el.style.display='';el.innerHTML=`<b>${dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</b> · ${parts.join(' · ')}`;
+}
+function renderWeekLoad(){
+  const el=$('wkLoad');if(!el||typeof raceLoad!=='function')return;
+  const L=raceLoad(),now=Math.round(L.now);
+  if(!L.base&&!now){el.style.display='none';return;}
+  const r=typeof racePhase==='function'?racePhase():null,mult=r&&r.n>=0?r.mult:1;
+  const dow=(new Date(td()+'T12:00:00').getDay()+6)%7,left=6-dow;
+  let lo=null,hi=null;
+  if(L.base){lo=Math.round(L.base*mult*0.8/5)*5;hi=Math.round(L.base*mult*1.2/5)*5;}
+  const max=Math.max(now,hi||0,60)*1.1,pc=v=>Math.min(100,v/max*100);
+  const st=hi==null?'':now>hi?'bad':now>=lo?'good':'none';
+  const note=hi==null?'A target range appears after two weeks of logging.':
+    now>hi?`Above your usual range. ${left?'Keep the rest of the week easy.':'A lighter week next.'}`:
+    now>=lo?`In your usual range${left?` with ${left} day${left>1?'s':''} left`:''}.`:
+    `${fmtDur(lo-now)} below the low end${left?`, ${left} day${left>1?'s':''} left`:''}.`;
+  el.style.display='';
+  el.innerHTML=`<div class="wl-h"><span class="sec">Training this week</span><span class="wl-now ${st}">${fmtDur(now)}</span></div>
+  <div class="wl-bar">${hi!=null?`<span class="wl-band" style="left:${pc(lo)}%;width:${pc(hi)-pc(lo)}%"></span>`:''}<span class="wl-fill ${st}" style="width:${pc(now)}%"></span></div>
+  <div class="wl-sub">${hi!=null?`Usual ${fmtDur(lo)} to ${fmtDur(hi)}${mult!==1?` (${r.k.toLowerCase()} phase)`:''}`:'Mon to Sun'}</div><div class="wl-note">${note}</div>`;
 }
 function sleepNeed(st){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60;
