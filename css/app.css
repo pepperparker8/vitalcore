@@ -822,3 +822,8 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .sl-more{margin:4px 0 16px}.sl-more summary{min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer}
 .log-sec{border-top:0;border-bottom:1px solid var(--bdr)}.log-sec:first-of-type{border-top:0}
 .log-chev .ui-i{width:18px;height:18px;color:var(--t3)}
+/* Polish (v70): press and focus states, soft transitions */
+.btn-gold,.btn-out,.btn-muted,.chip,.seg button,.log-head,.nav-item{transition:background .15s,border-color .15s,filter .15s,color .15s}
+.btn-out:active,.btn-muted:active,.chip:active{background:var(--sur2);border-color:var(--t3)}
+.btn-gold:focus-visible,.btn-out:focus-visible,.btn-muted:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
