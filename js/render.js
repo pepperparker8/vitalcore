@@ -35,7 +35,7 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderBed();renderFactors();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
+  renderBed();renderFactors();renderSleepStages();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
   $('gRecSub').textContent=isExampleOnly()?'Example data':sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function readinessFactors(){
@@ -61,6 +61,18 @@ function renderFactors(){
   const el=$('rdFactors');if(!el)return;
   const f=readinessFactors();
   el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>`<div class="rf ${x.st}"${x.go?` onclick="${x.go}" role="button"`:''}><span class="rf-dot"></span><span class="rf-l">${x.l}</span><span class="rf-v">${x.v}</span><span class="rf-n">${x.n}</span></div>`).join('');
+}
+function renderSleepStages(){
+  const el=$('slStages');if(!el)return;
+  const d=S(),sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
+  const deep=sl?((+sl.deepH||0)*60+(+sl.deepM||0)):0,rem=sl?((+sl.remH||0)*60+(+sl.remM||0)):0;
+  if(!sl||(!deep&&!rem)){el.style.display='none';return;}
+  const light=Math.max(0,sl.durMin-deep-rem),tot=sl.durMin;
+  const pc=v=>Math.round(v/tot*100);
+  const seg=(c,v)=>v?`<span class="ss-seg ${c}" style="width:${v/tot*100}%"></span>`:'';
+  const leg=(c,l,v)=>`<div class="ss-leg"><span class="ss-dot ${c}"></span><span>${l}</span><b>${fmtDur(v)}</b><small>${pc(v)}%</small></div>`;
+  el.style.display='';
+  el.innerHTML=`<div class="ss-h"><span class="sec">Last night</span><span class="ss-tot">${fmtDur(tot)}</span></div><div class="ss-bar">${seg('deep',deep)}${seg('rem',rem)}${seg('light',light)}</div><div class="ss-legs">${leg('deep','Deep',deep)}${leg('rem','REM',rem)}${leg('light','Light',light)}</div><div class="ss-note">${deep/tot<0.13?'Deep sleep below the usual 13 to 23%. ':''}${rem/tot<0.2?'REM below the usual 20 to 25%. ':''}${deep/tot>=0.13&&rem/tot>=0.2?'Deep and REM in the usual ranges.':''}</div>`;
 }
 function sleepNeed(st){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60;
