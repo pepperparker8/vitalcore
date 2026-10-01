@@ -877,3 +877,5 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .wl-band{position:absolute;top:0;bottom:0;background:var(--green-l);border-left:1px solid var(--green);border-right:1px solid var(--green)}
 .wl-fill{position:absolute;top:3px;bottom:3px;left:0;border-radius:3px;background:var(--text)}.wl-fill.good{background:var(--green)}.wl-fill.bad{background:var(--red)}
 .wl-sub{font-size:12px;color:var(--t3)}.wl-note{font-size:13px;color:var(--t2);margin-top:4px;line-height:1.5}
+.ss-cons{display:grid;grid-template-columns:1fr auto;gap:0 10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);font-size:13px;color:var(--t2)}
+.ss-cons b{font-weight:600;color:var(--text)}.ss-cons b.good{color:var(--green)}.ss-cons b.warn{color:var(--amber)}.ss-cons b.bad{color:var(--red)}.ss-cons small{grid-column:1/-1;font-size:12px;color:var(--t3)}
