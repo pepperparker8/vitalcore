@@ -36,7 +36,20 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||8)*60,pc=Math.round(sl.durMin/goal*100);
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  const sc=calcReadiness();$('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
+  renderBed();const sc=calcReadiness();$('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
+}
+function sleepNeed(st){
+  const d=S(),goal=(d.profile.sleepGoal||8)*60;
+  const debt=[1,2,3].reduce((a,i)=>{const l=d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)===i);return l.length?a+Math.max(0,goal-l[l.length-1].durMin):a;},0);
+  return Math.round((goal+st/21*45+Math.min(45,debt/2))/5)*5;
+}
+const hhmm=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
+function setWake(v){if(!/^\d\d:\d\d$/.test(v))return;const d=S();d.profile.wakeTime=v;save(d);markProfile();renderBed();}
+function renderBed(){
+  const el=$('gBed');if(!el)return;
+  const d=S(),wk=d.profile.wakeTime||'06:30',[h,m]=wk.split(':').map(Number);
+  const need=sleepNeed(strainOf(dayLoad(td())));
+  el.innerHTML=`<div class="gb-t">Asleep by <b>${hhmm(h*60+m-need)}</b></div><label class="gb-s">${fmtDur(need)} · wake at <input type="time" value="${wk}" onchange="setWake(this.value)" aria-label="Wake time"></label>`;
 }
 function renderZone(score){
   let z,ins;
