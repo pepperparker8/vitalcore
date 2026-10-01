@@ -95,7 +95,7 @@ function renderGoal(){
     sub=`<b>${r.k}${r.min?' phase':''}.</b> ${r.tip}`;
     const L=raceLoad();
     if(L.base){
-      const tg=Math.round(L.base*r.mult/5)*5,pc=Math.min(100,Math.round(L.now/tg*100));
+      const tg=Math.max(5,Math.round(L.base*r.mult/5)*5),pc=Math.min(100,Math.round(L.now/tg*100));
       extra=`<div class="gl-bar"><div style="width:${pc}%"></div></div><div class="gl-t">This week: ${fmtDur(Math.round(L.now))} of about ${fmtDur(tg)} target${r.mult<1?' (reduced for '+r.k.toLowerCase()+')':''}</div>`;
     }else extra='<div class="gl-t">Log 2 or more full weeks and a weekly time target will appear here.</div>';
     extra+=`<div class="gl-ph">${RACE_PH.map((x,i)=>`<span class="${i===r.idx?'on':i<r.idx?'past':''}">${x.k}</span>`).join('')}</div>`;
@@ -157,7 +157,7 @@ function renderSuggest(){
   const s=suggestWorkout();
   if(!s){el.style.display='none';return;}
   el.style.display='';
-  el.innerHTML=`<div class="sg-lbl">SUGGESTED FOR TODAY</div><div class="sg-row"><div class="sg-ico">${ICON[s.type]||''}</div><div style="flex:1"><div class="sg-t">${esc(s.title)}</div><div class="sg-s">${esc(s.why)}</div></div></div><button class="btn-out sg-btn" onclick="switchTab('log');openLog('lWorkout');selEx('${s.type}');$('exGrid').scrollIntoView({block:'center'})">Log ${s.type} →</button>`;
+  el.innerHTML=`<div class="sg-lbl">SUGGESTED FOR TODAY</div><div class="sg-row"><div class="sg-ico">${ICON[s.type]||''}</div><div style="flex:1"><div class="sg-t">${esc(s.title)}</div><div class="sg-s">${esc(s.why)}</div></div></div><button class="btn-out sg-btn" onclick="switchTab('log');openLog('lWorkout');selEx('${PL_TYPES.includes(s.type)?s.type:'Run'}');$('exGrid').scrollIntoView({block:'center'})">Log ${s.type} →</button>`;
 }
 
 // ── CHECK-IN REMINDER: strip on Today (and a nav dot) after the chosen time if not checked in ──

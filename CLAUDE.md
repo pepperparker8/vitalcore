@@ -63,6 +63,7 @@ Verify after each change; don't batch.
 
 ## Backlog
 - Real push notifications (needs a push server; the in-app check-in reminder is done).
+- Sync conflicts are whole-record last-write-wins by `ts`; local pending always beats remote (two devices editing the same day offline lose one edit).
 
 ## Design system (changed with the owner's approval; ask before further changes)
 - **Pro light (v72, owner asked for a light, professional look like Garmin Connect):** light is the default regardless of the phone setting (`vc-theme` defaults to `light`; auto/dark still available in Settings > Appearance). Neutral palette: page `#F3F4F6`, white cards `#FFFFFF` with 14px radius and a 1-2px soft shadow, text `#14171C`, greys `--t2 #5B6472` / `--t3 #8A93A0`. Dark: `#121316` page, `#1C1E22` cards. The cream palette is gone; do not bring it back. All colours are CSS variables with dark overrides; never hardcode colours in JS, use `cssv()`.
@@ -79,6 +80,13 @@ Verify after each change; don't batch.
 - Time charts (`js/chart.js`, `mountChart(id,cfg)`): real date axis, drag to pan, pinch/wheel to zoom, 1M/3M/6M/1Y/All chips, ‹ › to move, tap to inspect. Used by fitness/fatigue/form, readiness and Progress & PRs.
 
 - **Data-first style (v66, owner-approved; v72 put sections back into white cards):** big plain numbers; sections are white cards on the grey page; verdict, reminder and week banners use a 3px coloured left rule instead of a fill. No emoji in the UI chrome: use the `UI` line-icon set in `js/core.js` (`UI.flame`, `UI.moon`, ...) and `SPORTS`/`ICON`. Form inputs keep their filled boxes (tap targets). Overrides live at the end of `css/app.css`.
+
+## Security notes (v80)
+- CSP meta in `index.html` limits `connect-src` to self, Supabase, Anthropic, Intervals.icu and Google Fonts; add any new origin there.
+- Everything user-typed or cloud-pulled goes through `esc()` before `innerHTML` (injury part, custom exercise names, muscle). Suggested workout type is whitelisted against `PL_TYPES` before use in an inline handler.
+- Model id lives in one constant, `CLAUDE_MODEL` (core.js).
+- Onboarding is a full-screen 3-step overlay (`#welcome` above the header, `obGo/obNext` in log.js); `finishWelcome(skip)` unchanged.
+- Trends has a Soreness & coffee chart (`renderBodyChart`) with a coffee-vs-next-night-sleep note.
 
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.

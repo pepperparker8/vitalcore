@@ -52,11 +52,12 @@ async function handleAuthHash(){
     const p=new URLSearchParams(location.hash.slice(1));
     const at=p.get('access_token');if(!at)return;
     const r=await fetch(SB_URL+'/auth/v1/user',{headers:{apikey:SB_KEY,Authorization:'Bearer '+at}});
-    const u=r.ok?await r.json():{};
+    if(!r.ok)throw new Error('user '+r.status);
+    const u=await r.json();if(!u.id)throw new Error('no user');
     setAuth({access_token:at,refresh_token:p.get('refresh_token'),expires_at:Math.floor(Date.now()/1000)+(+p.get('expires_in')||3600),user:{id:u.id,email:u.email}});
-    history.replaceState(null,'',location.pathname);
     afterSignIn();
   }catch(e){showToast('Sign-in link failed. Try signing in again.');}
+  finally{history.replaceState(null,'',location.pathname);}
 }
 async function sbRefresh(){
   if(!_auth?.refresh_token)throw new Error('signed-out');
@@ -75,7 +76,8 @@ async function sbFetch(path,opts={},retry=true){
 
 // ── CLOUD SYNC ───────────────────────────────────────────────────────────────
 let _pushT=null,_pushing=false,_syncing=false;
-function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(()=>{}),1500);}
+let _pushErr='';
+function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(e=>{const m=String(e.message||e);if(m!==_pushErr){_pushErr=m;showToast('Upload failed: '+m.slice(0,80));}}),1500);}
 const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub'||a==='reflection')&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
 const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub'||a==='reflection')&&x[b]==null)continue;r[a]=x[b];}return r;};
 
@@ -102,7 +104,7 @@ async function pushAll(){
       if(!r.ok)throw new Error(await errMsg(r));
       d.tomb=d.tomb.filter(x=>x!==t);
     }
-    d.lastSync=new Date().toISOString();save(d);
+    d.lastSync=new Date().toISOString();_pushErr='';save(d);
   }finally{_pushing=false;updSyncStatus();}
 }
 async function pullAll(){
@@ -221,7 +223,7 @@ async function testClaudeKey(){
   if(!key){res.textContent='Enter a key first';res.className='api-test-res fail';return;}
   res.textContent='Testing…';res.className='api-test-res';
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:10,messages:[{role:'user',content:'hi'}]})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:CLAUDE_MODEL,max_tokens:10,messages:[{role:'user',content:'hi'}]})});
     if(r.ok){res.textContent='Connected ✓';res.className='api-test-res ok';}
     else{const e=await r.json();res.textContent=e.error?.message||'Invalid key';res.className='api-test-res fail';}
   }catch(e){res.textContent='Network error';res.className='api-test-res fail';}

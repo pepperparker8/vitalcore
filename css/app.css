@@ -886,3 +886,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 /* soreness + coffee chips (v78) */
 .ci-txt .ci-btn{font-size:12px;font-weight:500;padding:0 2px;min-width:0}
 .ci-late{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13px;color:var(--t2);margin:-4px 0 6px}.ci-late input{width:18px;height:18px;accent-color:var(--gold)}
+/* v80: flatten the last gradient cards so both themes match the pro palette */
+.burnout-card{background:var(--sur);color:var(--text);border:1px solid var(--bdr);border-radius:14px;box-shadow:var(--sh);padding:20px}
+.burnout-card .zone-title,.burnout-card .set-note{color:var(--t2)}
+.zone-top{display:none}
+.burnout-card .sec{color:var(--t3)}.bo-lbl{font-size:13px;color:var(--t2);padding-bottom:8px}.burnout-break{color:var(--t2);font-family:inherit;font-size:12px}
+.bar.train{background:var(--t2);opacity:1}
+.empty-btn{background:transparent;color:var(--gold-dk);border:1px solid var(--bdr)}
+.ins-gen{background:var(--gold);color:#fff;border:0;border-radius:12px;min-height:48px}
+.ld-seg button.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+#toast{background:var(--text);color:var(--bg);border-color:transparent;box-shadow:var(--sh)}
+/* v80: onboarding overlay with illustrations */
+.welcome{position:fixed;inset:0;z-index:400;background:var(--bg);border:0;border-radius:0;margin:0;padding:0;display:flex;flex-direction:column;overflow:hidden}
+.ob-skip{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;min-height:44px;padding:0 14px;background:transparent;border:0;color:var(--t2);font:500 14px var(--body);cursor:pointer;z-index:2}
+.ob-track{flex:1;display:flex;width:100%;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.ob-step{flex:0 0 100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:48px 28px 16px;box-sizing:border-box}
+.ob-art{width:min(70vw,240px);height:auto;margin-bottom:28px}
+.ob-h{font-size:24px;font-weight:600;line-height:1.25;letter-spacing:-.01em;margin:0 0 12px;color:var(--text)}
+.ob-p{font-size:15px;line-height:1.55;color:var(--t2);margin:0;max-width:320px}
+.welcome .ob-inp{margin-top:24px;max-width:320px;background:var(--sur);border:1px solid var(--bdr);color:var(--text);border-radius:12px;min-height:48px;font-size:16px;text-align:center}
+.welcome .ob-inp::placeholder{color:var(--t3)}
+.ob-foot{padding:8px 20px calc(20px + env(safe-area-inset-bottom))}
+.ob-foot .btn-gold{margin-top:12px;color:#fff}
+.ob-dots{display:flex;justify-content:center;gap:8px}.ob-dots i{width:8px;height:8px;border-radius:50%;background:var(--bdr);transition:all .25s}.ob-dots i.on{background:var(--gold);width:24px;border-radius:4px}

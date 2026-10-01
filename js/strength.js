@@ -51,7 +51,7 @@ function gymCard(it,i){
     <button onclick="nudge(${i},${c},'${f}',-1)" aria-label="Less">−</button>
     <input type="number" inputmode="decimal" value="${s[f]}" placeholder="0" oninput="setVal(${i},${c},'${f}',this.value);delete _sess[${i}].sets[${c}].pend">
     <button onclick="nudge(${i},${c},'${f}',1)" aria-label="More">+</button></div></div>`;
-  return`<div class="str-card"><div class="str-h"><div><div class="str-nm">${esc(it.ex)}</div><div class="str-mu">${it.muscle.toUpperCase()}${it.hold?' · TIMED':''} · SET ${c+1}</div></div><button class="x" style="min-width:44px;min-height:44px;background:none;border:none;color:var(--t3);font-size:20px" onclick="rmEx(${i})" aria-label="Remove exercise">×</button></div>
+  return`<div class="str-card"><div class="str-h"><div><div class="str-nm">${esc(it.ex)}</div><div class="str-mu">${esc(it.muscle).toUpperCase()}${it.hold?' · TIMED':''} · SET ${c+1}</div></div><button class="x" style="min-width:44px;min-height:44px;background:none;border:none;color:var(--t3);font-size:20px" onclick="rmEx(${i})" aria-label="Remove exercise">×</button></div>
     <div class="str-last">${esc(last)}</div>
     ${big('kg',it.cal?'ADDED KG':'KG')}${big(f2,it.hold?'SECONDS':'REPS')}
     <div class="gym-row"><button onclick="cycRir(${i},${c})">RIR ${RIR_TXT[s.rir===null?0:s.rir+1]}</button><button class="kind ${s.kind}" onclick="cycKind(${i},${c})">${KIND_TXT[s.kind]}</button><button onclick="rmSet(${i},${c})" aria-label="Remove set">Delete</button></div>
@@ -120,7 +120,7 @@ function renderStrength(){
       <button onclick="cycRir(${i},${j})" aria-label="Reps in reserve">${RIR_TXT[s.rir===null?0:s.rir+1]}</button>
       <button class="kind ${s.kind}" onclick="cycKind(${i},${j})" aria-label="Set type">${KIND_TXT[s.kind]}</button>
       <button class="x" onclick="rmSet(${i},${j})" aria-label="Remove set">×</button></div>`).join('');
-    return`<div class="str-card"><div class="str-h"><div><div class="str-nm">${esc(it.ex)}</div><div class="str-mu">${it.muscle.toUpperCase()}${it.hold?' · TIMED':''}</div></div><button class="x" style="min-width:44px;min-height:44px;background:none;border:none;color:var(--t3);font-size:20px" onclick="rmEx(${i})" aria-label="Remove exercise">×</button></div>
+    return`<div class="str-card"><div class="str-h"><div><div class="str-nm">${esc(it.ex)}</div><div class="str-mu">${esc(it.muscle).toUpperCase()}${it.hold?' · TIMED':''}</div></div><button class="x" style="min-width:44px;min-height:44px;background:none;border:none;color:var(--t3);font-size:20px" onclick="rmEx(${i})" aria-label="Remove exercise">×</button></div>
       <div class="str-last">${esc(last)}</div>${hd}${rows}
       <div class="str-act"><button onclick="addSet(${i})">+ Set</button>${lt?`<button onclick="fillLast(${i})">↺ Same as last</button>`:''}</div></div>`;
   }).join('');
@@ -220,9 +220,9 @@ function strBests(){
   const rows=[];
   [...exHistory().entries()].sort((a,b)=>last(b[1]).date<last(a[1]).date?-1:1).slice(0,8).forEach(([ex,a])=>{
     const w=a.reduce((x,y)=>y.e1>x.e1?y:x,a[0]);
-    if(w.e1>0){const b=a.reduce((x,y)=>y.e1>x.e1?y:x);rows.push([UI.weight,ex,b.date,`~${Math.round(b.e1)} kg 1RM`]);}
-    else if(a.some(x=>x.secs)){const b=a.reduce((x,y)=>y.secs>x.secs?y:x);rows.push([UI.hold,ex,b.date,`${b.secs}s hold`]);}
-    else{const b=a.reduce((x,y)=>y.reps>x.reps?y:x);if(b.reps)rows.push([UI.hold,ex,b.date,`${b.reps} reps`]);}
+    if(w.e1>0){const b=a.reduce((x,y)=>y.e1>x.e1?y:x);rows.push([UI.weight,esc(ex),b.date,`~${Math.round(b.e1)} kg 1RM`]);}
+    else if(a.some(x=>x.secs)){const b=a.reduce((x,y)=>y.secs>x.secs?y:x);rows.push([UI.hold,esc(ex),b.date,`${b.secs}s hold`]);}
+    else{const b=a.reduce((x,y)=>y.reps>x.reps?y:x);if(b.reps)rows.push([UI.hold,esc(ex),b.date,`${b.reps} reps`]);}
   });
   return rows;
 }

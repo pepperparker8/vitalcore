@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#2A2A2A">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://hixmwtwhxypbqmjdzjtz.supabase.co https://api.anthropic.com https://intervals.icu https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'">
+<meta name="theme-color" content="#F3F4F6">
 <script>try{var t=localStorage.getItem("vc-theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":t==="auto"?"":"light");if(t==="auto")document.documentElement.removeAttribute("data-theme");}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-maskable-512.png">
@@ -18,6 +19,48 @@
 <div id="updBar" role="status"><span>A new version is ready.</span><button onclick="location.reload()">Refresh</button></div>
 <div id="offlineBar"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg> Offline — your entries are saved on this phone and upload when you're back online</div>
 
+  <div class="welcome" id="welcome" style="display:none" role="dialog" aria-label="Welcome">
+    <button class="ob-skip" onclick="finishWelcome(true)">Skip</button>
+    <div class="ob-track" id="obTrack">
+      <section class="ob-step">
+        <svg class="ob-art" viewBox="0 0 200 160" aria-hidden="true">
+          <circle cx="100" cy="80" r="56" fill="none" stroke="var(--sur2)" stroke-width="10"/>
+          <path d="M100 24a56 56 0 1 1-48.5 28" fill="none" stroke="var(--gold)" stroke-width="10" stroke-linecap="round"/>
+          <path d="M66 82h18l8-18 10 36 9-24 6 10h17" fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="160" cy="34" r="4" fill="var(--green)"/><circle cx="36" cy="128" r="4" fill="var(--amber)"/>
+        </svg>
+        <h2 class="ob-h">One number for how ready you are</h2>
+        <p class="ob-p">Sleep, training load, how you feel and your body's signals combine into a daily recovery score, with the reasons behind it.</p>
+      </section>
+      <section class="ob-step">
+        <svg class="ob-art" viewBox="0 0 200 160" aria-hidden="true">
+          <g fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="52" cy="60" r="22"/><path d="M45 56h.01M59 56h.01M44 66c2.5 3.5 5.5 5 8 5s5.5-1.5 8-5"/>
+            <path d="M118 44a22 22 0 1 0 22 30 18 18 0 0 1-22-30z"/>
+            <path d="M94 120l10-14 12 6 8-14M80 134c6-6 10-10 14-14M126 112l8 10h12"/>
+          </g>
+          <circle cx="160" cy="48" r="5" fill="var(--gold)"/><circle cx="36" cy="120" r="4" fill="var(--teal)"/>
+        </svg>
+        <h2 class="ob-h">A minute a day is enough</h2>
+        <p class="ob-p">Check in with how you feel, log last night's sleep and any workout. VitalCore turns it into trends, a weekly plan and a daily briefing.</p>
+      </section>
+      <section class="ob-step">
+        <svg class="ob-art" viewBox="0 0 200 160" aria-hidden="true">
+          <path d="M20 120c30 0 30-50 60-50s30 30 60 30 20-50 40-50" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round"/>
+          <path d="M20 134h160" stroke="var(--bdr)" stroke-width="2" stroke-linecap="round"/>
+          <g fill="var(--sur)" stroke="var(--text)" stroke-width="3"><circle cx="80" cy="70" r="6"/><circle cx="140" cy="100" r="6"/><circle cx="180" cy="50" r="6"/></g>
+        </svg>
+        <h2 class="ob-h">What should we call you?</h2>
+        <p class="ob-p">Your data stays on this phone until you choose to back it up.</p>
+        <input type="text" class="ob-inp" id="wName" placeholder="Your first name" autocomplete="given-name" enterkeyhint="done" onkeydown="if(event.key==='Enter')finishWelcome()">
+      </section>
+    </div>
+    <div class="ob-foot">
+      <div class="ob-dots" id="obDots"><i class="on"></i><i></i><i></i></div>
+      <button class="btn-gold" id="obNext" onclick="obNext()">Next</button>
+    </div>
+  </div>
+
 <header class="hdr">
   <div class="hdr-brand" onclick="openSettings()"><img src="assets/mark.svg" class="hdr-mark" alt=""><div><div class="hdr-logo">VitalCore</div><div class="hdr-sub" id="hdrStatus">Loading…</div></div></div>
   <div class="hdr-mid"><div class="hdr-date" id="hdrDate"></div></div>
@@ -28,15 +71,6 @@
 
 <!-- TODAY -->
 <div class="page active page-fade" id="pg-today">
-  <div class="welcome" id="welcome" style="display:none">
-    <div class="sec" style="color:rgba(255,107,31,0.6)">WELCOME</div>
-    <div style="font-family:var(--serif);font-weight:600;font-size:22px;color:#fff;margin-bottom:6px">A minute a day is enough.</div>
-    <div class="w-sub">Check in with how you feel, breathe for a few minutes, log any workout. VitalCore turns it into trends you can see.</div>
-    <input type="text" class="ob-inp" id="wName" placeholder="Your first name" autocomplete="given-name">
-    <button class="btn-gold" style="margin-top:0" onclick="finishWelcome()">Let's start</button>
-    <button class="w-skip" onclick="finishWelcome(true)">Skip for now</button>
-  </div>
-
   <div class="signin-ban hidden" id="signBan" onclick="openAuth()">
     <div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /></svg></div>
     <div style="flex:1"><b>Back up your data online</b><small>Sign in with your email so nothing is lost if you lose or reset your phone.</small></div>
@@ -141,6 +175,12 @@
     <div class="set-note" id="moodNote"></div>
   </div>
 
+  <div class="card">
+    <div class="sec">Soreness &amp; coffee</div>
+    <div id="bodyCanvas"></div>
+    <div class="set-note" id="bodyNote"></div>
+  </div>
+
   <div class="card"><div class="tr-head"><div class="tr-title">Mindfulness</div><div class="tr-sum" id="mindSum">—</div></div><div id="mindBars"></div></div>
   <div class="card"><div class="tr-head"><div class="tr-title">Training</div><div class="tr-sum" id="trainSum">—</div></div><div id="trainBars"></div></div>
   <div class="card" id="strCard"><div class="tr-head"><div class="tr-title">Strength</div><div class="tr-sum">sets per muscle, last 7 days</div></div>
@@ -153,10 +193,10 @@
     <div class="chip-row" id="spChips"></div><div id="spBars"></div><div class="set-note" id="spNote"></div></div>
 
   <div class="burnout-card">
-    <div class="sec" style="color:rgba(255,107,31,0.5)">BURNOUT RISK</div>
-    <div style="display:flex;align-items:flex-end;gap:12px"><div class="burnout-num" id="boScore">—</div><div style="font-size:13px;color:rgba(255,255,255,0.6)">/ 100 — <span id="boLabel">—</span></div></div>
+    <div class="sec">Burnout risk</div>
+    <div style="display:flex;align-items:flex-end;gap:12px"><div class="burnout-num" id="boScore">—</div><div class="bo-lbl">/ 100 — <span id="boLabel">—</span></div></div>
     <div class="burnout-break" id="boBreak"></div>
-    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:6px" id="boSub"></div>
+    <div class="set-note" id="boSub"></div>
   </div>
   <div class="zone-card"><div class="zone-top" style="background:var(--teal)"></div><div class="zone-body"><div class="zone-title">Nervous System Recovery</div><div class="zone-sub">Resting HR proxy (7-day trend)</div><div class="zone-row"><div class="zone-val" id="zHRV" style="color:var(--teal)">—</div><div style="flex:1"><div class="zone-desc" id="zHRVd">Log morning resting HR in Measurements to track recovery.</div><div class="hrv-spark" id="hrvSpark"></div><div class="zone-why" onclick="toggleWhy('wHRV')">ⓘ Why this matters ▾</div><div class="zone-exp" id="wHRV">Resting HR trend is a proxy for recovery. A rising trend over several days signals incomplete recovery or illness onset, often before you consciously feel it.</div></div></div></div></div>
   <div class="zone-card"><div class="zone-top" style="background:var(--amber)"></div><div class="zone-body"><div class="zone-title">Training Fatigue</div><div class="zone-sub">Acute Training Load — 7-day</div><div class="zone-row"><div class="zone-val" id="zATL" style="color:var(--amber)">—</div><div style="flex:1"><div class="zone-desc" id="zATLd">Connect Intervals.icu to see fatigue.</div><div class="zone-why" onclick="toggleWhy('wATL')">ⓘ Why this matters ▾</div><div class="zone-exp" id="wATL">ATL reflects recent training stress. High values are expected during hard blocks. Sustained high ATL without recovery leads to declining performance.</div></div></div></div></div>

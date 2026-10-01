@@ -32,7 +32,7 @@ function recalc(){
   renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderRemind();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderLogHead();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
-window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth)pushAll().catch(()=>{});updSyncStatus();});
+window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID))syncAll(false);updSyncStatus();});
 window.addEventListener('resize',()=>{if(_tab==='trends')renderTrendsTab();});
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ function initUI(){
   $('hdrDate').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
   $('wDate').value=td();$('bmDate').value=td();$('injDate').value=td();
   $('wDate').max=td();$('slDate').max=td();loadSleepFor(td());
-  $('welcome').style.display=S().onboardingDone?'none':'block';
+  $('welcome').style.display=S().onboardingDone?'none':'flex';
   renderExGrid();fillCI();renderBloodDisplay();updMeasHist();renderInjuryDisplay();renderInsightHistory();
   updSyncStatus();recalc();
 }
@@ -55,7 +55,7 @@ async function init(){
   // background refresh: cloud + Intervals.icu at most once an hour
   const d=S();
   const stale=!d.lastAuto||Date.now()-d.lastAuto>3600e3;
-  if((_auth||(d.intervalsKey&&d.intervalsID))&&stale&&navigator.onLine){d.lastAuto=Date.now();save(d);syncAll(false);}
+  if((_auth||(d.intervalsKey&&d.intervalsID))&&stale&&navigator.onLine){Promise.resolve(syncAll(false)).then(()=>{const x=S();x.lastAuto=Date.now();save(x);}).catch(()=>{});}
   else if(_auth&&Object.keys(d.pending).length)queuePush();
 }
 init();

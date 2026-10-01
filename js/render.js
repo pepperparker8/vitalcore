@@ -15,7 +15,7 @@ function renderRing(score){
 const GC=213.6;
 function strainOf(load){const ref=strainRef();return Math.round(21*(1-Math.exp(-load/(1.2*ref)))*10)/10;}
 function strainRef(){
-  const ls=[];for(let i=1;i<=60;i++){const l=dayLoad(ymd(new Date(Date.now()-i*864e5)));if(l>0)ls.push(l);}
+  const ls=[];for(let i=1;i<=60;i++){const l=dayLoad(dAgo(i));if(l>0)ls.push(l);}
   if(ls.length<3)return 200;
   ls.sort((a,b)=>a-b);return ls[Math.floor(ls.length*0.75)];
 }
@@ -56,7 +56,7 @@ function readinessFactors(){
   if(ci&&ci.soreness>=2)out.push({l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
   if(ci&&ci.coffeeLate)out.push({l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
   const inj=d.injuries.filter(i=>i.active);
-  if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({l:'Injury',v:inj.length===1?inj[0].part:inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
+  if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
   return out;
 }
 function renderFactors(){
@@ -146,7 +146,7 @@ function calcReadiness(){
   if(!sl&&!ci&&tsb===null)return null;
   let s=70;
   if(sl)s=sl.score*0.5+35;
-  if(tsb!==null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:-tsb*0.3)));
+  if(tsb!=null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:-tsb*0.3)));
   if(ci){const psy=(ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100;s=s*0.7+psy*0.3;}
   s+=recoveryAdj();
   if(ci&&ci.soreness>=2)s-=(ci.soreness-1)*4;
@@ -237,7 +237,7 @@ function bucket(ser){
   return out;
 }
 function renderTrends(){
-  renderMoodChart();
+  renderMoodChart();renderBodyChart();
   const mr=seriesFor(_range,mindOn),tr=seriesFor(_range,trainOn),mind=bucket(mr),train=bucket(tr),k=mind[0].wk?7:1;
   const tm=mr.reduce((a,x)=>a+x.v,0),tt=tr.reduce((a,x)=>a+x.v,0),days=mr.filter(x=>x.v).length,tdays=tr.filter(x=>x.v).length;
   $('mindSum').textContent=tm?`${fmtDur(tm)} · ${days} day${days!==1?'s':''}`:'none logged';
@@ -313,6 +313,29 @@ function renderMoodChart(){
   const L=['','Low','Fair','Good','Great'],f=v=>L[Math.round(v)]||'';
   const mk=(name,color,fn)=>({name,color,fmt:f,pts:cis.map(c=>({d:c.date,v:fn(c)}))});
   mountChart('moodCanvas',{key:'mood',H:170,min:1,max:4,span:30,yfmt:f,series:[mk('Mood','--green',c=>c.mood),mk('Energy','--amber',c=>c.energy),mk('Calm','--t2',c=>5-c.stress),mk('Motivation','--text',c=>c.motivation)]});
+}
+function renderBodyChart(){
+  const d=S(),host=$('bodyCanvas');if(!host)return;
+  const cis=d.checkins.filter(c=>c.soreness!=null||c.coffee!=null).sort((a,b)=>a.date<b.date?-1:1);
+  const note=$('bodyNote');
+  if(cis.length<2){host.innerHTML='';note.textContent='Log soreness and coffee in your check-in for a few days to see them here.';return;}
+  const SL=['None','Mild','Moderate','Severe'];
+  const sore=cis.filter(c=>c.soreness!=null).map(c=>({d:c.date,v:c.soreness-1}));
+  const cof=cis.filter(c=>c.coffee!=null).map(c=>({d:c.date,v:c.coffee}));
+  const series=[];
+  if(sore.length>1)series.push({name:'Soreness',color:'--red',fmt:v=>SL[Math.round(v)]||'',pts:sore});
+  if(cof.length>1)series.push({name:'Coffee',color:'--amber',fmt:v=>Math.round(v)+(Math.round(v)>=4?'+':'')+' cups',pts:cof});
+  mountChart('bodyCanvas',{key:'body',H:150,min:0,max:4,span:30,yfmt:v=>String(Math.round(v)),series});
+  // Coffee vs the following night's sleep, in words
+  const slBy={};d.sleepLogs.forEach(s=>{if(s.durMin)slBy[s.date]=s.durMin;});
+  const next=iso=>{const t=new Date(iso+'T12:00:00');t.setDate(t.getDate()+1);return t.toISOString().slice(0,10);};
+  const hi=[],lo=[];
+  cis.forEach(c=>{if(c.coffee==null)return;const m=slBy[next(c.date)];if(!m)return;(c.coffee>=3?hi:lo).push(m);});
+  const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length);
+  if(hi.length>=3&&lo.length>=3){
+    const diff=avg(lo)-avg(hi);
+    note.textContent=`After 3+ cups you slept ${fmtDur(avg(hi))} on average, vs ${fmtDur(avg(lo))} after lighter days`+(Math.abs(diff)>=20?` (${diff>0?'-':'+'}${fmtDur(Math.abs(diff))}).`:'. No clear difference yet.');
+  }else note.textContent='Soreness 0 to 3 (none to severe) and coffee cups per day. Once there are a few nights after heavy-coffee days, the sleep difference shows here.';
 }
 function renderWeekBanner(){
   const d=S(),wk=d.workouts.filter(w=>daysAgo(w.date)<7).length;

@@ -1,4 +1,14 @@
 // ── WELCOME ──────────────────────────────────────────────────────────────────
+let _ob=0;
+function obGo(n){
+  _ob=Math.max(0,Math.min(2,n));
+  const t=$('obTrack');if(!t)return;
+  t.style.transform=`translateX(${-_ob*100}%)`;
+  [...$('obDots').children].forEach((el,i)=>el.classList.toggle('on',i===_ob));
+  $('obNext').textContent=_ob===2?"Let's start":'Next';
+  if(_ob===2)setTimeout(()=>$('wName').focus(),350);
+}
+function obNext(){if(_ob<2)obGo(_ob+1);else finishWelcome();}
 function finishWelcome(skip){
   const d=S();
   const nm=$('wName').value.trim();

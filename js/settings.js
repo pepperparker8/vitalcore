@@ -49,7 +49,8 @@ function restoreBackup(inp){
       if(!confirm('Replace the data on this phone with this backup?'))return;
       const d=S();
       const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey};
-      _s={...JSON.parse(JSON.stringify(DEFAULTS)),...b,...keep,pending:{},tomb:[],onboardingDone:true};
+      const safe={};for(const k of Object.keys(DEFAULTS))if(k in b)safe[k]=b[k];
+      _s={...JSON.parse(JSON.stringify(DEFAULTS)),...safe,...keep,pending:{},tomb:[],onboardingDone:true};
       migrate();
       for(const [n,T] of Object.entries(TBL))_s[T.k].forEach(r=>{_s.pending[n+'|'+r.id]=r.ts||Date.now();});
       _s.insightLog.forEach(e=>{_s.pending['insight|'+e.date]=e.ts;});
@@ -60,7 +61,7 @@ function restoreBackup(inp){
   rd.readAsText(f);
 }
 function exportCSV(){
-  const d=S(),q=v=>`"${String(v??'').replace(/"/g,'""')}"`;let csv='Date,Type,Value,Detail\n';
+  const d=S(),q=v=>{let t=String(v??'');if(/^[=+\-@\t\r]/.test(t))t="'"+t;return `"${t.replace(/"/g,'""')}"`;};let csv='Date,Type,Value,Detail\n';
   d.checkins.forEach(c=>{csv+=`${c.date},Check-in,${c.mood??''},energy ${c.energy??''} / stress ${c.stress??''} / motivation ${c.motivation??''} / mindful ${c.mindfulMin||0} min ${q(c.gratitude)}\n`;});
   d.workouts.forEach(w=>csv+=`${w.date},Workout,${q(w.type)},${w.durMin||0} min ${w.distKm||0} km RPE ${w.rpe||''} ${q(w.notes)} ${q(w.sets?setsText(w):'')}\n`);
   d.sleepLogs.forEach(s=>csv+=`${s.date},Sleep score,${s.score??''},\n`);

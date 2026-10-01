@@ -28,7 +28,7 @@ function renderDigest(){
   }
   // d(value, prev, format, higherIsBetter|null): arrow + change vs last week
   const dl=(v,pv,fmt,good)=>{
-    if(v==null||!pv)return'';
+    if(v==null||pv==null)return'';
     const df=v-pv;if(Math.abs(df)<0.05)return'<span class="dg-d">same</span>';
     const col=good===null?'var(--t3)':(df>0)===good?'var(--green)':'var(--amber)';
     return`<span class="dg-d" style="color:${col}">${df>0?'▲':'▼'} ${fmt(Math.abs(df))}</span>`;
