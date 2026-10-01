@@ -23,7 +23,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 ### State shape
 ```
 profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal, goalName, goalDate, plan {0-6 Mon-Sun: {type, note}}}
-checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, mindfulMin, gratitude, reflection, isEx}
+checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, soreness 1-4, coffee 0-4 (4 = 4+), coffeeLate, mindfulMin, gratitude, reflection, isEx}  (soreness/coffee/coffeeLate are local only, no Supabase columns yet)
 workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke})
 sleepLogs[]    {date, score 0-100, durMin, deepH, deepM, remH, remM, rested, isEx}
 measurements[] {date, bpSys, bpDia, weight, hr, isEx}
@@ -38,10 +38,10 @@ exDismissed, hasRealData, onboardingDone
 `isEx: true` marks seeded example data.
 
 ### Key logic
-- `calcReadiness()`: sleep score base, adjusted by TSB, blended 70/30 with latest check-in, HRV and resting HR nudge vs your 30-day baseline (`recoveryAdj()`, only with 7+ days of data), minus 8 per injury severity level. Clamped 20 to 100.
+- `calcReadiness()`: sleep score base, adjusted by TSB, blended 70/30 with latest check-in, HRV and resting HR nudge vs your 30-day baseline (`recoveryAdj()`, only with 7+ days of data), minus 8 per injury severity level, minus 4 per soreness level above mild (check-in `soreness`). Clamped 20 to 100.
 - `calcBurnout()`: 60% psychological (7-day check-in averages), 40% physical (ATL, TSB).
 - **Stress is inverted** everywhere it feeds a score: 1 = calm (good), 4 = very stressed (bad). Always use `5 - stress`.
-- AI briefing (`genInsight`): prompt includes 12 weekly trends (`insightTrends`), recovery drivers, all blood results with change (`insightBlood`) and code-computed Pearson correlations (`insightCorrelations`, needs 8+ paired days). Model must not diagnose.
+- AI briefing (`genInsight`): prompt includes 12 weekly trends (`insightTrends`), recovery drivers, all blood results with change (`insightBlood`) and code-computed Pearson correlations (`insightCorrelations`, needs 8+ paired days; includes coffee cups vs that night's sleep and previous-day load vs soreness). Model must not diagnose.
 - Weekly plan (`js/plan.js`, stored in `profile.plan`): planned vs done per weekday; `suggestWorkout()` follows it when readiness allows and bends it (with a reason) when not. Trends has an interactive load chart (`renderLoad`) and Progress & PRs chart (`js/progress.js`); `lineChart()` supports touch scrubbing, PR `marks`, `yfmt`, `extra`.
 - Coach view (`js/coach.js`, top of Insights): verdict (green, hold, back off) from readiness plus hard flags (severe injury, very low form, high burnout); rows for today, plan, load; "Things to watch" list.
 - Check-in reminder: `profile.remind {on,time}` (default on, 19:00), strip + nav dot on Today via `renderRemind()` (today.js), optional notification when the app is opened after that time. Save guardrails in log.js use `sane()` (confirm, not block).

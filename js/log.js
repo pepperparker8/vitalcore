@@ -15,22 +15,22 @@ function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-b
 function todayCI(){return S().checkins.find(c=>c.date===td());}
 function fillCI(){
   const c=todayCI();
-  ['energy','mood','stress','motivation'].forEach(k=>{
-    _ci[k]=c?.[k]||null;
+  ['energy','mood','stress','motivation','soreness','coffee'].forEach(k=>{
+    _ci[k]=c?.[k]??null;
     document.querySelectorAll(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).forEach(b=>b.classList.toggle('sel',c?.[k]===+b.getAttribute('onclick').match(/,(\d),this/)[1]));
   });
-  $('ciGrat').value=c?.gratitude||'';
+  $('ciGrat').value=c?.gratitude||'';$('ciLate').checked=!!c?.coffeeLate;
   const done=ciFull(c);
   $('ciCard').classList.toggle('done',done);$('ciStat').textContent=done?'Done today':'Not done today';
   $('ciCta').textContent=done?'Update check-in':'Save check-in';
   const sum=$('ciSum');
-  if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}`;sum.classList.add('show');}
+  if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}${c.soreness?` · Soreness ${EM.soreness[c.soreness]}`:''}${c.coffee!=null?` · Coffee ${c.coffee===4?'4+':c.coffee}${c.coffeeLate?' (late)':''}`:''}`;sum.classList.add('show');}
   else sum.classList.remove('show');
 }
 function ciRec(){return todayCI()||{id:'ci-'+td(),date:td(),energy:null,mood:null,stress:null,motivation:null,mindfulMin:0,gratitude:''};}
 function submitCI(){
   if(!_ci.energy||!_ci.mood||!_ci.stress||!_ci.motivation){showToast('Tap one face for each of the four rows');return;}
-  const rec={...ciRec(),energy:_ci.energy,mood:_ci.mood,stress:_ci.stress,motivation:_ci.motivation,gratitude:$('ciGrat').value.trim()};
+  const rec={...ciRec(),energy:_ci.energy,mood:_ci.mood,stress:_ci.stress,motivation:_ci.motivation,soreness:_ci.soreness??null,coffee:_ci.coffee??null,coffeeLate:$('ciLate').checked,gratitude:$('ciGrat').value.trim()};
   put('checkins',rec);
   fillCI();showToast('Check-in saved');refreshAll();
 }

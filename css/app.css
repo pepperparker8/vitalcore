@@ -883,3 +883,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .ci-btn{font-size:0;color:var(--t2);background:var(--sur2);border-color:transparent}
 .ci-btn .face{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .ci-btn.sel{color:var(--gold-dk);background:var(--gold-l);border-color:var(--gold);box-shadow:none}
+/* soreness + coffee chips (v78) */
+.ci-txt .ci-btn{font-size:12px;font-weight:500;padding:0 2px;min-width:0}
+.ci-late{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13px;color:var(--t2);margin:-4px 0 6px}.ci-late input{width:18px;height:18px;accent-color:var(--gold)}

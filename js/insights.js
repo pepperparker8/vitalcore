@@ -74,6 +74,13 @@ function insightCorrelations(){
   Object.keys(sleepBy).forEach(dt=>{const c=ciBy[dt];if(c){/* check-in on the morning after the night logged */ mood.push([sleepBy[dt],c.mood]);en.push([sleepBy[dt],c.energy]);}});
   out.push(corrNote('sleep duration vs same-day mood',mood));
   out.push(corrNote('sleep duration vs same-day energy',en));
+  const cof=[],sore=[];
+  d.checkins.forEach(c=>{
+    if(c.coffee!=null){const nx=dAgo(daysAgo(c.date)-1);if(sleepBy[nx])cof.push([c.coffee,sleepBy[nx]]);}
+    if(c.soreness){const pl=dayLoad(dAgo(daysAgo(c.date)+1));if(pl>0)sore.push([pl,c.soreness]);}
+  });
+  out.push(corrNote('coffee cups vs that night\'s sleep duration',cof));
+  out.push(corrNote('previous-day training load vs soreness',sore));
   const hrv=[],hard=[];
   Object.entries(d.wellness||{}).forEach(([dt,w])=>{
     if(!w.hrv)return;

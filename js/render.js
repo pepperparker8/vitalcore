@@ -53,6 +53,8 @@ function readinessFactors(){
   else if(hv)out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
   const rv=latestOf('rhr'),rb=rhrSeries();
   if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
+  if(ci&&ci.soreness>=2)out.push({l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
+  if(ci&&ci.coffeeLate)out.push({l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({l:'Injury',v:inj.length===1?inj[0].part:inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
   return out;
@@ -147,6 +149,7 @@ function calcReadiness(){
   if(tsb!==null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:-tsb*0.3)));
   if(ci){const psy=(ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100;s=s*0.7+psy*0.3;}
   s+=recoveryAdj();
+  if(ci&&ci.soreness>=2)s-=(ci.soreness-1)*4;
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));s=Math.max(20,s-m*8);}
   return Math.round(Math.min(100,Math.max(20,s)));
