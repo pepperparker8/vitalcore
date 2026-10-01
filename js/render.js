@@ -35,8 +35,32 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderBed();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
+  renderBed();renderFactors();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
   $('gRecSub').textContent=isExampleOnly()?'Example data':sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
+}
+function readinessFactors(){
+  const d=S(),goal=(d.profile.sleepGoal||7.5)*60,out=[];
+  const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
+  if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
+  else out.push({l:'Sleep',v:'Not logged',n:'Tap to log',st:'none',go:"logGo('lSleep')"});
+  const tsb=d.intervalsData.tsb;
+  if(tsb!==null&&tsb!==undefined)out.push({l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:tsb>=5?'Fresh':tsb>=-10?'Balanced':tsb>=-25?'Tired':'Very tired',st:tsb>=-10?'good':tsb>=-25?'warn':'bad'});
+  const ci=todayCI();
+  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({l:'Check-in',v:p>=70?'Good':p>=50?'Okay':'Low',n:p+'/100',st:p>=70?'good':p>=50?'warn':'bad'});}
+  else out.push({l:'Check-in',v:'Not done',n:'Tap to check in',st:'none',go:"logGo('lCheckin')"});
+  const hv=latestOf('hrv'),hb=wSeries('hrv');
+  if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'usual '+Math.round(avg(hb)),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
+  else if(hv)out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
+  const rv=latestOf('rhr'),rb=rhrSeries();
+  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
+  const inj=d.injuries.filter(i=>i.active);
+  if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({l:'Injury',v:inj.length===1?inj[0].part:inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
+  return out;
+}
+function renderFactors(){
+  const el=$('rdFactors');if(!el)return;
+  const f=readinessFactors();
+  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>`<div class="rf ${x.st}"${x.go?` onclick="${x.go}" role="button"`:''}><span class="rf-dot"></span><span class="rf-l">${x.l}</span><span class="rf-v">${x.v}</span><span class="rf-n">${x.n}</span></div>`).join('');
 }
 function sleepNeed(st){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60;
