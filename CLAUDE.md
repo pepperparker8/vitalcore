@@ -57,7 +57,6 @@ Open: verify the Intervals.icu connection with real keys, offline check on the S
 Verify after each change; don't batch.
 
 ## Backlog
-- Read-only share link for a coach or doctor.
 - Reminders.
 
 ## Design system (changed with the owner's approval; ask before further changes)
