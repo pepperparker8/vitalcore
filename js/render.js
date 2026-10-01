@@ -35,7 +35,7 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderBed();renderFactors();renderSleepStages();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
+  renderBed();renderFactors();renderSleepStages();renderDays7();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
   $('gRecSub').textContent=isExampleOnly()?'Example data':sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function readinessFactors(){
@@ -73,6 +73,24 @@ function renderSleepStages(){
   const leg=(c,l,v)=>`<div class="ss-leg"><span class="ss-dot ${c}"></span><span>${l}</span><b>${fmtDur(v)}</b><small>${pc(v)}%</small></div>`;
   el.style.display='';
   el.innerHTML=`<div class="ss-h"><span class="sec">Last night</span><span class="ss-tot">${fmtDur(tot)}</span></div><div class="ss-bar">${seg('deep',deep)}${seg('rem',rem)}${seg('light',light)}</div><div class="ss-legs">${leg('deep','Deep',deep)}${leg('rem','REM',rem)}${leg('light','Light',light)}</div><div class="ss-note">${deep/tot<0.13?'Deep sleep below the usual 13 to 23%. ':''}${rem/tot<0.2?'REM below the usual 20 to 25%. ':''}${deep/tot>=0.13&&rem/tot>=0.2?'Deep and REM in the usual ranges.':''}</div>`;
+}
+let _d7Sel=null;
+function renderDays7(){
+  const el=$('d7');if(!el)return;
+  const d=S(),h=d.readHist||{},t=td();
+  el.innerHTML=[6,5,4,3,2,1,0].map(i=>{const k=dAgo(i),v=i===0?calcReadiness():h[k],dt=new Date(k+'T00:00:00');
+    const c=v==null?'var(--ring-trk)':v>=65?'var(--green)':v>=50?'var(--amber)':'var(--red)',off=v==null?81.7:81.7*(1-v/100);
+    return`<button class="d7-d ${k===(_d7Sel||t)?'sel':''}" onclick="selDay7('${k}')" aria-label="${k}"><svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="none" stroke="var(--ring-trk)" stroke-width="3"/><circle cx="15" cy="15" r="13" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-dasharray="81.7" stroke-dashoffset="${off}" transform="rotate(-90 15 15)"/></svg><span class="d7-v">${v==null?'–':v}</span><span class="d7-l">${i===0?'Today':['S','M','T','W','T','F','S'][dt.getDay()]}</span></button>`;}).join('');
+  renderDay7Det();
+}
+function selDay7(k){_d7Sel=k===td()?null:k;renderDays7();}
+function renderDay7Det(){
+  const el=$('d7Det');if(!el)return;
+  if(!_d7Sel){el.style.display='none';return;}
+  const d=S(),k=_d7Sel,dt=new Date(k+'T00:00:00'),v=(d.readHist||{})[k];
+  const sl=d.sleepLogs.find(x=>x.date===k&&x.durMin),ws=d.workouts.filter(w=>w.date===k),ci=d.checkins.find(c=>c.date===k);
+  const parts=[v!=null?'Recovery '+v:'No recovery score',sl?'Sleep '+fmtDur(sl.durMin):'No sleep logged',ws.length?ws.map(w=>w.type+(w.durMin?' '+fmtDur(w.durMin):'')).join(', '):'No workout',ci&&ciFull(ci)?'Checked in':'No check-in'];
+  el.style.display='';el.innerHTML=`<b>${dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</b> · ${parts.join(' · ')}`;
 }
 function sleepNeed(st){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60;
