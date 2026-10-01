@@ -812,3 +812,12 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 #qwCard{border-top:0;padding:0 0 4px}
 .habits-h,.habits,.hero-miss{display:none!important}
 .hero-why{display:none!important}
+
+/* Log home */
+.lg-prog{margin-top:12px;font-size:13px;color:var(--t2)}.lg-prog b{color:var(--text);font-weight:600}
+.lg-bar{display:block;height:3px;margin-top:8px;background:var(--bdr);border-radius:2px;overflow:hidden}.lg-bar i{display:block;height:100%;background:var(--gold);transition:width .4s}
+.lg-grp{margin:20px 0 4px;font-size:12px;font-weight:600;color:var(--t3)}
+.log-sec.done .log-ico{color:var(--gold-dk)}
+.log-sec.done .log-stat::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:6px;vertical-align:1px}
+.sl-more{margin:4px 0 16px}.sl-more summary{min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer}
+.log-sec{border-top:0;border-bottom:1px solid var(--bdr)}.log-sec:first-of-type{border-top:0}

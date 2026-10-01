@@ -5,7 +5,7 @@ function switchTab(tab){
   const pg=$('pg-'+tab);
   if(pg){pg.classList.add('active');pg.classList.remove('page-fade');void pg.offsetWidth;pg.classList.add('page-fade');pg.scrollTop=0;}
   const nv=$('nav-'+tab);if(nv)nv.classList.add('active');
-  _tab=tab;refreshActive();
+  _tab=tab;refreshActive();if(tab==='log')logAuto();
 }
 let _tab='today';
 function refreshActive(){
@@ -29,7 +29,7 @@ function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.inn
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
-  renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderRemind();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
+  renderWhy();renderNext();renderGoal();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderRemind();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderLogHead();renderQuick();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth)pushAll().catch(()=>{});updSyncStatus();});

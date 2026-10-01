@@ -177,7 +177,7 @@ function renderSleepBars(){
   $('sleepDebt').textContent=wk.length?(()=>{const avg=Math.round(wk.reduce((a,s)=>a+s.durMin,0)/wk.length),debt=wk.reduce((a,s)=>a+(goal-s.durMin),0);return`Average ${fmtDur(avg)} over ${wk.length} night${wk.length>1?'s':''} (goal ${fmtDur(goal)}). `+(debt>0?`Sleep debt: ${fmtDur(debt)}.`:`Ahead of goal by ${fmtDur(-debt)}.`);})():'Add time asleep to see your sleep debt against your goal.';
   const l=last(d.sleepLogs);
   if(l)setStages(l.deepH||0,l.deepM||0,l.remH||0,l.remM||0);
-  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=t?'✓ Logged today':'Not logged today';
+  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=t?'Logged today':'Not logged today';
 }
 function tapSB(el){document.querySelectorAll('.sb-wrap').forEach(b=>b!==el&&b.classList.remove('tapped'));el.classList.toggle('tapped');}
 function hrSeries(){

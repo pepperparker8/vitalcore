@@ -98,6 +98,7 @@ function loadSleepFor(date){
   $('slScore').value=x?.score??'';
   $('slBed').value=x?.bed||'';$('slWake').value=x?.wake||'';slCalc();
   $('slDH').value=x?.deepH||'';$('slDM').value=x?.deepM||'';$('slRH').value=x?.remH||'';$('slRM').value=x?.remM||'';
+  $('slMore').open=!!(x&&(x.score!=null||x.deepH||x.deepM||x.remH||x.remM||x.rested));
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
   $('slDel').style.display=x?'':'none';
@@ -223,7 +224,7 @@ function saveMeas(){
   if(!sN&&!wt&&!hr){showToast('Enter at least one measurement');return;}
   put('meas',{id:mkId(),date:td(),bpSys:sN||null,bpDia:dN||null,weight:wt,hr});
   ['bpSys','bpDia','wtKg','hrVal'].forEach(i=>$(i).value='');
-  $('measStat').textContent='✓ Saved today';
+  $('measStat').textContent='Saved today';
   updMeasHist();renderHRVSpark();renderWtChart();showToast('Measurements saved');
 }
 function updMeasHist(){
@@ -232,7 +233,7 @@ function updMeasHist(){
   $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg`:'—';
   $('wtRec').textContent=w?`${w.weight} kg`:'—';
   $('hrRec').textContent=h?`${h.hr} bpm`:'—';
-  const l=last(ms);$('measStat').textContent=l?(l.date===td()?'✓ Saved today':`Last: ${daysAgo(l.date)} days ago`):'Not logged yet';
+  const l=last(ms);$('measStat').textContent=l?(l.date===td()?'Saved today':`Last: ${daysAgo(l.date)} days ago`):'Not logged yet';
 }
 
 // ── INJURY LOG ───────────────────────────────────────────────────────────────
@@ -298,3 +299,19 @@ function renderBloodDisplay(){
   }).join('');
 }
 
+
+// Log home: progress for the day's four routine entries, and open the first one still to do
+function logStatus(){
+  const d=S(),t=td(),ci=todayCI();
+  return[['lCheckin',ciFull(ci)],['lSleep',d.sleepLogs.some(s=>s.date===t&&(s.durMin||s.score))],['lWorkout',d.workouts.some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
+}
+function renderLogHead(){
+  const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
+  st.forEach(([id,ok])=>$(id)&&$(id).classList.toggle('done',ok));
+  if(el)el.innerHTML=`<b>${n} of 4</b> daily entries done<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;
+}
+function logAuto(){
+  renderLogHead();
+  document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));
+  const nx=logStatus().find(x=>!x[1]);if(nx)$(nx[0]).classList.add('open');
+}
