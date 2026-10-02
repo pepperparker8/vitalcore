@@ -125,11 +125,20 @@ async function pullAll(){
   const pr=await sbFetch('/rest/v1/profile?select=*');
   if(pr.ok){const rows=await pr.json();const x=rows[0];
     if(x&&!d.pending['profile|1']&&Date.parse(x.updated_at)>(d.profileTs||0)){d.profile={...d.profile,...x.data};d.profileTs=Date.parse(x.updated_at);if(d.profile.name)d.onboardingDone=true;}}
-  const ir=await sbFetch('/rest/v1/insights?select=*&order=date.desc&limit=60');
-  if(ir.ok){for(const x of await ir.json()){
-    if(d.insightLog.some(e=>e.date===x.date)||d.pending['insight|'+x.date])continue;
-    try{const e=JSON.parse(x.rendered);e.ts=e.ts||Date.now();d.insightLog.push(e);}catch(err){}}
-    d.insightLog.sort((a,b)=>a.date<b.date?1:-1);d.insightLog=d.insightLog.slice(0,60);}
+  const ir=await sbFetch('/rest/v1/insights?select=*&order=date.desc&limit=30');
+  if(ir.ok){
+    // newer copy wins (follow-up questions are saved inside the briefing); local unsent edits are never overwritten
+    const add=x=>{try{const e=JSON.parse(x.rendered);if(!e||!e.date||d.pending['insight|'+e.date])return;const i=d.insightLog.findIndex(o=>o.date===e.date);if(i<0){e.ts=e.ts||Date.now();d.insightLog.push(e);}else if((e.ts||0)>(d.insightLog[i].ts||0))d.insightLog[i]=e;}catch(err){}};
+    (await ir.json()).forEach(add);
+    // older briefings: ask for the dates only, then fetch the ones this phone does not have
+    if(!d.insLean){
+      const lr=await sbFetch('/rest/v1/insights?select=date&order=date.desc&limit=365');
+      if(lr.ok){
+        const miss=(await lr.json()).map(x=>String(x.date)).filter(dt=>/^\d{4}-\d\d-\d\d$/.test(dt)&&!d.insightLog.some(e=>e.date===dt));
+        for(let i=0;i<miss.length;i+=40){const mr=await sbFetch('/rest/v1/insights?select=*&date=in.('+miss.slice(i,i+40).join(',')+')');if(mr.ok)(await mr.json()).forEach(add);}
+      }
+    }
+    d.insightLog.sort((a,b)=>a.date<b.date?1:-1);d.insightLog=d.insightLog.slice(0,d.insLean?60:365);}
   save(d);
 }
 

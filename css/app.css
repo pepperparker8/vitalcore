@@ -935,3 +935,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .ins-hist-sec{margin-top:20px}
 .ins-hist-head{font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--t2)}
 .ins-hi-date{font-family:inherit}
+
+/* v85: follow-up questions on the briefing */
+.ins-qa-s{color:var(--t2)}
+.ins-qa .ins-q{font-weight:600;font-size:13px;line-height:1.5;margin-top:16px;color:var(--text)}
+.ins-a{font-size:13px;line-height:1.6;color:var(--text);white-space:pre-line;margin-top:4px}
+.ins-a.ins-wait{color:var(--t3)}
+.ins-qs{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.ins-qchip{min-height:44px;text-align:left;padding:8px 12px;border:1px solid var(--bdr);border-radius:8px;background:transparent;color:var(--text);font-family:var(--body);font-size:13px;line-height:1.4;cursor:pointer}
+.ins-ask{display:flex;gap:8px;margin-top:8px;align-items:stretch}
+.ins-ask .inp{flex:1;min-width:0}
+.ins-ask .btn-gold{width:auto;flex:0 0 auto;padding:0 16px;margin:0}
+.ins-qa button:disabled,.ins-qa input:disabled{opacity:.5}
+.ins-hi-q{font-weight:600;color:var(--text);margin-top:8px}
