@@ -971,3 +971,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .fu-after{margin-top:12px;padding:2px 0 2px 12px;border-left:3px solid var(--bdr);font-size:13px;line-height:1.5;color:var(--t2)}
 .fu-after b{display:block;color:var(--text);font-weight:600}
 .fu-f{font-size:13px;line-height:1.5;color:var(--t2);margin:8px 0}.fu-f b{display:block;color:var(--text);font-weight:600}
+
+/* v88: food log and eaten-so-far */
+.fu-e{font-size:13px;line-height:1.5;color:var(--t2);margin-top:8px}.fu-e b{color:var(--text);font-weight:600}

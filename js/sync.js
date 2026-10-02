@@ -95,13 +95,14 @@ async function pushAll(){
       else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));path=`/rest/v1/${TBL[n].t}?on_conflict=id`;}
       if(rows.length){
         const r=await sbFetch(path,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
-        if(!r.ok)throw new Error(await errMsg(r));
+        if(!r.ok){if(TBL[n]?.opt){d.noFoodTbl=true;continue;}throw new Error(await errMsg(r));}
+        if(TBL[n]?.opt)d.noFoodTbl=false;
       }
       items.forEach(([k,ts])=>{if(d.pending[k]===ts)delete d.pending[k];});
     }
     for(const t of [...d.tomb]){
       const r=await sbFetch(`/rest/v1/${TBL[t.n].t}?id=eq.${encodeURIComponent(t.id)}`,{method:'DELETE'});
-      if(!r.ok)throw new Error(await errMsg(r));
+      if(!r.ok){if(TBL[t.n].opt)continue;throw new Error(await errMsg(r));}
       d.tomb=d.tomb.filter(x=>x!==t);
     }
     d.lastSync=new Date().toISOString();_pushErr='';save(d);
@@ -111,7 +112,8 @@ async function pullAll(){
   const d=S();
   for(const [n,T] of Object.entries(TBL)){
     const r=await sbFetch(`/rest/v1/${T.t}?select=*&order=date.desc&limit=3000`);
-    if(!r.ok)throw new Error(await errMsg(r));
+    if(!r.ok){if(T.opt){d.noFoodTbl=true;continue;}throw new Error(await errMsg(r));}
+    if(T.opt)d.noFoodTbl=false;
     const rows=await r.json();
     const byId=new Map(d[T.k].map(x=>[x.id,x]));
     for(const x of rows){

@@ -13,7 +13,7 @@ function refreshActive(){
   if(tab==='today')recalc();
   if(tab==='trends')renderTrendsTab();
   if(tab==='health')renderHealth();
-  if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderSleepBars();}
+  if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderFood();renderSleepBars();}
   if(tab==='insights'){renderCoach();renderStrategy();renderDigest();renderInsightHistory();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
@@ -42,7 +42,7 @@ function initUI(){
   $('wDate').value=td();$('bmDate').value=td();$('injDate').value=td();
   $('wDate').max=td();$('slDate').max=td();loadSleepFor(td());
   $('welcome').style.display=S().onboardingDone?'none':'flex';
-  renderExGrid();fillCI();renderBloodDisplay();updMeasHist();renderInjuryDisplay();renderInsightHistory();
+  renderExGrid();fillCI();renderBloodDisplay();updMeasHist();renderFood();renderInjuryDisplay();renderInsightHistory();
   updSyncStatus();recalc();
 }
 async function init(){

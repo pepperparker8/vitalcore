@@ -85,11 +85,19 @@ create table if not exists insights (
   primary key (user_id, date)
 );
 
+create table if not exists food_logs (
+  id text primary key,
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  date date not null,
+  kcal int, protein int,
+  updated_at timestamptz not null default now()
+);
+
 -- Privacy lock: each user can only see and change their own rows.
 do $$
 declare t text;
 begin
-  foreach t in array array['profile','checkins','workouts','sleep_logs','measurements','blood_logs','injuries','insights']
+  foreach t in array array['profile','checkins','workouts','sleep_logs','measurements','blood_logs','injuries','insights','food_logs']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists "own rows" on %I', t);
@@ -101,4 +109,5 @@ create index if not exists checkins_date on checkins (user_id, date);
 create index if not exists workouts_date on workouts (user_id, date);
 create index if not exists sleep_date on sleep_logs (user_id, date);
 create index if not exists meas_date on measurements (user_id, date);
+create index if not exists food_date on food_logs (user_id, date);
 create index if not exists blood_date on blood_logs (user_id, date);
