@@ -306,7 +306,7 @@ function renderInjuryDisplay(){
   el.innerHTML='<div class="hist-ttl">ACTIVE</div>'+injs.map(inj=>`
     <div class="inj-item">
       <div class="inj-sev s${inj.sev}">${inj.sev}</div>
-      <div class="inj-body"><div class="inj-name">${esc(inj.part)}</div><div class="inj-date">${inj.date}${inj.notes?' · '+esc(inj.notes):''}</div></div>
+      <div class="inj-body"><div class="inj-name">${esc(inj.part)}</div><div class="inj-date">${fmtD(inj.date)}${inj.notes?' · '+esc(inj.notes):''}</div></div>
       <button onclick="clearInjury('${inj.id}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:22px;min-width:44px;min-height:44px" aria-label="Mark healed">×</button>
     </div>`).join('');
 }

@@ -378,10 +378,10 @@ function renderBests(){
     out.push([ICON[t],`Longest ${t==='Cycle'?'ride':t.toLowerCase()}`,b.date,fmtDist(b)]);
   });
   strBests().forEach(r=>out.push(r));
-  const lw=d.workouts.filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push(['⏱','Longest session',b.date,fmtDur(b.durMin)]);}
+  const lw=d.workouts.filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push([UI.clock,'Longest session',b.date,fmtDur(b.durMin)]);}
   const bm=d.checkins.filter(c=>c.mindfulMin>0);if(bm.length){const b=bm.reduce((a,c)=>c.mindfulMin>a.mindfulMin?c:a);out.push([UI.lotus,'Longest mindfulness day',b.date,fmtDur(b.mindfulMin)]);}
   const bs=bestStreak();if(bs>1)out.push([UI.flame,'Best streak','',`${bs} days`]);
-  $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${dt}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="logGo('lWorkout')">Log a workout</button></div>`;
+  $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${fmtD(dt)}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="logGo('lWorkout')">Log a workout</button></div>`;
 }
 function renderWeekSum(){
   const d=S(),tw=d.workouts.filter(w=>daysAgo(w.date)<7),lw=d.workouts.filter(w=>{const x=daysAgo(w.date);return x>=7&&x<14;});

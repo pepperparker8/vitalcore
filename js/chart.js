@@ -80,7 +80,8 @@ function chDraw(id){
     ctx.fillStyle=cssv('--t3');ctx.textAlign='right';ctx.fillText(yf(v),L-6,y);
   }
   ctx.textBaseline='alphabetic';ctx.textAlign='center';ctx.fillStyle=cssv('--t3');
-  chTicks(a,b).forEach(([d,l])=>{const x=X(d);if(x<L+8||x>W-R-8)return;ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.globalAlpha=1;ctx.fillText(l,x,H-6);});
+  let tk=chTicks(a,b);const tkMax=Math.max(2,Math.floor((W-L-R)/52));while(tk.length>tkMax)tk=tk.filter((_,i)=>i%2===0);
+  tk.forEach(([d,l])=>{const x=X(d);if(x<L+8||x>W-R-8)return;ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.globalAlpha=1;ctx.fillText(l,x,H-6);});
   ctx.save();ctx.beginPath();ctx.rect(L,0,W-L-R,H-B+2);ctx.clip();
   if(cfg.band&&cfg.band.length>1){const q=cfg.band.map(p=>[X(DN(p.d)),Y(p.lo),Y(p.hi)]);ctx.globalAlpha=.16;ctx.fillStyle=cssv('--teal');ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p[0],p[2]):ctx.moveTo(p[0],p[2]));for(let i=q.length-1;i>=0;i--)ctx.lineTo(q[i][0],q[i][1]);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
   (cfg.ref||[]).forEach(f=>{if(f.v<mn||f.v>mx)return;ctx.strokeStyle=cssv('--gold');ctx.globalAlpha=.7;ctx.setLineDash([5,4]);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(L,Y(f.v));ctx.lineTo(W-R,Y(f.v));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.fillStyle=cssv('--gold-dk');ctx.textAlign='left';ctx.font='600 10px Inter,sans-serif';ctx.fillText(f.label||'',L+4,Y(f.v)-4);});

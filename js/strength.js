@@ -82,7 +82,7 @@ function strPick(){
   let html=_pickList.map((e,i)=>`<button class="str-chip" onclick="pickEx(${i})">${esc(e.name)}<small>${esc(e.muscle)}</small></button>`).join('');
   if(q&&!all.some(e=>e.name.toLowerCase()===ql)){
     html+=`<div style="width:100%;font-size:11px;color:var(--t2);margin-top:4px">Add “${esc(q)}” as a new exercise for:</div>`;
-    if(_selEx==='Calisthenics')html+=`<button class="str-chip ${_customHold?'on':''}" onclick="_customHold=!_customHold;strPick()">⏱ timed hold</button>`;
+    if(_selEx==='Calisthenics')html+=`<button class="str-chip ${_customHold?'on':''}" onclick="_customHold=!_customHold;strPick()">${UI.hold} timed hold</button>`;
     html+=MUSCLES.map((m,i)=>`<button class="str-chip" onclick="addCustom(${i})">${m}</button>`).join('');
   }
   $('strPick').innerHTML=html||'<div style="font-size:12px;color:var(--t3)">Everything in this list is already in your session.</div>';

@@ -8,7 +8,7 @@ function loadSetUI(){
   $('sName').value=d.profile.name||'';$('sHeight').value=d.profile.height||'';$('sAge').value=d.profile.age||'';
   $('sSlpH').value=Math.floor(d.profile.sleepGoal)||7;$('sSlpM').value=Math.round(((d.profile.sleepGoal||7.5)%1)*60)||0;
   const rm=remCfg();$('sRemOn').value=rm.on?'1':'0';$('sRemT').value=rm.time;remNoteUI();
-  $('sWt').value=d.profile.wtGoal||'';$('sNut').value=fuGoal();$('sSex').value=d.profile.sex||'';$('sSteps').value=d.profile.stepGoal||'';$('sHR').value=d.profile.hrGoal||'';$('sGoalName').value=d.profile.goalName||'';$('sGoalDate').value=d.profile.goalDate||'';
+  $('sWt').value=d.profile.wtGoal||'';$('sNut').value=fuGoal();$('sSex').value=d.profile.sex||'';$('sHR').value=d.profile.hrGoal||'';$('sGoalName').value=d.profile.goalName||'';$('sGoalDate').value=d.profile.goalDate||'';
   $('sClaudeKey').value=d.claudeKey||'';$('sInterKey').value=d.intervalsKey||'';$('sInterID').value=d.intervalsID||'';
   $('claudeTestRes').textContent='';$('icuTestRes').textContent='';
   const n=Object.keys(d.pending).length;
@@ -26,7 +26,7 @@ function saveSettings(){
   d.profile.height=+$('sHeight').value||170;d.profile.age=+$('sAge').value||37;
   d.profile.sleepGoal=(+$('sSlpH').value||7)+(+$('sSlpM').value||0)/60;
   d.profile.remind={on:$('sRemOn').value==='1',time:/^\d\d:\d\d$/.test($('sRemT').value)?$('sRemT').value:'19:00'};
-  d.profile.wtGoal=+$('sWt').value||null;d.profile.nutGoal=$('sNut').value;d.profile.sex=$('sSex').value;d.profile.stepGoal=+$('sSteps').value||8000;d.profile.hrGoal=+$('sHR').value||55;
+  d.profile.wtGoal=+$('sWt').value||null;d.profile.nutGoal=$('sNut').value;d.profile.sex=$('sSex').value;d.profile.hrGoal=+$('sHR').value||55;
   d.profile.goalName=$('sGoalName').value.trim();d.profile.goalDate=$('sGoalDate').value;
   const icuChanged=d.intervalsKey!==$('sInterKey').value.trim()||d.intervalsID!==$('sInterID').value.trim();
   d.claudeKey=$('sClaudeKey').value.trim();d.intervalsKey=$('sInterKey').value.trim();d.intervalsID=$('sInterID').value.trim();
