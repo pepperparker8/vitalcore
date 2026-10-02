@@ -963,3 +963,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .st-b{flex:1;min-width:0}.st-n{font-size:14px;font-weight:600}.st-r.off .st-n{color:var(--t2);font-weight:400}
 .st-s{font-size:12px;color:var(--t2);margin-top:2px;line-height:1.4;font-variant-numeric:tabular-nums}.st-w{color:var(--t3)}
 .st-r .st-e{margin-top:3px}
+
+/* v87: fuel card */
+.fu-day{font-size:15px;font-weight:600}
+.fu-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px}
+.fu-g b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}.fu-g span{font-size:12px;color:var(--t2)}
+.fu-after{margin-top:12px;padding:2px 0 2px 12px;border-left:3px solid var(--bdr);font-size:13px;line-height:1.5;color:var(--t2)}
+.fu-after b{display:block;color:var(--text);font-weight:600}
+.fu-f{font-size:13px;line-height:1.5;color:var(--t2);margin:8px 0}.fu-f b{display:block;color:var(--text);font-weight:600}

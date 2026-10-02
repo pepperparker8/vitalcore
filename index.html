@@ -100,6 +100,7 @@
   <div class="card sug-card" id="monthCard" style="display:none"></div>
   <div class="card sug-card" id="reviewCard" style="display:none"></div>
   <div class="card sug-card" id="sugCard" style="display:none"></div>
+  <div class="card sug-card" id="fuelCard" style="display:none"></div>
   <div class="card goal-card" id="goalCard" style="display:none"></div>
   <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
   <div class="habits" id="habits"></div>
@@ -398,6 +399,7 @@
       <div class="fg"><div class="fl">DAILY CHECK-IN REMINDER</div><div class="fr"><select class="inp inp-sm" id="sRemOn" style="width:auto"><option value="1">On</option><option value="0">Off</option></select><span class="inp-unit">from</span><input type="time" class="inp inp-sm" id="sRemT" style="width:auto"></div><div class="set-note" id="sRemNote" style="margin-top:6px">Shows a reminder on Today if you have not checked in by this time.</div><button class="btn-out" id="sRemBtn" style="margin-top:8px;display:none" onclick="askNotify()">Allow notifications</button></div>
       <div class="fg"><div class="fl">SLEEP GOAL</div><div class="fr"><input type="number" class="inp inp-sm" id="sSlpH" placeholder="7" min="4" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="sSlpM" placeholder="30" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">WEIGHT GOAL (kg)</div><input type="number" class="inp" id="sWt" placeholder="72" step="0.5"></div>
+      <div class="fg"><div class="fl">FOOD GOAL</div><select class="sel-inp" id="sNut"><option value="keep">Keep weight</option><option value="lose">Lose fat</option><option value="build">Build muscle</option></select><div class="set-note">Sets the daily protein, carbs and fat targets on Today.</div></div>
       <div class="fg"><div class="fl">DAILY STEPS GOAL</div><input type="number" class="inp" id="sSteps" placeholder="8000"></div>
       <div class="fg"><div class="fl">RESTING HR GOAL (bpm)</div><input type="number" class="inp" id="sHR" placeholder="55"></div>
     </div>
@@ -483,6 +485,7 @@
 <script src="js/review.js"></script>
 <script src="js/coach.js"></script>
 <script src="js/strategy.js"></script>
+<script src="js/fuel.js"></script>
 <script src="js/health.js"></script>
 <script src="js/digest.js"></script>
 <script src="js/insights.js"></script>

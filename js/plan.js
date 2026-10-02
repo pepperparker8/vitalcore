@@ -27,7 +27,7 @@ function planWeek(){
 function setPlan(i,field,v){
   const d=S();d.profile.plan=d.profile.plan||{};const p=d.profile.plan[i]||{type:''};
   p[field]=v;if(!p.type)delete d.profile.plan[i];else d.profile.plan[i]=p;
-  save(d);renderPlan();renderSuggest();
+  save(d);renderPlan();renderSuggest();renderFuel();
 }
 function togglePlanEdit(){_plEdit=!_plEdit;renderPlan();}
 function renderPlan(){
