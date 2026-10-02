@@ -1041,3 +1041,5 @@ details[open]>*:not(summary){animation:rise .26s var(--ease)}
 .ss-h{align-items:center}.ss-lt{margin:-8px 4px -8px 0}
 .streak-top .lt{margin:-6px 0 -2px -6px}
 .lt:empty{display:none}
+/* v94: raw wellness viewer (temporary, Phase 0 audit) */
+.raw-json{margin:8px 0 0;padding:10px 12px;max-height:50vh;overflow:auto;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-all;background:var(--sur2);color:var(--t2);border-radius:10px;font-variant-numeric:tabular-nums}
