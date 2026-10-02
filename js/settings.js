@@ -63,7 +63,7 @@ function restoreBackup(inp){
 function exportCSV(){
   const d=S(),q=v=>{let t=String(v??'');if(/^[=+\-@\t\r]/.test(t))t="'"+t;return `"${t.replace(/"/g,'""')}"`;};let csv='Date,Type,Value,Detail\n';
   d.checkins.forEach(c=>{csv+=`${c.date},Check-in,${c.mood??''},energy ${c.energy??''} / stress ${c.stress??''} / motivation ${c.motivation??''} / mindful ${c.mindfulMin||0} min ${q(c.gratitude)}\n`;});
-  d.workouts.forEach(w=>csv+=`${w.date},Workout,${q(w.type)},${w.durMin||0} min ${w.distKm||0} km RPE ${w.rpe||''} ${q(w.notes)} ${q(w.sets?setsText(w):'')}\n`);
+  d.workouts.forEach(w=>csv+=`${w.date},Workout,${q(w.type)},${w.durMin||0} min ${w.distKm||0} km RPE ${w.rpe||''} ${q(w.notes)} ${q(w.sets?setsText(w):'')} ${q(fmtIcu(w))}\n`);
   d.sleepLogs.forEach(s=>csv+=`${s.date},Sleep score,${s.score??''},\n`);
   d.measurements.forEach(m=>csv+=`${m.date},Measurement,${m.weight??''},BP ${m.bpSys??''}/${m.bpDia??''} HR ${m.hr??''}\n`);
   d.bloodLogs.forEach(b=>csv+=`${b.date},Blood mg/dL,,glucose ${b.glucose??''} chol ${b.chol??''} uric ${b.uric??''}\n`);

@@ -189,6 +189,7 @@ function barsHTML(vals,cls,max){
 function seriesFor(n,fn){return Array.from({length:n},(_,i)=>{const date=dAgo(n-1-i);return{date,v:fn(date)};});}
 const moodOn=date=>{const c=S().checkins.find(x=>x.date===date);return c?.mood||0;};
 const mindOn=date=>S().checkins.find(x=>x.date===date)?.mindfulMin||0;
+const fmtIcu=w=>{const r=wIcu(w),x={};['hr','hrMax','kcal','elev'].forEach(k=>x[k]=Math.round(+r[k])||0);const o=[];if(x.hr)o.push('avg '+x.hr+' bpm'+(x.hrMax?', max '+x.hrMax:''));if(x.kcal)o.push(x.kcal+' kcal');if(x.elev)o.push(x.elev+' m climb');return o.join(' · ');};
 const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):'';
 const wkDetail=w=>w.sets?setsText(w):'';
 const trainOn=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);
@@ -219,7 +220,7 @@ function renderActList(){
   for(let i=0;i<7;i++){
     const date=dAgo(i),isToday=i===0,ws=d.workouts.filter(w=>w.date===date);
     if(!ws.length)rows.push(`<div class="act-item"><div class="act-icon past" style="font-size:13px;color:var(--t3)">—</div><div><div class="act-name" style="color:var(--t3);font-weight:400">Nothing logged</div><div class="act-meta">${isToday?'Today':date}</div></div></div>`);
-    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.sets?'':(w.durMin?' · '+fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}${w.sets?(n=>' · '+n+' set'+(n===1?'':'s'))(setsByEx(w).reduce((n,e)=>n+e[1].length,0)):''} · effort ${w.rpe||3}/5</div>${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
+    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.sets?'':(w.durMin?' · '+fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}${w.sets?(n=>' · '+n+' set'+(n===1?'':'s'))(setsByEx(w).reduce((n,e)=>n+e[1].length,0)):''} · effort ${w.rpe||3}/5</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
   }
   $('actList').innerHTML=rows.join('');
   const tm=trainOn(t),mm=mindOn(t),wl=d.wellness[t]||d.wellness[dAgo(1)];
@@ -381,7 +382,7 @@ function openDay(date){
   if(ci?.mindfulMin)html+=row('Mindfulness',fmtDur(ci.mindfulMin));
   if(reflOf(ci)){const r=reflOf(ci);if(r.gave)html+=row('Gave energy',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(r.gave)}</span>`);if(r.drained)html+=row('Drained me',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(r.drained)}</span>`);}
   if(ci?.gratitude)html+=row('Grateful for',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(ci.gratitude)}</span>`);
-  ws.forEach(w=>{html+=row(esc(w.type),`${w.sets?'':(w.durMin?fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}<button class="day-del" onclick="editWorkout('${w.id}')">Edit</button><button class="day-del" onclick="delWorkout('${w.id}')">Delete</button>`);if(w.sets)html+=row('<i>Sets</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${esc(setsText(w))}</span>`);if(w.notes)html+=row('<i>Note</i>',`<span style="font-size:11px;opacity:.7">${esc(w.notes)}</span>`);});
+  ws.forEach(w=>{html+=row(esc(w.type),`${w.sets?'':(w.durMin?fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}<button class="day-del" onclick="editWorkout('${w.id}')">Edit</button><button class="day-del" onclick="delWorkout('${w.id}')">Delete</button>`);if(fmtIcu(w))html+=row('<i>Details</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${fmtIcu(w)}</span>`);if(w.sets)html+=row('<i>Sets</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${esc(setsText(w))}</span>`);if(w.notes)html+=row('<i>Note</i>',`<span style="font-size:11px;opacity:.7">${esc(w.notes)}</span>`);});
   if(!html)html='<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px 0">Nothing logged for this day.</div>';
   $('dayPB').innerHTML=html;
   const p=$('dayPanel');p.classList.add('open');setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),100);

@@ -188,6 +188,7 @@ function saveWorkout(){
   }
   const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()};
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
+  const oi=_editId&&wIcu(S().workouts.find(x=>x.id===_editId));if(oi&&Object.keys(oi).length)rec.sub={...(rec.sub||{}),icu:oi};
   const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Record';$('wCancel').style.display='none';
   ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';
   $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded');refreshAll();

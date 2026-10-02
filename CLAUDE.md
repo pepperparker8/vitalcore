@@ -24,7 +24,7 @@ Current version: **7.0**. Built iteratively in claude.ai as an artifact. This re
 ```
 profile        {name, height, age, sleepGoal (decimal hours), wtGoal, stepGoal, hrGoal, goalName, goalDate, plan {0-6 Mon-Sun: {type, note}}}
 checkins[]     {date, energy 1-4, mood 1-4, stress 1-4, motivation 1-4, soreness 1-4, coffee 0-4 (4 = 4+), coffeeLate, mindfulMin, gratitude, reflection, isEx}  (soreness, coffee, coffee_late synced since v79)
-workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke})
+workouts[]     {date, type, distKm, durMin, rpe 1-5, notes, sets[], sub}  (sets: [{ex, muscle, kg, reps, secs, rir, kind, bw}]; sub: swim {pool, stroke}, Intervals.icu details {icu:{hr,hrMax,kcal,elev,load}})
 sleepLogs[]    {date, score 0-100, durMin, deepH, deepM, remH, remM, rested, isEx}
 measurements[] {date, bpSys, bpDia, weight, hr, isEx}
 bloodLogs[]    {date, glucose, chol, uric, hdl, ldl, isEx}
@@ -87,6 +87,7 @@ Verify after each change; don't batch.
 - Model id lives in one constant, `CLAUDE_MODEL` (core.js).
 - Onboarding is a full-screen 3-step overlay (`#welcome` above the header, `obGo/obNext` in log.js); `finishWelcome(skip)` unchanged.
 - Trends has a Soreness & coffee chart (`renderBodyChart`) with a coffee-vs-next-night-sleep note.
+- Workout details from Intervals.icu (v82): average/max heart rate, calories, elevation gain and training load are stored on imported workouts as `sub.icu {hr,hrMax,kcal,elev,load}` (inside the existing synced `sub` column, so no Supabase change). Read with `wIcu(w)`, shown with `fmtIcu(w)` (numbers only). `pullIntervals` backfills already-imported `icu-` workouts and compares field by field (never by JSON string; jsonb reorders keys). `dayLoad` uses `wLoad(w)`: the Intervals.icu load scaled by `loadK()` (your median minutes x effort per load point, 3.3 until 5 workouts have both), else minutes x effort. Editing a workout keeps its details. No input fields for these.
 - Breathing rate while asleep (v81): Intervals.icu wellness `respiration` (automatic from Polar) is stored as `wellness[date].resp`; shown as a recovery driver and factor row (ok within +1 breath/min of the 30-day usual, warn to +2, bad above; display only, does not change the readiness score) and a Trends chart (`respCanvas`) under resting HR. No manual input. Polar's own readiness score is deliberately not imported.
 
 ## Conventions

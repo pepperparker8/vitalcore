@@ -16,7 +16,18 @@ function latestOf(key){
   if(key==='rhr'){const m=last(d.measurements.filter(x=>x.hr&&daysAgo(x.date)<=2));if(m)return{v:m.hr,age:daysAgo(m.date)};}
   return null;
 }
-const dayLoad=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||30)*(w.rpe||3),0);
+// Intervals.icu details on an imported workout: {hr, hrMax, kcal, elev, load}
+const wIcu=w=>(w&&w.sub&&typeof w.sub.icu==='object'&&w.sub.icu)||{};
+// Effort of one workout. Uses the Intervals.icu training load when present, scaled into the
+// same units as minutes x effort (your own median ratio once 5 workouts have both).
+function loadK(){
+  const ws=S().workouts,key=ws.length+'|'+ws.reduce((a,w)=>a+(wIcu(w).load||0),0);
+  if(loadK.key===key)return loadK.v;
+  const r=ws.filter(w=>wIcu(w).load>0&&w.durMin>0).map(w=>w.durMin*(w.rpe||3)/wIcu(w).load).sort((a,b)=>a-b);
+  loadK.key=key;return loadK.v=r.length>=5?r[Math.floor(r.length/2)]:3.3;
+}
+const wLoad=w=>wIcu(w).load>0?wIcu(w).load*loadK():(w.durMin||30)*(w.rpe||3);
+const dayLoad=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+wLoad(w),0);
 function recoveryDrivers(){
   const d=S(),out=[];
   const hv=latestOf('hrv'),hb=wSeries('hrv');

@@ -122,7 +122,7 @@ async function genInsight(){
   $('insContent').innerHTML='<div class="ins-loading">Analysing your data…</div>';
   const ci=d.checkins.slice(-14).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,mindfulMin:c.mindfulMin||0,grateful:c.gratitude||null,reflection:reflOf(c)}));
   const sl=d.sleepLogs.slice(-7).map(s=>({date:s.date,score:s.score??null,deepH:s.deepH??null,remH:s.remH??null}));
-  const wk=d.workouts.filter(w=>daysAgo(w.date)<14).map(w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,rpe:w.rpe,notes:w.notes,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?w.sub:undefined}));
+  const wk=d.workouts.filter(w=>daysAgo(w.date)<14).map(w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,rpe:w.rpe,notes:w.notes,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?{pool:w.sub.pool,stroke:w.sub.stroke}:undefined,avgHr:wIcu(w).hr,maxHr:wIcu(w).hrMax,kcal:wIcu(w).kcal,climbM:wIcu(w).elev,load:wIcu(w).load}));
   const wkSets=weeklySets();
   const bl=last(d.bloodLogs)||{};
   const inj=d.injuries.filter(i=>i.active).map(i=>({part:i.part,sev:i.sev}));
@@ -131,7 +131,7 @@ async function genInsight(){
 Period: ${_insPeriod}
 Check-ins, 1-4 scale (stress: 1 = calm, 4 = very stressed; null = no data): ${JSON.stringify(ci)}
 Sleep (null = no data): ${JSON.stringify(sl)}
-Workouts (strength sessions list sets as kg×reps; calisthenics + = added kg; swim distKm is km): ${JSON.stringify(wk)}
+Workouts (strength sessions list sets as kg×reps; calisthenics + = added kg; swim distKm is km; avgHr, maxHr, kcal, climbM and load come from Intervals.icu when present): ${JSON.stringify(wk)}
 Hard sets per muscle group, last 7 days (10-20 is a typical target): ${JSON.stringify(wkSets)}
 Blood markers, mg/dL (null = not measured): ${JSON.stringify({glucose:bl.glucose??null,chol:bl.chol??null,uric:bl.uric??null})}
 Training load: CTL=${d.intervalsData.ctl??'unavailable'}, ATL=${d.intervalsData.atl??'unavailable'}, TSB=${d.intervalsData.tsb??'unavailable'}
