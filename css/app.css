@@ -948,3 +948,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .ins-ask .btn-gold{width:auto;flex:0 0 auto;padding:0 16px;margin:0}
 .ins-qa button:disabled,.ins-qa input:disabled{opacity:.5}
 .ins-hi-q{font-weight:600;color:var(--text);margin-top:8px}
+
+/* v86: today's session and the 7-day outline */
+.sg-m{font-size:14px;font-weight:600;margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.sg-why{color:var(--t3)}
+.sg-btns{display:flex;gap:8px}.sg-btns .sg-btn{flex:1;width:auto;margin-bottom:0}
+.st-e{display:inline-flex;gap:2px;flex:none}.st-e i{width:5px;height:12px;border-radius:2px;background:var(--bdr)}.st-e i.on{background:var(--text)}
+.st-mode{font-size:22px;font-weight:600}
+.st-tg{font-size:13px;color:var(--t2);font-variant-numeric:tabular-nums}.st-tg b{color:var(--text);font-weight:600}
+.st-list{margin-top:12px}
+.st-r{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-top:1px solid var(--bdr);min-height:44px}
+.st-r.now{border-left:3px solid var(--text);padding-left:10px;margin-left:-13px}
+.st-d{width:44px;flex:none;font-size:12px;color:var(--t2);font-weight:600}.st-d small{display:block;font-size:12px;font-weight:400;color:var(--t3)}
+.st-b{flex:1;min-width:0}.st-n{font-size:14px;font-weight:600}.st-r.off .st-n{color:var(--t2);font-weight:400}
+.st-s{font-size:12px;color:var(--t2);margin-top:2px;line-height:1.4;font-variant-numeric:tabular-nums}.st-w{color:var(--t3)}
+.st-r .st-e{margin-top:3px}

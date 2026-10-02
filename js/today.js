@@ -95,69 +95,13 @@ function renderGoal(){
     sub=`<b>${r.k}${r.min?' phase':''}.</b> ${r.tip}`;
     const L=raceLoad();
     if(L.base){
-      const tg=Math.max(5,Math.round(L.base*r.mult/5)*5),pc=Math.min(100,Math.round(L.now/tg*100));
+      const tg=stWeek().target||Math.max(5,Math.round(L.base*r.mult/5)*5),pc=Math.min(100,Math.round(L.now/tg*100));
       extra=`<div class="gl-bar"><div style="width:${pc}%"></div></div><div class="gl-t">This week: ${fmtDur(Math.round(L.now))} of about ${fmtDur(tg)} target${r.mult<1?' (reduced for '+r.k.toLowerCase()+')':''}</div>`;
     }else extra='<div class="gl-t">Log 2 or more full weeks and a weekly time target will appear here.</div>';
     extra+=`<div class="gl-ph">${RACE_PH.map((x,i)=>`<span class="${i===r.idx?'on':i<r.idx?'past':''}">${x.k}</span>`).join('')}</div>`;
   }
   el.style.display='';
   el.innerHTML=`<div class="gl-row"><div><div class="gl-n">${nm}</div><div class="gl-s">${sub}</div></div><div class="gl-big">${big}</div></div>${extra}`;
-}
-
-// rule-based suggestion for today's session
-const LOWER=/knee|ankle|hip|calf|foot|feet|shin|hamstring|quad|achilles|thigh|groin|glute|leg/i;
-function suggestWorkout(){
-  const d=S(),t=td();
-  if(d.workouts.some(w=>w.date===t&&!w.isEx))return null;
-  const score=calcReadiness(),tsb=d.intervalsData.tsb;
-  if(score===null)return null;
-  const inj=d.injuries.filter(i=>i.active),sev=inj.length?Math.max(...inj.map(i=>i.sev)):0;
-  const lowerHurt=inj.some(i=>LOWER.test(i.part)&&i.sev>=2);
-  const rec=d.workouts.filter(w=>daysAgo(w.date)<=28),wk=rec.filter(w=>daysAgo(w.date)<=7);
-  const cnt=ty=>rec.filter(w=>w.type===ty).length;
-  const since=ty=>{const w=rec.filter(x=>x.type===ty);return w.length?Math.min(...w.map(x=>daysAgo(x.date))):99;};
-  const hardYday=d.workouts.some(w=>daysAgo(w.date)===1&&(w.rpe||0)>=4);
-  const gd=d.profile.goalDate?Math.round((new Date(d.profile.goalDate+'T00:00:00')-new Date(t+'T00:00:00'))/864e5):null;
-  const taper=gd!==null&&gd>=0&&gd<=7;
-  const main=(cnt('Run')>=cnt('Cycle')?'Run':'Cycle');
-  const endur=lowerHurt?'Swim':main;
-  const med=ty=>{const a=rec.filter(w=>w.type===ty&&w.durMin).map(w=>w.durMin).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:45;};
-  const r5=n=>Math.round(n/5)*5;
-  let type,title,why;
-  if(sev>=3||score<45||(tsb!==null&&tsb<-25)){
-    type='Yoga';title='Rest or gentle mobility, 20 min';
-    why=sev>=3?'A serious injury is active.':'Readiness is low, so recovery is the training today.';
-  }else if(taper){
-    type=endur;title=`Easy ${endur.toLowerCase()}, ${r5(med(endur)*0.5)} min, a few short pickups`;why='Race week. Keep the legs fresh.';
-  }else if(score<65||(tsb!==null&&tsb<-12)||hardYday){
-    type=endur;title=`Easy ${endur.toLowerCase()}, ${r5(med(endur)*0.8)} min, conversational pace`;
-    why=hardYday?'You trained hard yesterday. Keep it easy.':'Readiness is moderate. Build base without adding stress.';
-  }else if(since('Weights')>=5&&wk.length>0&&sev<2&&!lowerHurt){
-    type='Weights';title='Strength session, 45 min';why=`No weights for ${since('Weights')>=99?'a while':since('Weights')+' days'}. You are recovered enough to lift.`;
-  }else{
-    type=endur;title=`Quality ${endur.toLowerCase()}, ${r5(med(endur))} min with harder intervals`;
-    why='You are fresh and well slept. A good day to push.';
-  }
-  // fit the weekly plan: follow it when recovered, otherwise say why the plan is being bent
-  const pl=planOf((new Date().getDay()+6)%7);
-  if(pl){
-    const recover=type==='Yoga',easy=/^Easy/.test(title);
-    if(pl.type==='Rest'&&!recover){type='Yoga';title='Planned rest day';why='Your plan says rest. Recovery is when you adapt. Gentle mobility is fine.';}
-    else if(pl.type!=='Rest'){
-      if(recover)why+=` Your plan says ${pl.type}${pl.note?' ('+pl.note+')':''}. Skip it today and move it a day.`;
-      else if(easy){why+=` Plan: ${pl.type}. Keep it easy today.`;if(pl.type!==type&&!lowerHurt){type=pl.type;title=`Easy ${pl.type.toLowerCase()}, ${pl.note||'short and relaxed'}`;}}
-      else if(!lowerHurt){type=pl.type;title=`As planned: ${pl.type}${pl.note?', '+pl.note:''}`;why='On your plan, and you are recovered enough to do it well.';}
-    }
-  }
-  if(lowerHurt&&type!=='Yoga')why+=' Low impact because of your leg injury.';
-  return{type,title,why};
-}
-function renderSuggest(){
-  const el=$('sugCard');if(!el)return;
-  const s=suggestWorkout();
-  if(!s){el.style.display='none';return;}
-  el.style.display='';
-  el.innerHTML=`<div class="sg-lbl">SUGGESTED FOR TODAY</div><div class="sg-row"><div class="sg-ico">${ICON[s.type]||''}</div><div style="flex:1"><div class="sg-t">${esc(s.title)}</div><div class="sg-s">${esc(s.why)}</div></div></div><button class="btn-out sg-btn" onclick="switchTab('log');openLog('lWorkout');selEx('${PL_TYPES.includes(s.type)?s.type:'Run'}');$('exGrid').scrollIntoView({block:'center'})">Log ${s.type} →</button>`;
 }
 
 // ── CHECK-IN REMINDER: strip on Today (and a nav dot) after the chosen time if not checked in ──

@@ -14,7 +14,7 @@ function refreshActive(){
   if(tab==='trends')renderTrendsTab();
   if(tab==='health')renderHealth();
   if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderSleepBars();}
-  if(tab==='insights'){renderCoach();renderDigest();renderInsightHistory();showTodayInsight();}
+  if(tab==='insights'){renderCoach();renderStrategy();renderDigest();renderInsightHistory();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
 function logGo(id){switchTab('log');setTimeout(()=>lgOpen(id),80);}
