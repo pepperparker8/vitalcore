@@ -909,3 +909,29 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .ob-foot{padding:8px 20px calc(20px + env(safe-area-inset-bottom))}
 .ob-foot .btn-gold{margin-top:12px;color:#fff}
 .ob-dots{display:flex;justify-content:center;gap:8px}.ob-dots i{width:8px;height:8px;border-radius:50%;background:var(--bdr);transition:all .25s}.ob-dots i.on{background:var(--gold);width:24px;border-radius:4px}
+
+/* v83: workout list actions, duplicate strip, source tag */
+.wk-acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.wk-acts button{min-height:44px;padding:0 14px;background:transparent;border:1px solid var(--bdr);border-radius:8px;color:var(--t2);font:500 12px 'Inter',system-ui,sans-serif;cursor:pointer}
+.wk-acts button:active{background:var(--sur2)}
+.wk-src{display:inline-block;margin-left:8px;padding:1px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:10px;font-weight:500;color:var(--t3);vertical-align:1px}
+.wk-dup{border-left:3px solid var(--amber);margin:0 0 16px;padding:2px 0 2px 12px}
+.wk-dup-t{font-size:15px;font-weight:600;color:var(--text)}
+.wk-dup-s{font-size:13px;color:var(--t2);line-height:1.5;margin-top:2px}
+#wkIcuNote{margin:0 0 12px}
+#qwCard{display:none}
+
+/* v83: briefing blocks, sentence case, theme-safe */
+.ins-bt,.ins-hi-sec{font-family:inherit;font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--t2)}
+.ins-block.ins-warn{border-left:3px solid var(--amber);border-radius:0 14px 14px 0}
+.ins-block.ins-warn .ins-bt{color:var(--amber)}
+.ins-block.ins-act{border-left:3px solid var(--gold);border-radius:0 14px 14px 0}
+.ins-block.ins-act .ins-bt{color:var(--gold-dk)}
+.ins-block.ins-act .ins-text{font-size:15px;font-weight:600}
+.ins-loading{font-family:inherit;letter-spacing:0;font-size:13px;line-height:1.5}
+.arch-trend-lbl{font-family:inherit;letter-spacing:0;text-transform:none}
+#wDurChips{flex-wrap:wrap;gap:8px;margin-bottom:8px}
+#wDurChips .chip{min-height:44px}
+.ins-hist-sec{margin-top:20px}
+.ins-hist-head{font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--t2)}
+.ins-hi-date{font-family:inherit}

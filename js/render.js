@@ -220,9 +220,9 @@ function renderActList(){
   for(let i=0;i<7;i++){
     const date=dAgo(i),isToday=i===0,ws=d.workouts.filter(w=>w.date===date);
     if(!ws.length)rows.push(`<div class="act-item"><div class="act-icon past" style="font-size:13px;color:var(--t3)">—</div><div><div class="act-name" style="color:var(--t3);font-weight:400">Nothing logged</div><div class="act-meta">${isToday?'Today':date}</div></div></div>`);
-    else ws.forEach(w=>rows.push(`<div class="act-item"><div class="act-icon ${isToday?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${isToday?'Today':date}${w.sets?'':(w.durMin?' · '+fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}${w.sets?(n=>' · '+n+' set'+(n===1?'':'s'))(setsByEx(w).reduce((n,e)=>n+e[1].length,0)):''} · effort ${w.rpe||3}/5</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}</div></div>`));
+    else ws.forEach(w=>rows.push(wkRow(w)));
   }
-  $('actList').innerHTML=rows.join('');
+  $('actList').innerHTML=dupHTML()+rows.join('');renderWkLog();
   const tm=trainOn(t),mm=mindOn(t),wl=d.wellness[t]||d.wellness[dAgo(1)];
   $('passActive').textContent=tm?fmtDur(tm):(d.workouts.some(w=>w.date===t)?'✓':'—');
   $('passMind').textContent=mm?fmtDur(mm):'—';
@@ -399,7 +399,7 @@ function renderBests(){
   const lw=d.workouts.filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push(['⏱','Longest session',b.date,fmtDur(b.durMin)]);}
   const bm=d.checkins.filter(c=>c.mindfulMin>0);if(bm.length){const b=bm.reduce((a,c)=>c.mindfulMin>a.mindfulMin?c:a);out.push([UI.lotus,'Longest mindfulness day',b.date,fmtDur(b.mindfulMin)]);}
   const bs=bestStreak();if(bs>1)out.push([UI.flame,'Best streak','',`${bs} days`]);
-  $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${dt}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="switchTab('today');go('qwCard')">Log a workout</button></div>`;
+  $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${dt}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="logGo('lWorkout')">Log a workout</button></div>`;
 }
 function renderWeekSum(){
   const d=S(),tw=d.workouts.filter(w=>daysAgo(w.date)<7),lw=d.workouts.filter(w=>{const x=daysAgo(w.date);return x>=7&&x<14;});

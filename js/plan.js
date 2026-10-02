@@ -34,7 +34,7 @@ function renderPlan(){
   const el=$('planCard');if(!el)return;
   const d=S(),has=Object.values(d.profile.plan||{}).some(p=>p&&p.type);
   if(!has&&!_plEdit){
-    el.innerHTML='<div class="sg-lbl">WEEKLY PLAN</div><div class="sg-s">Set what you plan to do each day. The app then shows what you did, how well you followed the plan, and suggests today\'s session from it.</div><button class="btn-outline" onclick="togglePlanEdit()">Set up my week</button>';return;
+    el.innerHTML='<div class="sg-lbl">WEEKLY PLAN</div><div class="sg-s">Set what you plan to do each day. The app then shows what you did, how well you followed the plan, and suggests today\'s session from it.</div><button class="btn-out" onclick="togglePlanEdit()">Set up my week</button>';return;
   }
   if(_plEdit){
     el.innerHTML=`<div class="sg-lbl">EDIT WEEKLY PLAN</div>${PL_DAYS.map((n,i)=>{const p=planOf(i)||{};return`<div class="pl-er"><span class="pl-dn">${n}</span><select class="sel-inp" onchange="setPlan(${i},'type',this.value)"><option value="">Nothing</option>${PL_TYPES.map(t=>`<option ${p.type===t?'selected':''}>${t}</option>`).join('')}</select><input class="inp" placeholder="e.g. 10 km" value="${esc(p.note||'')}" maxlength="24" onchange="setPlan(${i},'note',this.value.trim())"></div>`;}).join('')}<button class="btn-gold" onclick="togglePlanEdit()">Done</button>`;return;

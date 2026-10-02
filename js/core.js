@@ -9,7 +9,7 @@ const DEFAULTS={
   intervalsData:{ctl:null,atl:null,tsb:null},wellness:{},
   claudeKey:'',intervalsKey:'',intervalsID:'',
   lastSync:null,onboardingDone:false,signBanOff:false,
-  insightLog:[],pending:{},tomb:[],profileTs:0
+  insightLog:[],pending:{},tomb:[],profileTs:0,dupOk:[]
 };
 let _s=JSON.parse(JSON.stringify(DEFAULTS));
 let _saveTimer=null;

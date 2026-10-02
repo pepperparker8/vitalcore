@@ -280,19 +280,12 @@
 
   <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg></div><div><div class="log-title">Log a Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
-  <div class="card" id="qwCard">
-    <div class="sec">Quick workout</div>
-    <div class="ex-grid" id="qxGrid"></div>
-    <div class="set-note" id="qxStr" style="display:none">Weights and calisthenics need sets. Tap below to log them.</div>
-    <div id="qxDur"><div class="mini-lbl">HOW LONG?</div><div class="chip-row" id="qxChips"></div></div>
-    <button class="btn-gold" id="qxSave" style="margin-top:4px" onclick="saveQuick()">Save workout</button>
-    <div class="set-note">Need distance, sets, effort or a note? Fill in the full form below.</div>
-  </div>
-
-      <div class="sec" style="margin-top:20px">Full workout</div>
-      <div class="fg"><div class="fl">DATE</div><input type="date" class="inp" id="wDate"></div>
+      <div class="set-note" id="wkIcuNote" style="display:none"></div>
+      <div id="wkDup"></div>
+      <div id="wkRecent"></div>
+      <div class="sec" id="wkFormT" style="margin-top:16px">Add a workout</div>
       <div class="fg"><div class="fl">TYPE</div><div class="ex-grid" id="exGrid"></div></div>
-      <div class="fg" id="wDurFg"><div class="fl">DURATION</div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" oninput="swimPace()" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" oninput="swimPace()" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
+      <div class="fg" id="wDurFg"><div class="fl">DURATION</div><div class="chip-row sp" id="wDurChips"></div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" oninput="swimPace();renderDurChips()" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" oninput="swimPace();renderDurChips()" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg" id="wDistFg"><div class="fl">DISTANCE</div><div class="fr"><input type="number" class="inp" id="wDist" placeholder="10.5" step="0.1" min="0" oninput="swimPace()"><span class="inp-unit" id="wDistU">km</span></div></div>
       <div id="wSwim" style="display:none"><div class="fg"><div class="fl">WHERE</div><select class="sel-inp" id="wPool"><option value="pool">Pool</option><option value="open">Open water</option></select></div>
         <div class="fg"><div class="fl">MAIN STROKE</div><select class="sel-inp" id="wStroke"><option>Freestyle</option><option>Breaststroke</option><option>Backstroke</option><option>Butterfly</option><option>Mixed</option></select></div>
@@ -300,9 +293,12 @@
       <div id="wStr" style="display:none"><div class="gym-top"><div class="fl" id="strLbl">EXERCISES</div><button type="button" class="gym-tgl" id="gymTgl" onclick="toggleGym()">Gym mode</button></div>
         <input type="text" class="inp" id="strSearch" placeholder="Search or type a new exercise" oninput="strPick()" style="margin-bottom:8px">
         <div class="str-picks" id="strPick"></div><div id="strList"></div></div>
+      <details class="sl-more" id="wMore"><summary>Date, effort and note (optional)</summary>
+      <div class="fg"><div class="fl">DATE</div><input type="date" class="inp" id="wDate"></div>
       <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select></div>
-      <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Optional — shown in activity list"></div>
-      <button class="btn-gold" id="wSave" onclick="saveWorkout()">Record</button>
+      <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Shown in your activity list"></div>
+      </details>
+      <button class="btn-gold" id="wSave" onclick="saveWorkout()">Save workout</button>
       <button class="btn-out" id="wCancel" style="display:none" onclick="cancelEdit()">Cancel editing</button>
       <button class="btn-muted" onclick="repeatLast()">↺ Repeat last workout</button>
     </div>
@@ -368,11 +364,10 @@
   <div class="ins-hdr"><div class="ins-title">Your Health Briefing</div><div class="ins-stamp" id="insStamp">Not yet generated today</div></div>
   <div class="card" id="coachCard"></div>
   <div class="card" id="digestCard"></div>
-  <div class="ins-toggle"><button class="ins-tog active" onclick="selPeriod('weekly',this)">Weekly</button><button class="ins-tog" onclick="selPeriod('monthly',this)">Monthly</button></div>
-  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI Insight Ready</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">Claude analyses your logged data and generates a personalised health briefing.</div><button class="ins-gen" onclick="genInsight()">Generate Briefing</button></div></div>
+  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI briefing</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">One briefing that reads today, this week, this month and your longer trends, and tells you what to do next.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
   <div class="ins-hist-sec" id="insHistSec" style="display:none">
-    <div class="ins-hist-head"><span>Past Briefings</span><span class="ins-hist-cnt" id="insHistCnt">0</span></div>
-    <div class="arch-trend" id="archTrend" style="display:none"><div class="arch-trend-lbl">PATTERN THIS MONTH</div><div class="arch-trend-val" id="archTrendVal">—</div></div>
+    <div class="ins-hist-head"><span>Past briefings</span><span class="ins-hist-cnt" id="insHistCnt">0</span></div>
+    <div class="arch-trend" id="archTrend" style="display:none"><div class="arch-trend-lbl">Pattern this month</div><div class="arch-trend-val" id="archTrendVal">—</div></div>
     <div id="insHistList"></div>
   </div>
 </div>

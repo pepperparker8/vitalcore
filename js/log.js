@@ -80,22 +80,6 @@ function finishMind(complete){
 }
 function stopMind(){finishMind(false);}
 
-// ── QUICK WORKOUT (Today) ────────────────────────────────────────────────────
-let _qx='Run',_qd=30;
-function renderQuick(){
-  $('qxGrid').innerHTML=SPORTS.map(([n,i])=>`<div class="ex-btn ${n===_qx?'sel':''}" onclick="selQx('${n}')"><div class="ex-ico">${i}</div><div class="ex-nm">${n}</div></div>`).join('');
-  const st=IS_STR(_qx);
-  $('qxDur').style.display=st?'none':'block';$('qxStr').style.display=st?'block':'none';
-  $('qxSave').textContent=st?'Log sets in the Log tab':'Save workout';
-  $('qxChips').innerHTML=[20,30,45,60,90].map(m=>`<button class="chip ${m===_qd?'sel':''}" onclick="_qd=${m};renderQuick()">${fmtDur(m)}</button>`).join('');
-}
-function selQx(n){_qx=n;renderQuick();}
-function saveQuick(){
-  if(IS_STR(_qx)){_selEx=_qx;switchTab('log');openLog('lWorkout');renderExGrid();return;}
-  put('workouts',{id:mkId(),date:td(),type:_qx,distKm:0,durMin:_qd,rpe:3,notes:''});
-  showToast(`${_qx} saved`);refreshAll();
-}
-
 // ── SLEEP ────────────────────────────────────────────────────────────────────
 // minutes between bedtime and wake-up, crossing midnight when wake is earlier
 function slSpan(b,w){const m=x=>{const[h,n]=x.split(':').map(Number);return h*60+n;};let d=m(w)-m(b);if(d<=0)d+=1440;return d;}
@@ -157,8 +141,16 @@ function renderExGrid(){
   $('wDurFg').style.display=st?'none':'block';
   $('wSwim').style.display=sw?'block':'none';$('wStr').style.display=st?'block':'none';
   if(st)renderStrength();
+  renderDurChips();
 }
 function selEx(t){if(IS_STR(t)&&t!==_selEx)_sess=[];_selEx=t;renderExGrid();}
+// one-tap durations fill the hour and minute boxes
+function renderDurChips(){
+  const el=$('wDurChips');if(!el)return;
+  const cur=(+$('wDH').value||0)*60+(+$('wDM').value||0);
+  el.innerHTML=[20,30,45,60,90].map(m=>`<button type="button" class="chip ${m===cur?'sel':''}" onclick="setDur(${m})">${fmtDur(m)}</button>`).join('');
+}
+function setDur(m){$('wDH').value=Math.floor(m/60)||'';$('wDM').value=m%60||'';swimPace();renderDurChips();}
 function swimPace(){
   const m=+$('wDist').value||0,dur=(+$('wDH').value||0)*60+(+$('wDM').value||0);
   $('wPace').textContent=m>0&&dur>0?`Pace: ${fmtPace(dur/(m/100))} per 100 m`:'';
@@ -189,9 +181,9 @@ function saveWorkout(){
   const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()};
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
   const oi=_editId&&wIcu(S().workouts.find(x=>x.id===_editId));if(oi&&Object.keys(oi).length)rec.sub={...(rec.sub||{}),icu:oi};
-  const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Record';$('wCancel').style.display='none';
-  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';
-  $('wkStat').textContent='✓ Saved';showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded');refreshAll();
+  const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Save workout';$('wCancel').style.display='none';
+  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';renderDurChips();
+  showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded');refreshAll();
 }
 let _editId=null;
 function editWorkout(id){
@@ -204,21 +196,70 @@ function editWorkout(id){
   if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}
   $('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
   _editId=id;$('wSave').textContent='Update workout';$('wCancel').style.display='block';
+  $('wMore').open=true;$('wkFormT').textContent='Edit workout';renderDurChips();
+  setTimeout(()=>$('wkFormT').scrollIntoView({behavior:'smooth',block:'start'}),120);
   showToast('Editing '+w.type+' from '+w.date);
 }
-function cancelEdit(){_editId=null;$('wSave').textContent='Record';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(IS_STR(_selEx))renderStrength();}
+function cancelEdit(){_editId=null;$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
 function repeatLast(){
   const w=last(S().workouts);if(!w){showToast('No previous workout');return;}
   _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
   $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
   $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}$('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
-  showToast('Last workout loaded — change the date and record');
+  $('wDate').value=td();renderDurChips();
+  showToast('Last workout loaded. Check it and save.');
 }
 function delWorkout(id){
   const w=S().workouts.find(x=>x.id===id);if(!w)return;
-  const copy=JSON.parse(JSON.stringify(w));
-  del('workouts',id);openDay(w.date);refreshAll();
-  showToast('Workout deleted',{label:'Undo',fn:()=>{put('workouts',copy);openDay(copy.date);refreshAll();showToast('Workout restored');}});
+  const copy=JSON.parse(JSON.stringify(w)),pan=()=>{if($('dayPanel').classList.contains('open'))openDay(copy.date);};
+  if(_editId===id)cancelEdit();
+  del('workouts',id);pan();refreshAll();
+  showToast('Workout deleted',{label:'Undo',fn:()=>{const d=S();d.tomb=d.tomb.filter(t=>t.id!==id);put('workouts',copy);pan();refreshAll();showToast('Workout restored');}});
+}
+// ── Workout list with Edit / Delete, and "logged twice" check ────────────────
+const isIcu=w=>String(w.id).startsWith('icu-');
+const fmtDay=dt=>dt===td()?'Today':daysAgo(dt)===1?'Yesterday':new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+function wkRow(w,today){
+  const meta=[fmtDay(w.date)];
+  if(!w.sets&&w.durMin)meta.push(fmtDur(w.durMin));
+  if(w.distKm)meta.push(fmtDist(w));
+  if(w.sets){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
+  if(w.rpe)meta.push('effort '+w.rpe+'/5');
+  return `<div class="act-item"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(w.type)}${isIcu(w)?'<span class="wk-src">Intervals.icu</span>':''}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="delWorkout('${esc(w.id)}')">Delete</button></div></div></div>`;
+}
+// a hand-logged workout and an Intervals.icu one of the same type on the same day
+function findDups(){
+  const d=S(),ok=d.dupOk||[],out=[];
+  d.workouts.filter(w=>isIcu(w)&&daysAgo(w.date)<30).forEach(a=>{
+    const m=d.workouts.find(w=>!isIcu(w)&&!w.isEx&&w.date===a.date&&w.type===a.type&&!ok.includes(w.id+'|'+a.id)&&!out.some(p=>p.m.id===w.id));
+    if(m)out.push({m,a});
+  });
+  return out;
+}
+function dupHTML(){
+  return findDups().map(({m,a})=>`<div class="wk-dup"><div class="wk-dup-t">${m.date===td()?"Today's":daysAgo(m.date)===1?"Yesterday's":fmtDay(m.date)} ${esc(m.type.toLowerCase())} is logged twice</div><div class="wk-dup-s">Once by hand and once from Intervals.icu. Combining keeps one workout with your effort, note${m.sets?', sets':''} and the watch data.</div><div class="wk-acts"><button type="button" onclick="mergeDup('${esc(m.id)}','${esc(a.id)}')">Combine into one</button><button type="button" onclick="keepDup('${esc(m.id)}','${esc(a.id)}')">Keep both</button></div></div>`).join('');
+}
+function mergeDup(mid,aid){
+  const d=S(),m=d.workouts.find(w=>w.id===mid),a=d.workouts.find(w=>w.id===aid);if(!m||!a)return;
+  const rec={...a,rpe:m.rpe||a.rpe,notes:m.notes||a.notes};
+  if(m.sets){rec.sets=m.sets;rec.durMin=a.durMin||m.durMin;}
+  if(!rec.distKm&&m.distKm)rec.distKm=m.distKm;
+  if(!rec.durMin&&m.durMin)rec.durMin=m.durMin;
+  if(m.sub)rec.sub={...m.sub,...(a.sub||{})};
+  if(_editId===mid)cancelEdit();
+  put('workouts',rec);del('workouts',mid);refreshAll();showToast('Combined into one workout');
+}
+function keepDup(mid,aid){const d=S();d.dupOk=[...(d.dupOk||[]),mid+'|'+aid].slice(-100);save(d);refreshAll();}
+function renderWkLog(){
+  const d=S(),el=$('wkRecent');if(!el)return;
+  const ws=d.workouts.filter(w=>daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));
+  $('wkDup').innerHTML=dupHTML();
+  const n=$('wkIcuNote'),on=!!(d.intervalsKey&&d.intervalsID);
+  n.style.display=on?'':'none';
+  n.textContent=on?'Connected to Intervals.icu: workouts recorded by your watch arrive here on their own after a sync. Add by hand only what the watch did not record.':'';
+  el.innerHTML=ws.length?`<div class="sec">Last 7 days</div>`+ws.map(w=>wkRow(w)).join(''):'';
+  const nT=d.workouts.filter(w=>w.date===td()).length;
+  $('wkStat').textContent=nT?nT+' logged today':'Nothing logged today';
 }
 
 // ── MEASUREMENTS ─────────────────────────────────────────────────────────────
