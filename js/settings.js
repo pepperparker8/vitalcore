@@ -1,7 +1,7 @@
 // ── SETTINGS / BACKUP ────────────────────────────────────────────────────────
 function setTheme(v){try{localStorage.setItem('vc-theme',v);}catch(e){}if(v==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',v);refreshActive();}
 function themeVal(){try{return localStorage.getItem('vc-theme')||'light';}catch(e){return'light';}}
-function openSettings(){$('sTheme').value=themeVal();$('setModal').classList.add('open');loadSetUI();}
+function openSettings(){$('appVer').textContent='Version '+APP_VER;$('sTheme').value=themeVal();$('setModal').classList.add('open');loadSetUI();}
 function closeSettings(){$('setModal').classList.remove('open');}
 function loadSetUI(){
   const d=S();

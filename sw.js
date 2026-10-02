@@ -1,8 +1,8 @@
-const CACHE = 'vitalcore-v83';
+const CACHE = 'vitalcore-v84';
 const SHELL = ['./', './index.html', './manifest.json', './css/app.css', './js/core.js', './js/sync.js', './js/log.js', './js/today.js', './js/strength.js', './js/settings.js', './js/render.js', './js/recovery.js','./js/chart.js','./js/form.js','./js/trends.js', './js/progress.js', './js/plan.js', './js/review.js', './js/coach.js', './js/health.js', './js/digest.js', './js/insights.js', './js/app.js', './assets/mark.svg', './icon-maskable-512.png', './icon-96.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -22,7 +22,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || !(isShell || isFont)) return;
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(hit => {
-      const net = fetch(e.request).then(res => {
+      const net = fetch(isShell ? new Request(e.request.url, { cache: 'no-cache' }) : e.request).then(res => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
         return res;
       }).catch(() => hit || (e.request.mode === 'navigate' ? caches.match('./index.html') : Response.error()));

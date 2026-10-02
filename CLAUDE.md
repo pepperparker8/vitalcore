@@ -93,6 +93,8 @@ Verify after each change; don't batch.
 - Workout details from Intervals.icu (v82): average/max heart rate, calories, elevation gain and training load are stored on imported workouts as `sub.icu {hr,hrMax,kcal,elev,load}` (inside the existing synced `sub` column, so no Supabase change). Read with `wIcu(w)`, shown with `fmtIcu(w)` (numbers only). `pullIntervals` backfills already-imported `icu-` workouts and compares field by field (never by JSON string; jsonb reorders keys). `dayLoad` uses `wLoad(w)`: the Intervals.icu load scaled by `loadK()` (your median minutes x effort per load point, 3.3 until 5 workouts have both), else minutes x effort. Editing a workout keeps its details. No input fields for these.
 - Breathing rate while asleep (v81): Intervals.icu wellness `respiration` (automatic from Polar) is stored as `wellness[date].resp`; shown as a recovery driver and factor row (ok within +1 breath/min of the 30-day usual, warn to +2, bad above; display only, does not change the readiness score) and a Trends chart (`respCanvas`) under resting HR. No manual input. Polar's own readiness score is deliberately not imported.
 
+- Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
+
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.
 - Check-in uses face icons, never numbers.
