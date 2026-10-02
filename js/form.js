@@ -35,7 +35,9 @@ function renderRecTrend(){
   const d=S(),card=$('recTrendCard');if(!card)return;
   const wl=d.wellness||{},mk=k=>Object.keys(wl).sort().filter(dt=>wl[dt]&&wl[dt][k]!=null).map(dt=>({d:dt,v:wl[dt][k]}));
   const hv=mk('hrv'),rp=mk('resp');let rh=mk('rhr');
-  if(rh.length<2)rh=d.measurements.filter(m=>m.hr).sort((a,b)=>a.date<b.date?-1:1).map(m=>({d:m.date,v:m.hr}));
+  // one source only: manual readings are used when there are more of them than imported days
+  const rm=d.measurements.filter(m=>m.hr).sort((a,b)=>a.date<b.date?-1:1).map(m=>({d:m.date,v:m.hr}));
+  if(rm.length>rh.length)rh=rm;
   if(hv.length<2&&rh.length<2&&rp.length<2){card.style.display='none';return;}
   card.style.display='';
   const f=v=>Math.round(v);

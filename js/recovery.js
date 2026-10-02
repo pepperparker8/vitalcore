@@ -5,15 +5,32 @@ function wSeries(key,days=30,skipToday=true){
   for(let i=skipToday?1:0;i<=days;i++){const w=d.wellness[dAgo(i)];if(w&&w[key]!=null)out.push(w[key]);}
   return out;
 }
+// Resting HR for one day: the imported value (Intervals.icu) first, a manual measurement only when there is none
+function rhrOn(date){
+  const d=S(),w=d.wellness[date];
+  if(w&&w.rhr!=null)return{v:w.rhr,src:'icu'};
+  const m=last(d.measurements.filter(x=>x.hr&&x.date===date));
+  return m?{v:m.hr,src:'man'}:null;
+}
+// Resting HR values for the dates passing pred, from ONE source: src 'icu' | 'man', else whichever has more days
+function rhrIn(pred,src){
+  const d=S();
+  const icu=Object.entries(d.wellness).filter(([dt,w])=>w.rhr!=null&&pred(dt)).map(([,w])=>w.rhr);
+  const man=d.measurements.filter(m=>m.hr&&pred(m.date)).map(m=>m.hr);
+  if(src==='man')return man;if(src==='icu')return icu;
+  return icu.length>=man.length?icu:man;
+}
+// 30-day baseline from the same source as the latest value, never mixed
 function rhrSeries(days=30){
-  // Intervals resting HR, else manual measurements
-  const s=wSeries('rhr',days);if(s.length)return s;
-  return S().measurements.filter(m=>m.hr&&daysAgo(m.date)<=days&&daysAgo(m.date)>=1).map(m=>m.hr);
+  const l=latestOf('rhr');
+  return rhrIn(dt=>{const a=daysAgo(dt);return a>=1&&a<=days;},l?l.src:null);
 }
 function latestOf(key){
   const d=S();
-  for(let i=0;i<=2;i++){const w=d.wellness[dAgo(i)];if(w&&w[key]!=null)return{v:w[key],age:i};}
-  if(key==='rhr'){const m=last(d.measurements.filter(x=>x.hr&&daysAgo(x.date)<=2));if(m)return{v:m.hr,age:daysAgo(m.date)};}
+  for(let i=0;i<=2;i++){
+    if(key==='rhr'){const r=rhrOn(dAgo(i));if(r)return{...r,age:i};continue;}
+    const w=d.wellness[dAgo(i)];if(w&&w[key]!=null)return{v:w[key],age:i,src:'icu'};
+  }
   return null;
 }
 // Intervals.icu details on an imported workout: {hr, hrMax, kcal, elev, load}

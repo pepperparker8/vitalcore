@@ -135,7 +135,7 @@ function insightTrends(){
     const r1=x=>x==null?null:+x.toFixed(1);
     wk.push({weeksAgo:w,checkins:ci.length,mood:r1(avg(ci.map(c=>c.mood))),energy:r1(avg(ci.map(c=>c.energy))),stress:r1(avg(ci.map(c=>c.stress))),
       sleepHoursAvg:r1(avg(sl.filter(s=>s.durMin).map(s=>s.durMin/60))),sleepScoreAvg:r1(avg(sl.filter(s=>s.score).map(s=>s.score))),
-      sessions:ws.length,trainingMin:ws.reduce((a,x)=>a+(x.durMin||0),0),hrv:r1(avg(wl.filter(x=>x.hrv).map(x=>x.hrv))),rhr:r1(avg(wl.filter(x=>x.rhr).map(x=>x.rhr))),
+      sessions:ws.length,trainingMin:ws.reduce((a,x)=>a+(x.durMin||0),0),hrv:r1(avg(wl.filter(x=>x.hrv).map(x=>x.hrv))),rhr:r1(avg(rhrIn(dt=>{const a=daysAgo(dt);return a>=from&&a<to;}))),
       breathing:r1(avg(wl.filter(x=>x.resp).map(x=>x.resp))),
       readiness:r1(avg(Object.entries(d.readHist||{}).filter(([dt,v])=>v!=null&&inR({date:dt})).map(x=>x[1]))),
       weightKg:r1(avg(d.measurements.filter(inR).filter(m=>m.weight).map(m=>m.weight)))});
@@ -183,7 +183,7 @@ function insightData(){
     today:{date:t,weekday:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][dw],readiness:calcReadiness(),verdict:v?v.head[0]:null,strain0to21:load?strainOf(load):0,
       lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null}:null,
       checkin:ci?{energy:ci.energy??null,mood:ci.mood??null,stress:ci.stress??null,motivation:ci.motivation??null,soreness:ci.soreness??null,coffeeCups:ci.coffee??null,coffeeLate:ci.coffeeLate??null,mindfulMin:ci.mindfulMin||0}:null,
-      hrv:wl.hrv??null,restingHr:wl.rhr??null,breathingPerMin:wl.resp??null,
+      hrv:wl.hrv??null,restingHr:rhrOn(t)?.v??null,restingHrSource:rhrOn(t)?(rhrOn(t).src==="icu"?"Intervals.icu":"manual"):null,breathingPerMin:wl.resp??null,
       workoutsDone:wT.map(wo),planned:pl&&pl.type?{type:pl.type,note:pl.note||undefined}:null,prescription:sg?{title:sg.title,why:sg.why}:null,
       recoveryDrivers:recoveryDrivers().map(x=>({k:x.k,now:x.val,vs:x.base,status:x.st})),burnoutScore0to100:bn.score},
     strategy:insStrategy(),
@@ -194,7 +194,7 @@ function insightData(){
       sleep:d.sleepLogs.filter(s=>daysAgo(s.date)<14).map(s=>({date:s.date,hours:r1(s.durMin?s.durMin/60:null),bed:s.bed||null,wake:s.wake||null,score:s.score??null}))},
     month:{last30days:dg(0,30),previous30days:dg(30,60),readinessAvg:rAvg(0,30),readinessAvgPrev:rAvg(30,60)},
     trend:{weekly12:insightTrends(),fitnessCTL:d.intervalsData.ctl??null,fatigueATL:d.intervalsData.atl??null,formTSB:d.intervalsData.tsb??null,correlations:insightCorrelations()},
-    health:{bloodMgDl:insightBlood(),measurements:d.measurements.filter(m=>!m.isEx).slice(-6).map(m=>({date:m.date,weightKg:m.weight??null,bpSys:m.bpSys??null,bpDia:m.bpDia??null,restingHr:m.hr??null})),
+    health:{bloodMgDl:insightBlood(),measurements:d.measurements.filter(m=>!m.isEx).slice(-6).map(m=>({date:m.date,weightKg:m.weight??null,bpSys:m.bpSys??null,bpDia:m.bpDia??null,restingHrManual:m.hr??null})),
       injuries:d.injuries.filter(i=>i.active).map(i=>({part:i.part,severity1to3:i.sev,since:i.date,notes:i.notes||undefined}))},
     profile:{age:p.age||null,heightCm:p.height||null,sleepGoalHours:p.sleepGoal||null,weightGoalKg:p.wtGoal||null,goal:p.goalName||null,goalDate:p.goalDate||null,daysToGoal:ph?ph.n:null,phase:ph&&ph.k?ph.k:null},
     previousBriefings:insPrev(),

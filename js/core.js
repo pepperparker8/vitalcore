@@ -75,7 +75,7 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe']};
-const APP_VER=94; // keep in step with the cache name in sw.js
+const APP_VER=95; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5" /><circle cx="5.5" cy="17.5" r="3.5" /><circle cx="15" cy="5" r="1" /><path d="M12 17.5V14l-3-3 4-3 2 3h2" /></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5a2 2 0 0 0-2 2v11" /><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /><path d="M7 13h10" /><path d="M7 9h10" /><path d="M9 5a2 2 0 0 0-2 2v11" /></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" /><path d="m2.5 21.5 1.4-1.4" /><path d="m20.1 3.9 1.4-1.4" /><path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" /><path d="m9.6 14.4 4.8-4.8" /></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" /><path d="m9 20 3-6 3 6" /><path d="m6 8 6 2 6-2" /><path d="M12 10v4" /></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1" /><circle cx="12" cy="8" r="2" /><path d="M12 10v12" /><path d="M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z" /><path d="M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z" /></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></svg>']];
 const ICON=Object.fromEntries(SPORTS);
@@ -104,6 +104,23 @@ function del(n,id){
   if(/^(icu-|sl-|mi-)/.test(String(id)))d.gone=[...(d.gone||[]).filter(x=>x!==id),id].slice(-400);
   save(d);queuePush();updSyncStatus();
 }
+// Source of each field on a record: rec.src = {field:'icu'|'man'} (local only, missing = unknown).
+// manSrc() marks fields the user typed: an imported ('icu') value that was left as is keeps its mark.
+function manSrc(old,rec,keys){
+  const o=(old&&old.src)||{},s={};
+  keys.forEach(k=>{const v=rec[k];if(v==null||v===''||v===0&&/[HM]$/.test(k))return;s[k]=o[k]==='icu'&&old[k]===v?'icu':'man';});
+  return s;
+}
+// icuFill() writes imported values only into empty fields or fields the import wrote before; returns true when changed
+function icuFill(rec,vals){
+  let ch=false;const src={...(rec.src||{})};
+  for(const [k,v] of Object.entries(vals)){
+    if(v==null)continue;
+    const cur=rec[k];
+    if(cur==null||(src[k]==='icu'&&cur!==v)){rec[k]=v;src[k]='icu';ch=true;}
+  }
+  rec.src=src;return ch;
+}
 function markProfile(){const d=S();d.profileTs=Date.now();d.pending['profile|1']=d.profileTs;save(d);queuePush();}
 function migrate(){
   const d=_s;
@@ -114,6 +131,22 @@ function migrate(){
     });
   }
   d.insightLog.forEach(e=>{if(!e.ts)e.ts=Date.now();});
+  d.wellness=d.wellness||{};
+  if(!d.mig95){
+    // v95: resting HR lives in wellness only. Imported weigh-ins ('mi-') carried the day's resting HR as well;
+    // move it into wellness and mark the weight as imported. Imported nights (no times, no stages) get their marks.
+    d.measurements.forEach(m=>{
+      if(!/^mi-/.test(String(m.id)))return;
+      if(m.hr){const w=d.wellness[m.date]=d.wellness[m.date]||{};if(w.rhr==null)w.rhr=m.hr;m.hr=null;m.ts=Date.now();d.pending['meas|'+m.id]=m.ts;}
+      m.src={...(m.src||{}),weight:'icu'};
+    });
+    d.sleepLogs.forEach(s=>{
+      if(s.src||s.bed||s.wake||s.deepH||s.deepM||s.remH||s.remM||s.rested!=null)return;
+      if(!/^sl-/.test(String(s.id)))return;
+      const src={};if(s.score!=null)src.score='icu';if(s.durMin!=null)src.durMin='icu';s.src=src;
+    });
+    d.mig95=true;
+  }
   delete d.streak;delete d.exDismissed;delete d.hasRealData;delete d.lastInsight;
 }
 

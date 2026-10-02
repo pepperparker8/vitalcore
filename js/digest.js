@@ -15,7 +15,7 @@ function digestWeek(from,to){
     mindful:d.checkins.filter(In).reduce((a,c)=>a+(c.mindfulMin||0),0),
     sleepMin:A(d.sleepLogs.filter(In).filter(s=>s.durMin).map(s=>s.durMin)),
     hrv:A(Object.entries(d.wellness||{}).filter(([dt,w])=>w.hrv&&In({date:dt})).map(([,w])=>w.hrv)),
-    rhr:A(Object.entries(d.wellness||{}).filter(([dt,w])=>w.rhr&&In({date:dt})).map(([,w])=>w.rhr)),
+    rhr:A(rhrIn(dt=>In({date:dt}))),
     weight:wt.length?last(wt).weight:null,
     days:new Set([...ws,...d.checkins.filter(In)].map(x=>x.date)).size
   };

@@ -186,6 +186,8 @@ function icuErr(status){
   if(status===403||status===404)return'Athlete ID not found (it looks like i12345)';
   return'Intervals.icu error '+status;
 }
+// Intervals.icu sleep quality is 1 (poor) to 4 (great), the same scale as "rested" here
+const icuRested=q=>typeof q==='number'&&q>=1&&q<=4?Math.round(q):null;
 async function pullIntervals(){
   const d=S();
   const oldest=dAgo(90),newest=td(),H={headers:icuHdr(d.intervalsKey)},base=icuBase(d.intervalsID);
@@ -195,16 +197,27 @@ async function pullIntervals(){
   if(!wr.ok)throw new Error(icuErr(wr.status));
   let n=0;
   const wl=await wr.json();
-  d.wellness={};
+  // wellness is kept per day and merged field by field (never wiped); a day older than 400 days is dropped
+  d.wellness=d.wellness||{};
+  Object.keys(d.wellness).forEach(k=>{if(daysAgo(k)>400)delete d.wellness[k];});
   let latest=null;
+  const num=v=>typeof v==='number'&&v>0?v:null;
   for(const w of wl){
     const date=w.id;if(!date)continue;
-    d.wellness[date]={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,resp:typeof w.respiration==='number'&&w.respiration>0?w.respiration:null,ctl:w.ctl??null,atl:w.atl??null};
+    const cur=d.wellness[date]=d.wellness[date]||{};
+    const inc={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,slHr:num(w.avgSleepingHR),spo2:num(w.spO2),sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,sleepQual:num(w.sleepQuality),resp:num(w.respiration),ctl:w.ctl??null,atl:w.atl??null};
+    for(const [k,v] of Object.entries(inc)){if(v!=null)cur[k]=v;else if(!(k in cur))cur[k]=null;}
     if(w.ctl!=null&&w.atl!=null)latest=w;
-    const sm=w.sleepSecs?Math.round(w.sleepSecs/60):null,ex=d.sleepLogs.find(s=>s.date===date);
-    if((w.sleepScore||sm)&&!ex&&!isGone('sl-'+date)){put('sleep',{id:'sl-'+date,date,score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,deepH:0,deepM:0,remH:0,remM:0,rested:null});n++;}
-    else if(ex&&sm&&!ex.durMin){put('sleep',{...ex,durMin:sm});n++;}
-    if(w.weight&&!isGone('mi-'+date)&&!d.measurements.some(m=>m.date===date&&m.weight)){put('meas',{id:'mi-'+date,date,bpSys:null,bpDia:null,weight:Math.round(w.weight*10)/10,hr:w.restingHR||null});n++;}
+    // sleep: new nights are created; on an existing night only empty fields and earlier imports are touched
+    const sm=inc.sleepMin,sv={score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,rested:icuRested(w.sleepQuality)},ex=d.sleepLogs.find(s=>s.date===date);
+    if((sv.score||sm)&&!ex&&!isGone('sl-'+date)){const r={id:'sl-'+date,date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null};icuFill(r,sv);put('sleep',r);n++;}
+    else if(ex){const r={...ex};if(icuFill(r,sv)){put('sleep',r);n++;}}
+    // weight: resting HR is no longer copied onto the weigh-in (it lives in wellness)
+    if(w.weight&&!isGone('mi-'+date)){
+      const wt=Math.round(w.weight*10)/10,mi=d.measurements.find(m=>m.id==='mi-'+date);
+      if(mi){const r={...mi};if(icuFill(r,{weight:wt})){put('meas',r);n++;}}
+      else if(!d.measurements.some(m=>m.date===date&&m.weight)){const r={id:'mi-'+date,date,bpSys:null,bpDia:null,weight:null,hr:null};icuFill(r,{weight:wt});put('meas',r);n++;}
+    }
   }
   if(latest){const ctl=Math.round(latest.ctl),atl=Math.round(latest.atl);d.intervalsData={ctl,atl,tsb:ctl-atl};}
   if(ar.ok){

@@ -53,6 +53,7 @@ function readinessFactors(){
   else if(hv)out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
   const rv=latestOf('rhr'),rb=rhrSeries();
   if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
+  else if(rv)out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
   const pv=latestOf('resp'),pb=wSeries('resp');
   if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({l:'Breathing',v:pv.v.toFixed(1)+' /min',n:'usual '+avg(pb).toFixed(1),st:df<=1?'good':df<=2?'warn':'bad'});}
   if(ci&&ci.soreness>=2)out.push({l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
@@ -246,9 +247,10 @@ function renderSleepBars(){
 }
 function tapSB(el){document.querySelectorAll('.sb-wrap').forEach(b=>b!==el&&b.classList.remove('tapped'));el.classList.toggle('tapped');}
 function hrSeries(){
-  const d=S(),m={};
-  Object.entries(d.wellness).forEach(([k,w])=>{if(w.rhr)m[k]=w.rhr;});
-  d.measurements.forEach(x=>{if(x.hr)m[x.date]=x.hr;});
+  // last 7 readings from one source: the latest value's (imported first), see rhrOn()
+  const d=S(),l=latestOf('rhr'),src=l?l.src:null,m={};
+  if(src!=='man')Object.entries(d.wellness).forEach(([k,w])=>{if(w.rhr!=null)m[k]=w.rhr;});
+  if(src!=='icu'&&!Object.keys(m).length)d.measurements.forEach(x=>{if(x.hr)m[x.date]=x.hr;});
   return Object.entries(m).sort((a,b)=>a[0]<b[0]?-1:1).map(([date,hr])=>({date,hr})).slice(-7);
 }
 function renderHRVSpark(){

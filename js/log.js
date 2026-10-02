@@ -117,7 +117,9 @@ function saveSleep(){
   if(dH*60+dM+rH*60+rM>(dur||16*60)){showToast('Deep + REM cannot be longer than time asleep');return;}
   if(!score&&!dur&&!dH&&!dM&&!rH&&!rM&&!_ci.rested){showToast('Enter time asleep or a sleep score');return;}
   const old=S().sleepLogs.find(s=>s.date===date);
-  put('sleep',{id:old?.id||'sl-'+date,date,score,durMin:dur||null,bed:bed||null,wake:wake||null,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested??null});
+  const rec={id:old?.id||'sl-'+date,date,score,durMin:dur||null,bed:bed||null,wake:wake||null,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested??null};
+  rec.src=manSrc(old,rec,['score','durMin','bed','wake','deepH','deepM','remH','remM','rested']);
+  put('sleep',rec);
   loadSleepFor(date);renderSleepBars();showToast('Sleep saved');refreshAll();
 }
 function delSleep(){
@@ -276,7 +278,9 @@ function saveMeas(){
   const pw=last(S().measurements.filter(m=>m.weight&&!m.isEx&&daysAgo(m.date)<=7));
   if(wt&&pw&&Math.abs(wt-pw.weight)>=4&&!sane(`${wt} kg is ${Math.round(Math.abs(wt-pw.weight)*10)/10} kg different from your last weigh-in (${pw.weight} kg).`))return;
   if(!sN&&!wt&&!hr){showToast('Enter at least one measurement');return;}
-  put('meas',{id:mkId(),date:td(),bpSys:sN||null,bpDia:dN||null,weight:wt,hr});
+  const rec={id:mkId(),date:td(),bpSys:sN||null,bpDia:dN||null,weight:wt,hr};
+  rec.src=manSrc(null,rec,['bpSys','bpDia','weight','hr']);
+  put('meas',rec);
   ['bpSys','bpDia','wtKg','hrVal'].forEach(i=>$(i).value='');
   $('measStat').textContent='Saved today';
   updMeasHist();renderHRVSpark();renderWtChart();showToast('Measurements saved');
