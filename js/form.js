@@ -77,13 +77,15 @@ function rollBand(pts,floor,win=28){
 function renderRecTrend(){
   const d=S(),card=$('recTrendCard');if(!card)return;
   const wl=d.wellness||{},mk=k=>Object.keys(wl).sort().filter(dt=>wl[dt]&&wl[dt][k]!=null).map(dt=>({d:dt,v:wl[dt][k]}));
-  const hv=mk('hrv');let rh=mk('rhr');
+  const hv=mk('hrv'),rp=mk('resp');let rh=mk('rhr');
   if(rh.length<2)rh=d.measurements.filter(m=>m.hr).sort((a,b)=>a.date<b.date?-1:1).map(m=>({d:m.date,v:m.hr}));
-  if(hv.length<2&&rh.length<2){card.style.display='none';return;}
+  if(hv.length<2&&rh.length<2&&rp.length<2){card.style.display='none';return;}
   card.style.display='';
   const f=v=>Math.round(v);
   if(hv.length>=2)mountChart('hrvCanvas',{key:'hrv',H:150,span:60,yfmt:f,band:rollBand(hv,3),series:[{pts:hv,color:'--teal',name:'HRV',fmt:v=>f(v)+' ms'}]});else $('hrvCanvas').innerHTML='';
   if(rh.length>=2)mountChart('rhrCanvas',{key:'rhr',H:150,span:60,yfmt:f,band:rollBand(rh,1.5),series:[{pts:rh,color:'--text',name:'Resting HR',fmt:v=>f(v)+' bpm'}]});else $('rhrCanvas').innerHTML='';
+  const rs=$('respSec');if(rs)rs.style.display=rp.length>=2?'':'none';
+  if(rp.length>=2)mountChart('respCanvas',{key:'resp',H:150,span:60,yfmt:v=>v.toFixed(1),band:rollBand(rp,0.5),series:[{pts:rp,color:'--teal',name:'Breathing rate',fmt:v=>v.toFixed(1)+' /min'}]});else $('respCanvas').innerHTML='';
 }
 function renderReadTrend(){
   const d=S(),host=$('readCanvas');if(!host)return;

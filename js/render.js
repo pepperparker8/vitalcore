@@ -53,6 +53,8 @@ function readinessFactors(){
   else if(hv)out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
   const rv=latestOf('rhr'),rb=rhrSeries();
   if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
+  const pv=latestOf('resp'),pb=wSeries('resp');
+  if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({l:'Breathing',v:pv.v.toFixed(1)+' /min',n:'usual '+avg(pb).toFixed(1),st:df<=1?'good':df<=2?'warn':'bad'});}
   if(ci&&ci.soreness>=2)out.push({l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
   if(ci&&ci.coffeeLate)out.push({l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
   const inj=d.injuries.filter(i=>i.active);

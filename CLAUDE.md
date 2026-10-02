@@ -87,6 +87,7 @@ Verify after each change; don't batch.
 - Model id lives in one constant, `CLAUDE_MODEL` (core.js).
 - Onboarding is a full-screen 3-step overlay (`#welcome` above the header, `obGo/obNext` in log.js); `finishWelcome(skip)` unchanged.
 - Trends has a Soreness & coffee chart (`renderBodyChart`) with a coffee-vs-next-night-sleep note.
+- Breathing rate while asleep (v81): Intervals.icu wellness `respiration` (automatic from Polar) is stored as `wellness[date].resp`; shown as a recovery driver and factor row (ok within +1 breath/min of the 30-day usual, warn to +2, bad above; display only, does not change the readiness score) and a Trends chart (`respCanvas`) under resting HR. No manual input. Polar's own readiness score is deliberately not imported.
 
 ## Conventions
 - Durations always hours + minutes via `fmtDur()` / `fmtHM()`. Never decimal hours in the UI.

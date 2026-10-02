@@ -31,6 +31,12 @@ function recoveryDrivers(){
     out.push({k:'rhr',label:'Resting heart rate',val:Math.round(rv.v)+' bpm',base:`usual ${Math.round(b)} bpm`,delta:-df,st:df<=2?'ok':df<=5?'warn':'bad',
       txt:df<=2?'Resting HR is normal.':`Resting HR is ${df} bpm above usual. This often means fatigue, illness or poor sleep.`});
   }
+  const pv=latestOf('resp'),pb=wSeries('resp');
+  if(pv&&pb.length>=RB_MIN){
+    const b=avg(pb),df=Math.round((pv.v-b)*10)/10;
+    out.push({k:'resp',label:'Breathing rate (asleep)',val:pv.v.toFixed(1)+' /min',base:`usual ${b.toFixed(1)} /min`,delta:-df,st:df<=1?'ok':df<=2?'warn':'bad',
+      txt:df<=1?'Breathing rate is normal.':`Breathing rate is ${df.toFixed(1)} breaths a minute above usual. This can be an early sign of illness, a hard day or poor recovery.`});
+  }
   const goal=Math.round((d.profile.sleepGoal||7.5)*60),sl=d.sleepLogs.find(s=>s.durMin&&daysAgo(s.date)<=1);
   if(sl){
     const df=sl.durMin-goal;

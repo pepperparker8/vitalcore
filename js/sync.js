@@ -188,7 +188,7 @@ async function pullIntervals(){
   let latest=null;
   for(const w of wl){
     const date=w.id;if(!date)continue;
-    d.wellness[date]={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,ctl:w.ctl??null,atl:w.atl??null};
+    d.wellness[date]={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,resp:typeof w.respiration==='number'&&w.respiration>0?w.respiration:null,ctl:w.ctl??null,atl:w.atl??null};
     if(w.ctl!=null&&w.atl!=null)latest=w;
     const sm=w.sleepSecs?Math.round(w.sleepSecs/60):null,ex=d.sleepLogs.find(s=>s.date===date);
     if((w.sleepScore||sm)&&!ex){put('sleep',{id:'sl-'+date,date,score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,deepH:0,deepM:0,remH:0,remM:0,rested:null});n++;}
