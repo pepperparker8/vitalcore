@@ -974,3 +974,52 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 /* v88: food log and eaten-so-far */
 .fu-e{font-size:13px;line-height:1.5;color:var(--t2);margin-top:8px}.fu-e b{color:var(--text);font-weight:600}
+
+/* ── v92: motion and polish (shadcn-style finish; palette and font unchanged) ── */
+:root{--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.56,.64,1)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes ovIn{from{opacity:0}to{opacity:1}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes tickDraw{to{stroke-dashoffset:0}}
+@keyframes skPulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes flick{0%,100%{transform:scale(1) rotate(0)}30%{transform:scale(1.08) rotate(-3deg)}60%{transform:scale(.97) rotate(2deg)}}
+/* cards: crisp hairline plus the soft shadow */
+.card,.hero-card,.streak-card,.cc-h,.rm-bar,.signin-ban,.log-sec,.ins-block,.zone-card,.bt-card,.ci-card,.arch-trend,.prof-bar,.acc-box,.ins-nudge,.streak-ban{box-shadow:var(--sh),0 0 0 1px var(--bdr)}
+/* page change: sections rise in one after another */
+.page-fade{animation:none}
+.page-fade>*{animation:rise .34s var(--ease) both}
+.page-fade>*:nth-child(2){animation-delay:.04s}.page-fade>*:nth-child(3){animation-delay:.08s}.page-fade>*:nth-child(4){animation-delay:.12s}.page-fade>*:nth-child(5){animation-delay:.16s}.page-fade>*:nth-child(n+6){animation-delay:.2s}
+/* nav: sliding marker and a small pop on the icon */
+.nav-item{position:relative}
+.nav-item::before{content:"";position:absolute;top:0;left:50%;width:24px;height:3px;margin-left:-12px;border-radius:0 0 3px 3px;background:var(--gold);transform:scaleX(0);transition:transform .25s var(--ease)}
+.nav-item.active::before{transform:scaleX(1)}
+.nav-item.active .nav-icon{animation:pop .32s var(--spring)}
+.nav-item:active .nav-icon{transform:scale(.9)}
+/* press feedback */
+.btn-gold,.btn-out,.btn-muted,.chip,.ci-btn,.d7-d,.empty-btn,.toast-act,.seg button{transition:transform .12s var(--ease),background .15s,border-color .15s,filter .15s,color .15s}
+.btn-gold:active,.btn-out:active,.btn-muted:active,.empty-btn:active{transform:scale(.97)}
+.chip:active,.d7-d:active,.seg button:active{transform:scale(.95)}
+.ci-btn.sel .face{animation:pop .34s var(--spring)}
+/* bottom sheets slide up, backdrop fades */
+.modal-ov.open{animation:ovIn .2s ease-out}
+.modal-ov.open .modal{animation:sheetUp .34s var(--ease)}
+.modal::before{content:"";display:block;width:36px;height:4px;margin:-10px auto 14px;border-radius:2px;background:var(--bdr)}
+/* things that open: content eases in */
+.log-sec.open .log-body{animation:rise .26s var(--ease)}
+details[open]>*:not(summary){animation:rise .26s var(--ease)}
+.d7-det{animation:rise .2s var(--ease)}
+/* toast: springy, with a drawn tick on success */
+#toast{transition:opacity .2s,transform .35s var(--spring)}
+.t-ok{width:16px;height:16px;margin-right:6px;vertical-align:-3px;stroke:currentColor;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.t-ok path{stroke-dasharray:24;stroke-dashoffset:24}
+#toast.show .t-ok path{animation:tickDraw .35s .12s ease-out forwards}
+/* briefing loading: skeleton lines */
+.ins-loading{text-align:left;padding:8px 0 16px}
+.ins-loading::before{content:"";display:block;height:92px;margin-bottom:16px;border-radius:8px;animation:skPulse 1.6s ease-in-out infinite;
+  background:linear-gradient(var(--sur2),var(--sur2)) 0 0/55% 16px no-repeat,linear-gradient(var(--sur2),var(--sur2)) 0 30px/100% 12px no-repeat,linear-gradient(var(--sur2),var(--sur2)) 0 54px/92% 12px no-repeat,linear-gradient(var(--sur2),var(--sur2)) 0 78px/70% 12px no-repeat}
+.ins-wait{animation:skPulse 1.6s ease-in-out infinite}
+/* small life in icons */
+.empty-icon .ui-i{animation:pop .5s var(--spring)}
+.streak-card .ui-i,.streak-ban .ui-i{transform-origin:50% 90%;animation:flick 2.4s ease-in-out 2}
+@media (prefers-reduced-motion:reduce){.t-ok path{stroke-dashoffset:0}}

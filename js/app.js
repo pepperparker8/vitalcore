@@ -25,7 +25,7 @@ function lgOpen(id){document.querySelectorAll('.log-sec.open').forEach(x=>x.clas
 function toggleWhy(id){$(id).classList.toggle('open');}
 let _toastT=null;
 let _toastAct=null;
-function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.innerHTML=esc(msg)+(act?` <button class="toast-act" onclick="toastDo()">${esc(act.label)}</button>`:'');t.classList.toggle('act',!!act);t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show','act'),act?7000:3200);}
+function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;const ok=/\b(saved|logged|restored|downloaded|exported|combined|healed|signed in)\b/i.test(msg)&&!/fail/i.test(msg);t.innerHTML=(ok?'<svg class="t-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 7"/></svg>':'')+esc(ok?msg.replace(/ ✓/,''):msg)+(act?` <button class="toast-act" onclick="toastDo()">${esc(act.label)}</button>`:'');t.classList.toggle('act',!!act);t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show','act'),act?7000:3200);}
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();

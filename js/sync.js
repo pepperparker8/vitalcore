@@ -156,7 +156,7 @@ async function syncAll(manual){
     }else if(manual&&!_auth)msgs.push('Nothing to sync yet — connect Intervals.icu or sign in in Settings');
     if(_auth&&!cloudErr){try{await pushAll();}catch(e){cloudErr=e;}}
   }finally{
-    _syncing=false;$('syncBtn').textContent=_auth?'SYNC':'SIGN IN';
+    _syncing=false;$('syncBtn').textContent=_auth?'Sync':'Sign in';
     updSyncStatus();recalc();refreshActive();
   }
   if(cloudErr)msgs.unshift(cloudErr.message==='Failed to fetch'?'Cloud unreachable — will retry':'Cloud: '+cloudErr.message);
@@ -173,7 +173,7 @@ function updSyncStatus(){
   else if(d.lastSync){c='--green';const m=Math.floor((Date.now()-new Date(d.lastSync))/60000);t=m<2?'Synced now':m<60?`Synced ${m}m ago`:m<1440?`Synced ${Math.round(m/60)}h ago`:'Synced';}
   else{c='--green';t='Cloud backup on';}
   const el=$('hdrStatus');el.textContent=t;el.style.setProperty('--dot',`var(${c})`);
-  $('syncBtn').textContent=_syncing?'…':_auth?'SYNC':'SIGN IN';
+  $('syncBtn').textContent=_syncing?'…':_auth?'Sync':'Sign in';
   const sb=$('signBan');if(sb)sb.classList.toggle('hidden',!!_auth||d.signBanOff||!d.onboardingDone);
 }
 
