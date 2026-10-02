@@ -74,8 +74,8 @@ function renderMonthly(){
   el.style.display='block';
   el.innerHTML=`<div class="sg-lbl">${mr.name.toUpperCase()} IN REVIEW</div><div class="rv-h">${r.ws.length} session${r.ws.length===1?'':'s'}${r.min?' · '+fmtDur(Math.round(r.min)):''}</div>
     <div class="rv-g rv-g2">${t('Sessions',r.ws.length,dl(r.ws.length,p.ws.length,''))}${t('Distance',Math.round(r.km)+' km',dl(Math.round(r.km),Math.round(p.km),' km'))}${t('Sleep',r.sleepMin!=null?fmtDur(Math.round(r.sleepMin)):'—',p.sleepMin!=null&&r.sleepMin!=null?dl(Math.round(r.sleepMin),Math.round(p.sleepMin),' min'):'')}${t('Readiness',r.ready!=null?r.ready:'—',r.ready!=null&&p.ready!=null?dl(r.ready,p.ready,''):'')}</div>
-    ${r.pr.length?`<div class="rv-pr">${UI.trophy}<b>New bests:</b> ${r.pr.slice(0,6).map(esc).join(' · ')}</div>`:''}
-    ${notes.map(n=>`<div class="set-note">${esc(n)}</div>`).join('')}
+    ${r.pr.length||notes.length?`<details class="fm-why"><summary>More about the month</summary>${r.pr.length?`<div class="rv-pr">${UI.trophy}<b>New bests:</b> ${r.pr.slice(0,6).map(esc).join(' · ')}</div>`:''}
+    ${notes.map(n=>`<div class="set-note">${esc(n)}</div>`).join('')}</details>`:''}
     <div class="rv-b"><button class="btn-out" style="margin:0" onclick="monthDone()">Got it</button></div>`;
 }
 function monthDone(){const d=S();d.profile.monthSeen=monthRange().key;save(d);markProfile();renderMonthly();}

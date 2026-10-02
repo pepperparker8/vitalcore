@@ -32,27 +32,19 @@ function renderVerdict(){
 function renderCoach(){
   const el=$('coachCard');if(!el)return;
   const d=S(),sc=calcReadiness();
-  if(sc===null){el.innerHTML='<div class="sec">Coach view</div><div class="empty-state" style="padding:8px 0"><div class="empty-title">Not enough to coach you yet</div><div class="empty-sub">Log last night\'s sleep or do a check-in and this page tells you whether to push, hold or rest.</div><button class="empty-btn" onclick="switchTab(\'today\')">Go to Today</button></div>';return;}
-  const fl=coachFlags(),bad=fl.filter(f=>f.hard).length,warn=fl.filter(f=>f.st==='warn'||f.st==='bad').length;
-  const lvl=sc<45||bad?'bad':sc<65||warn>=1?'warn':'ok';
-  const head={ok:['Train today','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady today','Train, but keep it controlled. Do not add extra load today.'],bad:['Rest today','Recovery is the priority. Easy movement or rest.']}[lvl];
-  const hd=verdictHead({lvl,head:[head[0].replace(/ today$/,''),head[1]]});
-  const ex=isExampleOnly(),n=daysLogged(14);
-  const basis=`<div class="set-note" style="margin:-4px 0 10px">${ex?'No data yet. Log sleep, check-ins and workouts to make this yours.':n<4?`Early estimate: only ${n} of the last 14 days have data.`:`Based on ${n} of the last 14 days with data.`}</div>`;
-  const sg=suggestWorkout(),pw=planWeek();
+  if(sc===null){el.innerHTML='<div class="sec">Things to watch</div><div class="empty-state" style="padding:8px 0"><div class="empty-title">Not enough to coach you yet</div><div class="empty-sub">Log last night\'s sleep or do a check-in and anything that needs your attention shows up here.</div><button class="empty-btn" onclick="switchTab(\'today\')">Go to Today</button></div>';return;}
+  const fl=coachFlags(),n=daysLogged(14),pw=planWeek();
+  const basis=`<div class="set-note" style="margin-top:10px">${n<4?`Early estimate: only ${n} of the last 14 days have data.`:`Based on ${n} of the last 14 days with data.`}</div>`;
   const dot=s=>`<span class="cc-d cc-${s}"></span>`;
   const row=(s,k,v)=>`<div class="cc-r">${dot(s)}<div class="cc-k">${k}</div><div class="cc-v">${v}</div></div>`;
   const wk=loadWeeks(),cw=wk[wk.length-1],pv=wk[wk.length-2];
   const lv=LD_M[_ldMetric][2];
   const rows=[
-    row(sc>=65?'ok':sc>=45?'warn':'bad','Readiness',`${sc} of 100`),
-    row(sg?'ok':'info','Today',sg?esc(sg.title):'Already trained today'),
     row(pw.planned?(pw.due&&pw.done<pw.due?'warn':'ok'):'info','Plan this week',pw.planned?`${pw.done} of ${pw.planned} done`:'No plan set'),
     row(cw&&pv&&pv.total&&cw.total>pv.total*1.25?'warn':'ok','Load this week',cw?`${lv(cw.total)}${pv&&pv.total?` · last week ${lv(pv.total)}`:''}`:'—')
   ].join('');
-  el.innerHTML=`<div class="cc-h cc-${lvl}"><div class="cc-t">${hd[0]}</div><div class="cc-s">${hd[1]}</div></div>${basis}${rows}
-   <div class="sec" style="margin-top:14px">Things to watch</div>${fl.length?fl.map(f=>`<div class="cc-f">${dot(f.st)}<div><b>${esc(f.t)}</b><div class="set-note" style="margin:2px 0 0">${esc(f.a)}</div></div></div>`).join(''):'<div class="set-note">Nothing flagged. Your recovery numbers, load and injuries all look fine.</div>'}
-   ${sg?`<details class="fm-why"><summary>Why this suggestion</summary><p>${esc(sg.why)}</p></details>`:''}`;
+  el.innerHTML=`<div class="sec">Things to watch</div>${fl.length?fl.map(f=>`<div class="cc-f">${dot(f.st)}<div><b>${esc(f.t)}</b><div class="set-note" style="margin:2px 0 0">${esc(f.a)}</div></div></div>`).join(''):'<div class="set-note">Nothing flagged. Your recovery numbers, load and injuries all look fine.</div>'}
+   <div style="margin-top:12px">${rows}</div>${basis}`;
 }
 
 function isExampleOnly(){

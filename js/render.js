@@ -194,16 +194,6 @@ const mindOn=date=>S().checkins.find(x=>x.date===date)?.mindfulMin||0;
 const fmtIcu=w=>{const r=wIcu(w),x={};['hr','hrMax','kcal','elev'].forEach(k=>x[k]=Math.round(+r[k])||0);const o=[];if(x.hr)o.push('avg '+x.hr+' bpm'+(x.hrMax?', max '+x.hrMax:''));if(x.kcal)o.push(x.kcal+' kcal');if(x.elev)o.push(x.elev+' m climb');return o.join(' · ');};
 const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):'';
 const trainOn=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);
-function renderWeekTrends(){
-  const mood=seriesFor(7,moodOn),mind=seriesFor(7,mindOn),train=seriesFor(7,trainOn);
-  const mv=mood.filter(x=>x.v),avgM=mv.length?Math.round(mv.reduce((a,x)=>a+x.v,0)/mv.length):0;
-  const tm=mind.reduce((a,x)=>a+x.v,0),tt=train.reduce((a,x)=>a+x.v,0),sessions=S().workouts.filter(w=>daysAgo(w.date)<7&&daysAgo(w.date)>=0).length;
-  const row=(t,s,b)=>`<div style="margin-bottom:14px"><div class="tr-head"><div class="tr-title">${t}</div><div class="tr-sum">${s}</div></div>${b}</div>`;
-  $('weekTrends').innerHTML=
-    row('Mood',avgM?`avg ${EM.mood[avgM]}`:'no check-ins yet',barsHTML(mood,'mood',4))+
-    row('Mindfulness',tm?fmtDur(tm)+' total':'none yet',barsHTML(mind,'mind',Math.max(15,...mind.map(x=>x.v))))+
-    row('Training',tt||sessions?`${sessions} session${sessions!==1?'s':''} · ${fmtDur(tt)}`:'none yet',barsHTML(train,'train',Math.max(30,...train.map(x=>x.v))));
-}
 function renderTLoad(){
   const d=S(),{ctl,atl,tsb}=d.intervalsData;
   if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
@@ -219,11 +209,6 @@ function renderActList(){
     else ws.forEach(w=>rows.push(wkRow(w)));
   }
   $('actList').innerHTML=dupHTML()+rows.join('');renderWkLog();
-  const tm=trainOn(t),mm=mindOn(t),wl=d.wellness[t]||d.wellness[dAgo(1)];
-  $('passActive').textContent=tm?fmtDur(tm):(d.workouts.some(w=>w.date===t)?'✓':'—');
-  $('passMind').textContent=mm?fmtDur(mm):'—';
-  $('passSteps').textContent=wl?.steps?wl.steps.toLocaleString():'—';
-  $('passStepsSrc').textContent=wl?.steps?'Intervals.icu':'connect Intervals.icu';
 }
 
 // ── RENDER: WELLBEING ────────────────────────────────────────────────────────

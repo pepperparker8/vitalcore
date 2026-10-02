@@ -108,10 +108,10 @@ function renderFuel(){
    <div class="set-note">About ${fuN(n.kcal)} kcal at ${n.kg} kg. Goal: ${FU_GOAL[n.goal]}.${n.carbLoad?' Extra carbs today to fill up before your race.':''}${age>30?` Weight was last logged ${age} days ago.`:''}</div>
    ${fuEatenHTML(n)}
    ${n.week&&n.week.low?blk('You may be eating too little',`Over your last ${n.week.days} logged days you ate about ${fuN(n.week.eaten)} kcal a day against an estimated ${fuN(n.week.burn)} used. That slows recovery. Add a serving of carbs around training.`):''}
+   <details class="fm-why"><summary>Session fuelling and food portions</summary>
    ${x?blk(`${x.tom?'Before tomorrow\'s':'Before today\'s'} ${esc(x.name.toLowerCase())}`,`${x.night?x.night+' ':''}${esc(x.before)}`)+(x.simple?'':blk('During it',esc(x.during))):''}
    ${n.after?blk(n.done?'After today\'s session':'After the session',`About ${n.after.p} g protein and ${n.after.c} g carbs within an hour. For example ${esc(n.after.ex[0])}, or ${esc(n.after.ex[1])}.`):''}
-   <details class="fm-why"><summary>What that looks like in food</summary>
-   <p>Split the day over four servings. One serving is any one of these, for each row:</p>${food('p','Protein')}${food('c','Carbs')}${food('f','Fat')}
+   <p style="margin-top:12px"><b>What that looks like in food.</b> Split the day over four servings. One serving is any one of these, for each row:</p>${food('p','Protein')}${food('c','Carbs')}${food('f','Fat')}
    <p>Protein follows your body weight and carbs follow how much you train today. Fat fills the rest of your estimated energy use: about ${fuN(n.burn.rest)} kcal for resting and daily living plus about ${fuN(n.burn.train)} kcal of training${n.burn.planned?', counting today\'s planned session':''}. The app has no all-day activity data, so treat this as a rough guide.</p>
    <p>These are general sports nutrition ranges, not medical advice, and they do not use your blood results. Change the goal in Settings.</p></details>`;
 }

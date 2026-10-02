@@ -71,12 +71,7 @@ function renderGoal(){
   else{
     big=r.n+(r.n===1?' day':' days');
     sub=`<b>${r.k}${r.min?' phase':''}.</b> ${r.tip}`;
-    const L=raceLoad();
-    if(L.base){
-      const tg=stWeek().target||Math.max(5,Math.round(L.base*r.mult/5)*5),pc=Math.min(100,Math.round(L.now/tg*100));
-      extra=`<div class="gl-bar"><div style="width:${pc}%"></div></div><div class="gl-t">This week: ${fmtDur(Math.round(L.now))} of about ${fmtDur(tg)} target${r.mult<1?' (reduced for '+r.k.toLowerCase()+')':''}</div>`;
-    }else extra='<div class="gl-t">Log 2 or more full weeks and a weekly time target will appear here.</div>';
-    extra+=`<div class="gl-ph">${RACE_PH.map((x,i)=>`<span class="${i===r.idx?'on':i<r.idx?'past':''}">${x.k}</span>`).join('')}</div>`;
+    extra=`<div class="gl-ph">${RACE_PH.map((x,i)=>`<span class="${i===r.idx?'on':i<r.idx?'past':''}">${x.k}</span>`).join('')}</div>`;
   }
   el.style.display='';
   el.innerHTML=`<div class="gl-row"><div><div class="gl-n">${nm}</div><div class="gl-s">${sub}</div></div><div class="gl-big">${big}</div></div>${extra}`;
