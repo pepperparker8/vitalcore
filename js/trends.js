@@ -62,8 +62,8 @@ function renderLoad(){
   const sel=_ldSel==null?wk.length-1:_ldSel,cur=wk[sel];
   el.innerHTML=`<div class="sec">Training load by week</div>
     <div class="ld-seg">${seg('m',[['min','Time'],['km','Distance'],['n','Sessions']])}</div><div class="ld-seg">${seg('w',[[4,'4 wk'],[8,'8 wk'],[12,'12 wk']])}</div>
-    <div class="ld-bars">${(()=>{const mx=Math.max(...wk.map(x=>x.total))||1;return wk.map((x,i)=>`<button class="ld-b${i===sel?' sel':''}${x.jump?' hot':''}" onclick="_ldSel=${i};renderLoad()" aria-label="Week of ${x.start}"><span class="ld-bar" style="height:calc((100% - 16px) * ${Math.max(0.02,x.total/mx).toFixed(3)})"></span><span class="ld-l">${x.start.slice(5).replace('-','/')}</span></button>`).join('');})()}</div>
-    <div class="ld-det"><div class="ld-t">Week of ${cur.start} · <b>${fm(cur.total)}</b>${sel===wk.length-1?' (so far)':''}</div>
-      ${Object.entries(cur.by).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<div class="hist-row"><span>${ICON[t]||''} ${t}</span><span class="hist-val">${fm(v)}</span></div>`).join('')||'<div class="set-note">Nothing logged this week.</div>'}
+    <div class="ld-bars">${(()=>{const mx=Math.max(...wk.map(x=>x.total))||1;return wk.map((x,i)=>`<button class="ld-b${i===sel?' sel':''}${x.jump?' hot':''}" onclick="_ldSel=${i};renderLoad()" aria-label="Week of ${fmtD(x.start)}"><span class="ld-bar" style="height:calc((100% - 16px) * ${Math.max(0.02,x.total/mx).toFixed(3)})"></span><span class="ld-l">${+x.start.slice(8)}/${+x.start.slice(5,7)}</span></button>`).join('');})()}</div>
+    <div class="ld-det"><div class="ld-t">Week of ${fmtD(cur.start)} · <b>${fm(cur.total)}</b>${sel===wk.length-1?' (so far)':''}</div>
+      ${Object.entries(cur.by).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<div class="hist-row"><span>${ICON[t]||''} ${esc(t)}</span><span class="hist-val">${fm(v)}</span></div>`).join('')||'<div class="set-note">Nothing logged this week.</div>'}
       ${cur.jump?`<div class="dg-out"><b>Big jump</b><br>${cur.jump}% above your recent weekly average. Sudden increases raise injury risk. Keep the next week similar or easier.</div>`:cur.base?`<div class="set-note">Recent weekly average: ${fm(cur.base)}.</div>`:''}</div>`;
 }

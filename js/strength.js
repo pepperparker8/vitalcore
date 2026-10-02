@@ -79,7 +79,7 @@ function strPick(){
   const inSess=new Set(_sess.map(e=>e.ex)),rec=recentEx(_selEx);
   const order=[...rec.map(n=>all.find(e=>e.name===n)),...all.filter(e=>!rec.includes(e.name))].filter(e=>e&&!inSess.has(e.name)&&(!ql||e.name.toLowerCase().includes(ql)));
   _pickList=order.slice(0,ql?12:10);
-  let html=_pickList.map((e,i)=>`<button class="str-chip" onclick="pickEx(${i})">${esc(e.name)}<small>${e.muscle}</small></button>`).join('');
+  let html=_pickList.map((e,i)=>`<button class="str-chip" onclick="pickEx(${i})">${esc(e.name)}<small>${esc(e.muscle)}</small></button>`).join('');
   if(q&&!all.some(e=>e.name.toLowerCase()===ql)){
     html+=`<div style="width:100%;font-size:11px;color:var(--t2);margin-top:4px">Add “${esc(q)}” as a new exercise for:</div>`;
     if(_selEx==='Calisthenics')html+=`<button class="str-chip ${_customHold?'on':''}" onclick="_customHold=!_customHold;strPick()">⏱ timed hold</button>`;

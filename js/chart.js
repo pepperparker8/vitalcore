@@ -112,5 +112,6 @@ function chReadout(id){
     return`<div class="vc-v"><span class="vc-dot" style="background:${cssv(s.color)}"></span><span class="vc-n">${esc(s.name)}</span><span class="vc-x">${p?(s.fmt?s.fmt(p.v):cfg.yfmt?cfg.yfmt(p.v):Math.round(p.v*10)/10):'—'}</span></div>`;}).join('');
   host.querySelector('.vc-ro').innerHTML=`<div class="vc-date">${lab}</div><div class="vc-vals">${cells}</div>`;
   const ex=st.hover!=null&&cfg.extra?cfg.extra(ND(st.hover)):'';
-  host.querySelector('.vc-sub').textContent=ex||(st.hover==null?'Drag to move, pinch to zoom, tap to inspect a day.':'');
+  const sub=host.querySelector('.vc-sub'),first=(host.closest('.page')||document).querySelector('.vc-sub')===sub;
+  sub.textContent=ex||(st.hover==null&&first?'Drag to move, pinch to zoom, tap to inspect a day.':'');
 }

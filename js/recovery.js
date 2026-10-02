@@ -48,7 +48,7 @@ function recoveryDrivers(){
     out.push({k:'resp',label:'Breathing rate (asleep)',val:pv.v.toFixed(1)+' /min',base:`usual ${b.toFixed(1)} /min`,delta:-df,st:df<=1?'ok':df<=2?'warn':'bad',
       txt:df<=1?'Breathing rate is normal.':`Breathing rate is ${df.toFixed(1)} breaths a minute above usual. This can be an early sign of illness, a hard day or poor recovery.`});
   }
-  const goal=Math.round((d.profile.sleepGoal||7.5)*60),sl=d.sleepLogs.find(s=>s.durMin&&daysAgo(s.date)<=1);
+  const goal=Math.round((d.profile.sleepGoal||7.5)*60),sl=last(d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<=1));
   if(sl){
     const df=sl.durMin-goal;
     out.push({k:'sleep',label:'Last night',val:fmtDur(sl.durMin),base:`goal ${fmtDur(goal)}`,delta:df,st:df>=-20?'ok':df>=-60?'warn':'bad',
@@ -86,6 +86,6 @@ function renderRecovery(){
     el.innerHTML=`<div class="rc-lbl">RECOVERY</div><div class="set-note">Recovery drivers appear once you have a week of sleep durations, or HRV and resting heart rate from Intervals.icu. Log time asleep in the Log tab.</div>`;return;
   }
   const bad=dr.filter(x=>x.st==='bad').length,warn=dr.filter(x=>x.st==='warn').length;
-  const head=bad?'Your body is asking for recovery.':warn?'Mostly fine, watch a couple of things.':'Recovery signals look good.';
+  const head=bad>=2?'Your body is asking for recovery.':bad?'Mostly fine, one thing needs attention.':warn?'Mostly fine, watch a couple of things.':'Recovery signals look good.';
   el.innerHTML=`<div class="rc-lbl">RECOVERY</div><div class="rc-head">${head}</div>`+dr.map(x=>`<details class="rc-row"><summary><span class="rc-dot ${x.st}"></span><span class="rc-name">${x.label}</span><span class="rc-val">${x.val}</span></summary><div class="rc-more"><b>${x.base}</b><br>${esc(x.txt)}</div></details>`).join('');
 }

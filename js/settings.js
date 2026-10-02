@@ -26,11 +26,11 @@ function saveSettings(){
   d.profile.height=+$('sHeight').value||170;d.profile.age=+$('sAge').value||37;
   d.profile.sleepGoal=(+$('sSlpH').value||7)+(+$('sSlpM').value||0)/60;
   d.profile.remind={on:$('sRemOn').value==='1',time:/^\d\d:\d\d$/.test($('sRemT').value)?$('sRemT').value:'19:00'};
-  d.profile.wtGoal=+$('sWt').value||72;d.profile.nutGoal=$('sNut').value;d.profile.sex=$('sSex').value;d.profile.stepGoal=+$('sSteps').value||8000;d.profile.hrGoal=+$('sHR').value||55;
+  d.profile.wtGoal=+$('sWt').value||null;d.profile.nutGoal=$('sNut').value;d.profile.sex=$('sSex').value;d.profile.stepGoal=+$('sSteps').value||8000;d.profile.hrGoal=+$('sHR').value||55;
   d.profile.goalName=$('sGoalName').value.trim();d.profile.goalDate=$('sGoalDate').value;
   const icuChanged=d.intervalsKey!==$('sInterKey').value.trim()||d.intervalsID!==$('sInterID').value.trim();
   d.claudeKey=$('sClaudeKey').value.trim();d.intervalsKey=$('sInterKey').value.trim();d.intervalsID=$('sInterID').value.trim();
-  save(d);markProfile();closeSettings();renderGreeting();renderGoal();renderFuel();renderRemind();showToast('Settings saved');
+  save(d);markProfile();closeSettings();renderGreeting();renderGoal();renderFuel();renderRemind();refreshAll();showToast('Settings saved');
   if(icuChanged&&d.intervalsKey&&d.intervalsID)syncAll(true);
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}

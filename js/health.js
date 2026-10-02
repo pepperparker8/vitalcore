@@ -63,7 +63,7 @@ function renderHealth(){
     baseRow('Resting heart rate',baseline('hr',30),'bpm',Math.round,true)+
     baseRow('Weight',baseline('weight',30),'kg',r1,null)+
     (bp?`<div class="hist-row"><span>Blood pressure</span><span class="hist-val">${bp.cur.bpSys}/${bp.cur.bpDia} mmHg${bp.avgS!==null?`<small style="color:var(--t2)"> · avg ${Math.round(bp.avgS)}/${Math.round(bp.avgD)}</small>`:''}</span></div>`:baseRow('Blood pressure',null,''))+
-    (goal&&last(d.measurements.filter(m=>m.weight))?`<div class="hist-row"><span>Weight goal</span><span class="hist-val">${goal} kg<small style="color:var(--t2)">${r1(last(d.measurements.filter(m=>m.weight)).weight-goal)>0?r1(last(d.measurements.filter(m=>m.weight)).weight-goal)+' kg to lose':'reached'}</small></span></div>`:'');
+    (goal&&last(d.measurements.filter(m=>m.weight))?`<div class="hist-row"><span>Weight goal</span><span class="hist-val">${goal} kg<small style="color:var(--t2)">${(df=>Math.abs(df)<0.5?' · reached':` · ${r1(Math.abs(df))} kg to ${df>0?'lose':'gain'}`)(last(d.measurements.filter(m=>m.weight)).weight-goal)}</small></span></div>`:'');
   if(!d.measurements.length)$('hBase').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No measurements yet</div><div class="empty-sub">Log weight, blood pressure or resting heart rate and your personal baseline builds here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lMeas\')">Add a measurement</button></div>';
 
   const bl=d.bloodLogs.slice().sort((a,b)=>a.date<b.date?-1:1);
@@ -76,15 +76,15 @@ function renderHealth(){
       const cur=last(pts),s=scoreBM(cur[k],k),prev=pts.length>1?pts[pts.length-2]:null;
       const mx=Math.max(...pts.map(p=>p[k]))||1;
       const dif=prev?r1(cur[k]-prev[k]):null;
-      const bars=pts.map(p=>{const ss=scoreBM(p[k],k);return`<div class="bt-c"><div class="bt-v">${p[k]}</div><div class="bt-b" style="height:${Math.round(p[k]/mx*44)+4}px;background:${stCol(ss.status)}"></div><div class="bt-d">${p.date.slice(2,7).replace('-','/')}</div></div>`;}).join('');
+      const bars=pts.map(p=>{const ss=scoreBM(p[k],k);return`<div class="bt-c"><div class="bt-v">${p[k]}</div><div class="bt-b" style="height:${Math.round(p[k]/mx*44)+4}px;background:${stCol(ss.status)}"></div><div class="bt-d">${new Date(p.date+'T12:00:00').toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}</div></div>`;}).join('');
       return`<div class="bt-card"><div class="bt-h"><div><div class="bm-name">${name}</div><div class="bm-unit">Reference: ${ref}</div></div><div style="text-align:right"><div class="bt-now" style="color:${stCol(s.status)}">${cur[k]}</div><div class="bt-st" style="color:${stCol(s.status)}">${stTxt(s.status)}</div></div></div>
-        <div class="bt-row">${bars}</div>${dif!==null?`<div class="set-note" style="margin-top:6px">${dif===0?'Unchanged':(dif>0?'Up ':'Down ')+Math.abs(dif)} since ${prev.date}.</div>`:'<div class="set-note" style="margin-top:6px">First result. Add another test to see the change.</div>'}
+        <div class="bt-row">${bars}</div>${dif!==null?`<div class="set-note" style="margin-top:6px">${dif===0?'Unchanged':(dif>0?'Up ':'Down ')+Math.abs(dif)} since ${fmtD(prev.date)}.</div>`:'<div class="set-note" style="margin-top:6px">First result. Add another test to see the change.</div>'}
         <button class="bt-more" id="btb_${k}" onclick="toggleBT('${k}')">Trend & what moves it ▾</button>
         <div class="bt-panel" id="btp_${k}"><canvas id="btc_${k}" style="width:100%;height:150px;display:block"></canvas><div class="set-note" style="margin-top:8px">${pts.length<2?'One result so far. The chart becomes useful after your second test. ':'Green band is the reference range. '}${BM_NOTE[k]}</div></div></div>`;
     }).join('')+'<div class="set-note">Reference ranges are general adult guides. Your doctor decides what is right for you.</div>';
   }
   const inj=d.injuries.filter(i=>i.active);
-  $('hInj').innerHTML=inj.length?inj.map(i=>`<div class="hist-row"><span>${esc(i.part)}</span><span class="hist-val">severity ${i.sev}/3 · since ${i.date}</span></div>`).join(''):'<div style="font-size:12px;color:var(--t3)">No active injuries. Add or heal them in the Log tab.</div>';
+  $('hInj').innerHTML=inj.length?inj.map(i=>`<div class="hist-row"><span>${esc(i.part)}</span><span class="hist-val">severity ${i.sev}/3 · since ${fmtD(i.date)}</span></div>`).join(''):'<div style="font-size:12px;color:var(--t3)">No active injuries. Add or heal them in the Log tab.</div>';
 }
 
 // ── report: a clean one-page summary the user can save as PDF ────────────────
@@ -103,14 +103,14 @@ function buildReport(days=30){
   sec+=`<h3>Recovery</h3><table>${dm.length?row('Average time asleep',`${fmtDur(Math.round(avg(dm)))} (goal ${fmtDur(goal)}, ${pl(dm.length,'night')})`)+row('Nights under goal by 1h+',`${dm.filter(m=>m<goal-60).length} of ${dm.length}`):''}${hv.length?row('HRV',`avg ${Math.round(avg(hv))} ms, range ${Math.round(Math.min(...hv))}–${Math.round(Math.max(...hv))}`):''}${rh.length?row('Resting HR (wearable)',`avg ${Math.round(avg(rh))} bpm, range ${Math.round(Math.min(...rh))}–${Math.round(Math.max(...rh))}`):''}${!dm.length&&!hv.length&&!rh.length?row('No sleep duration or HRV data',''):''}</table>`;
   const by={};ws.forEach(w=>{const b=by[w.type]=by[w.type]||{n:0,min:0,km:0,sets:0};b.n++;b.min+=w.durMin||0;b.km+=w.distKm||0;b.sets+=(w.sets||[]).filter(isWork).length;});
   sec+=`<h3>Training</h3><table>${Object.keys(by).length?Object.entries(by).map(([t,b])=>row(t,`${pl(b.n,'session')}${b.sets?`, ${pl(b.sets,'set')}`:`, ${fmtDur(b.min)}`}${b.km?`, ${t==='Swim'?Math.round(b.km*1000)+' m':r1(b.km)+' km'}`:''}`)).join(''):row('No workouts logged','')}${d.intervalsData.ctl!=null?row('Fitness / fatigue / form (Intervals.icu)',`${d.intervalsData.ctl} / ${d.intervalsData.atl} / ${d.intervalsData.tsb>0?'+':''}${d.intervalsData.tsb}`):''}</table>`;
-  if(typeof planWeek==='function'){const pw=planWeek();if(pw.planned)sec+=`<h3>Weekly plan</h3><table>${row('Sessions planned this week',pw.planned)}${row('Done so far',`${pw.done}${pw.due?` (${Math.round(pw.days.filter(x=>x.p&&x.p.type!=='Rest'&&x.dt<=td()&&x.st==='done').length/pw.due*100)}% of those due)`:''}`)}${row('Plan',pw.days.map(x=>PL_DAYS[x.i]+' '+(x.p?x.p.type+(x.p.note?' ('+esc(x.p.note)+')':''):'—')).join(', '))}</table>`;}
+  if(typeof planWeek==='function'){const pw=planWeek();if(pw.planned)sec+=`<h3>Weekly plan</h3><table>${row('Sessions planned this week',pw.planned)}${row('Done so far',`${pw.done}${pw.due?` (${Math.round(pw.days.filter(x=>x.p&&x.p.type!=='Rest'&&x.dt<=td()&&x.st==='done').length/pw.due*100)}% of those due)`:''}`)}${row('Plan',pw.days.map(x=>PL_DAYS[x.i]+' '+(x.p?esc(x.p.type)+(x.p.note?' ('+esc(x.p.note)+')':''):'—')).join(', '))}</table>`;}
   const m=k=>ci.length?r1(avg(ci.map(c=>c[k]))):null;
   const mind=d.checkins.filter(rng).reduce((a,c)=>a+(c.mindfulMin||0),0);
   sec+=`<h3>Mind (1 = low, 4 = high)</h3><table>${ci.length?row('Check-ins',pl(ci.length,'day'))+row('Mood / energy / motivation',`${m('mood')} / ${m('energy')} / ${m('motivation')}`)+row('Calm (4 = very calm)',r1(5-m('stress'))):row('No check-ins','')}${row('Mindfulness',mind?`${fmtDur(mind)} total`:'none logged')}</table>`;
   const bls=d.bloodLogs.slice().sort((a,b)=>a.date<b.date?-1:1).slice(-4);
-  sec+=`<h3>Blood results${bls.length?' (latest '+last(bls).date+')':''}</h3><table>${bls.length?BM.filter(([,k])=>bls.some(b=>b[k])).map(([n,k,ref])=>{const pts=bls.filter(b=>b[k]),c=last(pts),s=scoreBM(c[k],k),pv=pts.length>1?pts[pts.length-2]:null;return row(n,`${pts.map(b=>b[k]).join(' → ')} mg/dL — ${stTxt(s.status)} (ref ${ref})${pv?`, ${c[k]>pv[k]?'up':c[k]<pv[k]?'down':'unchanged'} since ${pv.date}`:''}`);}).join(''):row('No results logged','')}</table>`;
+  sec+=`<h3>Blood results${bls.length?' (latest '+fmtD(last(bls).date)+')':''}</h3><table>${bls.length?BM.filter(([,k])=>bls.some(b=>b[k])).map(([n,k,ref])=>{const pts=bls.filter(b=>b[k]),c=last(pts),s=scoreBM(c[k],k),pv=pts.length>1?pts[pts.length-2]:null;return row(n,`${pts.map(b=>b[k]).join(' → ')} mg/dL — ${stTxt(s.status)} (ref ${ref})${pv?`, ${c[k]>pv[k]?'up':c[k]<pv[k]?'down':'unchanged'} since ${pv.date}`:''}`);}).join(''):row('No results logged','')}</table>`;
   const inj=d.injuries.filter(i=>i.active);
-  sec+=`<h3>Active injuries</h3><table>${inj.length?inj.map(i=>row(esc(i.part),`severity ${i.sev}/3 since ${i.date}${i.notes?' — '+esc(i.notes):''}`)).join(''):row('None','')}</table>`;
+  sec+=`<h3>Active injuries</h3><table>${inj.length?inj.map(i=>row(esc(i.part),`severity ${i.sev}/3 since ${fmtD(i.date)}${i.notes?' — '+esc(i.notes):''}`)).join(''):row('None','')}</table>`;
   const p=d.profile;
   return`<div class="rp-head"><div><div class="rp-t">Health summary${name?' — '+esc(name):''}</div><div class="rp-s">Last ${days} days · generated ${td()}${p.age?' · age '+p.age:''}${p.height?' · '+p.height+' cm':''}</div></div><button class="rp-x" onclick="closeReport()">×</button></div>${sec}<div class="rp-f">Self-tracked with VitalCore. Not a medical record.</div>`;
 }

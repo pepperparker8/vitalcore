@@ -17,11 +17,17 @@ function coachVerdict(){
   const head={ok:['Train','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady','Train, but keep it controlled. Do not add extra load today.'],bad:['Rest','Recovery is the priority. Easy movement or rest.']}[lvl];
   return{lvl,head,sc};
 }
+// true when today's prescription is rest and nothing has been logged
+function restToday(){try{const s=typeof strategy==='function'?strategy():null,d0=s&&s.days&&s.days[0];return !!(d0&&d0.role==='rest'&&!S().workouts.some(w=>w.date===td()));}catch(e){return false;}}
+function verdictHead(v){
+  if(v.lvl!=='bad'&&restToday())return['Rest day',v.lvl==='ok'?'Rest is planned for today. You are recovered, so the next session should feel good.':'Rest is planned for today, and your body can use it.'];
+  return[v.head[0]+' today',v.head[1]];
+}
 function renderVerdict(){
   const el=$('verdictCard');if(!el)return;
   const v=coachVerdict();if(!v){el.style.display='none';return;}
   el.style.display='block';el.className='cc-h cc-'+v.lvl;
-  el.innerHTML=`<div class="cc-t">${v.head[0]} today</div><div class="cc-s">${v.head[1]}</div>`;
+  const vh=verdictHead(v);el.innerHTML=`<div class="cc-t">${vh[0]}</div><div class="cc-s">${vh[1]}</div>`;
 }
 function renderCoach(){
   const el=$('coachCard');if(!el)return;
@@ -30,8 +36,9 @@ function renderCoach(){
   const fl=coachFlags(),bad=fl.filter(f=>f.hard).length,warn=fl.filter(f=>f.st==='warn'||f.st==='bad').length;
   const lvl=sc<45||bad?'bad':sc<65||warn>=1?'warn':'ok';
   const head={ok:['Train today','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady today','Train, but keep it controlled. Do not add extra load today.'],bad:['Rest today','Recovery is the priority. Easy movement or rest.']}[lvl];
+  const hd=verdictHead({lvl,head:[head[0].replace(/ today$/,''),head[1]]});
   const ex=isExampleOnly(),n=daysLogged(14);
-  const basis=`<div class="set-note" style="margin:-4px 0 10px">${ex?'Based on example data. Log your own sleep, check-ins and workouts to make this yours.':n<4?`Early estimate: only ${n} of the last 14 days have data.`:`Based on ${n} of the last 14 days with data.`}</div>`;
+  const basis=`<div class="set-note" style="margin:-4px 0 10px">${ex?'No data yet. Log sleep, check-ins and workouts to make this yours.':n<4?`Early estimate: only ${n} of the last 14 days have data.`:`Based on ${n} of the last 14 days with data.`}</div>`;
   const sg=suggestWorkout(),pw=planWeek();
   const dot=s=>`<span class="cc-d cc-${s}"></span>`;
   const row=(s,k,v)=>`<div class="cc-r">${dot(s)}<div class="cc-k">${k}</div><div class="cc-v">${v}</div></div>`;
@@ -43,7 +50,7 @@ function renderCoach(){
     row(pw.planned?(pw.due&&pw.done<pw.due?'warn':'ok'):'info','Plan this week',pw.planned?`${pw.done} of ${pw.planned} done`:'No plan set'),
     row(cw&&pv&&pv.total&&cw.total>pv.total*1.25?'warn':'ok','Load this week',cw?`${lv(cw.total)}${pv&&pv.total?` · last week ${lv(pv.total)}`:''}`:'—')
   ].join('');
-  el.innerHTML=`<div class="cc-h cc-${lvl}"><div class="cc-t">${head[0]}</div><div class="cc-s">${head[1]}</div></div>${basis}${rows}
+  el.innerHTML=`<div class="cc-h cc-${lvl}"><div class="cc-t">${hd[0]}</div><div class="cc-s">${hd[1]}</div></div>${basis}${rows}
    <div class="sec" style="margin-top:14px">Things to watch</div>${fl.length?fl.map(f=>`<div class="cc-f">${dot(f.st)}<div><b>${esc(f.t)}</b><div class="set-note" style="margin:2px 0 0">${esc(f.a)}</div></div></div>`).join(''):'<div class="set-note">Nothing flagged. Your recovery numbers, load and injuries all look fine.</div>'}
    ${sg?`<details class="fm-why"><summary>Why this suggestion</summary><p>${esc(sg.why)}</p></details>`:''}`;
 }
@@ -58,4 +65,4 @@ function daysLogged(n){
   Object.keys(d.wellness||{}).forEach(k=>{if(daysAgo(k)<n)set.add(k);});
   return set.size;
 }
-function renderExTag(){const l=document.querySelector('.ring-lbl');if(l)l.textContent=isExampleOnly()?'EXAMPLE':'READY';}
+function renderExTag(){const l=document.querySelector('.ring-lbl');if(l)l.textContent='READY';}

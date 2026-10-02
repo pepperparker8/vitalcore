@@ -10,7 +10,7 @@ function digestWeek(from,to){
     km:ws.filter(w=>w.type!=='Swim').reduce((a,w)=>a+(w.distKm||0),0),
     swimM:ws.filter(w=>w.type==='Swim').reduce((a,w)=>a+(w.distKm||0)*1000,0),
     sets:ws.reduce((a,w)=>a+(w.sets||[]).filter(isWork).length,0),
-    sleep:A(sl.map(s=>s.score)),nSleep:sl.length,
+    sleep:A(sl.map(s=>s.score)),nSleep:d.sleepLogs.filter(In).filter(s=>s.score||s.durMin).length,
     mood:A(ci.map(c=>c.mood)),energy:A(ci.map(c=>c.energy)),calm:A(ci.map(c=>5-c.stress)),nCi:ci.length,
     mindful:d.checkins.filter(In).reduce((a,c)=>a+(c.mindfulMin||0),0),
     sleepMin:A(d.sleepLogs.filter(In).filter(s=>s.durMin).map(s=>s.durMin)),
@@ -47,9 +47,10 @@ function renderDigest(){
   if(t.sleepMin!=null)h+=row('Time asleep (avg)',fmtDur(Math.round(t.sleepMin)),dl(t.sleepMin,p.sleepMin,m=>fmtDur(Math.round(m)),true));
   if(t.hrv!=null)h+=row('HRV (avg)',n0(t.hrv)+' ms',dl(t.hrv,p.hrv,n0,true));
   if(t.rhr!=null)h+=row('Resting HR (avg)',n0(t.rhr)+' bpm',dl(t.rhr,p.rhr,r1,false));
-  h+=row('Mood (1–4)',t.mood!=null?r1(t.mood):'—',dl(t.mood,p.mood,r1,true));
-  h+=row('Energy (1–4)',t.energy!=null?r1(t.energy):'—',dl(t.energy,p.energy,r1,true));
-  h+=row('Calm (4 = very calm)',t.calm!=null?r1(t.calm):'—',dl(t.calm,p.calm,r1,true));
+  const wd=(k,v)=>v!=null?(EM[k][Math.round(v)]||'—'):'—',tr=(v,pv)=>v==null||pv==null||Math.abs(v-pv)<0.3?'':`<span class="dg-d" style="color:var(--${v>pv?'green':'amber'})">${v>pv?'▲ better':'▼ worse'}</span>`;
+  h+=row('Mood',wd('mood',t.mood),tr(t.mood,p.mood));
+  h+=row('Energy',wd('energy',t.energy),tr(t.energy,p.energy));
+  h+=row('Stress',t.calm!=null?wd('stress',5-t.calm):'—',tr(t.calm,p.calm));
   h+=row('Mindfulness',t.mindful?fmtDur(t.mindful):'—',dl(t.mindful,p.mindful,m=>fmtDur(Math.round(m)),true));
   if(t.weight!=null)h+=row('Weight',t.weight+' kg');
   const notes=[];

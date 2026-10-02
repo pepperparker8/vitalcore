@@ -30,13 +30,13 @@ function setGauge(id,numId,frac,txt){
 function renderGauges(){
   const d=S(),load=dayLoad(td()),st=strainOf(load),tg=strainTarget();
   setGauge('strFill','strNum',st/21,load?st.toFixed(1):'0');
-  $('gStrSub').textContent=tg?`Aim ${tg[0]}–${tg[1]}`:'\u00a0';
+  $('gStrSub').textContent=!load&&restToday()?'Rest day':tg?`Aim ${tg[0]}–${tg[1]}`:'\u00a0';
   const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
   renderBed();renderFactors();renderSleepStages();renderDays7();renderWeekLoad();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
-  $('gRecSub').textContent=isExampleOnly()?'Example data':sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
+  $('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function readinessFactors(){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60,out=[];
@@ -98,7 +98,7 @@ function renderDay7Det(){
   if(!_d7Sel){el.style.display='none';return;}
   const d=S(),k=_d7Sel,dt=new Date(k+'T00:00:00'),v=(d.readHist||{})[k];
   const sl=d.sleepLogs.find(x=>x.date===k&&x.durMin),ws=d.workouts.filter(w=>w.date===k),ci=d.checkins.find(c=>c.date===k);
-  const parts=[v!=null?'Recovery '+v:'No recovery score',sl?'Sleep '+fmtDur(sl.durMin):'No sleep logged',ws.length?ws.map(w=>w.type+(w.durMin?' '+fmtDur(w.durMin):'')).join(', '):'No workout',ci&&ciFull(ci)?'Checked in':'No check-in'];
+  const parts=[v!=null?'Recovery '+v:'No recovery score',sl?'Sleep '+fmtDur(sl.durMin):'No sleep logged',ws.length?ws.map(w=>esc(w.type)+(w.durMin?' '+fmtDur(w.durMin):'')).join(', '):'No workout',ci&&ciFull(ci)?'Checked in':'No check-in'];
   el.style.display='';el.innerHTML=`<b>${dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</b> · ${parts.join(' · ')}`;
 }
 function renderWeekLoad(){
@@ -144,11 +144,13 @@ function renderZone(score){
 }
 function calcReadiness(){
   const d=S();
-  const sl=last(d.sleepLogs.filter(s=>s.score)),ci=last(d.checkins.filter(ciFull)),tsb=d.intervalsData.tsb;
+  // only the last three days count: an old night or check-in says nothing about today
+  const fresh=x=>daysAgo(x.date)<=2;
+  const sl=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s))),ci=last(d.checkins.filter(c=>ciFull(c)&&fresh(c))),tsb=d.intervalsData.tsb;
   if(!sl&&!ci&&tsb===null)return null;
   let s=70;
-  if(sl)s=sl.score*0.5+35;
-  if(tsb!=null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:-tsb*0.3)));
+  if(sl)s=slScore(sl)*0.5+35;
+  if(tsb!=null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:tsb*0.3)));
   if(ci){const psy=(ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100;s=s*0.7+psy*0.3;}
   s+=recoveryAdj();
   if(ci&&ci.soreness>=2)s-=(ci.soreness-1)*4;
@@ -175,7 +177,7 @@ function renderStreak(){
   const n=calcStreak(),act=activeDays();
   $('streakNum').textContent=n;
   $('streakTxt').textContent=n===1?'day streak':'day streak';
-  $('streakSub').textContent=n?(act.has(td())?'Nice — today is done':'Check in today to keep it alive'):'Check in or meditate today to start one';
+  $('streakSub').textContent=n?(act.has(td())?'Today is done':'Check in today to keep it alive'):'Check in or meditate today to start one';
   const L=['S','M','T','W','T','F','S'];
   $('wkStrip').innerHTML=[6,5,4,3,2,1,0].map(i=>{const dt=new Date();dt.setDate(dt.getDate()-i);const k=ymd(dt);return`<div class="wk-d"><div class="wk-dot ${act.has(k)?'on':''} ${i===0?'now':''}">✓</div>${L[dt.getDay()]}</div>`;}).join('');
 }
@@ -191,7 +193,6 @@ const moodOn=date=>{const c=S().checkins.find(x=>x.date===date);return c?.mood||
 const mindOn=date=>S().checkins.find(x=>x.date===date)?.mindfulMin||0;
 const fmtIcu=w=>{const r=wIcu(w),x={};['hr','hrMax','kcal','elev'].forEach(k=>x[k]=Math.round(+r[k])||0);const o=[];if(x.hr)o.push('avg '+x.hr+' bpm'+(x.hrMax?', max '+x.hrMax:''));if(x.kcal)o.push(x.kcal+' kcal');if(x.elev)o.push(x.elev+' m climb');return o.join(' · ');};
 const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):'';
-const wkDetail=w=>w.sets?setsText(w):'';
 const trainOn=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);
 function renderWeekTrends(){
   const mood=seriesFor(7,moodOn),mind=seriesFor(7,mindOn),train=seriesFor(7,trainOn);
@@ -207,11 +208,6 @@ function renderTLoad(){
   const d=S(),{ctl,atl,tsb}=d.intervalsData;
   if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
   else{$('tloadContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div class="sbar"><div class="sbar-lbl">FITNESS</div><div class="sbar-val" style="color:var(--teal)">${ctl}</div><div class="sbar-zone" style="color:var(--teal)">CTL</div></div><div class="sbar"><div class="sbar-lbl">FATIGUE</div><div class="sbar-val" style="color:var(--red)">${atl}</div><div class="sbar-zone" style="color:var(--amber)">${zL(atl,'atl')}</div></div><div class="sbar"><div class="sbar-lbl">FORM</div><div class="sbar-val" style="color:var(--green)">${tsb>0?'+':''}${tsb}</div><div class="sbar-zone" style="color:var(--green)">${zL(tsb,'tsb')}</div></div></div>`;}
-  $('sbLoad').textContent=ctl??'—';$('sbLoadZ').textContent=ctl?zL(ctl,'atl'):'—';$('sbLoadP').style.width=ctl?Math.min(100,ctl)+'%':'0';
-  const sl=last(d.sleepLogs.filter(s=>s.score));
-  $('sbSleep').textContent=sl?.score??'—';$('sbSleepZ').textContent=sl?zL(sl.score,'sleep'):'—';$('sbSleepP').style.width=sl?sl.score+'%':'0';
-  const fp=tsb!==null?Math.min(100,Math.max(0,(tsb+20)/40*100)):0;
-  $('sbFresh').textContent=tsb!==null?(tsb>0?'+':'')+tsb:'—';$('sbFreshZ').textContent=tsb!==null?zL(tsb,'tsb'):'—';$('sbFreshP').style.width=fp+'%';
   $('zATL').textContent=atl??'—';$('zATLd').textContent=atl!=null?`${atl} — ${zL(atl,'atl')} load.`:'Connect Intervals.icu to see fatigue.';
   $('zTSB').textContent=tsb!==null?(tsb>0?'+':'')+tsb:'—';$('zTSBd').textContent=tsb!==null?`${zL(tsb,'tsb')} — ${tsb>0?'Ready to perform.':'Carrying '+Math.abs(tsb)+' points of fatigue.'}`:'Connect Intervals.icu to see freshness.';
 }
@@ -252,9 +248,9 @@ function renderSleepBars(){
   const d=S(),L=['S','M','T','W','T','F','S'];let html='';
   for(let i=6;i>=0;i--){
     const date=dAgo(i),dt=new Date(date+'T12:00:00');
-    const sl=d.sleepLogs.find(s=>s.date===date),score=sl?.score||0,h=score?Math.round(score*0.56):4;
+    const sl=d.sleepLogs.find(s=>s.date===date),score=slScore(sl),h=score?Math.round(score*0.56):4;
     const col=score>=80?'var(--teal)':score>=65?'rgba(13,122,107,0.5)':'var(--bdr)';
-    html+=`<div class="sb-wrap" onclick="tapSB(this)"><div class="sb-tip">${L[dt.getDay()]} · ${score?score+'/100':'no data'}</div><div class="sb-bar" style="height:${h}px;background:${col}"></div><div class="sb-lbl">${L[dt.getDay()]}</div></div>`;
+    html+=`<div class="sb-wrap" onclick="tapSB(this)"><div class="sb-tip">${L[dt.getDay()]} · ${sl?.score?sl.score+'/100':sl?.durMin?fmtDur(sl.durMin):'no data'}</div><div class="sb-bar" style="height:${h}px;background:${col}"></div><div class="sb-lbl">${L[dt.getDay()]}</div></div>`;
   }
   $('sleepBars').innerHTML=html;
   const goal=Math.round((d.profile.sleepGoal||7.5)*60),wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7);
@@ -286,12 +282,12 @@ function sizeCanvas(c,H){
 }
 function renderWtChart(){
   const d=S(),host=$('wtCanvas');if(!host)return;
-  const all=d.measurements.filter(m=>m.weight).sort((a,b)=>a.date<b.date?-1:1),goal=d.profile.wtGoal||72,gl=$('wtGoalLine');
+  const all=d.measurements.filter(m=>m.weight).sort((a,b)=>a.date<b.date?-1:1),goal=d.profile.wtGoal||null,gl=$('wtGoalLine');
   if(all.length<2){host.innerHTML='';gl.textContent=all.length?`Current: ${all[0].weight} kg — log again to see a trend`:'Log your weight in the Log tab to see a trend';return;}
   const f1=v=>(Math.round(v*10)/10)+' kg';
-  mountChart('wtCanvas',{key:'wt',H:170,span:120,wide:true,yfmt:v=>Math.round(v*10)/10,ref:[{v:goal,label:'Goal '+goal}],series:[{pts:all.map(m=>({d:m.date,v:m.weight})),color:'--teal',name:'Weight',fmt:f1}]});
+  mountChart('wtCanvas',{key:'wt',H:170,span:120,wide:true,yfmt:v=>Math.round(v*10)/10,ref:goal?[{v:goal,label:'Goal '+goal}]:[],series:[{pts:all.map(m=>({d:m.date,v:m.weight})),color:'--teal',name:'Weight',fmt:f1}]});
   const l=all[all.length-1].weight;
-  gl.textContent=`Current: ${l.toFixed(1)} kg · Goal: ${goal} kg · ${l<=goal?'✓ At goal':(l-goal).toFixed(1)+' kg to go'}`;
+  gl.textContent=`Current: ${l.toFixed(1)} kg`+(goal?` · Goal: ${goal} kg · ${Math.abs(l-goal)<0.5?'At goal':Math.abs(l-goal).toFixed(1)+' kg to go'}`:'');
 }
 function calcBurnout(){
   const d=S(),cis=d.checkins.filter(ciFull).slice(-7);
@@ -299,14 +295,15 @@ function calcBurnout(){
   const avgS=cis.reduce((a,c)=>a+(5-c.stress),0)/cis.length,avgE=cis.reduce((a,c)=>a+c.energy,0)/cis.length,avgM=cis.reduce((a,c)=>a+c.mood,0)/cis.length;
   const psy=Math.round((avgS+avgE+avgM)/(4*3)*100);
   const{atl,tsb}=d.intervalsData;
-  const phys=Math.round(atl?Math.min(100,atl)/100*40+(tsb<-15?30:0):20);
-  const score=Math.max(0,Math.min(100,Math.round(100-psy*0.6-phys*0.4)));
+  // both halves are "how well you are coping" (100 = fine); physical comes from form: 0 = 100, -40 or lower = 0
+  const phys=tsb==null?null:Math.round(Math.max(0,Math.min(100,100+tsb*2.5)));
+  const score=Math.max(0,Math.min(100,Math.round(100-(phys==null?psy:psy*0.6+phys*0.4))));
   return{score,label:score<30?'Low risk':score<60?'Moderate risk':'High risk',sub:score<30?'Physiological and psychological markers stable.':score<60?'Some stress signals. Monitor energy and sleep.':'Elevated stress and fatigue. Reduce training load.',psy,phys};
 }
 function renderBurnout(){
   const b=calcBurnout();
   $('boScore').textContent=b.score;$('boLabel').textContent=b.label;$('boSub').textContent=b.sub;
-  $('boBreak').textContent=b.psy||b.phys?`Psychological: ${b.psy} · Physical: ${b.phys}`:'';
+  $('boBreak').textContent=b.psy||b.phys?`Mind ${b.psy} of 100 · Body ${b.phys==null?'no data':b.phys+' of 100'} (higher is better)`:'';
 }
 function renderMoodChart(){
   const d=S(),host=$('moodCanvas');if(!host)return;
@@ -370,8 +367,8 @@ function renderCalendar(){
   $('calGrid').innerHTML=html;
   $('calNote').textContent=`${active} active day${active!==1?'s':''} this month · colour shows how you felt (green good, amber okay, red low)`;
 }
-function calPrev(){_calDate.setMonth(_calDate.getMonth()-1);renderCalendar();}
-function calNext(){_calDate.setMonth(_calDate.getMonth()+1);renderCalendar();}
+function calPrev(){_calDate.setDate(1);_calDate.setMonth(_calDate.getMonth()-1);renderCalendar();}
+function calNext(){_calDate.setDate(1);_calDate.setMonth(_calDate.getMonth()+1);renderCalendar();}
 function openDay(date){
   const d=S(),sl=d.sleepLogs.find(s=>s.date===date),ci=d.checkins.find(c=>c.date===date),ws=d.workouts.filter(w=>w.date===date);
   $('dayPT').textContent=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'});

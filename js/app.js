@@ -13,7 +13,7 @@ function refreshActive(){
   if(tab==='today')recalc();
   if(tab==='trends')renderTrendsTab();
   if(tab==='health')renderHealth();
-  if(tab==='log'){renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderFood();renderSleepBars();}
+  if(tab==='log'){if(ciKey()!==_ciKey)fillCI();renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderFood();renderSleepBars();}
   if(tab==='insights'){renderCoach();renderStrategy();renderDigest();renderInsightHistory();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
@@ -29,18 +29,23 @@ function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.inn
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
-  renderWhy();renderNext();renderGoal();renderFuel();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderRemind();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderLogHead();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
+  renderWhy();renderGoal();renderFuel();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderRemind();renderReview();renderVerdict();renderReflect();renderHabits();renderStreak();renderMind();renderLogHead();renderWeekTrends();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID))syncAll(false);updSyncStatus();});
 window.addEventListener('resize',()=>{if(_tab==='trends')renderTrendsTab();});
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-function initUI(){
-  const now=new Date();
-  $('hdrDate').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+let _day='';
+function dayForms(){
+  _day=td();
+  $('hdrDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
   $('wDate').value=td();$('bmDate').value=td();$('injDate').value=td();
   $('wDate').max=td();$('slDate').max=td();loadSleepFor(td());
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&_day&&_day!==td()){dayForms();fillCI();refreshAll();}});
+function initUI(){
+  dayForms();
   $('welcome').style.display=S().onboardingDone?'none':'flex';
   renderExGrid();fillCI();renderBloodDisplay();updMeasHist();renderFood();renderInjuryDisplay();renderInsightHistory();
   updSyncStatus();recalc();

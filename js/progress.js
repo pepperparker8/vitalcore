@@ -47,7 +47,7 @@ function renderProgress(){
   // running bests
   let best=-Infinity;const marks=[];pts.forEach((p,i)=>{if(p.v>best+1e-9){if(i>0)marks.push(i);best=p.v;}});
   const bi=pts.reduce((b,p,i)=>p.v>pts[b].v?i:b,0),b=pts[bi],l=last(pts);
-  h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${b.date}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${l.date}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">${marks.length} new best${marks.length===1?'':'s'}</div></div></div>`;
+  h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${fmtD(b.date)}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${fmtD(l.date)}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">${marks.length} new best${marks.length===1?'':'s'}</div></div></div>`;
   h+=`<div class="set-note">${prNext(_prKey,_prMet,b,l,pts)}</div><div class="set-note">Gold rings are sessions where you set a new best. Drag the chart to move through time, pinch to zoom.</div>`;
   el.innerHTML=h;
   const byD=new Map(pts.map(p=>[p.date,p]));
@@ -55,7 +55,6 @@ function renderProgress(){
     series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:v=>{const p=pts.find(q=>q.v===v);return p?p.txt:v;}}]});
 }
 function setPrM(v){_prMet=v;renderProgress();}
-function setPrR(v){_prRng=+v;renderProgress();}
 function prNext(key,met,b,l,pts){
   if(PR_SPORT.includes(key)){
     if(met==='dist')return`Longest so far ${b.txt}. A gradual step of 5 to 10% on your next long session is a safe way to beat it.`;

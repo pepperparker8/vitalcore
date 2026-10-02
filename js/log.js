@@ -23,8 +23,10 @@ function finishWelcome(skip){
 let _ci={energy:null,mood:null,stress:null,motivation:null,rested:null};
 function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
 function todayCI(){return S().checkins.find(c=>c.date===td());}
+let _ciKey='';
+const ciKey=()=>td()+'|'+(todayCI()?.ts||0);
 function fillCI(){
-  const c=todayCI();
+  const c=todayCI();_ciKey=ciKey();
   ['energy','mood','stress','motivation','soreness','coffee'].forEach(k=>{
     _ci[k]=c?.[k]??null;
     document.querySelectorAll(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).forEach(b=>b.classList.toggle('sel',c?.[k]===+b.getAttribute('onclick').match(/,(\d),this/)[1]));
@@ -122,7 +124,7 @@ function delSleep(){
   const date=$('slDate').value||td(),x=S().sleepLogs.find(s=>s.date===date);
   if(!x)return;
   const copy={...x};del('sleep',x.id);loadSleepFor(date);renderSleepBars();refreshAll();
-  showToast('Sleep deleted',{label:'Undo',fn:()=>{put('sleep',copy);loadSleepFor(date);renderSleepBars();refreshAll();showToast('Sleep restored');}});
+  showToast('Sleep deleted',{label:'Undo',fn:()=>{const d=S();d.gone=(d.gone||[]).filter(g=>g!==copy.id);put('sleep',copy);loadSleepFor(date);renderSleepBars();refreshAll();showToast('Sleep restored');}});
 }
 function editSleep(date){closeDayPanel();switchTab('log');openLog('lSleep');loadSleepFor(date);$('lSleep').scrollIntoView({behavior:'smooth'});}
 function setStages(dH,dM,rH,rM){
@@ -214,7 +216,7 @@ function delWorkout(id){
   const copy=JSON.parse(JSON.stringify(w)),pan=()=>{if($('dayPanel').classList.contains('open'))openDay(copy.date);};
   if(_editId===id)cancelEdit();
   del('workouts',id);pan();refreshAll();
-  showToast('Workout deleted',{label:'Undo',fn:()=>{const d=S();d.tomb=d.tomb.filter(t=>t.id!==id);put('workouts',copy);pan();refreshAll();showToast('Workout restored');}});
+  showToast('Workout deleted',{label:'Undo',fn:()=>{const d=S();d.gone=(d.gone||[]).filter(g=>g!==id);put('workouts',copy);pan();refreshAll();showToast('Workout restored');}});
 }
 // ── Workout list with Edit / Delete, and "logged twice" check ────────────────
 const isIcu=w=>String(w.id).startsWith('icu-');
@@ -319,7 +321,7 @@ function scoreBM(v,t){
   const rng=r[t];if(!rng||!v)return{score:null,status:'—'};
   if(v>=rng.ok[0]&&v<=rng.ok[1])return{score:90,status:'ok'};
   if(v>=rng.warn[0]&&v<=rng.warn[1])return{score:55,status:'warn'};
-  return{score:20,status:'bad'};
+  return{score:20,status:'bad',low:v<rng.ok[0]};
 }
 function saveBlood(){
   const date=$('bmDate').value||td();
@@ -329,17 +331,17 @@ function saveBlood(){
   if(v.chol&&(v.chol<50||v.chol>500)){showToast('Cholesterol value seems off (mg/dL)');return;}
   put('blood',{id:mkId(),date,...v});
   ['bmG','bmC','bmU'].forEach(i=>$(i).value='');
-  $('bloodStat').textContent=`Last tested: ${date}`;
+  $('bloodStat').textContent=`Last tested: ${fmtD(date)}`;
   renderBloodDisplay();showToast('Blood results saved');
 }
 function renderBloodDisplay(){
   const d=S(),b=last(d.bloodLogs);
   const el=$('bmDisplay');if(!el)return;
   if(!b){el.innerHTML='<div class="hist-ttl">NO RESULTS YET</div><div style="font-size:12px;color:var(--t3)">Enter your latest lab results below (mg/dL).</div>';return;}
-  $('bloodStat').textContent=`Last tested: ${b.date}`;
-  const markers=[['Glucose','glucose'],['Cholesterol','chol'],['Uric Acid','uric']];
+  $('bloodStat').textContent=`Last tested: ${fmtD(b.date)}`;
+  const markers=[['Glucose','glucose'],['Cholesterol','chol'],['Uric acid','uric']];
   const C=2*Math.PI*12;
-  el.innerHTML=`<div class="hist-ttl">LAST RESULTS · ${b.date}</div>`+markers.filter(([,k])=>b[k]).map(([name,k])=>{
+  el.innerHTML=`<div class="hist-ttl">LAST RESULTS · ${fmtD(b.date)}</div>`+markers.filter(([,k])=>b[k]).map(([name,k])=>{
     const s=scoreBM(b[k],k);
     const col=s.status==='ok'?'var(--green)':s.status==='warn'?'var(--amber)':'var(--red)';
     const hist=d.bloodLogs.slice(-5).map(x=>x[k]).filter(Boolean);
@@ -347,7 +349,7 @@ function renderBloodDisplay(){
     const spark=hist.length>1?`<div class="bm-spark">${hist.map(v=>`<div class="bm-spark-bar" style="height:${Math.round(v/mx*16)+2}px;background:${col};opacity:0.5"></div>`).join('')}</div>`:'';
     return`<div class="bm-row"><div><div class="bm-name">${name}</div><div class="bm-unit">${b[k]} mg/dL</div>${spark}</div>
       <div class="bm-right"><div class="bm-ring"><svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/><circle cx="16" cy="16" r="12" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-(s.score||0)/100)).toFixed(1)}"/></svg><div class="bm-ring-num" style="color:${col}">${s.score||'—'}</div></div>
-      <span class="bm-badge ${s.status}">${s.status==='ok'?'Normal':s.status==='warn'?'Border':'High'}</span></div></div>`;
+      <span class="bm-badge ${s.status}">${s.status==='ok'?'Normal':s.status==='warn'?'Border':s.low?'Low':'High'}</span></div></div>`;
   }).join('');
 }
 

@@ -69,7 +69,7 @@ function renderMonthly(){
   if(r.planned)notes.push(`You completed ${r.done} of ${r.planned} planned sessions (${Math.round(r.done/r.planned*100)}%).`);
   if(x.top)notes.push(`Most frequent: ${x.top[0].toLowerCase()}, ${x.top[1]} time${x.top[1]===1?'':'s'}.`);
   if(x.weight!=null&&y.weight!=null)notes.push(`Average weight ${Math.round(x.weight*10)/10} kg, ${Math.abs(x.weight-y.weight)<0.1?'unchanged':(x.weight>y.weight?'up ':'down ')+Math.round(Math.abs(x.weight-y.weight)*10)/10+' kg'} on the month before.`);
-  if(x.hrv!=null)notes.push(`Heart rate variability averaged ${Math.round(x.hrv)} ms${y.hrv!=null?(x.hrv>=y.hrv?', up':', down')+' from '+Math.round(y.hrv):''}.`);
+  if(x.hrv!=null)notes.push(`Heart rate variability averaged ${Math.round(x.hrv)} ms${y.hrv!=null?(Math.round(x.hrv)===Math.round(y.hrv)?', the same as the month before':(x.hrv>y.hrv?', up':', down')+' from '+Math.round(y.hrv)):''}.`);
   if(x.mood!=null)notes.push(`Mood averaged ${x.mood>=3.3?'good':x.mood>=2.5?'so-so':'low'} across ${x.checkins} check-ins.`);
   el.style.display='block';
   el.innerHTML=`<div class="sg-lbl">${mr.name.toUpperCase()} IN REVIEW</div><div class="rv-h">${r.ws.length} session${r.ws.length===1?'':'s'}${r.min?' · '+fmtDur(Math.round(r.min)):''}</div>

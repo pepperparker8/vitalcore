@@ -27,7 +27,7 @@ function planWeek(){
 function setPlan(i,field,v){
   const d=S();d.profile.plan=d.profile.plan||{};const p=d.profile.plan[i]||{type:''};
   p[field]=v;if(!p.type)delete d.profile.plan[i];else d.profile.plan[i]=p;
-  save(d);renderPlan();renderSuggest();renderFuel();
+  save(d);markProfile();renderPlan();renderSuggest();renderFuel();
 }
 function togglePlanEdit(){_plEdit=!_plEdit;renderPlan();}
 function renderPlan(){
@@ -51,5 +51,5 @@ function planDay(i){
   const dts=weekDates(),s=planDayState(i,dts[i]),el=$('planDet');if(!el)return;
   const p=s.p;
   const done=s.ws.map(w=>`${w.type}${w.distKm?' '+(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):''}${w.durMin&&!IS_STR(w.type)?' '+fmtDur(w.durMin):''}`).join(', ');
-  el.innerHTML=`<b>${PL_DAYS[i]} ${dts[i].slice(5)}</b> · ${p?`planned ${esc(p.type)}${p.note?' ('+esc(p.note)+')':''}`:'nothing planned'}${done?`<br>Done: ${esc(done)}`:''}${s.st==='miss'?'<br>Missed. Do not double up; just carry on with the plan.':''}`;
+  el.innerHTML=`<b>${PL_DAYS[i]} ${fmtD(dts[i])}</b> · ${p?`planned ${esc(p.type)}${p.note?' ('+esc(p.note)+')':''}`:'nothing planned'}${done?`<br>Done: ${esc(done)}`:''}${s.st==='miss'?'<br>Missed. Do not double up; just carry on with the plan.':''}`;
 }

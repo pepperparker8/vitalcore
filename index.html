@@ -94,14 +94,14 @@
     <div class="hero-why" id="heroWhy"></div><div class="hero-miss" id="heroMissing"></div>
   </div>
 
-  <div class="card" id="slStages" style="display:none"></div>
-  <div class="card" id="wkLoad" style="display:none"></div>
   <div class="cc-h" id="verdictCard" style="display:none;margin:0 0 12px"></div>
-  <div class="card sug-card" id="monthCard" style="display:none"></div>
-  <div class="card sug-card" id="reviewCard" style="display:none"></div>
   <div class="card sug-card" id="sugCard" style="display:none"></div>
   <div class="card sug-card" id="fuelCard" style="display:none"></div>
   <div class="card goal-card" id="goalCard" style="display:none"></div>
+  <div class="card sug-card" id="reviewCard" style="display:none"></div>
+  <div class="card sug-card" id="monthCard" style="display:none"></div>
+  <div class="card" id="slStages" style="display:none"></div>
+  <div class="card" id="wkLoad" style="display:none"></div>
   <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
   <div class="habits" id="habits"></div>
 
@@ -110,7 +110,8 @@
     <div class="wk-strip" id="wkStrip"></div>
   </div>
 
-  <div class="card rec-card" id="recCard"></div>  <details class="more-today" id="moreToday"><summary>Plan, week and training</summary>
+  <details class="more-today" id="moreToday"><summary>Recovery details, plan and training</summary>
+  <div class="card rec-card" id="recCard"></div>
 
 
   <div class="card sug-card" id="planCard"></div>
@@ -128,16 +129,10 @@
     <div class="passive-chip"><div class="passive-val" id="passMind">—</div><div class="passive-lbl">MINDFUL</div><div class="passive-src">from your log</div></div>
   </div>
 
-  <div class="sbars">
-    <div class="sbar"><div class="sbar-lbl">LOAD</div><div class="sbar-val" id="sbLoad" style="color:var(--amber)">—</div><div class="sbar-zone" id="sbLoadZ" style="color:var(--amber)">—</div><div class="sbar-track"><div class="sbar-prog" id="sbLoadP" style="background:var(--amber);width:0"></div></div></div>
-    <div class="sbar"><div class="sbar-lbl">SLEEP</div><div class="sbar-val" id="sbSleep" style="color:var(--teal)">—</div><div class="sbar-zone" id="sbSleepZ" style="color:var(--teal)">—</div><div class="sbar-track"><div class="sbar-prog" id="sbSleepP" style="background:var(--teal);width:0"></div></div></div>
-    <div class="sbar"><div class="sbar-lbl">FRESH</div><div class="sbar-val" id="sbFresh" style="color:var(--green)">—</div><div class="sbar-zone" id="sbFreshZ" style="color:var(--green)">—</div><div class="sbar-track"><div class="sbar-prog" id="sbFreshP" style="background:var(--green);width:0"></div></div></div>
-  </div>
-
   <div class="ins-nudge" id="insNudge" onclick="switchTab('insights')"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" /></svg></div><div style="flex:1"><div style="font-size:13px;font-weight:600">Today's briefing not generated</div><div style="font-size:12px;color:var(--t2)">Tap to analyse your data →</div></div></div>
 
-  <div class="card"><div class="sec">Training — Last 7 Days</div><div id="actList"></div></div>
-  <div class="card"><div class="sec">Training Load</div><div id="tloadContent"></div></div>
+  <div class="card"><div class="sec">Training, last 7 days</div><div id="actList"></div></div>
+  <div class="card"><div class="sec">Training load</div><div id="tloadContent"></div></div>
   </details>
 </div>
 
@@ -215,8 +210,8 @@
 <div id="trCal" style="display:none">
   <div class="card"><div class="cal-nav"><button class="cal-btn" onclick="calPrev()">‹</button><div class="cal-month" id="calTitle"></div><button class="cal-btn" onclick="calNext()">›</button></div><div class="cal-grid" id="calGrid"></div><div class="set-note" id="calNote"></div></div>
   <div class="day-panel" id="dayPanel"><div class="day-ph"><div class="day-pt" id="dayPT">—</div><button class="day-pc" onclick="closeDayPanel()">×</button></div><div id="dayPB"></div></div>
-  <div class="card"><div class="sec">Week Summary</div><div id="weekSum" style="font-size:13px;color:var(--t2);line-height:1.9"></div></div>
-  <div class="card"><div class="sec">Personal Bests</div><div id="prList"></div></div>
+  <div class="card"><div class="sec">Week summary</div><div id="weekSum" style="font-size:13px;color:var(--t2);line-height:1.9"></div></div>
+  <div class="card"><div class="sec">Personal bests</div><div id="prList"></div></div>
 </div><!-- /trCal -->
 </div><!-- /pg-trends -->
 
@@ -279,7 +274,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg></div><div><div class="log-title">Log a Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
+  <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg></div><div><div class="log-title">Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="set-note" id="wkIcuNote" style="display:none"></div>
       <div id="wkDup"></div>
@@ -337,7 +332,7 @@
   </div>
 
   <div class="lg-grp">Now and then</div>
-  <div class="log-sec" id="lMeas"><div class="log-hdr" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" /><path d="m14.5 12.5 2-2" /><path d="m11.5 9.5 2-2" /><path d="m8.5 6.5 2-2" /><path d="m17.5 15.5 2-2" /></svg></div><div><div class="log-title">Measurements</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
+  <div class="log-sec" id="lMeas"><div class="log-hdr" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" /><path d="m14.5 12.5 2-2" /><path d="m11.5 9.5 2-2" /><path d="m8.5 6.5 2-2" /><path d="m17.5 15.5 2-2" /></svg></div><div><div class="log-title">Body</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="hist-box"><div class="hist-ttl">RECENT</div>
         <div class="hist-row"><span>Blood Pressure</span><span class="hist-val" id="bpRec">—</span></div>
@@ -352,7 +347,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lBlood"><div class="log-hdr" onclick="tlog('lBlood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 16 1.5 1.5" /><path d="m14 8-1.5-1.5" /><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" /><path d="m16.5 10.5 1 1" /><path d="m17 6-2.891-2.891" /><path d="M2 15c6.667-6 13.333 0 20-6" /><path d="m20 9 .891.891" /><path d="M3.109 14.109 4 15" /><path d="m6.5 12.5 1 1" /><path d="m7 18 2.891 2.891" /><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" /></svg></div><div><div class="log-title">Blood Markers</div><div class="log-stat" id="bloodStat">Last tested: —</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
+  <div class="log-sec" id="lBlood"><div class="log-hdr" onclick="tlog('lBlood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 16 1.5 1.5" /><path d="m14 8-1.5-1.5" /><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" /><path d="m16.5 10.5 1 1" /><path d="m17 6-2.891-2.891" /><path d="M2 15c6.667-6 13.333 0 20-6" /><path d="m20 9 .891.891" /><path d="M3.109 14.109 4 15" /><path d="m6.5 12.5 1 1" /><path d="m7 18 2.891 2.891" /><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" /></svg></div><div><div class="log-title">Blood</div><div class="log-stat" id="bloodStat">Last tested: —</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="hist-box" id="bmDisplay"></div>
       <div class="fg"><div class="fl">TEST DATE</div><input type="date" class="inp" id="bmDate"></div>
@@ -363,7 +358,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lInjury"><div class="log-hdr" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 10.01h.01" /><path d="M10 14.01h.01" /><path d="M14 10.01h.01" /><path d="M14 14.01h.01" /><path d="M18 6v12" /><path d="M6 6v12" /><rect x="2" y="6" width="20" height="12" rx="2" /></svg></div><div><div class="log-title">Injury Log</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
+  <div class="log-sec" id="lInjury"><div class="log-hdr" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 10.01h.01" /><path d="M10 14.01h.01" /><path d="M14 10.01h.01" /><path d="M14 14.01h.01" /><path d="M18 6v12" /><path d="M6 6v12" /><rect x="2" y="6" width="20" height="12" rx="2" /></svg></div><div><div class="log-title">Injury</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="hist-box" id="injDisplay"><div class="hist-ttl">ACTIVE / RECENT</div><div style="font-size:12px;color:var(--t3);padding:4px 0">No injuries logged</div></div>
       <div class="fg"><div class="fl">BODY PART</div><input type="text" class="inp" id="injPart" placeholder="e.g. Left knee, Right hamstring"></div>
@@ -378,10 +373,10 @@
 <!-- INSIGHTS -->
 <div class="page page-fade" id="pg-insights">
   <div class="ins-hdr"><div class="ins-title">Your Health Briefing</div><div class="ins-stamp" id="insStamp">Not yet generated today</div></div>
+  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI briefing</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">One briefing that reads today, this week, this month and your longer trends, and tells you what to do next.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
   <div class="card" id="coachCard"></div>
   <div class="card" id="stratCard" style="display:none"></div>
   <div class="card" id="digestCard"></div>
-  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI briefing</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">One briefing that reads today, this week, this month and your longer trends, and tells you what to do next.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
   <div class="ins-hist-sec" id="insHistSec" style="display:none">
     <div class="ins-hist-head"><span>Past briefings</span><span class="ins-hist-cnt" id="insHistCnt">0</span></div>
     <div class="arch-trend" id="archTrend" style="display:none"><div class="arch-trend-lbl">Pattern this month</div><div class="arch-trend-val" id="archTrendVal">—</div></div>
