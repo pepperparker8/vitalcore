@@ -106,7 +106,7 @@
   <div class="habits" id="habits"></div>
 
   <div class="streak-card">
-    <div class="streak-top"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></svg></div><div><div class="streak-num" id="streakNum">0</div></div><div style="flex:1"><div style="font-size:13px;font-weight:600" id="streakTxt">Day streak</div><div style="font-size:11px;color:var(--t2)" id="streakSub">Check in or meditate to keep it going</div></div></div>
+    <div class="streak-top"><div><span class="lt lt-40" data-lt="streak" aria-hidden="true"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></svg></span></div><div><div class="streak-num" id="streakNum">0</div></div><div style="flex:1"><div style="font-size:13px;font-weight:600" id="streakTxt">Day streak</div><div style="font-size:11px;color:var(--t2)" id="streakSub">Check in or meditate to keep it going</div></div></div>
     <div class="wk-strip" id="wkStrip"></div>
   </div>
 
@@ -201,7 +201,7 @@
   <div class="card"><div class="cal-nav"><button class="cal-btn" onclick="calPrev()">‹</button><div class="cal-month" id="calTitle"></div><button class="cal-btn" onclick="calNext()">›</button></div><div class="cal-grid" id="calGrid"></div><div class="set-note" id="calNote"></div></div>
   <div class="day-panel" id="dayPanel"><div class="day-ph"><div class="day-pt" id="dayPT">—</div><button class="day-pc" onclick="closeDayPanel()">×</button></div><div id="dayPB"></div></div>
   <div class="card"><div class="sec">Week summary</div><div id="weekSum" style="font-size:13px;color:var(--t2);line-height:1.9"></div></div>
-  <div class="card"><div class="sec">Personal bests</div><div id="prList"></div></div>
+  <div class="card"><div class="lt-head"><span class="lt lt-40" data-lt="medal" aria-hidden="true"></span><div class="sec">Personal bests</div></div><div id="prList"></div></div>
 </div><!-- /trCal -->
 </div><!-- /pg-trends -->
 
@@ -425,6 +425,7 @@
     </div>
     <button class="btn-gold" style="margin-top:8px" onclick="saveSettings()">Save Settings</button>
     <button class="btn-muted" onclick="closeSettings()">Cancel</button>
+    <div class="set-note" style="text-align:center;margin-top:16px">Animated icons by <a href="https://lordicon.com/" target="_blank" rel="noopener">Lordicon.com</a></div>
     <div class="set-note" id="appVer" style="text-align:center;margin-top:16px"></div>
   </div>
 </div>
@@ -469,6 +470,7 @@
   <button class="rest-x" onclick="restStop()">Skip</button></div>
 <div id="toast"></div>
 
+<script src="js/lottie.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/strength.js"></script>

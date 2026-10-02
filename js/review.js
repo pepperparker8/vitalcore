@@ -33,7 +33,7 @@ function renderReview(){
   if(r.sleepMin!=null)notes.push(r.sleepMin>=goal-20?'Sleep was on target.':`Sleep averaged ${fmtDur(Math.round(goal-r.sleepMin))} under your goal. That is the easiest gain for next week.`);
   const t=k=>`<div class="rv-t"><div class="rv-k">${k[0]}</div><div class="rv-v">${k[1]}</div></div>`;
   el.style.display='block';
-  el.innerHTML=`<div class="sg-lbl">LAST WEEK IN REVIEW</div><div class="rv-h">${r.ws.length} session${r.ws.length===1?'':'s'}${r.min?' · '+fmtDur(Math.round(r.min)):''}</div>
+  el.innerHTML=`${LT("confetti","lt-40 rv-lt","")}<div class="sg-lbl">LAST WEEK IN REVIEW</div><div class="rv-h">${r.ws.length} session${r.ws.length===1?'':'s'}${r.min?' · '+fmtDur(Math.round(r.min)):''}</div>
     <div class="rv-g">${t(['Distance',Math.round(r.km*10)/10+' km'])}${t(['Plan',r.planned?`${r.done} of ${r.planned}`:'No plan'])}${t(['Sleep',r.sleepMin!=null?fmtDur(Math.round(r.sleepMin)):'—'])}${t(['Readiness',r.ready!=null?r.ready:'—'])}</div>
     ${r.pr.length?`<div class="rv-pr">${UI.trophy}<b>New bests:</b> ${r.pr.map(esc).join(' · ')}</div>`:''}
     ${notes.map(n=>`<div class="set-note">${esc(n)}</div>`).join('')}
@@ -72,7 +72,7 @@ function renderMonthly(){
   if(x.hrv!=null)notes.push(`Heart rate variability averaged ${Math.round(x.hrv)} ms${y.hrv!=null?(Math.round(x.hrv)===Math.round(y.hrv)?', the same as the month before':(x.hrv>y.hrv?', up':', down')+' from '+Math.round(y.hrv)):''}.`);
   if(x.mood!=null)notes.push(`Mood averaged ${x.mood>=3.3?'good':x.mood>=2.5?'so-so':'low'} across ${x.checkins} check-ins.`);
   el.style.display='block';
-  el.innerHTML=`<div class="sg-lbl">${mr.name.toUpperCase()} IN REVIEW</div><div class="rv-h">${r.ws.length} session${r.ws.length===1?'':'s'}${r.min?' · '+fmtDur(Math.round(r.min)):''}</div>
+  el.innerHTML=`${LT("confetti","lt-40 rv-lt","")}<div class="sg-lbl">${mr.name.toUpperCase()} IN REVIEW</div><div class="rv-h">${r.ws.length} session${r.ws.length===1?'':'s'}${r.min?' · '+fmtDur(Math.round(r.min)):''}</div>
     <div class="rv-g rv-g2">${t('Sessions',r.ws.length,dl(r.ws.length,p.ws.length,''))}${t('Distance',Math.round(r.km)+' km',dl(Math.round(r.km),Math.round(p.km),' km'))}${t('Sleep',r.sleepMin!=null?fmtDur(Math.round(r.sleepMin)):'—',p.sleepMin!=null&&r.sleepMin!=null?dl(Math.round(r.sleepMin),Math.round(p.sleepMin),' min'):'')}${t('Readiness',r.ready!=null?r.ready:'—',r.ready!=null&&p.ready!=null?dl(r.ready,p.ready,''):'')}</div>
     ${r.pr.length||notes.length?`<details class="fm-why"><summary>More about the month</summary>${r.pr.length?`<div class="rv-pr">${UI.trophy}<b>New bests:</b> ${r.pr.slice(0,6).map(esc).join(' · ')}</div>`:''}
     ${notes.map(n=>`<div class="set-note">${esc(n)}</div>`).join('')}</details>`:''}

@@ -362,7 +362,7 @@ function logStatus(){
 function renderLogHead(){
   const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
   st.forEach(([id,ok])=>$(id)&&$(id).classList.toggle('done',ok));
-  if(el)el.innerHTML=`<b>${n} of 4</b> daily entries done<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;
+  const h=n+'';if(el&&el._h!==h){el._h=h;el.innerHTML=`${n===4?LT('saved','lt-40 lg-lt',''):''}<b>${n} of 4</b> daily entries done<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
 }
 function logAuto(){
   renderLogHead();

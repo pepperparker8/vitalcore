@@ -5,7 +5,7 @@ function switchTab(tab){
   const pg=$('pg-'+tab);
   if(pg){pg.classList.add('active');pg.classList.remove('page-fade');void pg.offsetWidth;pg.classList.add('page-fade');pg.scrollTop=0;}
   const nv=$('nav-'+tab);if(nv)nv.classList.add('active');
-  _tab=tab;refreshActive();if(tab==='log')logAuto();
+  _tab=tab;refreshActive();if(tab==='log')logAuto();ltReplay(pg);setTimeout(ltScan,0);
 }
 let _tab='today';
 function refreshActive(){
@@ -55,6 +55,7 @@ async function init(){
   loadAuth();
   initUI();
   setTimeout(()=>$('splash').classList.add('gone'),700);
+  ltWatch();
   if(!navigator.onLine)$('offlineBar').classList.add('show');
   await handleAuthHash();
   // background refresh: cloud + Intervals.icu at most once an hour

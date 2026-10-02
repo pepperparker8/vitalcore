@@ -274,7 +274,7 @@ async function genInsight(force){
   if(!d.claudeKey){showToast('Add your Claude API key in Settings first');openSettings();return;}
   if(_insBusy||(!force&&showTodayInsight()))return;
   _insBusy=true;
-  $('insContent').innerHTML='<div class="ins-loading">Reading today, this week, this month and your trends. This can take up to a minute.</div>';
+  $('insContent').innerHTML='<div class="ins-loading">'+LT('loading','lt-64','',1)+'<div class="ins-sk"></div>Reading today, this week, this month and your trends. This can take up to a minute.</div>';
   try{
     const user='Snapshot from the app (JSON):\n'+JSON.stringify(insightData())+'\n\nWrite the briefing as one JSON object with exactly these string keys: archetype (one of: '+INS_ARCH.join(' | ')+'), '+INS_KEYS.join(', ')+', plus questions (an array of exactly 3 strings). Output only the JSON object.';
     const base={model:CLAUDE_MODEL,max_tokens:16000,system:INS_SYS,messages:[{role:'user',content:user}]};
