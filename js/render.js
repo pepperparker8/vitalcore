@@ -76,13 +76,13 @@ function renderSleepStages(){
   let cons='';
   if(beds.length>=3){const mu=avg(beds),sd=Math.sqrt(avg(beds.map(b=>(b-mu)**2)));
     cons=`<div class="ss-cons"><span>Bedtime consistency</span><b class="${sd<=30?'good':sd<=60?'warn':'bad'}">${sd<=30?'Steady':sd<=60?'Varies':'Irregular'}</b><small>within about ${fmtDur(Math.round(sd/5)*5||5)} over ${beds.length} nights</small></div>`;}
-  if(!sl||(!deep&&!rem)){if(cons){el.style.display='';el.innerHTML=`<div class="ss-h"><span class="sec">Sleep</span>${LT("moon","lt-40 lt-teal","")}</div>${cons}`;}else el.style.display='none';return;}
+  if(!sl||(!deep&&!rem)){if(cons){el.style.display='';el.innerHTML=`<div class="ss-h"><span class="sec">Sleep</span></div>${cons}`;}else el.style.display='none';return;}
   const light=Math.max(0,sl.durMin-deep-rem),tot=sl.durMin;
   const pc=v=>Math.round(v/tot*100);
   const seg=(c,v)=>v?`<span class="ss-seg ${c}" style="width:${v/tot*100}%"></span>`:'';
   const leg=(c,l,v)=>`<div class="ss-leg"><span class="ss-dot ${c}"></span><span>${l}</span><b>${fmtDur(v)}</b><small>${pc(v)}%</small></div>`;
   el.style.display='';
-  el.innerHTML=`<div class="ss-h"><span class="sec">Last night</span><span class="ss-tot">${LT("moon","lt-40 lt-teal ss-lt","")}${fmtDur(tot)}</span></div><div class="ss-bar">${seg('deep',deep)}${seg('rem',rem)}${seg('light',light)}</div><div class="ss-legs">${leg('deep','Deep',deep)}${leg('rem','REM',rem)}${leg('light','Light',light)}</div><div class="ss-note">${deep/tot<0.13?'Deep sleep below the usual 13 to 23%. ':''}${rem/tot<0.2?'REM below the usual 20 to 25%. ':''}${deep/tot>=0.13&&rem/tot>=0.2?'Deep and REM in the usual ranges.':''}</div>${cons}`;
+  el.innerHTML=`<div class="ss-h"><span class="sec">Last night</span><span class="ss-tot">${fmtDur(tot)}</span></div><div class="ss-bar">${seg('deep',deep)}${seg('rem',rem)}${seg('light',light)}</div><div class="ss-legs">${leg('deep','Deep',deep)}${leg('rem','REM',rem)}${leg('light','Light',light)}</div><div class="ss-note">${deep/tot<0.13?'Deep sleep below the usual 13 to 23%. ':''}${rem/tot<0.2?'REM below the usual 20 to 25%. ':''}${deep/tot>=0.13&&rem/tot>=0.2?'Deep and REM in the usual ranges.':''}</div>${cons}`;
 }
 let _d7Sel=null;
 function renderDays7(){
@@ -191,7 +191,7 @@ const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.dist
 const trainOn=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);
 function renderTLoad(){
   const d=S(),{ctl,atl,tsb}=d.intervalsData;
-  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${LT("chart","lt-40",UI.sat)}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
+  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
   else{$('tloadContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div class="sbar"><div class="sbar-lbl">FITNESS</div><div class="sbar-val" style="color:var(--teal)">${ctl}</div><div class="sbar-zone" style="color:var(--teal)">CTL</div></div><div class="sbar"><div class="sbar-lbl">FATIGUE</div><div class="sbar-val" style="color:var(--red)">${atl}</div><div class="sbar-zone" style="color:var(--amber)">${zL(atl,'atl')}</div></div><div class="sbar"><div class="sbar-lbl">FORM</div><div class="sbar-val" style="color:var(--green)">${tsb>0?'+':''}${tsb}</div><div class="sbar-zone" style="color:var(--green)">${zL(tsb,'tsb')}</div></div></div>`;}
   $('zATL').textContent=atl??'—';$('zATLd').textContent=atl!=null?`${atl} — ${zL(atl,'atl')} load.`:'Connect Intervals.icu to see fatigue.';
   $('zTSB').textContent=tsb!==null?(tsb>0?'+':'')+tsb:'—';$('zTSBd').textContent=tsb!==null?`${zL(tsb,'tsb')} — ${tsb>0?'Ready to perform.':'Carrying '+Math.abs(tsb)+' points of fatigue.'}`:'Connect Intervals.icu to see freshness.';

@@ -436,7 +436,7 @@ function renderLogHead(){
   const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
   st.forEach(([id,ok,part])=>{if($(id)){$(id).classList.toggle('done',ok);$(id).classList.toggle('part',part==='part');}});
   const part=st.some(x=>x[2]==='part');
-  const h=n+'|'+part;if(el&&el._h!==h){el._h=h;el.innerHTML=`${n===4?LT('saved','lt-40 lg-lt',''):''}<b>${n} of 4</b> daily entries done${part?', sleep needs one detail':''}<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
+  const h=n+'|'+part;if(el&&el._h!==h){el._h=h;el.innerHTML=`<b>${n} of 4</b> daily entries done${part?', sleep needs one detail':''}<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
 }
 function logAuto(){
   renderLogHead();

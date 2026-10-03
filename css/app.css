@@ -1019,23 +1019,11 @@ details[open]>*:not(summary){animation:rise .26s var(--ease)}
 .streak-card .ui-i,.streak-ban .ui-i{transform-origin:50% 90%;animation:flick 2.4s ease-in-out 2}
 @media (prefers-reduced-motion:reduce){.t-ok path{stroke-dashoffset:0}}
 
-/* ── v93: Lottie icons (Lordicon). Colours are remapped here so they follow the theme ── */
-.lt{display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--text);vertical-align:middle}
-.lt svg{display:block}
-.lt-40{width:40px;height:40px}.lt-64{width:64px;height:64px}
-.lt [stroke="rgb(18,19,49)"]{stroke:currentColor}.lt [fill="rgb(18,19,49)"]{fill:currentColor}
-.lt [stroke="rgb(8,168,138)"]{stroke:var(--gold)}.lt [fill="rgb(8,168,138)"]{fill:var(--gold)}
-.lt-teal [stroke="rgb(8,168,138)"]{stroke:var(--teal)}.lt-teal [fill="rgb(8,168,138)"]{fill:var(--teal)}
-.lt>.ui-i{animation:none}
-.lt-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}.lt-head .sec{margin:0}
-.rv-lt,.lg-lt{float:right;margin:-6px -4px 0 8px}
-.ins-loading .lt{display:flex;margin:4px auto 12px}
+/* ── v93 briefing loading skeleton (the Lottie icons were removed in v102) ── */
 .ins-loading::before{content:none}
 .ins-sk{height:92px;margin-bottom:16px;border-radius:8px;animation:skPulse 1.6s ease-in-out infinite;
   background:linear-gradient(var(--sur2),var(--sur2)) 0 0/55% 16px no-repeat,linear-gradient(var(--sur2),var(--sur2)) 0 30px/100% 12px no-repeat,linear-gradient(var(--sur2),var(--sur2)) 0 54px/92% 12px no-repeat,linear-gradient(var(--sur2),var(--sur2)) 0 78px/70% 12px no-repeat}
-.ss-h{align-items:center}.ss-lt{margin:-8px 4px -8px 0}
-.streak-top .lt{margin:-6px 0 -2px -6px}
-.lt:empty{display:none}
+.streak-top .streak-ic{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;margin:-6px 0 -2px -6px}
 /* v94: raw wellness viewer (temporary, Phase 0 audit) */
 
 /* v96: field states in Log. Hints are placeholders in --t3, imported values carry a small source tag,
