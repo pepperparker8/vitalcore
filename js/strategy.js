@@ -155,7 +155,7 @@ function strategy(){
     hardN:fut.filter(x=>x.role==='hard'||x.role==='race').length,restN:fut.filter(x=>x.role==='rest'||x.role==='recover').length,
     lo:fut.reduce((a,x)=>a+x.lo,0),hi:fut.reduce((a,x)=>a+x.hi,0)};
 }
-// today's session in the short form used by the coach view and the briefing; null once you have trained
+// today's session in the short form used by the briefing; null once you have trained (the Today card renderSuggest/#sugCard was removed in v115)
 function suggestWorkout(){
   const st=strategy();if(!st)return null;
   const x=st.days[0];if(x.done)return null;
@@ -163,19 +163,6 @@ function suggestWorkout(){
 }
 const stBars=n=>n?`<span class="st-e" role="img" aria-label="Effort ${n} of 5">${[1,2,3,4,5].map(k=>`<i${k<=n?' class="on"':''}></i>`).join('')}</span>`:'';
 const stMeta=x=>[x.dur,x.effort?`effort ${x.effort} of 5`:''].filter(Boolean).join(' · ');
-function renderSuggest(){
-  const el=$('sugCard');if(!el)return;
-  const st=strategy();
-  if(!st){el.style.display='none';return;}
-  const a=st.days[0],x=a.done?st.days[1]:a,rest=x.role==='rest';
-  const ty=PL_TYPES.includes(x.type)&&x.type!=='Rest'?x.type:'Run';
-  el.style.display='';
-  el.innerHTML=`<div class="sg-lbl">${a.done?'Next session, tomorrow':'Today\'s session'}</div>
-   <div class="sg-row"><div class="sg-ico">${rest?UI.moon:(ICON[x.type]||'')}</div><div style="flex:1;min-width:0"><div class="sg-t">${esc(x.name)}</div>
-   ${stMeta(x)?`<div class="sg-m">${esc(stMeta(x))}${stBars(x.effort)}</div>`:''}
-   <div class="sg-s">${esc(x.how)}</div><div class="sg-s sg-why">${esc(x.why)}</div></div></div>
-   <div class="sg-btns">${a.done||rest||x.role==='race'?'':`<button class="btn-out sg-btn" onclick="switchTab('log');openLog('lWorkout');wkPrefill(true);$('exGrid').scrollIntoView({block:'center'})">Log ${ty.toLowerCase()}</button>`}<button class="btn-out sg-btn" onclick="switchTab('insights');$('stratCard').scrollIntoView({block:'start'})">Next 7 days</button></div>`;
-}
 // Insights: the 7-day outline with this week's time target
 function renderStrategy(){
   const el=$('stratCard');if(!el)return;
