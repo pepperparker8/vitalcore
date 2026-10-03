@@ -5,9 +5,9 @@ const SB_KEY='sb_publishable_5YtuMNMqdVx38MPixZZzZA_ma2wEe2p'; // publishable ke
 // ── STATE ────────────────────────────────────────────────────────────────────
 const DEFAULTS={
   profile:{name:'',height:170,age:37,sleepGoal:7.5,wtGoal:null,stepGoal:8000,hrGoal:55},
-  checkins:[],workouts:[],measurements:[],foodLogs:[],sleepLogs:[],bloodLogs:[],injuries:[],
+  checkins:[],workouts:[],measurements:[],foodLogs:[],sleepLogs:[],bloodLogs:[],injuries:[],polarNights:[],
   intervalsData:{ctl:null,atl:null,tsb:null},wellness:{},
-  claudeKey:'',intervalsKey:'',intervalsID:'',
+  claudeKey:'',intervalsKey:'',intervalsID:'',polarKey:'',
   lastSync:null,onboardingDone:false,signBanOff:false,
   insightLog:[],pending:{},tomb:[],profileTs:0,dupOk:[],gone:[]
 };
@@ -23,7 +23,9 @@ const TBL={
   blood:{k:'bloodLogs',t:'blood_logs',f:{glucose:'glucose',chol:'chol',uric:'uric',hdl:'hdl',ldl:'ldl'}},
   inj:{k:'injuries',t:'injuries',f:{part:'part',sev:'sev',notes:'notes',active:'active'}},
   // opt: the table was added in v88; sync carries on if the database update has not been run yet
-  food:{k:'foodLogs',t:'food_logs',opt:true,f:{kcal:'kcal',protein:'protein',meals:'meals'}}
+  food:{k:'foodLogs',t:'food_logs',opt:true,f:{kcal:'kcal',protein:'protein',meals:'meals'}},
+  // polar (v116): one row per night from Polar, the compact night in `data` (jsonb); lim = how many newest nights are pulled and kept
+  polar:{k:'polarNights',t:'polar_nights',opt:true,lim:120,f:{data:'data'}}
 };
 
 async function persistLoad(){
@@ -41,8 +43,10 @@ function flushSave(){
   const put=()=>localStorage.setItem('vitalcore-data',JSON.stringify(_s));
   try{put();}catch(e){
     console.log('Storage save:',e.message);
-    // storage full: older briefings also live in the database, so keep the newest 60 on the phone and retry
-    try{if(_s.insightLog&&_s.insightLog.length>60){_s.insightLog=_s.insightLog.slice(0,60);_s.insLean=true;put();}}catch(e2){console.log('Storage save:',e2.message);}
+    // storage full: older briefings and Polar nights also live in the database, so keep the newest on the phone and retry
+    const trims=[()=>{if(_s.insightLog&&_s.insightLog.length>60){_s.insightLog=_s.insightLog.slice(0,60);_s.insLean=true;return true;}},
+      ()=>{if(_s.polarNights&&_s.polarNights.length>30){_s.polarNights=_s.polarNights.slice(-30);return true;}}];
+    for(const t of trims){if(!t())continue;try{put();return;}catch(e2){console.log('Storage save:',e2.message);}}
   }
 }
 window.addEventListener('pagehide',flushSave);
@@ -75,8 +79,9 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe']};
-const APP_VER=115; // keep in step with the cache name in sw.js
+const APP_VER=116; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
+const POLAR_API='https://vitalcore-backend.vercel.app/api'; // the owner's Vercel functions; they hold the Polar tokens, the app sends its app key
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5" /><circle cx="5.5" cy="17.5" r="3.5" /><circle cx="15" cy="5" r="1" /><path d="M12 17.5V14l-3-3 4-3 2 3h2" /></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5a2 2 0 0 0-2 2v11" /><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /><path d="M7 13h10" /><path d="M7 9h10" /><path d="M9 5a2 2 0 0 0-2 2v11" /></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" /><path d="m2.5 21.5 1.4-1.4" /><path d="m20.1 3.9 1.4-1.4" /><path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" /><path d="m9.6 14.4 4.8-4.8" /></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" /><path d="m9 20 3-6 3 6" /><path d="m6 8 6 2 6-2" /><path d="M12 10v4" /></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1" /><circle cx="12" cy="8" r="2" /><path d="M12 10v12" /><path d="M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z" /><path d="M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z" /></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></svg>']];
 const ICON=Object.fromEntries(SPORTS);
 const HAS_DIST=['Run','Cycle','Hike','Walk'];
@@ -104,20 +109,24 @@ function del(n,id){
   if(/^(icu-|sl-|mi-)/.test(String(id)))d.gone=[...(d.gone||[]).filter(x=>x!==id),id].slice(-400);
   save(d);queuePush();updSyncStatus();
 }
-// Source of each field on a record: rec.src = {field:'icu'|'man'} (local only, missing = unknown).
-// manSrc() marks fields the user typed: an imported ('icu') value that was left as is keeps its mark.
+// Source of each field on a record: rec.src = {field:'icu'|'polar'|'est'|'man'} (local only, missing = unknown).
+// manSrc() marks fields the user typed: an imported ('icu' or 'polar') value that was left as is keeps its mark.
+const IMP_SRC=['icu','polar'];
 function manSrc(old,rec,keys){
   const o=(old&&old.src)||{},s={};
-  keys.forEach(k=>{const v=rec[k];if(v==null||v===''||v===0&&/[HM]$/.test(k))return;s[k]=o[k]==='icu'&&old[k]===v?'icu':'man';});
+  keys.forEach(k=>{const v=rec[k];if(v==null||v===''||v===0&&/[HM]$/.test(k))return;s[k]=IMP_SRC.includes(o[k])&&old[k]===v?o[k]:'man';});
   return s;
 }
-// icuFill() writes imported values only into empty fields or fields the import wrote before; returns true when changed
-function icuFill(rec,vals){
+// icuFill() writes imported values only into empty fields (null, or 0 for the hours/minutes pairs) or fields the import wrote before;
+// returns true when changed. who = 'icu' (default) or 'polar': Polar also replaces an Intervals.icu value or an estimated time
+// (its night is the original, Intervals.icu carries a flattened copy), never a typed one. Intervals.icu never replaces a Polar value.
+function icuFill(rec,vals,who='icu'){
   let ch=false;const src={...(rec.src||{})};
+  const may=k=>who==='polar'?['icu','polar','est'].includes(src[k]):src[k]==='icu';
   for(const [k,v] of Object.entries(vals)){
     if(v==null)continue;
     const cur=rec[k];
-    if(cur==null||(src[k]==='icu'&&cur!==v)){rec[k]=v;src[k]='icu';ch=true;}
+    if(cur!==v&&(cur==null||cur===0&&/[HM]$/.test(k)||may(k))){rec[k]=v;src[k]=who;ch=true;}
   }
   rec.src=src;return ch;
 }

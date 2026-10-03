@@ -87,7 +87,9 @@ function stopMind(){finishMind(false);}
 function slSpan(b,w){const m=x=>{const[h,n]=x.split(':').map(Number);return h*60+n;};let d=m(w)-m(b);if(d<=0)d+=1440;return d;}
 // the time computed from a recorded duration: {k:'bed'|'wake', v:'HH:MM'}; saved as an estimate unless the user changes it
 let _slEst=null;
-const slIcu=x=>!!(x&&x.src&&(x.src.durMin==='icu'||x.src.score==='icu'));
+// where an imported night came from: 'Polar' (its own night, v116), 'Intervals.icu' (the flattened copy), or null when typed
+const slSrc=x=>{const s=x&&x.src||{};return[s.durMin,s.score,s.bed,s.wake].includes('polar')?'Polar':s.durMin==='icu'||s.score==='icu'?'Intervals.icu':null;};
+const slIcu=x=>!!slSrc(x);
 const slNeedsTime=x=>!!(x&&x.durMin&&!x.bed&&!x.wake&&slIcu(x));
 const slHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function slCalc(typed){
@@ -103,13 +105,15 @@ function slCalc(typed){
   }
   if(_slEst&&I(_slEst.k).value!==_slEst.v)_slEst=null;
   bI.classList.toggle('inp-est',_slEst?.k==='bed');wI.classList.toggle('inp-est',_slEst?.k==='wake');
-  const b=bI.value,w=wI.value,src=x?.src||{};
+  const b=bI.value,w=wI.value,src=x?.src||{},imp=IMP_SRC.includes(src.durMin),nm=src.durMin==='polar'?'Polar':'Intervals.icu';
   if(b&&w){
-    const dur=slSpan(b,w);
-    el.textContent=_slEst?`${_slEst.k==='wake'?'Wake-up':'Bedtime'} estimated from ${fmtDur(rec)} recorded by Intervals.icu. Correct it if it is off.`
-      :rec&&src.durMin==='icu'&&Math.abs(dur-rec)>5?`Time asleep from your times: ${fmtDur(dur)} (Intervals.icu recorded ${fmtDur(rec)}). Your times win.`:'Time asleep: '+fmtDur(dur);
+    // a Polar night with its own times: time asleep is the span minus time awake, so it is shorter than bedtime to wake-up
+    const dur=slSpan(b,w),pol=src.durMin==='polar'&&x.bed===b&&x.wake===w?x.durMin:0;
+    el.textContent=_slEst?`${_slEst.k==='wake'?'Wake-up':'Bedtime'} estimated from ${fmtDur(rec)} recorded by ${nm}. Correct it if it is off.`
+      :pol?`Time asleep: ${fmtDur(pol)} by Polar${dur-pol>=5?` (awake ${fmtDur(dur-pol)} during the night)`:''}.`
+      :rec&&imp&&Math.abs(dur-rec)>5?`Time asleep from your times: ${fmtDur(dur)} (${nm} recorded ${fmtDur(rec)}). Your times win.`:'Time asleep: '+fmtDur(dur);
   }
-  else if(rec)el.textContent=(src.durMin==='icu'?'Intervals.icu recorded ':'Saved: ')+fmtDur(rec)+'. Enter your bedtime or wake-up time and the other is worked out.';
+  else if(rec)el.textContent=(imp?nm+' recorded ':'Saved: ')+fmtDur(rec)+'. Enter your bedtime or wake-up time and the other is worked out.';
   else el.textContent='Enter when you fell asleep and woke up.';
 }
 function loadSleepFor(date){
@@ -122,12 +126,13 @@ function loadSleepFor(date){
   $('slMore').open=!!(x&&(x.score!=null||x.deepH||x.deepM||x.remH||x.remM||x.rested));
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
-  // source tags: shown only on fields that still hold the imported value
-  $('slDurSrc').hidden=!(x?.durMin&&src.durMin==='icu'&&!x.bed);
-  $('slScoreSrc').hidden=!(x?.score!=null&&src.score==='icu');
-  $('slRestSrc').hidden=!(x?.rested&&src.rested==='icu');
+  // source tags: shown only on fields that still hold the imported value, named after the source (Polar or Intervals.icu)
+  const sn=k=>src[k]==='polar'?'Polar':src[k]==='icu'?'Intervals.icu':null,tag=(id,name)=>{const e=$(id);e.hidden=!name;if(name)e.textContent=name;};
+  tag('slDurSrc',x?sn('bed')||sn('wake')||(x.durMin&&!x.bed?sn('durMin'):null):null);
+  tag('slScoreSrc',x&&x.score!=null?sn('score'):null);
+  tag('slRestSrc',x&&x.rested?sn('rested'):null);
   $('slDel').style.display=x?'':'none';
-  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?'Recorded by Intervals.icu. Add your bedtime or wake-up time to complete it.':slIcu(x)?'Recorded by Intervals.icu. Anything you change here is kept.':'Editing the saved night. Change anything and save.';
+  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?`Recorded by ${slSrc(x)}. Add your bedtime or wake-up time to complete it.`:slIcu(x)?`Recorded by ${slSrc(x)}. Anything you change here is kept.`:'Editing the saved night. Change anything and save.';
 }
 // soft guardrail: unusual but possible values get a friendly confirm instead of a block
 const sane=m=>confirm(m+'\n\nSave it anyway?');
@@ -138,7 +143,9 @@ function saveSleep(){
   if(score!==null&&(score<0||score>100)){showToast('Sleep score should be 0–100');return;}
   const bed=$('slBed').value,wake=$('slWake').value,old0=S().sleepLogs.find(s=>s.date===date);
   if(!!bed!==!!wake){showToast('Enter both bedtime and wake-up time');return;}
-  const dur=bed?slSpan(bed,wake):(old0?.durMin||0);
+  // a Polar night saved again with its own times keeps Polar's time asleep (the span minus time awake)
+  const keep=old0&&old0.src?.durMin==='polar'&&old0.bed===bed&&old0.wake===wake?old0.durMin:0;
+  const dur=bed?(keep||slSpan(bed,wake)):(old0?.durMin||0);
   if(dur>16*60){showToast('Sleep over 16 hours looks off');return;}
   if(dur>12*60&&!sane(`That is ${fmtDur(dur)} of sleep, which is unusually long.`))return;
   if(dur>0&&dur<2*60&&!sane(`That is only ${fmtDur(dur)} of sleep.`))return;

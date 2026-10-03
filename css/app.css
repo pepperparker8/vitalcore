@@ -895,6 +895,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
    a time worked out from a recorded duration is dashed until the user confirms or corrects it. */
 .inp::placeholder{color:var(--t3);opacity:1}
 .fl .wk-src{margin-left:6px;text-transform:none;letter-spacing:0;vertical-align:0}
+.wk-src[hidden]{display:none}  /* display:inline-block above would otherwise beat the hidden attribute (v116 fix) */
 .hist-row .wk-src{margin-left:6px}
 .inp.inp-est{border:1px dashed var(--t3);box-shadow:none}
 .log-sec.part .log-stat{color:var(--amber)}

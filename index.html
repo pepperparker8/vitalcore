@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://hixmwtwhxypbqmjdzjtz.supabase.co https://api.anthropic.com https://intervals.icu https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://hixmwtwhxypbqmjdzjtz.supabase.co https://api.anthropic.com https://intervals.icu https://vitalcore-backend.vercel.app https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'">
 <meta name="theme-color" content="#F3F4F6">
 <script>try{var t=localStorage.getItem("vc-theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":t==="auto"?"":"light");if(t==="auto")document.documentElement.removeAttribute("data-theme");}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
@@ -399,6 +399,12 @@
       <div class="fg"><div class="fl">INTERVALS.ICU API KEY</div><input type="password" class="inp" id="sInterKey" placeholder="Your API key" autocomplete="off">
         <div class="set-note">Intervals.icu → Settings → Developer Settings. Stays on this phone only.</div>
         <div class="api-test-row"><button class="api-test-btn" onclick="testIntervals()">Test connection</button><span class="api-test-res" id="icuTestRes"></span></div>
+      </div>
+      <div class="fg"><div class="fl">POLAR APP KEY</div><input type="password" class="inp" id="sPolarKey" placeholder="APP_TOKEN of your VitalCore backend" autocomplete="off">
+        <div class="set-note">Brings each night in detail from your Polar Loop 2: sleep stages, score, heart rate variability and breathing while asleep. The key is the APP_TOKEN of your VitalCore backend on Vercel. Stays on this phone only.</div>
+        <div class="api-test-row"><button class="api-test-btn" onclick="testPolar()">Check connection</button><span class="api-test-res" id="polTestRes"></span></div>
+        <div class="api-test-row"><button class="api-test-btn" onclick="polarConnect()">Connect to Polar</button><button class="api-test-btn" onclick="polarDisconnect()">Disconnect</button></div>
+        <div class="set-note" id="polNote"></div>
       </div>
       <div class="fg"><div class="fl">CLAUDE API KEY</div><input type="password" class="inp" id="sClaudeKey" placeholder="sk-ant-…" autocomplete="off"><div class="set-note">Only needed for AI briefings. Stays on this phone only.</div>
         <div class="api-test-row"><button class="api-test-btn" onclick="testClaudeKey()">Test connection</button><span class="api-test-res" id="claudeTestRes"></span></div>

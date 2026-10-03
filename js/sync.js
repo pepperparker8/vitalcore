@@ -95,8 +95,8 @@ async function pushAll(){
       else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));path=`/rest/v1/${TBL[n].t}?on_conflict=id`;}
       if(rows.length){
         const r=await sbFetch(path,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
-        if(!r.ok){if(TBL[n]?.opt){d.noFoodTbl=true;continue;}throw new Error(await errMsg(r));}
-        if(TBL[n]?.opt)d.noFoodTbl=false;
+        if(!r.ok){if(TBL[n]?.opt){d[OPT_FLAG[n]]=true;continue;}throw new Error(await errMsg(r));}
+        if(TBL[n]?.opt)d[OPT_FLAG[n]]=false;
       }
       items.forEach(([k,ts])=>{if(d.pending[k]===ts)delete d.pending[k];});
     }
@@ -108,12 +108,14 @@ async function pushAll(){
     d.lastSync=new Date().toISOString();_pushErr='';save(d);
   }finally{_pushing=false;updSyncStatus();}
 }
+// optional tables (added after the first database setup): sync carries on without them and notes it here
+const OPT_FLAG={food:'noFoodTbl',polar:'noPolarTbl'};
 async function pullAll(){
   const d=S();
   for(const [n,T] of Object.entries(TBL)){
-    const r=await sbFetch(`/rest/v1/${T.t}?select=*&order=date.desc&limit=3000`);
-    if(!r.ok){if(T.opt){d.noFoodTbl=true;continue;}throw new Error(await errMsg(r));}
-    if(T.opt)d.noFoodTbl=false;
+    const r=await sbFetch(`/rest/v1/${T.t}?select=*&order=date.desc&limit=${T.lim||3000}`);
+    if(!r.ok){if(T.opt){d[OPT_FLAG[n]]=true;continue;}throw new Error(await errMsg(r));}
+    if(T.opt)d[OPT_FLAG[n]]=false;
     const rows=await r.json();
     const byId=new Map(d[T.k].map(x=>[x.id,x]));
     for(const x of rows){
@@ -123,6 +125,7 @@ async function pullAll(){
       else if(rec.ts>(cur.ts||0))Object.assign(cur,rec);
     }
     d[T.k].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+    if(T.lim&&d[T.k].length>T.lim)d[T.k]=d[T.k].slice(-T.lim);   // the phone keeps the newest only
   }
   const pr=await sbFetch('/rest/v1/profile?select=*');
   if(pr.ok){const rows=await pr.json();const x=rows[0];
@@ -150,10 +153,17 @@ async function syncAll(manual){
   const msgs=[];let cloudErr=null;
   try{
     if(_auth){try{await pullAll();}catch(e){cloudErr=e;}}
-    if(S().intervalsKey&&S().intervalsID){
+    const icu=!!(S().intervalsKey&&S().intervalsID),pol=!!S().polarKey;
+    if(icu){
       try{const r=await pullIntervals();msgs.push(r.n?`${r.n} new from Intervals.icu`:'Intervals.icu up to date');}
       catch(e){msgs.push(e.message);}
-    }else if(manual&&!_auth)msgs.push('Nothing to sync yet — connect Intervals.icu or sign in in Settings');
+    }
+    // Polar runs after Intervals.icu so its detailed night wins over the flattened copy (see icuFill)
+    if(pol){
+      try{const r=await pullPolar();msgs.push(r.n?`${r.n} night${r.n>1?'s':''} from Polar`:'Polar up to date');}
+      catch(e){msgs.push(e.message);}
+    }
+    if(!icu&&!pol&&manual&&!_auth)msgs.push('Nothing to sync yet — connect Intervals.icu or Polar, or sign in in Settings');
     if(_auth&&!cloudErr){try{await pushAll();}catch(e){cloudErr=e;}}
   }finally{
     _syncing=false;$('syncBtn').textContent=_auth?'Sync':'Sign in';
@@ -163,7 +173,7 @@ async function syncAll(manual){
   else if(_auth)msgs.unshift('Cloud backup up to date ✓');
   if(manual||cloudErr||msgs.length)showToast(msgs.join(' · '));
 }
-function syncBtn(){if(!_auth&&!(S().intervalsKey&&S().intervalsID)){openAuth();return;}syncAll(true);}
+function syncBtn(){if(!_auth&&!(S().intervalsKey&&S().intervalsID)&&!S().polarKey){openAuth();return;}syncAll(true);}
 function updSyncStatus(){
   const d=S(),n=Object.keys(d.pending).length+d.tomb.length;
   let t,c='--amber';
@@ -262,5 +272,113 @@ async function testClaudeKey(){
     if(r.ok){res.textContent='Connected ✓';res.className='api-test-res ok';}
     else{const e=await r.json();res.textContent=e.error?.message||'Invalid key';res.className='api-test-res fail';}
   }catch(e){res.textContent='Network error';res.className='api-test-res fail';}
+}
+
+// ── POLAR (v116) ─────────────────────────────────────────────────────────────
+// Detailed nights come from Polar AccessLink through the VitalCore backend (POLAR_API), which keeps the Polar
+// tokens and renews them. The app only holds the backend's app key (polarKey, this phone only).
+function polErr(status,j){
+  if(status===401)return'The backend rejected the app key (Settings > Polar)';
+  if(status===409)return'Polar is not connected yet — tap Connect to Polar in Settings';
+  if(status===403)return'Polar refused. Accept every consent at account.polar.com, then connect again';
+  if(status===429)return'Polar is busy (rate limit) — try again in a few minutes';
+  return'Polar backend error '+status+(j&&j.error?': '+j.error:'');
+}
+async function polarFetch(path,key){
+  let r;
+  try{r=await fetch(POLAR_API+path,{headers:{'X-App-Key':(key||S().polarKey||'').trim()}});}
+  catch(e){throw new Error('Polar backend unreachable — offline?');}
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok){const e=new Error(polErr(r.status,j));e.status=r.status;throw e;}
+  return j;
+}
+// Polar's "26280s" -> seconds / minutes; 0 means Polar has no value
+const plSec=s=>typeof s==='number'?s:typeof s==='string'?Math.round(parseFloat(s))||0:0;
+const plMin=s=>Math.round(plSec(s)/60);
+const plNum=(v,dp=0)=>typeof v==='number'&&isFinite(v)&&v>0?Math.round(v*10**dp)/10**dp:null;
+const PL_STATE={SLEEP_STATE_WAKE:0,SLEEP_STATE_NON_REM1:1,SLEEP_STATE_NON_REM2:1,SLEEP_STATE_NON_REM3:2,SLEEP_STATE_REM:3};
+// the user's own rating in the Polar app, 1 (very badly) to 5 (very well), 0 when not given
+const plRating=r=>{r=String(r||'');return/NEITHER/.test(r)?3:/VERY_WELL/.test(r)?5:/WELL/.test(r)?4:/VERY_BAD|VERY_POOR/.test(r)?1:/BAD|POOR/.test(r)?2:0;};
+// One night in compact form, stored as polarNights[].data (synced as jsonb). Times are Polar's local ISO strings,
+// durations are minutes. hyp = [[secondsFromStart, 0 wake | 1 light | 2 deep | 3 REM | 4 unknown]]; cycles = [[seconds, depth]];
+// hrv and br = sample runs {t, dt seconds, v[]}; rc = the night's physiology and 28-day baselines (ms).
+// Polar's own recovery verdicts (recoveryIndicator, ansStatus, tips) are deliberately left out.
+function polarNight(day){
+  const s=day&&day.sleep,r=s&&s.sleepResult,h=r&&r.hypnogram,sc=s&&s.sleepScore,ev=s&&s.sleepEvaluation,rc=day&&day.recharge,date=day&&day.date;
+  if(!date||!h||!h.sleepStart||!h.sleepEnd)return null;
+  const pd=ev&&ev.phaseDurations||{},it=ev&&ev.interruptions||{},an=ev&&ev.analysis||{};
+  const data={
+    start:h.sleepStart,end:h.sleepEnd,span:plMin(ev&&ev.sleepSpan)||Math.max(0,Math.round((Date.parse(h.sleepEnd)-Date.parse(h.sleepStart))/60000))||0,
+    asleep:plMin(ev&&ev.asleepDuration),goal:plMin(h.sleepGoal),rating:plRating(h.sleepRating),
+    stages:{wake:plMin(pd.wake),rem:plMin(pd.rem),light:plMin(pd.light),deep:plMin(pd.deep),unknown:plMin(pd.unknown),remPct:plNum(pd.remPercentage),deepPct:plNum(pd.deepPercentage)},
+    score:plNum(sc&&sc.sleepScore),
+    parts:sc?{ownTarget:plNum(sc.sleepTimeOwnTargetScore),recommended:plNum(sc.sleepTimeRecommendationScore),continuity:plNum(sc.continuityScore),efficiency:plNum(sc.efficiencyScore),rem:plNum(sc.remScore),deep:plNum(sc.n3Score),interruptions:plNum(sc.longInterruptionsTimeScore),duration:plNum(sc.groupDurationScore),solidity:plNum(sc.groupSolidityScore),refresh:plNum(sc.groupRefreshScore)}:null,
+    eff:plNum(an.efficiencyPercent),cont:plNum(an.continuityIndex,1),contClass:an.continuityClass??null,
+    inter:{total:plMin(it.totalDuration),long:plMin(it.longDuration),short:plMin(it.shortDuration),n:it.totalCount??null,nLong:it.longCount??null,nShort:it.shortCount??null},
+    hyp:(h.sleepStateChanges||[]).map(c=>[plSec(c.offsetFromStart),PL_STATE[c.newState]??4]),
+    cycles:(r.sleepCycles||[]).map(c=>[plSec(c.secondsFromSleepStart),Math.round((c.sleepDepthAtCycleStart||0)*100)/100]),
+    hrv:(rc&&rc.hrvSamples||[]).map(x=>({t:x.startTime,dt:plSec(x.sampleInterval),v:(x.hrvValues||[]).map(v=>Math.round(v))})),
+    br:(rc&&rc.breathingRateSamples||[]).map(x=>({t:x.startTime,dt:plSec(x.sampleInterval),v:(x.breathingRateValues||[]).map(v=>Math.round(v*10)/10)})),
+    rc:rc?{rri:plNum(rc.meanNightlyRecoveryRri),rmssd:plNum(rc.meanNightlyRecoveryRmssd),resp:plNum(rc.meanNightlyRecoveryRespirationInterval),baseRri:plNum(rc.meanBaselineRri),baseRmssd:plNum(rc.meanBaselineRmssd),baseResp:plNum(rc.meanBaselineRespirationInterval),sdRri:plNum(rc.sdBaselineRri),sdRmssd:plNum(rc.sdBaselineRmssd),sdResp:plNum(rc.sdBaselineRespirationInterval)}:null
+  };
+  return{date,data};
+}
+// what a night gives the sleep log: Polar's times (local HH:MM), time asleep (span minus time awake), deep, REM and score
+function polarSleepVals(n){
+  const x=n.data,hm=s=>/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(s||'')?s.slice(11,16):null;
+  if(!x.span||x.span>16*60||!hm(x.start)||!hm(x.end))return null;   // a joined or broken recording: kept as a night, not put in the log
+  const hmOf=m=>m?[Math.floor(m/60),m%60]:[null,null],[dH,dM]=hmOf(x.stages.deep),[rH,rM]=hmOf(x.stages.rem);
+  return{bed:hm(x.start),wake:hm(x.end),durMin:x.asleep||x.span,score:x.score,deepH:dH,deepM:dM,remH:rH,remM:rM};
+}
+// stable text for comparing two nights (jsonb from the cloud reorders keys, so never compare JSON strings)
+const canon=o=>Array.isArray(o)?'['+o.map(canon).join(',')+']':o&&typeof o==='object'?'{'+Object.keys(o).sort().map(k=>k+':'+canon(o[k])).join(',')+'}':JSON.stringify(o);
+async function pullPolar(){
+  const d=S();if(!d.polarKey)return{n:0};
+  d.polarNights=d.polarNights||[];
+  // first time the last 28 nights; after that from two days before the newest stored night (Polar can revise a night)
+  const newest=last(d.polarNights),from=newest?dAgo(Math.min(28,Math.max(0,daysAgo(newest.date))+2)):dAgo(28);
+  const j=await polarFetch(`/polar-sleep?from=${from}&to=${dAgo(-1)}`);
+  let n=0;
+  for(const day of j.days||[]){
+    const night=polarNight(day);if(!night)continue;
+    const id='pn-'+night.date,old=d.polarNights.find(x=>x.id===id);
+    if(!old||canon(old.data)!==canon(night.data)){put('polar',{id,date:night.date,data:night.data});n++;}
+    // the night in the sleep log: only empty fields and earlier imports are touched (icuFill, who = 'polar')
+    const sv=polarSleepVals(night);if(!sv||isGone('sl-'+night.date))continue;
+    const ex=d.sleepLogs.find(s=>s.date===night.date);
+    if(!ex){const r={id:'sl-'+night.date,date:night.date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null,bed:null,wake:null};icuFill(r,sv,'polar');put('sleep',r);}
+    else{const r={...ex};if(icuFill(r,sv,'polar'))put('sleep',r);}
+  }
+  if(d.polarNights.length>TBL.polar.lim)d.polarNights=d.polarNights.slice(-TBL.polar.lim);
+  d.polarAt=Date.now();save(d);
+  return{n};
+}
+// Settings > Polar
+function polarNote(){
+  const d=S(),a=d.polarNights||[],l=last(a);
+  if(!d.polarKey)return'';
+  return(a.length?`${a.length} night${a.length>1?'s':''} stored, newest ${fmtD(l.date)}.`:'No nights pulled yet. Save, then tap Sync.')+(d.noPolarTbl&&_auth?' Cloud backup for them starts after a one-time database update (docs/supabase-v116.sql).':'');
+}
+async function testPolar(){
+  const res=$('polTestRes'),key=$('sPolarKey').value.trim();
+  if(!key){res.textContent='Enter the app key first';res.className='api-test-res fail';return;}
+  res.textContent='Checking…';res.className='api-test-res';
+  try{
+    const j=await polarFetch('/polar-status',key);
+    if(j.connected){res.textContent='Polar connected ✓'+(j.missingScopes&&j.missingScopes.length?' (some permissions missing: connect again)':'');res.className='api-test-res ok';}
+    else{res.textContent='Key accepted. Polar is not connected yet: tap Connect to Polar';res.className='api-test-res fail';}
+  }catch(e){res.textContent=e.message;res.className='api-test-res fail';}
+}
+// saves the typed key, then goes to Polar to approve the app; Polar sends you back to the app with ?polar=connected
+function polarConnect(){
+  const key=$('sPolarKey').value.trim();if(!key){showToast('Enter the app key first');return;}
+  const d=S();d.polarKey=key;save(d);flushSave();
+  location.href=`${POLAR_API}/polar-login?key=${encodeURIComponent(key)}`;
+}
+async function polarDisconnect(){
+  const key=$('sPolarKey').value.trim()||S().polarKey;if(!key){showToast('Nothing to disconnect');return;}
+  if(!confirm('Disconnect Polar? The nights already pulled stay on the phone. You can connect again any time.'))return;
+  try{await polarFetch('/polar-status?disconnect=1',key);$('polTestRes').textContent='';showToast('Polar disconnected');}
+  catch(e){showToast(e.message);}
 }
 

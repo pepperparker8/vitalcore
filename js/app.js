@@ -32,7 +32,7 @@ function recalc(){
   renderWhy();renderRecovery();renderPlan();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
-window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID))syncAll(false);updSyncStatus();});
+window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID)||S().polarKey)syncAll(false);updSyncStatus();});
 window.addEventListener('resize',()=>{if(_tab==='trends')renderTrendsTab();});
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -57,10 +57,12 @@ async function init(){
   setTimeout(()=>$('splash').classList.add('gone'),700);
   if(!navigator.onLine)$('offlineBar').classList.add('show');
   await handleAuthHash();
-  // background refresh: cloud + Intervals.icu at most once an hour
-  const d=S();
+  // background refresh: cloud, Intervals.icu and Polar at most once an hour; straight away when back from the Polar sign-in
+  const d=S(),back=/[?&]polar=connected/.test(location.search);
+  if(back){history.replaceState(null,'',location.pathname);showToast('Polar connected ✓'+(d.polarKey?' — pulling your nights…':'. Enter the app key in Settings to pull your nights.'));}
   const stale=!d.lastAuto||Date.now()-d.lastAuto>3600e3;
-  if((_auth||(d.intervalsKey&&d.intervalsID))&&stale&&navigator.onLine){Promise.resolve(syncAll(false)).then(()=>{const x=S();x.lastAuto=Date.now();save(x);}).catch(()=>{});}
+  if((_auth||(d.intervalsKey&&d.intervalsID)||d.polarKey)&&(stale||back)&&navigator.onLine){Promise.resolve(syncAll(back)).then(()=>{const x=S();x.lastAuto=Date.now();save(x);
+    if(back&&x.polarKey){const n=(x.polarNights||[]).length;showToast(`Polar connected ✓ · ${n?n+' night'+(n>1?'s':'')+' stored':'no nights yet'}`);}}).catch(()=>{});}
   else if(_auth&&Object.keys(d.pending).length)queuePush();
 }
 init();
