@@ -16,21 +16,75 @@ function dtTrend(fn,fmt){
   return`<div class="dt-sec">Last 7 days</div><div class="dt-tr">${vals.map(v=>{const dt=new Date(v.date+'T12:00:00');
     return`<div class="dt-c"><span class="dt-bv">${v.v==null?'':fmt(v.v)}</span><div class="dt-b ${v.v==null?'off':v.date===td()?'now':''}" style="height:${v.v==null?4:Math.round(20+(v.v-lo)/span*80)}%"></div><span class="dt-bl">${v.date===td()?'Now':L[dt.getDay()]}</span></div>`;}).join('')}</div>`;
 }
+// ── v117: the sleep sheet browses stored nights (‹ ›) and shows the detailed night from Polar ──
+let _dtDate=null;                       // the night on show in the sleep sheet; null = last night
+const dtNights=()=>S().sleepLogs.filter(x=>x.durMin).map(x=>x.date).sort();
+const dtLastNight=()=>last(S().sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
+function dtNight(dir){
+  const l=dtNights();if(!l.length)return;
+  const cur=_dtDate||(dtLastNight()||{}).date;
+  let i=cur?l.indexOf(cur):l.length;     // with no night to show, ‹ goes to the newest stored one
+  i+=dir;if(i<0||i>=l.length)return;
+  _dtDate=l[i];openDetail('sleep');
+}
+function dtNav(cur){
+  const l=dtNights(),i=cur?l.indexOf(cur):l.length;if(!l.length||(l.length<2&&cur))return'';
+  const lab=cur?(cur===td()?'Last night':'Night ending '+fmtD(cur)):'Last night';
+  return`<div class="dt-nav"><button type="button" aria-label="Earlier night" onclick="dtNight(-1)"${i<=0?' disabled':''}>‹</button><span>${lab}</span><button type="button" aria-label="Later night" onclick="dtNight(1)"${i>=l.length-1?' disabled':''}>›</button></div>`;
+}
+const PL_WORDS=['','very badly','badly','neither well nor badly','well','very well'];
+// a small line over the night from Polar's sample runs ({t, dt seconds, v[]}), placed by time; one line per run
+function dtSpark(runs,start,T){
+  const pts=[];(runs||[]).forEach(r=>{const t0=(Date.parse(r.t)-start)/1000;if(isNaN(t0))return;const p=[];(r.v||[]).forEach((v,i)=>{if(v>0)p.push([t0+i*(r.dt||300),v]);});if(p.length>1)pts.push(p);});
+  const all=pts.flat().map(p=>p[1]);if(!all.length)return'';
+  const lo=Math.min(...all),hi=Math.max(...all),sp=hi-lo||1;
+  return`<svg class="dt-sp" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">${pts.map(p=>`<polyline points="${p.map(([s,v])=>(Math.max(0,Math.min(100,s/T*100))).toFixed(1)+','+(22-(v-lo)/sp*20).toFixed(1)).join(' ')}"/>`).join('')}</svg>`;
+}
+// the detailed night from Polar: a four-row stage chart from the hypnogram, the stage minutes, Polar's score parts and
+// what the body did during the night. Shown only; the recovery score keeps using the sleep record and Intervals.icu.
+function dtPolar(n){
+  const x=n.data,st=x.stages||{},span=x.span||0,start=Date.parse(x.start),T=Math.max(60,Math.round((Date.parse(x.end)-start)/1000)||span*60);
+  const hm=s=>/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(s||'')?s.slice(11,16):'',pc=m=>span&&m?` · ${Math.round(m/span*100)}%`:'',row=(l,v)=>v?`<div class="dt-row"><span>${l}</span><b>${v}</b></div>`:'';
+  const ROW={0:0,3:1,1:2,2:3},hyp=x.hyp||[];
+  let hy='';hyp.forEach(([s,k],i)=>{const e=i+1<hyp.length?hyp[i+1][0]:T;if(e<=s||ROW[k]==null)return;hy+=`<i${k===0?' class="w"':''} style="left:${(s/T*100).toFixed(2)}%;width:${Math.max(0.3,(e-s)/T*100).toFixed(2)}%;top:${ROW[k]*25+3.5}%"></i>`;});
+  const [sh,sm]=hm(x.start).split(':').map(Number),mid=isNaN(sh)?'':hhmm(sh*60+sm+Math.round(T/120));
+  const chart=hy?`<div class="dt-hy"><div class="dt-hyl"><span>Awake</span><span>REM</span><span>Light</span><span>Deep</span></div><div class="dt-hyp" role="img" aria-label="Sleep stages through the night">${hy}</div><div class="dt-ax"><span>${hm(x.start)}</span><span>${mid}</span><span>${hm(x.end)}</span></div></div>`:'';
+  const it=x.inter||{},breaks=it.n?`${it.n} break${it.n>1?'s':''}${it.nLong?`, ${it.nLong} long`:''}`:'';
+  let h=`<div class="dt-sec">The night, from Polar</div>${row(`Asleep from ${hm(x.start)} to ${hm(x.end)}`,fmtDur(span))}${chart}`;
+  h+=row('Deep sleep',st.deep?fmtDur(st.deep)+pc(st.deep):'')+row('REM (dreaming)',st.rem?fmtDur(st.rem)+pc(st.rem):'')+row('Light sleep',st.light?fmtDur(st.light)+pc(st.light):'')+row('Awake',st.wake?fmtDur(st.wake)+(breaks?' · '+breaks:''):'');
+  const p=x.parts||{};
+  if(x.score||p.duration||p.solidity||p.refresh){
+    h+=`<div class="dt-sec">Polar sleep score${x.score?` · ${x.score} of 100`:''}</div>`+row('Amount of sleep',p.duration)+row('Solidity',p.solidity)+row('Regeneration',p.refresh)+row('Efficiency',x.eff?x.eff+'%':'')+row('Sleep cycles',(x.cycles||[]).length||'');
+    h+=`<div class="dt-note">Amount is time asleep against your Polar goal, solidity is how unbroken the night was, regeneration is the share of deep and REM sleep. This is Polar's scale, not the recovery score above.</div>`;
+  }
+  const rc=x.rc||{},bpm=ms=>ms?Math.round(60000/ms):null,br=ms=>ms?(60000/ms).toFixed(1):null;   // Polar gives intervals in ms
+  const mh=plMean(x.hrv),mb=plMean(x.br);   // the night's own samples when Polar gives no mean
+  const hr=bpm(rc.rri),hrB=bpm(rc.baseRri),hv=rc.rmssd||(mh&&Math.round(mh)),hvB=rc.baseRmssd,bq=br(rc.resp)||(mb&&mb.toFixed(1)),bqB=br(rc.baseResp);
+  const vs=(v,b,u)=>v?`${v}${u}${b?` <small>usual ${b}</small>`:''}`:'';
+  if(hr||hv||bq){
+    h+=`<div class="dt-sec">Your body during the night</div>`+row('Heart rate',vs(hr,hrB,' bpm'))+row('Heart rate variability',vs(hv,hvB,' ms'))+(hv?dtSpark(x.hrv,start,T):'')+row('Breathing',vs(bq,bqB,' /min'))+(bq?dtSpark(x.br,start,T):'');
+    h+=`<div class="dt-note">Measured by Polar in the first hours of sleep; usual is its own 28-night baseline. Shown only: the recovery score uses the heart rate variability and resting heart rate from Intervals.icu.</div>`;
+  }
+  if(x.rating)h+=row('You rated it',`Slept ${PL_WORDS[x.rating]}`);
+  return h;
+}
 function dtSpec(k){
   const d=S(),t=td(),fresh=x=>daysAgo(x.date)<=2;
   if(k==='sleep'){
-    const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1)),goal=dtGoal(),src=(sl&&sl.src)||{};
+    const sl=_dtDate?d.sleepLogs.find(x=>x.date===_dtDate&&x.durMin):dtLastNight(),goal=dtGoal(),src=(sl&&sl.src)||{};
     const fn=dt=>{const s=d.sleepLogs.find(x=>x.date===dt&&x.durMin);return s?s.durMin:null;},u=dtAvg(fn);
     const wk=/^([01]\d|2[0-3]):[0-5]\d$/.test(d.profile.wakeTime||'')?d.profile.wakeTime:'06:30',[h,m]=wk.split(':').map(Number),need=sleepNeed(strainOf(dayLoad(t)));
     const tonight=`<div class="dt-sec">Tonight</div><div class="dt-row"><span>Asleep by <b>${hhmm(h*60+m-need)}</b> for ${fmtDur(need)}</span><label class="dt-wake">wake at <input type="time" value="${wk}" onchange="setWake(this.value)" aria-label="Wake time"></label></div><div class="dt-note">Your goal of ${fmtDur(goal)}${need>goal?', plus extra for today\'s strain and recent short nights':''}.</div>`;
-    if(!sl)return{title:'Sleep',missing:`No sleep logged for last night. Enter bedtime and wake-up in Log, or tap Sync if your watch recorded it (Polar or Intervals.icu).`,link:['Log sleep',"logGo('lSleep')"],extra:tonight};
-    const pc=Math.round(sl.durMin/goal*100),base=Math.round(slScore(sl)*0.5+35);
+    const nav=dtNav(sl?sl.date:null);
+    if(!sl)return{title:'Sleep',nav,missing:`No sleep logged for last night. Enter bedtime and wake-up in Log, or tap Sync if your watch recorded it (Polar or Intervals.icu).`,link:['Log sleep',"logGo('lSleep')"],extra:tonight};
+    const pc=Math.round(sl.durMin/goal*100),base=Math.round(slScore(sl)*0.5+35),used=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s)));
     const ev=ciOn(dAgo(daysAgo(sl.date)+1)),late=ev&&ev.coffeeLate?`<div class="dt-sec">The evening before</div><div class="dt-note">Your check-in on ${fmtD(ev.date)} says coffee after 14:00. A late cup can cut deep sleep, so keep it in mind when reading this night.</div>`:'';
     const srcTxt=slIcu(sl)?slSrc(sl)+(src.bed==='est'||src.wake==='est'?', one time estimated':(src.bed==='man'||src.wake==='man')?', times added by you':''):'Logged by you';
-    return{title:'Sleep',val:fmtDur(sl.durMin),sub:`${pc}% of your ${fmtDur(goal)} goal${sl.date!==t?' · night ending '+fmtD(sl.date):''}${sl.score?' · score '+sl.score:''}`,src:srcTxt,
+    const pn=polarOn(sl.date),polar=pn?dtPolar(pn):'';
+    return{title:'Sleep',nav,val:fmtDur(sl.durMin),sub:`${pc}% of your ${fmtDur(goal)} goal${sl.date!==t?' · night ending '+fmtD(sl.date):''}${sl.score?' · score '+sl.score:''}`,src:srcTxt,
       usual:u.length?`${fmtDur(Math.round(avg(u)))} over ${u.length} nights`:'Needs more nights',trend:dtTrend(fn,v=>Math.floor(v/60)+'h'+(v%60?String(v%60).padStart(2,'0'):'')),
-      effect:fresh(sl)?`Sleep sets the starting point: ${base} out of 100 before form, your check-in and recovery signals adjust it. ${pc>=90?'A full night, so the start is high.':pc>=75?'A bit short of your goal, which lowers the start.':'Well short of your goal, which pulls the start down.'}`:'Not counted today: the last night is more than three days old.',
-      link:['Edit in Log',"logGo('lSleep')"],extra:late+tonight};
+      effect:used&&used.date===sl.date?`Sleep sets the starting point: ${base} out of 100 before form, your check-in and recovery signals adjust it. ${pc>=90?'A full night, so the start is high.':pc>=75?'A bit short of your goal, which lowers the start.':'Well short of your goal, which pulls the start down.'}`:used?`Not counted today: the score uses the night ending ${fmtD(used.date)}.`:'Not counted today: the last night is more than three days old.',
+      link:['Edit in Log',"logGo('lSleep')"],extra:polar+late+tonight};
   }
   if(k==='form'){
     const tsb=d.intervalsData.tsb,fn=dt=>{if(dt===t&&tsb!=null)return tsb;const w=d.wellness[dt];return w&&w.ctl!=null&&w.atl!=null?Math.round((w.ctl-w.atl)*10)/10:null;},u=dtAvg(fn);
@@ -126,9 +180,10 @@ function dtSpec(k){
   return null;
 }
 function openDetail(k){
+  if(k!==_dtKey)_dtDate=null;           // a new sheet starts on last night
   const sp=dtSpec(k),el=$('dtModal');if(!sp||!el)return;
   _dtKey=k;$('dtTitle').firstChild.textContent=sp.title+' ';
-  let h='';
+  let h=sp.nav||'';
   if(sp.missing)h+=`<div class="dt-miss">${sp.missing}</div>`;
   else h+=`<div class="dt-big">${sp.val}</div><div class="dt-sub">${sp.sub||''}</div>${sp.src?`<div class="dt-src">Source: ${sp.src}</div>`:''}${sp.usual?`<div class="dt-row dt-usual"><span>Usual, 30 days</span><b>${sp.usual}</b></div>`:''}`;
   h+=sp.trend||'';
@@ -137,5 +192,5 @@ function openDetail(k){
   if(sp.link)h+=`<button class="btn-out dt-link" onclick="closeDetail();${sp.link[1]}">${sp.link[0]}</button>`;
   $('dtBody').innerHTML=h;el.classList.add('open');
 }
-function closeDetail(){_dtKey=null;const el=$('dtModal');if(el)el.classList.remove('open');}
+function closeDetail(){_dtKey=null;_dtDate=null;const el=$('dtModal');if(el)el.classList.remove('open');}
 function refreshDetail(){if(_dtKey)openDetail(_dtKey);}

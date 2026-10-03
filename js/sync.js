@@ -154,13 +154,14 @@ async function syncAll(manual){
   try{
     if(_auth){try{await pullAll();}catch(e){cloudErr=e;}}
     const icu=!!(S().intervalsKey&&S().intervalsID),pol=!!S().polarKey;
-    if(icu){
-      try{const r=await pullIntervals();msgs.push(r.n?`${r.n} new from Intervals.icu`:'Intervals.icu up to date');}
-      catch(e){msgs.push(e.message);}
-    }
-    // Polar runs after Intervals.icu so its detailed night wins over the flattened copy (see icuFill)
+    // Polar runs first (v117): a night it delivers is the sleep record, and Intervals.icu then only adds what Polar
+    // does not have (how rested you felt). If Polar fails, Intervals.icu still fills the night as before.
     if(pol){
       try{const r=await pullPolar();msgs.push(r.n?`${r.n} night${r.n>1?'s':''} from Polar`:'Polar up to date');}
+      catch(e){msgs.push(e.message);}
+    }
+    if(icu){
+      try{const r=await pullIntervals();msgs.push(r.n?`${r.n} new from Intervals.icu`:'Intervals.icu up to date');}
       catch(e){msgs.push(e.message);}
     }
     if(!icu&&!pol&&manual&&!_auth)msgs.push('Nothing to sync yet — connect Intervals.icu or Polar, or sign in in Settings');
@@ -218,9 +219,11 @@ async function pullIntervals(){
     const inc={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,slHr:num(w.avgSleepingHR),spo2:num(w.spO2),sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,sleepQual:num(w.sleepQuality),resp:num(w.respiration),ctl:w.ctl??null,atl:w.atl??null};
     for(const [k,v] of Object.entries(inc)){if(v!=null)cur[k]=v;else if(!(k in cur))cur[k]=null;}
     if(w.ctl!=null&&w.atl!=null)latest=w;
-    // sleep: new nights are created; on an existing night only empty fields and earlier imports are touched
-    const sm=inc.sleepMin,sv={score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,rested:icuRested(w.sleepQuality)},ex=d.sleepLogs.find(s=>s.date===date);
-    if((sv.score||sm)&&!ex&&!isGone('sl-'+date)){const r={id:'sl-'+date,date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null};icuFill(r,sv);put('sleep',r);n++;}
+    // sleep: new nights are created; on an existing night only empty fields and earlier imports are touched.
+    // A night Polar already delivered in detail (v117) takes only "rested" from here: Intervals.icu's duration and
+    // score are a flattened copy of the same Polar night, so they would be a second copy of the same data.
+    const sm=inc.sleepMin,pn=polarOn(date),sv=pn?{rested:icuRested(w.sleepQuality)}:{score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,rested:icuRested(w.sleepQuality)},ex=d.sleepLogs.find(s=>s.date===date);
+    if(!pn&&(sv.score||sm)&&!ex&&!isGone('sl-'+date)){const r={id:'sl-'+date,date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null};icuFill(r,sv);put('sleep',r);n++;}
     else if(ex){const r={...ex};if(icuFill(r,sv)){put('sleep',r);n++;}}
     // weight: resting HR is no longer copied onto the weigh-in (it lives in wellness)
     if(w.weight&&!isGone('mi-'+date)){
@@ -330,6 +333,10 @@ function polarSleepVals(n){
   const hmOf=m=>m?[Math.floor(m/60),m%60]:[null,null],[dH,dM]=hmOf(x.stages.deep),[rH,rM]=hmOf(x.stages.rem);
   return{bed:hm(x.start),wake:hm(x.end),durMin:x.asleep||x.span,score:x.score,deepH:dH,deepM:dM,remH:rH,remM:rM};
 }
+// the stored Polar night that ended on this date (Polar's sleep date = the wake-up date, the same date Intervals.icu uses)
+const polarOn=date=>(S().polarNights||[]).find(x=>x.date===date)||null;
+// mean of a night's sample runs (hrv or br), used when Polar gives no nightly mean
+const plMean=runs=>{const v=(runs||[]).flatMap(r=>(r.v||[]).filter(x=>x>0));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
 // stable text for comparing two nights (jsonb from the cloud reorders keys, so never compare JSON strings)
 const canon=o=>Array.isArray(o)?'['+o.map(canon).join(',')+']':o&&typeof o==='object'?'{'+Object.keys(o).sort().map(k=>k+':'+canon(o[k])).join(',')+'}':JSON.stringify(o);
 async function pullPolar(){
