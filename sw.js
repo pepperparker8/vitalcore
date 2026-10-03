@@ -1,4 +1,4 @@
-const CACHE = 'vitalcore-v95';
+const CACHE = 'vitalcore-v96';
 const SHELL = ['./', './index.html', './manifest.json', './css/app.css', './js/lottie.min.js', './js/core.js', './js/sync.js', './js/log.js', './js/today.js', './js/strength.js', './js/settings.js', './js/render.js', './js/recovery.js','./js/chart.js','./js/form.js','./js/trends.js', './js/progress.js', './js/plan.js', './js/review.js', './js/coach.js', './js/strategy.js', './js/fuel.js', './js/health.js', './js/digest.js', './js/insights.js', './js/app.js', './assets/mark.svg', './assets/lottie/saved.json', './assets/lottie/streak.json', './assets/lottie/loading.json', './assets/lottie/medal.json', './assets/lottie/confetti.json', './assets/lottie/moon.json', './assets/lottie/chart.json', './icon-maskable-512.png', './icon-96.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

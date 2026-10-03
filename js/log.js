@@ -85,20 +85,49 @@ function stopMind(){finishMind(false);}
 // ── SLEEP ────────────────────────────────────────────────────────────────────
 // minutes between bedtime and wake-up, crossing midnight when wake is earlier
 function slSpan(b,w){const m=x=>{const[h,n]=x.split(':').map(Number);return h*60+n;};let d=m(w)-m(b);if(d<=0)d+=1440;return d;}
-function slCalc(){const b=$('slBed').value,w=$('slWake').value,el=$('slDur');if(!el)return;
-  if(b&&w)el.textContent='Time asleep: '+fmtDur(slSpan(b,w));
-  else{const x=S().sleepLogs.find(s=>s.date===$('slDate').value);el.textContent=x?.durMin?'Saved: '+fmtDur(x.durMin)+'. Add times to change it.':'Enter when you fell asleep and woke up.';}}
+// the time computed from a recorded duration: {k:'bed'|'wake', v:'HH:MM'}; saved as an estimate unless the user changes it
+let _slEst=null;
+const slIcu=x=>!!(x&&x.src&&(x.src.durMin==='icu'||x.src.score==='icu'));
+const slNeedsTime=x=>!!(x&&x.durMin&&!x.bed&&!x.wake&&slIcu(x));
+const slHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
+function slCalc(typed){
+  const bI=$('slBed'),wI=$('slWake'),el=$('slDur'),I=k=>k==='bed'?bI:wI;if(!el)return;
+  const x=S().sleepLogs.find(s=>s.date===$('slDate').value),rec=x?.durMin&&!x.bed&&!x.wake?x.durMin:0;
+  if(typed&&_slEst&&_slEst.k===typed)_slEst=null;                    // the user corrected the estimate
+  if(typed&&_slEst&&_slEst.k!==typed&&!I(typed).value){_slEst=null;} // cleared the typed time: drop the estimate
+  if(rec&&typed&&!_slEst){
+    // one time typed, the other computed from the recorded duration
+    const m=s=>{const[h,n]=s.split(':').map(Number);return h*60+n;};
+    if(typed==='bed'&&bI.value&&!wI.value){_slEst={k:'wake',v:slHM(m(bI.value)+rec)};wI.value=_slEst.v;}
+    else if(typed==='wake'&&wI.value&&!bI.value){_slEst={k:'bed',v:slHM(m(wI.value)-rec)};bI.value=_slEst.v;}
+  }
+  if(_slEst&&I(_slEst.k).value!==_slEst.v)_slEst=null;
+  bI.classList.toggle('inp-est',_slEst?.k==='bed');wI.classList.toggle('inp-est',_slEst?.k==='wake');
+  const b=bI.value,w=wI.value,src=x?.src||{};
+  if(b&&w){
+    const dur=slSpan(b,w);
+    el.textContent=_slEst?`${_slEst.k==='wake'?'Wake-up':'Bedtime'} estimated from ${fmtDur(rec)} recorded by Intervals.icu. Correct it if it is off.`
+      :rec&&src.durMin==='icu'&&Math.abs(dur-rec)>5?`Time asleep from your times: ${fmtDur(dur)} (Intervals.icu recorded ${fmtDur(rec)}). Your times win.`:'Time asleep: '+fmtDur(dur);
+  }
+  else if(rec)el.textContent=(src.durMin==='icu'?'Intervals.icu recorded ':'Saved: ')+fmtDur(rec)+'. Enter your bedtime or wake-up time and the other is worked out.';
+  else el.textContent='Enter when you fell asleep and woke up.';
+}
 function loadSleepFor(date){
   date=date||td();$('slDate').value=date;
-  const x=S().sleepLogs.find(s=>s.date===date),t=x?.durMin||0;
+  const x=S().sleepLogs.find(s=>s.date===date),src=x?.src||{};
+  _slEst=null;
   $('slScore').value=x?.score??'';
   $('slBed').value=x?.bed||'';$('slWake').value=x?.wake||'';slCalc();
   $('slDH').value=x?.deepH||'';$('slDM').value=x?.deepM||'';$('slRH').value=x?.remH||'';$('slRM').value=x?.remM||'';
   $('slMore').open=!!(x&&(x.score!=null||x.deepH||x.deepM||x.remH||x.remM||x.rested));
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
+  // source tags: shown only on fields that still hold the imported value
+  $('slDurSrc').hidden=!(x?.durMin&&src.durMin==='icu'&&!x.bed);
+  $('slScoreSrc').hidden=!(x?.score!=null&&src.score==='icu');
+  $('slRestSrc').hidden=!(x?.rested&&src.rested==='icu');
   $('slDel').style.display=x?'':'none';
-  $('slNote').textContent=x?'Editing the saved night. Change anything and save.':'Nothing saved for this night yet.';
+  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?'Recorded by Intervals.icu. Add your bedtime or wake-up time to complete it.':slIcu(x)?'Recorded by Intervals.icu. Anything you change here is kept.':'Editing the saved night. Change anything and save.';
 }
 // soft guardrail: unusual but possible values get a friendly confirm instead of a block
 const sane=m=>confirm(m+'\n\nSave it anyway?');
@@ -119,6 +148,7 @@ function saveSleep(){
   const old=S().sleepLogs.find(s=>s.date===date);
   const rec={id:old?.id||'sl-'+date,date,score,durMin:dur||null,bed:bed||null,wake:wake||null,deepH:dH,deepM:dM,remH:rH,remM:rM,rested:_ci.rested??null};
   rec.src=manSrc(old,rec,['score','durMin','bed','wake','deepH','deepM','remH','remM','rested']);
+  if(_slEst&&rec[_slEst.k]===_slEst.v)rec.src[_slEst.k]='est';
   put('sleep',rec);
   loadSleepFor(date);renderSleepBars();showToast('Sleep saved');refreshAll();
 }
@@ -289,7 +319,7 @@ function updMeasHist(){
   const ms=S().measurements;
   const b=last(ms.filter(m=>m.bpSys)),w=last(ms.filter(m=>m.weight)),h=last(ms.filter(m=>m.hr));
   $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg`:'—';
-  $('wtRec').textContent=w?`${w.weight} kg`:'—';
+  $('wtRec').textContent=w?`${w.weight} kg`:'—';$('wtRecSrc').hidden=!(w&&w.src&&w.src.weight==='icu');
   $('hrRec').textContent=h?`${h.hr} bpm`:'—';
   const l=last(ms);$('measStat').textContent=l?(l.date===td()?'Saved today':`Last: ${daysAgo(l.date)} days ago`):'Not logged yet';
 }
@@ -361,12 +391,14 @@ function renderBloodDisplay(){
 // Log home: progress for the day's four routine entries, and open the first one still to do
 function logStatus(){
   const d=S(),t=td(),ci=todayCI();
-  return[['lCheckin',ciFull(ci)],['lSleep',d.sleepLogs.some(s=>s.date===t&&(s.durMin||s.score))],['lWorkout',d.workouts.some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
+  const sl=d.sleepLogs.find(s=>s.date===t);
+  return[['lCheckin',ciFull(ci)],['lSleep',!!(sl&&(sl.durMin||sl.score)&&!slNeedsTime(sl)),slNeedsTime(sl)?'part':''],['lWorkout',d.workouts.some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
 }
 function renderLogHead(){
   const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
-  st.forEach(([id,ok])=>$(id)&&$(id).classList.toggle('done',ok));
-  const h=n+'';if(el&&el._h!==h){el._h=h;el.innerHTML=`${n===4?LT('saved','lt-40 lg-lt',''):''}<b>${n} of 4</b> daily entries done<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
+  st.forEach(([id,ok,part])=>{if($(id)){$(id).classList.toggle('done',ok);$(id).classList.toggle('part',part==='part');}});
+  const part=st.some(x=>x[2]==='part');
+  const h=n+'|'+part;if(el&&el._h!==h){el._h=h;el.innerHTML=`${n===4?LT('saved','lt-40 lg-lt',''):''}<b>${n} of 4</b> daily entries done${part?', sleep needs one detail':''}<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
 }
 function logAuto(){
   renderLogHead();

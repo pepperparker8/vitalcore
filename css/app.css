@@ -1043,3 +1043,12 @@ details[open]>*:not(summary){animation:rise .26s var(--ease)}
 .lt:empty{display:none}
 /* v94: raw wellness viewer (temporary, Phase 0 audit) */
 .raw-json{margin:8px 0 0;padding:10px 12px;max-height:50vh;overflow:auto;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-all;background:var(--sur2);color:var(--t2);border-radius:10px;font-variant-numeric:tabular-nums}
+
+/* v96: field states in Log. Hints are placeholders in --t3, imported values carry a small source tag,
+   a time worked out from a recorded duration is dashed until the user confirms or corrects it. */
+.inp::placeholder{color:var(--t3);opacity:1}
+.fl .wk-src{margin-left:6px;text-transform:none;letter-spacing:0;vertical-align:0}
+.hist-row .wk-src{margin-left:6px}
+.inp.inp-est{border:1px dashed var(--t3);box-shadow:none}
+.log-sec.part .log-stat{color:var(--amber)}
+.log-sec.part .log-stat::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-right:6px;vertical-align:1px}

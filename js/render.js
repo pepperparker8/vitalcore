@@ -236,14 +236,16 @@ function renderSleepBars(){
     const date=dAgo(i),dt=new Date(date+'T12:00:00');
     const sl=d.sleepLogs.find(s=>s.date===date),score=slScore(sl),h=score?Math.round(score*0.56):4;
     const col=score>=80?'var(--teal)':score>=65?'rgba(13,122,107,0.5)':'var(--bdr)';
-    html+=`<div class="sb-wrap" onclick="tapSB(this)"><div class="sb-tip">${L[dt.getDay()]} · ${sl?.score?sl.score+'/100':sl?.durMin?fmtDur(sl.durMin):'no data'}</div><div class="sb-bar" style="height:${h}px;background:${col}"></div><div class="sb-lbl">${L[dt.getDay()]}</div></div>`;
+    html+=`<div class="sb-wrap" onclick="tapSB(this)"><div class="sb-tip">${L[dt.getDay()]} · ${sl&&(sl.durMin||sl.score)?[sl.durMin?fmtDur(sl.durMin):'',sl.score?sl.score+'/100':''].filter(Boolean).join(' · ')+(slIcu(sl)?' · Intervals.icu':''):'no data'}</div><div class="sb-bar" style="height:${h}px;background:${col}"></div><div class="sb-lbl">${L[dt.getDay()]}</div></div>`;
   }
   $('sleepBars').innerHTML=html;
   const goal=Math.round((d.profile.sleepGoal||7.5)*60),wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7);
   $('sleepDebt').textContent=wk.length?(()=>{const avg=Math.round(wk.reduce((a,s)=>a+s.durMin,0)/wk.length),debt=wk.reduce((a,s)=>a+(goal-s.durMin),0);return`Average ${fmtDur(avg)} over ${wk.length} night${wk.length>1?'s':''} (goal ${fmtDur(goal)}). `+(debt>0?`Sleep debt: ${fmtDur(debt)}.`:`Ahead of goal by ${fmtDur(-debt)}.`);})():'Add time asleep to see your sleep debt against your goal.';
   const l=last(d.sleepLogs);
   if(l)setStages(l.deepH||0,l.deepM||0,l.remH||0,l.remM||0);
-  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=t?'Logged today':'Not logged today';
+  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=!t?'Not logged today':slNeedsTime(t)?'From Intervals.icu, needs bedtime or wake-up':slIcu(t)?'From Intervals.icu':'Logged today';
+  // keep the form in step with imports, but never while the user is in it
+  const f=$('lSleep');if(f&&!f.classList.contains('open')&&!f.contains(document.activeElement))loadSleepFor($('slDate').value||td());
 }
 function tapSB(el){document.querySelectorAll('.sb-wrap').forEach(b=>b!==el&&b.classList.remove('tapped'));el.classList.toggle('tapped');}
 function hrSeries(){
