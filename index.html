@@ -309,11 +309,13 @@
     <div class="log-body">
       <div class="mind-big"><span id="fdToday">0</span><small>KCAL TODAY</small></div>
       <div class="set-note" id="fdNote"></div>
+      <div class="mini-lbl">MEALS</div>
+      <div class="fd-slots" id="fdSlots"></div>
       <div class="mini-lbl">QUICK ADD</div>
       <div class="chip-row"><button class="chip" onclick="addFood(200)">Snack 200</button><button class="chip" onclick="addFood(400)">Light meal 400</button><button class="chip" onclick="addFood(600)">Meal 600</button><button class="chip" onclick="addFood(800)">Big meal 800</button></div>
       <div class="fg"><div class="fl">CALORIES</div><div class="fr"><input type="number" class="inp" id="fdKcal" placeholder="550" min="1" max="5000" inputmode="numeric"><span class="inp-unit">kcal</span></div></div>
       <div class="fg"><div class="fl">PROTEIN (optional)</div><div class="fr"><input type="number" class="inp" id="fdProt" placeholder="30" min="0" max="300" inputmode="numeric"><span class="inp-unit">g</span></div></div>
-      <button class="btn-gold" onclick="addFood()">Add to today</button>
+      <button class="btn-gold" id="fdAddTo" onclick="addFood()">Add to today</button>
       <div style="text-align:right"><button class="api-test-btn" onclick="resetFood()">Clear today's food</button></div>
       <div id="fdHist"></div>
       <div class="set-note" id="fdCloud" style="display:none">Food entries are saved on this phone. Cloud backup for them starts after a one-time database update.</div>

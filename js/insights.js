@@ -165,7 +165,7 @@ function insNutrition(){
   const n=fuelPlan();if(!n)return null;
   return{weightKg:n.kg,goal:FU_GOAL[n.goal],dayType:n.label,proteinG:n.p,carbsG:n.c,fatG:n.f,kcalTarget:n.kcal,
     estimatedUseKcal:{total:n.burn.total,restingAndDailyLiving:n.burn.rest,training:n.burn.train,countsPlannedSession:n.burn.planned},
-    eatenToday:n.eaten?{kcal:n.eaten.kcal,proteinG:n.eaten.protein||null}:null,
+    eatenToday:n.eaten?{kcal:n.eaten.kcal,proteinG:n.eaten.protein||null,meals:Object.fromEntries(Object.entries(fdMeals(S().foodLogs.find(x=>x.date===td()))).map(([k,v])=>[k,{kcal:v.kcal||0,proteinG:v.protein||null}]))}:null,
     lastWeekLogged:n.week?{days:n.week.days,avgEatenKcal:n.week.eaten,avgEstimatedUseKcal:n.week.burn,possiblyEatingTooLittle:n.week.low}:null,
     nextSession:n.next?{when:n.next.tom?'tomorrow':'today',session:n.next.name,minutes:n.next.mins,before:n.next.before,during:n.next.during}:null,
     afterSession:n.after?{proteinG:n.after.p,carbsG:n.after.c,withinMinutes:60}:null};

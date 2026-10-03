@@ -116,30 +116,59 @@ function renderFuel(){
    <p>These are general sports nutrition ranges, not medical advice, and they do not use your blood results. Change the goal in Settings.</p></details>`;
 }
 
-// ── Food log (Log > Food): one running total per day ─────────────────────────
+// ── Food log (Log > Food): one record per day, five meal slots (v98) ─────────
+// foodLogs[] {date, kcal, protein, meals:{breakfast|snackAm|lunch|snackPm|dinner|unassigned:{kcal,protein}}}
+// kcal and protein stay the day totals, so fuelPlan, the Fuel card, sync and the briefing read them unchanged.
+const FD_SLOTS=[['breakfast','Breakfast'],['snackAm','Morning snack'],['lunch','Lunch'],['snackPm','Afternoon snack'],['dinner','Dinner']];
+const FD_NAME=Object.fromEntries(FD_SLOTS.concat([['unassigned','Not assigned']]));
+let _fdSlot=null;
+// meals of a record; a record from before v98 or from a device without the column counts as unassigned
+const fdMeals=r=>r&&r.meals&&typeof r.meals==='object'?r.meals:r&&(r.kcal>0||r.protein>0)?{unassigned:{kcal:r.kcal||0,protein:r.protein||0}}:{};
+const fdTot=m=>Object.values(m).reduce((a,x)=>({kcal:a.kcal+(+x.kcal||0),protein:a.protein+(+x.protein||0)}),{kcal:0,protein:0});
+// the slot the clock suggests: breakfast until 10, lunch 12 to 15, dinner from 18
+const fdSlotNow=()=>{const h=new Date().getHours();return h<10?'breakfast':h<12?'snackAm':h<15?'lunch':h<18?'snackPm':'dinner';};
+const fdSlot=()=>_fdSlot||fdSlotNow();
+function pickMeal(k){_fdSlot=k;renderFood();}
+function fdSave(t,meals){const cur=S().foodLogs.find(x=>x.date===t),tot=fdTot(meals);put('food',{id:cur?cur.id:'fd-'+t,date:t,kcal:tot.kcal,protein:tot.protein,meals});}
 function addFood(k){
   const kc=k||+$('fdKcal').value||0,pr=k?0:+$('fdProt').value||0;
   if(!k&&$('fdProt').value&&!$('fdKcal').value){showToast('Enter the calories too');return;}
   if(kc<1||kc>5000){showToast('Calories: 1 to 5,000 per entry');return;}
   if(pr<0||pr>300){showToast('Protein: 0 to 300 g per entry');return;}
-  const t=td(),cur=S().foodLogs.find(x=>x.date===t),tot=(cur?.kcal||0)+kc;
+  const t=td(),cur=S().foodLogs.find(x=>x.date===t),meals={...fdMeals(cur)},slot=fdSlot(),m=meals[slot]||{kcal:0,protein:0};
+  const tot=fdTot(meals).kcal+kc;
   if(tot>6000&&!sane(`That brings today to ${fuN(tot)} kcal.`))return;
-  put('food',{id:cur?cur.id:'fd-'+t,date:t,kcal:tot,protein:(cur?.protein||0)+pr});
+  meals[slot]={kcal:(+m.kcal||0)+kc,protein:(+m.protein||0)+pr};
+  fdSave(t,meals);
   $('fdKcal').value='';$('fdProt').value='';
-  renderFood();showToast(`Added ${fuN(kc)} kcal`);
+  renderFood();showToast(`Added ${fuN(kc)} kcal to ${FD_NAME[slot].toLowerCase()}`);
+}
+function clearMeal(k){
+  const t=td(),cur=S().foodLogs.find(x=>x.date===t);if(!cur)return;
+  const meals={...fdMeals(cur)};if(!meals[k])return;
+  const copy={...cur,meals:fdMeals(cur)};delete meals[k];fdSave(t,meals);renderFood();
+  showToast(`${FD_NAME[k]} cleared`,{label:'Undo',fn:()=>{put('food',copy);renderFood();}});
 }
 function resetFood(){
   const cur=S().foodLogs.find(x=>x.date===td());if(!cur||!cur.kcal)return;
-  const copy={...cur};
-  put('food',{...cur,kcal:0,protein:0});renderFood();
+  const copy={...cur,meals:fdMeals(cur)};
+  put('food',{...cur,kcal:0,protein:0,meals:{}});renderFood();
   showToast('Today\'s food cleared',{label:'Undo',fn:()=>{put('food',copy);renderFood();}});
+}
+function fdSlotsHTML(rec){
+  const m=fdMeals(rec),sel=fdSlot();
+  const row=(k,l)=>{const x=m[k],has=x&&(x.kcal>0||x.protein>0);
+    return`<div class="fd-slot ${k===sel?'sel':''} ${has?'has':''}" role="button" tabindex="0" onclick="pickMeal('${k}')"><span class="fd-l">${l}</span><span class="fd-v">${has?fuN(x.kcal)+' kcal'+(x.protein?' · '+x.protein+' g':''):''}</span>${has?`<button class="fd-x" onclick="event.stopPropagation();clearMeal('${k}')" aria-label="Clear ${l}">×</button>`:'<span></span>'}</div>`;};
+  return FD_SLOTS.map(([k,l])=>row(k,l)).join('')+(m.unassigned&&(m.unassigned.kcal>0||m.unassigned.protein>0)?row('unassigned',FD_NAME.unassigned):'');
 }
 function renderFood(){
   if(!$('fdToday'))return;
-  const d=S(),fd=fuFood(td()),n=fuelPlan();
+  const d=S(),t=td(),rec=d.foodLogs.find(x=>x.date===t),fd=fuFood(t),n=fuelPlan();
   $('fdToday').textContent=fd?fuN(fd.kcal):'0';
   $('foodStat').textContent=fd?`${fuN(fd.kcal)} kcal today`:'Optional. Nothing logged today';
-  $('fdNote').textContent=fd&&n?`Today's estimate is about ${fuN(n.kcal)} kcal.${fd.protein?` Protein so far: ${fd.protein} of ${n.p} g.`:''}`:fd&&fd.protein?`Protein so far: ${fd.protein} g.`:'Add each meal as you go, or one total at the end of the day. A rough guess is fine.';
+  $('fdNote').textContent=fd&&n?`Today's estimate is about ${fuN(n.kcal)} kcal.${fd.protein?` Protein so far: ${fd.protein} of ${n.p} g.`:''}`:fd&&fd.protein?`Protein so far: ${fd.protein} g.`:'Pick a meal, then add what you ate. A rough guess is fine.';
+  $('fdSlots').innerHTML=fdSlotsHTML(rec);
+  $('fdAddTo').textContent=`Add to ${FD_NAME[fdSlot()].toLowerCase()}`;
   const past=[1,2,3,4,5,6].map(i=>dAgo(i)).filter(fuFood);
   $('fdHist').innerHTML=past.length?`<div class="hist-box"><div class="hist-ttl">EARLIER THIS WEEK</div>${past.map(dt=>`<div class="hist-row"><span>${fmtDay(dt)}</span><span class="hist-val">${fuN(fuFood(dt).kcal)} kcal</span></div>`).join('')}</div>`:'';
   $('fdCloud').style.display=d.noFoodTbl&&_auth?'':'none';
