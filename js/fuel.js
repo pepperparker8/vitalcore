@@ -30,7 +30,6 @@ function fuRest(kg,dt){
   const p=S().profile,sx=p.sex==='m'?5:p.sex==='f'?-161:-78;
   return(p.height>=120&&p.age>=14?10*kg+6.25*p.height-5*p.age+sx:23*kg)*fuAct(dt);
 }
-function setSteps(v){const d=S();d.profile.useSteps=v;save(d);markProfile();renderFuel();showToast(v?'Steps now refine the estimate':'Steps not used');}
 const fuSess=(type,mins,rpe,kg)=>((FU_MET[type]||FU_MET.Cycle)[Math.max(1,Math.min(5,Math.round(rpe)||3))-1]-1)*kg*mins/60;
 // strength workouts have no duration field: about 3 minutes a set
 const fuMin=w=>w.durMin||(IS_STR(w.type)?Math.min(90,(w.sets||[]).length*3)||30:0);
@@ -88,43 +87,9 @@ function fuelPlan(){
     after:level==='rest'?null:{p:ap,c:ac,ex:[`${fuAmt(ap,F.p[0])} with ${fuAmt(ac,F.c[0])}`,`${fuAmt(ap,F.p[1])} with ${fuAmt(ac,F.c[2])}`]},
     per:{p:fuR5(p/4),c:fuR5(c/4),f:fuR5(f/4)}};
 }
-function fuEatenHTML(n){
-  if(!n.eaten)return`<button class="btn-out sg-btn" onclick="logGo('lFood')">Log food</button>`;
-  const e=n.eaten,left=n.kcal-e.kcal,pc=Math.min(100,Math.round(e.kcal/n.kcal*100));
-  const msg=Math.abs(left)<=150?'On target for today.':left>0?`About ${fuN(fuR50(left))} kcal left for today.`:`About ${fuN(fuR50(-left))} kcal over today's estimate.`;
-  return`<div class="gl-bar"><div style="width:${pc}%"></div></div><div class="fu-e"><b>${fuN(e.kcal)} of about ${fuN(n.kcal)} kcal eaten.</b> ${msg}${e.protein?` Protein ${e.protein} of ${n.p} g.`:''}</div><button class="btn-out sg-btn" onclick="logGo('lFood')">Add food</button>`;
-}
-function renderFuel(){
-  const el=$('fuelCard');if(!el)return;
-  const n=fuelPlan();
-  el.style.display='';
-  if(!n){
-    if(isExampleOnly()&&!S().measurements.length){el.style.display='none';return;}
-    el.innerHTML=`<div class="sg-lbl">Fuel today</div><div class="sg-s" style="margin:0 0 12px">Log your weight once and daily protein, carbs and fat targets appear here, matched to your training.</div><button class="btn-out sg-btn" style="margin-top:0" onclick="logGo('lMeas')">Log weight</button>`;
-    return;
-  }
-  const cell=(v,l)=>`<div><b>${v} g</b><span>${l}</span></div>`;
-  const food=(k,l)=>`<div class="fu-f"><b>${l}, ${n.per[k]} g</b>${FU_FOODS[k].map(f=>esc(fuAmt(n.per[k],f))).join(', or ')}</div>`;
-  const blk=(h,t)=>`<div class="fu-after"><b>${h}</b>${t}</div>`;
-  const age=daysAgo(n.wDate),x=n.next;
-  el.innerHTML=`<div class="sg-lbl">Fuel today</div>
-   <div class="fu-day">${n.label}${n.done||n.level==='rest'||n.level==='race'||n.carbLoad?'':', from today\'s session'}</div>
-   <div class="fu-g">${cell(n.p,'Protein')}${cell(n.c,'Carbs')}${cell(n.f,'Fat')}</div>
-   <div class="set-note">About ${fuN(n.kcal)} kcal at ${n.kg} kg${n.wSrc==='icu'?' <span class="wk-src">Intervals.icu</span>':''}${age>0?', weighed '+fmtD(n.wDate):''}. Goal: ${FU_GOAL[n.goal]}.${n.carbLoad?' Extra carbs today to fill up before your race.':''}${age>30?' That weight is old: log a new one in Log > Body.':''}</div>
-   ${n.steps&&n.useSteps==null?`<div class="wk-dup" style="margin:12px 0 4px"><div class="wk-dup-t">Your watch counted ${fuN(n.steps)} steps today</div><div class="wk-dup-s">Use your steps to refine the daily-living part of the estimate? Without them it is a flat allowance.</div><div class="wk-acts"><button type="button" onclick="setSteps(true)">Use steps</button><button type="button" onclick="setSteps(false)">Not now</button></div></div>`:''}
-   ${fuEatenHTML(n)}
-   ${n.week&&n.week.low?blk('You may be eating too little',`Over your last ${n.week.days} logged days you ate about ${fuN(n.week.eaten)} kcal a day against an estimated ${fuN(n.week.burn)} used. That slows recovery. Add a serving of carbs around training.`):''}
-   <details class="fm-why"><summary>Session fuelling and food portions</summary>
-   ${x?blk(`${x.tom?'Before tomorrow\'s':'Before today\'s'} ${esc(x.name.toLowerCase())}`,`${x.night?x.night+' ':''}${esc(x.before)}`)+(x.simple?'':blk('During it',esc(x.during))):''}
-   ${n.after?blk(n.done?'After today\'s session':'After the session',`About ${n.after.p} g protein and ${n.after.c} g carbs within an hour. For example ${esc(n.after.ex[0])}, or ${esc(n.after.ex[1])}.`):''}
-   <p style="margin-top:12px"><b>What that looks like in food.</b> Split the day over four servings. One serving is any one of these, for each row:</p>${food('p','Protein')}${food('c','Carbs')}${food('f','Fat')}
-   <p>Protein follows your body weight and carbs follow how much you train today. Fat fills the rest of your estimated energy use: about ${fuN(n.burn.rest)} kcal for resting and daily living${n.useSteps&&n.steps?` (${fuN(n.steps)} steps counted today; <button type="button" class="lnk" onclick="setSteps(false)">stop using steps</button>)`:n.useSteps===false&&n.steps?` (<button type="button" class="lnk" onclick="setSteps(true)">use today's ${fuN(n.steps)} steps</button>)`:''} plus about ${fuN(n.burn.train)} kcal of training${n.burn.planned?', counting today\'s planned session':''}. The app has no all-day activity data, so treat this as a rough guide.</p>
-   <p>These are general sports nutrition ranges, not medical advice, and they do not use your blood results. Change the goal in Settings.</p></details>`;
-}
-
 // ── Food log (Log > Food): one record per day, five meal slots (v98) ─────────
 // foodLogs[] {date, kcal, protein, meals:{breakfast|snackAm|lunch|snackPm|dinner|unassigned:{kcal,protein}}}
-// kcal and protein stay the day totals, so fuelPlan, the Fuel card, sync and the briefing read them unchanged.
+// kcal and protein stay the day totals, so fuelPlan, sync and the briefing read them unchanged (the Fuel card was removed in v112).
 const FD_SLOTS=[['breakfast','Breakfast'],['snackAm','Morning snack'],['lunch','Lunch'],['snackPm','Afternoon snack'],['dinner','Dinner']];
 const FD_NAME=Object.fromEntries(FD_SLOTS.concat([['unassigned','Not assigned']]));
 let _fdSlot=null;
