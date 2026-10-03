@@ -594,9 +594,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 body{font-family:var(--body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
 .vc-nav .vc-win{white-space:nowrap;font-size:10px;padding:0 2px}
 
-.cc-h{border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--bdr)}
-.cc-t{font:600 24px var(--serif)}.cc-s{font-size:13px;color:var(--t2);margin-top:2px}
-.cc-ok{background:var(--green-l)}.cc-warn{background:var(--amber-l)}.cc-bad{background:var(--red-l)}
 .cc-r{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--bdr);font-size:13px}
 .cc-k{color:var(--t2);width:104px;flex:none}.cc-v{flex:1;font-weight:600;min-width:0}
 .cc-d{width:10px;height:10px;border-radius:50%;flex:none;margin-top:4px}
@@ -715,8 +712,8 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .g-base{margin-top:12px;padding:8px 12px;border-radius:10px;background:var(--hero-chip);font-size:12px;line-height:1.5;color:var(--hero-dim)}
 
 /* ── DATA-FIRST (v66): no boxes; hairline dividers, big plain numbers ── */
-.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.ins-nudge,.signin-ban,.cc-h{background:transparent;border:0;border-radius:0;box-shadow:none}
-.card,.ci-card,.zone-card,.ins-block,.arch-trend,.prof-bar,.acc-box,.bt-card,.ins-nudge,.signin-ban,.log-sec,.cc-h{border-top:1px solid var(--bdr);padding:20px 0;margin-bottom:0}
+.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.ins-nudge,.signin-ban {background:transparent;border:0;border-radius:0;box-shadow:none}
+.card,.ci-card,.zone-card,.ins-block,.arch-trend,.prof-bar,.acc-box,.bt-card,.ins-nudge,.signin-ban,.log-sec {border-top:1px solid var(--bdr);padding:20px 0;margin-bottom:0}
 .hero-card{padding:8px 0 20px;margin-bottom:0}
 .ci-card.done,.hab.done{background:transparent}
 .zone-card{overflow:visible}
@@ -741,11 +738,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .act-icon.today{background:none;color:var(--gold-dk)}
 .str-chip,.gym-tgl{border-radius:8px}
 
-/* verdict strip: coloured rule, no fill */
-.cc-h{border-top:0;border-left:3px solid var(--bdr);padding:4px 0 4px 14px;margin-bottom:16px}
-.cc-h.cc-ok{border-left-color:var(--green)}.cc-h.cc-warn{border-left-color:var(--amber)}.cc-h.cc-bad{border-left-color:var(--red)}
-.cc-ok:not(span),.cc-warn:not(span),.cc-bad:not(span){background:transparent}
-.cc-t{font-size:26px;letter-spacing:-.02em}
 .signin-ban{border-style:solid;border-width:1px 0 0;border-color:var(--bdr)}
 .ins-nudge{background:transparent}
 
@@ -801,10 +793,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   --sh:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.04)}
 :root[data-theme="dark"]{--bg:#121316;--sur:#1C1E22;--sur2:#262930;--bdr:#2E3138;--text:#F1F2F4;--t2:#A9B0BA;--t3:#7C8491;--gold-l:#33190C;--chrome:#1C1E22;--chrome-bdr:#2E3138;--hero-bg:#1C1E22;--hero-chip:#262930;--ring-trk:#2A2D33;--sh:0 1px 2px rgba(0,0,0,.4)}
 #splash{background:var(--bg)}
-.card,.hero-card,.cc-h,.signin-ban,.log-sec,.ins-block,.zone-card,.bt-card,.ci-card,.arch-trend,.prof-bar,.acc-box,.ins-nudge{background:var(--sur);border:0;border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:var(--sh)}
+.card,.hero-card,.signin-ban,.log-sec,.ins-block,.zone-card,.bt-card,.ci-card,.arch-trend,.prof-bar,.acc-box,.ins-nudge{background:var(--sur);border:0;border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:var(--sh)}
 .hero-card{padding:16px 16px 12px}
 .log-sec{border-bottom:0}.log-sec.open{border:0}
-.cc-h{border-left:3px solid var(--bdr);padding-left:14px}
 .sec{font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--t2)}
 .g-why{display:none}
 /* readiness factors */

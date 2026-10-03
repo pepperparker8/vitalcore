@@ -19,16 +19,6 @@ function coachVerdict(){
 }
 // true when today's prescription is rest and nothing has been logged
 function restToday(){try{const s=typeof strategy==='function'?strategy():null,d0=s&&s.days&&s.days[0];return !!(d0&&d0.role==='rest'&&!S().workouts.some(w=>w.date===td()));}catch(e){return false;}}
-function verdictHead(v){
-  if(v.lvl!=='bad'&&restToday())return['Rest day',v.lvl==='ok'?'Rest is planned for today. You are recovered, so the next session should feel good.':'Rest is planned for today, and your body can use it.'];
-  return[v.head[0]+' today',v.head[1]];
-}
-function renderVerdict(){
-  const el=$('verdictCard');if(!el)return;
-  const v=coachVerdict();if(!v){el.style.display='none';return;}
-  el.style.display='block';el.className='cc-h cc-'+v.lvl;
-  const vh=verdictHead(v);el.innerHTML=`<div class="cc-t">${vh[0]}</div><div class="cc-s">${vh[1]}</div>`;
-}
 function renderCoach(){
   const el=$('coachCard');if(!el)return;
   const d=S(),sc=calcReadiness();
