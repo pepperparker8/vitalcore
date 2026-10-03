@@ -163,7 +163,7 @@ function insStrategy(){
 // the app's food targets for today, so food questions get the same numbers as the Today card
 function insNutrition(){
   const n=fuelPlan();if(!n)return null;
-  return{weightKg:n.kg,goal:FU_GOAL[n.goal],dayType:n.label,proteinG:n.p,carbsG:n.c,fatG:n.f,kcalTarget:n.kcal,
+  return{weightKg:n.kg,weightSource:n.wSrc==='icu'?'Intervals.icu':'manual',weighedOn:n.wDate,stepsToday:n.steps,stepsRefineEstimate:!!n.useSteps,goal:FU_GOAL[n.goal],dayType:n.label,proteinG:n.p,carbsG:n.c,fatG:n.f,kcalTarget:n.kcal,
     estimatedUseKcal:{total:n.burn.total,restingAndDailyLiving:n.burn.rest,training:n.burn.train,countsPlannedSession:n.burn.planned},
     eatenToday:n.eaten?{kcal:n.eaten.kcal,proteinG:n.eaten.protein||null,meals:Object.fromEntries(Object.entries(fdMeals(S().foodLogs.find(x=>x.date===td()))).map(([k,v])=>[k,{kcal:v.kcal||0,proteinG:v.protein||null}]))}:null,
     lastWeekLogged:n.week?{days:n.week.days,avgEatenKcal:n.week.eaten,avgEstimatedUseKcal:n.week.burn,possiblyEatingTooLittle:n.week.low}:null,
@@ -175,13 +175,14 @@ function insightData(){
   const v=coachVerdict(),sl=last(d.sleepLogs.filter(x=>daysAgo(x.date)<=1)),ci=d.checkins.find(c=>c.date===t);
   const wT=d.workouts.filter(w=>w.date===t),load=dayLoad(t),ph=racePhase(),sg=suggestWorkout(),dw=(new Date(t+'T12:00:00').getDay()+6)%7,pl=(p.plan||{})[dw];
   const wl=(d.wellness||{})[t]||{};
-  const wo=w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,effort1to5:w.rpe,notes:w.notes||undefined,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?{pool:w.sub.pool,stroke:w.sub.stroke}:undefined,avgHr:wIcu(w).hr,maxHr:wIcu(w).hrMax,kcal:wIcu(w).kcal,climbM:wIcu(w).elev,load:wIcu(w).load});
+  const wo=w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,effort1to5:w.rpe,watchEffort1to10:wIcu(w).rpe,notes:w.notes||undefined,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?{pool:w.sub.pool,stroke:w.sub.stroke}:undefined,avgHr:wIcu(w).hr,maxHr:wIcu(w).hrMax,kcal:wIcu(w).kcal,climbM:wIcu(w).elev,load:wIcu(w).load});
   const dg=(a,b)=>{const x=digestWeek(a,b);return{sessions:x.sessions,trainingMin:x.min,km:r1(x.km),swimM:Math.round(x.swimM),hardSets:x.sets,sleepScore:r1(x.sleep),sleepHours:r1(x.sleepMin==null?null:x.sleepMin/60),mood:r1(x.mood),energy:r1(x.energy),calm:r1(x.calm),checkins:x.nCi,mindfulMin:x.mindful,hrv:r1(x.hrv),restingHr:r1(x.rhr),weightKg:x.weight,daysLogged:x.days};};
   const rh=Object.entries(d.readHist||{}),rAvg=(a,b)=>r1(avg(rh.filter(([dt,x])=>x!=null&&daysAgo(dt)>=a&&daysAgo(dt)<b).map(x=>x[1])));
   const L=raceLoad(),bn=calcBurnout();
   return{
     today:{date:t,weekday:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][dw],readiness:calcReadiness(),verdict:v?v.head[0]:null,strain0to21:load?strainOf(load):0,
-      lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null}:null,
+      lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null,lateCoffeeEveningBefore:!!(ciOn(dAgo(daysAgo(sl.date)+1))||{}).coffeeLate}:null,
+      sorenessStreak:(typeof soreStreak==='function'&&soreStreak())?{days:3,since:soreStreak().from}:null,
       checkin:ci?{energy:ci.energy??null,mood:ci.mood??null,stress:ci.stress??null,motivation:ci.motivation??null,soreness:ci.soreness??null,coffeeCups:ci.coffee??null,coffeeLate:ci.coffeeLate??null,mindfulMin:ci.mindfulMin||0}:null,
       hrv:wl.hrv??null,restingHr:rhrOn(t)?.v??null,restingHrSource:rhrOn(t)?(rhrOn(t).src==="icu"?"Intervals.icu":"manual"):null,breathingPerMin:wl.resp??null,
       workoutsDone:wT.map(wo),planned:pl&&pl.type?{type:pl.type,note:pl.note||undefined}:null,prescription:sg?{title:sg.title,why:sg.why}:null,

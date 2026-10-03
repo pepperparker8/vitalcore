@@ -227,17 +227,17 @@ async function pullIntervals(){
       if(!a.id||!date||isGone(id))continue;
       const dm=Math.round((a.moving_time||a.elapsed_time||0)/60);
       const num=(v,lo,hi)=>typeof v==='number'&&v>=lo&&v<=hi?Math.round(v):null;
-      const icu={hr:num(a.average_heartrate,30,230),hrMax:num(a.max_heartrate,30,250),kcal:num(a.calories,1,20000),elev:num(a.total_elevation_gain,1,15000),load:num(a.icu_training_load,1,2000)};
+      const icu={hr:num(a.average_heartrate,30,230),hrMax:num(a.max_heartrate,30,250),kcal:num(a.calories,1,20000),elev:num(a.total_elevation_gain,1,15000),load:num(a.icu_training_load,1,2000),rpe:num(a.perceived_exertion??a.icu_rpe,1,10)};
       Object.keys(icu).forEach(k=>{if(icu[k]==null)delete icu[k];});
       const has=Object.keys(icu).length>0,old=d.workouts.find(w=>w.id===id);
       if(old){
         // already imported: fill in or refresh the Intervals.icu details only
-        const oi=wIcu(old),chg=has&&['hr','hrMax','kcal','elev','load'].some(k=>(oi[k]??null)!==(icu[k]??null)),fixDur=!old.durMin&&!old.sets&&dm>0;
+        const oi=wIcu(old),chg=has&&['hr','hrMax','kcal','elev','load','rpe'].some(k=>(oi[k]??null)!==(icu[k]??null)),fixDur=!old.durMin&&!old.sets&&dm>0;
         if(chg||fixDur){put('workouts',{...old,...(fixDur?{durMin:dm}:{}),...(chg?{sub:{...(old.sub||{}),icu}}:{})});n++;}
         continue;
       }
       const type=ICU_TYPE[a.type]||'Other',wt=IS_STR(type);
-      put('workouts',{id,date,type,distKm:!wt&&a.distance?Math.round(a.distance/100)/10:0,durMin:dm,rpe:a.icu_rpe?Math.max(1,Math.min(5,Math.round(a.icu_rpe/2))):3,notes:a.name||'',...(has?{sub:{icu}}:{})});n++;
+      put('workouts',{id,date,type,distKm:!wt&&a.distance?Math.round(a.distance/100)/10:0,durMin:dm,rpe:null,notes:a.name||'',...(has?{sub:{icu}}:{})});n++;
     }
   }
   save(d);

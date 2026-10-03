@@ -1087,3 +1087,10 @@ details[open]>*:not(summary){animation:rise .26s var(--ease)}
 .fd-slot.sel .fd-l::after{content:" · adding here";font-size:11px;font-weight:400;color:var(--t2)}
 .fd-v{font-size:13px;color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .fd-x{width:32px;min-height:44px;background:none;border:0;color:var(--t3);font-size:18px;cursor:pointer}
+
+/* ── v99: confirmed suggestions ── */
+.lnk{background:none;border:0;padding:0;font:inherit;color:var(--t2);text-decoration:underline;cursor:pointer;min-height:0}
+#soreSug .wk-dup{margin:0 0 12px}
+#wPre{margin:0 0 12px}
+#wEffNote:empty{display:none}
+#wEffNote{margin-top:6px}

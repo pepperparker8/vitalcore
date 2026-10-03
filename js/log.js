@@ -212,12 +212,12 @@ function saveWorkout(){
     const r=collectSets();if(r.err){showToast(r.err);return;}
     sets=r.sets;prs=findPRs(sets);
   }
-  const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||3,notes:$('wNotes').value.trim()};
+  const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||null,notes:$('wNotes').value.trim()};
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
   const oi=_editId&&wIcu(S().workouts.find(x=>x.id===_editId));if(oi&&Object.keys(oi).length)rec.sub={...(rec.sub||{}),icu:oi};
   const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Save workout';$('wCancel').style.display='none';
-  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';renderDurChips();
-  showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':'Workout recorded');refreshAll();
+  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';wkPreClear();renderDurChips();
+  showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':rec.rpe?'Workout recorded':'Workout recorded, effort not set');refreshAll();
 }
 let _editId=null;
 function editWorkout(id){
@@ -228,13 +228,14 @@ function editWorkout(id){
   $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
   $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');
   if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}
-  $('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
+  $('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';wkPreClear();
+  const ir=wIcu(w).rpe;$('wEffNote').textContent=ir&&!w.rpe?`Your watch recorded ${ir} of 10, about ${effOf5(ir)} of 5. Pick it here if it felt like that.`:'';
   _editId=id;$('wSave').textContent='Update workout';$('wCancel').style.display='block';
   $('wMore').open=true;$('wkFormT').textContent='Edit workout';renderDurChips();
   setTimeout(()=>$('wkFormT').scrollIntoView({behavior:'smooth',block:'start'}),120);
   showToast('Editing '+w.type+' from '+w.date);
 }
-function cancelEdit(){_editId=null;$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
+function cancelEdit(){_editId=null;wkPreClear();$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
 function repeatLast(){
   const w=last(S().workouts);if(!w){showToast('No previous workout');return;}
   _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
@@ -258,7 +259,7 @@ function wkRow(w,today){
   if(!w.sets&&w.durMin)meta.push(fmtDur(w.durMin));
   if(w.distKm)meta.push(fmtDist(w));
   if(w.sets){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
-  if(w.rpe)meta.push('effort '+w.rpe+'/5');
+  meta.push(w.rpe?'effort '+w.rpe+'/5':'effort not set');
   return `<div class="act-item"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(w.type)}${isIcu(w)?'<span class="wk-src">Intervals.icu</span>':''}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="delWorkout('${esc(w.id)}')">Delete</button></div></div></div>`;
 }
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
@@ -284,10 +285,47 @@ function mergeDup(mid,aid){
   put('workouts',rec);del('workouts',mid);refreshAll();showToast('Combined into one workout');
 }
 function keepDup(mid,aid){const d=S();d.dupOk=[...(d.dupOk||[]),mid+'|'+aid].slice(-100);save(d);refreshAll();}
+// ── Suggestions the user confirms (v99): watch effort, planned session, soreness streak ──
+const effOf5=r=>Math.max(1,Math.min(5,Math.round(r/2)));
+// imported workouts whose watch effort has not been accepted or declined
+const effSugs=()=>{const d=S(),ok=d.effOk||[];return d.workouts.filter(w=>isIcu(w)&&!w.rpe&&wIcu(w).rpe&&daysAgo(w.date)<30&&!ok.includes(w.id)).sort((a,b)=>a.date<b.date?1:-1).slice(0,3);};
+const effHTML=()=>effSugs().map(w=>{const r=wIcu(w).rpe;return`<div class="wk-dup"><div class="wk-dup-t">${fmtDay(w.date)}'s ${esc(w.type.toLowerCase())}: your watch recorded effort ${r} of 10</div><div class="wk-dup-s">Save it as ${effOf5(r)} of 5? Effort feeds training load, strain and the briefing.</div><div class="wk-acts"><button type="button" onclick="useEff('${esc(w.id)}')">Use ${effOf5(r)} of 5</button><button type="button" onclick="editWorkout('${esc(w.id)}')">Pick another</button><button type="button" onclick="skipEff('${esc(w.id)}')">Not now</button></div></div>`;}).join('');
+function useEff(id){const w=S().workouts.find(x=>x.id===id);if(!w)return;put('workouts',{...w,rpe:effOf5(wIcu(w).rpe)});refreshAll();showToast('Effort saved');}
+function skipEff(id){const d=S();d.effOk=[...(d.effOk||[]),id].slice(-100);save(d);refreshAll();}
+// today's planned session fills the empty form; the user changes anything, then saves
+let _wkPre=null;
+function wkPrefill(force){
+  if(_editId||$('wDate').value!==td())return;
+  const dirty=$('wDH').value||$('wDM').value||$('wDist').value||$('wNotes').value||_sess.length;
+  if(dirty&&!force)return;
+  if(!force&&_wkPre===td())return;
+  const st=typeof strategy==='function'?strategy():null,x=st&&st.days[0];
+  if(!x||x.done||x.role==='rest'||x.role==='race'||!PL_TYPES.includes(x.type))return;
+  _wkPre=td();_selEx=x.type;_sess=[];renderExGrid();
+  const mins=IS_STR(x.type)?0:Math.round((x.lo+x.hi)/2/5)*5;
+  if(mins){$('wDH').value=Math.floor(mins/60)||'';$('wDM').value=mins%60||'';}
+  $('wRPE').value=x.effort||'';
+  $('wPre').style.display='';$('wPre').innerHTML=`Filled from today's plan: ${esc(x.name)}${mins?', '+fmtDur(mins):''}${x.effort?', effort '+x.effort+' of 5':''}. Change anything, then save. <button type="button" class="lnk" onclick="wkPreClear(true)">Clear</button>`;
+  renderDurChips();
+}
+function wkPreClear(reset){const e=$('wPre');if(e){e.style.display='none';e.innerHTML='';}$('wEffNote').textContent='';if(reset){['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';renderDurChips();}}
+// soreness 3 or more on three days running (ending today or yesterday), with no injury logged since it began
+function soreStreak(){
+  const d=S(),end=todayCI()&&todayCI().soreness?0:1,days=[];
+  for(let i=end;i<end+3;i++){const c=d.checkins.find(x=>x.date===dAgo(i));if(!c||!(c.soreness>=3))return null;days.push(c.date);}
+  const from=days[days.length-1];
+  if(d.injuries.some(j=>j.active&&j.date>=from))return null;
+  if(d.soreOk===from)return null;
+  return{from,to:days[0],n:3};
+}
+const soreHTML=()=>{const s=soreStreak();return s?`<div class="wk-dup"><div class="wk-dup-t">Sore for three days in a row</div><div class="wk-dup-s">Your check-ins since ${fmtD(s.from)} say so. Logged as an injury, training bends around it and the briefing keeps an eye on it.</div><div class="wk-acts"><button type="button" onclick="soreToInjury()">Log an injury</button><button type="button" onclick="soreSkip()">Not now</button></div></div>`:'';};
+function soreToInjury(){const s=soreStreak();logGo('lInjury');if(s){$('injNotes').value='Sore since '+fmtD(s.from);$('injSev').value='1';}setTimeout(()=>$('injPart').focus(),300);}
+function soreSkip(){const s=soreStreak(),d=S();if(s)d.soreOk=s.from;save(d);refreshAll();}
+function renderSoreSug(){const a=$('soreSug'),b=$('injSug'),h=soreHTML();if(a)a.innerHTML=h;if(b)b.innerHTML=h;}
 function renderWkLog(){
   const d=S(),el=$('wkRecent');if(!el)return;
   const ws=d.workouts.filter(w=>daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));
-  $('wkDup').innerHTML=dupHTML();
+  $('wkDup').innerHTML=dupHTML()+effHTML();renderSoreSug();wkPrefill();
   const n=$('wkIcuNote'),on=!!(d.intervalsKey&&d.intervalsID);
   n.style.display=on?'':'none';
   n.textContent=on?'Connected to Intervals.icu: workouts recorded by your watch arrive here on their own after a sync. Add by hand only what the watch did not record.':'';

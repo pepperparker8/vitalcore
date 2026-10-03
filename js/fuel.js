@@ -22,10 +22,15 @@ function fuWeight(){
   return last(S().measurements.filter(x=>x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort((a,b)=>a.date<b.date?-1:1));
 }
 // ── Energy use (estimate): resting use x 1.35 for daily living, plus training ──
-function fuRest(kg){
+// steps for a day from Intervals.icu wellness (Polar), when the watch counted them
+const fuSteps=dt=>{const w=(S().wellness||{})[dt];return w&&w.steps>0?w.steps:null;};
+// daily-living factor: 1.35 flat, or from the day's steps once the user allowed it (about 1.2 at rest, 1.6 at 10,000 steps)
+function fuAct(dt){const st=S().profile.useSteps&&dt?fuSteps(dt):null;return st?Math.max(1.2,Math.min(1.75,1.2+st/25000)):1.35;}
+function fuRest(kg,dt){
   const p=S().profile,sx=p.sex==='m'?5:p.sex==='f'?-161:-78;
-  return(p.height>=120&&p.age>=14?10*kg+6.25*p.height-5*p.age+sx:23*kg)*1.35;
+  return(p.height>=120&&p.age>=14?10*kg+6.25*p.height-5*p.age+sx:23*kg)*fuAct(dt);
 }
+function setSteps(v){const d=S();d.profile.useSteps=v;save(d);markProfile();renderFuel();showToast(v?'Steps now refine the estimate':'Steps not used');}
 const fuSess=(type,mins,rpe,kg)=>((FU_MET[type]||FU_MET.Cycle)[Math.max(1,Math.min(5,Math.round(rpe)||3))-1]-1)*kg*mins/60;
 // strength workouts have no duration field: about 3 minutes a set
 const fuMin=w=>w.durMin||(IS_STR(w.type)?Math.min(90,(w.sets||[]).length*3)||30:0);
@@ -33,7 +38,7 @@ function fuWk(w,kg){
   const mins=fuMin(w),k=wIcu(w).kcal;
   return k?Math.max(0,k-kg*mins/60):fuSess(w.type,mins,w.rpe,kg);
 }
-const fuBurn=(dt,kg)=>fuRest(kg)+stWs().filter(w=>w.date===dt).reduce((a,w)=>a+fuWk(w,kg),0);
+const fuBurn=(dt,kg)=>fuRest(kg,dt)+stWs().filter(w=>w.date===dt).reduce((a,w)=>a+fuWk(w,kg),0);
 const fuFood=dt=>{const r=S().foodLogs.find(x=>x.date===dt);return r&&r.kcal>0?r:null;};
 
 // Before and during the next session that needs fuelling (today's if still to do, else tomorrow's)
@@ -67,7 +72,7 @@ function fuelPlan(){
   const pk=goal!=='keep'?2:!str&&(level==='rest'||level==='easy')?1.6:1.8;
   const p=fuR5(pk*kg),c=fuR5(ck*kg);
   // fat fills what is left of the day's estimated energy use, kept between 0.6 and 1.5 g per kg
-  const rest=fuRest(kg),train=fuBurn(t,kg)-rest+plan,burn=rest+train,aim=burn+(goal==='lose'?-400:goal==='build'?250:0);
+  const rest=fuRest(kg,t),train=fuBurn(t,kg)-rest+plan,burn=rest+train,aim=burn+(goal==='lose'?-400:goal==='build'?250:0);
   const f=fuR5(Math.max(0.6*kg,Math.min(1.5*kg,(aim-p*4-c*4)/9)));
   const kcal=fuR50(p*4+c*4+f*9),fd=fuFood(t);
   // logged days in the last week (not today, which is still open): eaten against estimated use
@@ -75,7 +80,7 @@ function fuelPlan(){
   const gap=wk.length>=3?avg(wk.map(d=>d.b-d.e)):0;
   const ap=fuR5(0.3*kg),ac=fuR5((level==='hard'||level==='big'||level==='race'?1:0.5)*kg);
   const F=FU_FOODS;
-  return{kg,wDate:m.date,goal,level,label:ph&&ph.n===1&&!race?'Day before your race':FU_DAY[level],done:done.length>0,carbLoad:!!(ph&&ph.n===1),p,c,f,kcal,
+  return{kg,wDate:m.date,wSrc:m.src&&m.src.weight==='icu'?'icu':'man',steps:fuSteps(t),useSteps:S().profile.useSteps,goal,level,label:ph&&ph.n===1&&!race?'Day before your race':FU_DAY[level],done:done.length>0,carbLoad:!!(ph&&ph.n===1),p,c,f,kcal,
     burn:{total:fuR50(burn),rest:fuR50(rest),train:fuR50(train),planned:plan>0},
     eaten:fd?{kcal:fd.kcal,protein:fd.protein||0}:null,
     week:wk.length?{days:wk.length,eaten:fuR50(avg(wk.map(d=>d.e))),burn:fuR50(avg(wk.map(d=>d.b))),low:gap>(goal==='lose'?800:500)}:null,
@@ -105,14 +110,15 @@ function renderFuel(){
   el.innerHTML=`<div class="sg-lbl">Fuel today</div>
    <div class="fu-day">${n.label}${n.done||n.level==='rest'||n.level==='race'||n.carbLoad?'':', from today\'s session'}</div>
    <div class="fu-g">${cell(n.p,'Protein')}${cell(n.c,'Carbs')}${cell(n.f,'Fat')}</div>
-   <div class="set-note">About ${fuN(n.kcal)} kcal at ${n.kg} kg. Goal: ${FU_GOAL[n.goal]}.${n.carbLoad?' Extra carbs today to fill up before your race.':''}${age>30?` Weight was last logged ${age} days ago.`:''}</div>
+   <div class="set-note">About ${fuN(n.kcal)} kcal at ${n.kg} kg${n.wSrc==='icu'?' <span class="wk-src">Intervals.icu</span>':''}${age>0?', weighed '+fmtD(n.wDate):''}. Goal: ${FU_GOAL[n.goal]}.${n.carbLoad?' Extra carbs today to fill up before your race.':''}${age>30?' That weight is old: log a new one in Log > Body.':''}</div>
+   ${n.steps&&n.useSteps==null?`<div class="wk-dup" style="margin:12px 0 4px"><div class="wk-dup-t">Your watch counted ${fuN(n.steps)} steps today</div><div class="wk-dup-s">Use your steps to refine the daily-living part of the estimate? Without them it is a flat allowance.</div><div class="wk-acts"><button type="button" onclick="setSteps(true)">Use steps</button><button type="button" onclick="setSteps(false)">Not now</button></div></div>`:''}
    ${fuEatenHTML(n)}
    ${n.week&&n.week.low?blk('You may be eating too little',`Over your last ${n.week.days} logged days you ate about ${fuN(n.week.eaten)} kcal a day against an estimated ${fuN(n.week.burn)} used. That slows recovery. Add a serving of carbs around training.`):''}
    <details class="fm-why"><summary>Session fuelling and food portions</summary>
    ${x?blk(`${x.tom?'Before tomorrow\'s':'Before today\'s'} ${esc(x.name.toLowerCase())}`,`${x.night?x.night+' ':''}${esc(x.before)}`)+(x.simple?'':blk('During it',esc(x.during))):''}
    ${n.after?blk(n.done?'After today\'s session':'After the session',`About ${n.after.p} g protein and ${n.after.c} g carbs within an hour. For example ${esc(n.after.ex[0])}, or ${esc(n.after.ex[1])}.`):''}
    <p style="margin-top:12px"><b>What that looks like in food.</b> Split the day over four servings. One serving is any one of these, for each row:</p>${food('p','Protein')}${food('c','Carbs')}${food('f','Fat')}
-   <p>Protein follows your body weight and carbs follow how much you train today. Fat fills the rest of your estimated energy use: about ${fuN(n.burn.rest)} kcal for resting and daily living plus about ${fuN(n.burn.train)} kcal of training${n.burn.planned?', counting today\'s planned session':''}. The app has no all-day activity data, so treat this as a rough guide.</p>
+   <p>Protein follows your body weight and carbs follow how much you train today. Fat fills the rest of your estimated energy use: about ${fuN(n.burn.rest)} kcal for resting and daily living${n.useSteps&&n.steps?` (${fuN(n.steps)} steps counted today; <button type="button" class="lnk" onclick="setSteps(false)">stop using steps</button>)`:n.useSteps===false&&n.steps?` (<button type="button" class="lnk" onclick="setSteps(true)">use today's ${fuN(n.steps)} steps</button>)`:''} plus about ${fuN(n.burn.train)} kcal of training${n.burn.planned?', counting today\'s planned session':''}. The app has no all-day activity data, so treat this as a rough guide.</p>
    <p>These are general sports nutrition ranges, not medical advice, and they do not use your blood results. Change the goal in Settings.</p></details>`;
 }
 

@@ -25,11 +25,12 @@ function dtSpec(k){
     const tonight=`<div class="dt-sec">Tonight</div><div class="dt-row"><span>Asleep by <b>${hhmm(h*60+m-need)}</b> for ${fmtDur(need)}</span><label class="dt-wake">wake at <input type="time" value="${wk}" onchange="setWake(this.value)" aria-label="Wake time"></label></div><div class="dt-note">Your goal of ${fmtDur(goal)}${need>goal?', plus extra for today\'s strain and recent short nights':''}.</div>`;
     if(!sl)return{title:'Sleep',missing:`No sleep logged for last night. Enter bedtime and wake-up in Log, or sync Intervals.icu if your watch recorded it.`,link:['Log sleep',"logGo('lSleep')"],extra:tonight};
     const pc=Math.round(sl.durMin/goal*100),base=Math.round(slScore(sl)*0.5+35);
+    const ev=ciOn(dAgo(daysAgo(sl.date)+1)),late=ev&&ev.coffeeLate?`<div class="dt-sec">The evening before</div><div class="dt-note">Your check-in on ${fmtD(ev.date)} says coffee after 14:00. A late cup can cut deep sleep, so keep it in mind when reading this night.</div>`:'';
     const srcTxt=slIcu(sl)?'Intervals.icu'+(src.bed==='est'||src.wake==='est'?', one time estimated':src.bed||src.wake?', times added by you':''):'Logged by you';
     return{title:'Sleep',val:fmtDur(sl.durMin),sub:`${pc}% of your ${fmtDur(goal)} goal${sl.date!==t?' · night ending '+fmtD(sl.date):''}${sl.score?' · score '+sl.score:''}`,src:srcTxt,
       usual:u.length?`${fmtDur(Math.round(avg(u)))} over ${u.length} nights`:'Needs more nights',trend:dtTrend(fn,v=>Math.floor(v/60)+'h'+(v%60?String(v%60).padStart(2,'0'):'')),
       effect:fresh(sl)?`Sleep sets the starting point: ${base} out of 100 before form, your check-in and recovery signals adjust it. ${pc>=90?'A full night, so the start is high.':pc>=75?'A bit short of your goal, which lowers the start.':'Well short of your goal, which pulls the start down.'}`:'Not counted today: the last night is more than three days old.',
-      link:['Edit in Log',"logGo('lSleep')"],extra:tonight};
+      link:['Edit in Log',"logGo('lSleep')"],extra:late+tonight};
   }
   if(k==='form'){
     const tsb=d.intervalsData.tsb,fn=dt=>{if(dt===t&&tsb!=null)return tsb;const w=d.wellness[dt];return w&&w.ctl!=null&&w.atl!=null?Math.round((w.ctl-w.atl)*10)/10:null;},u=dtAvg(fn);

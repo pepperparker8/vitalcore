@@ -174,7 +174,7 @@ function renderSuggest(){
    <div class="sg-row"><div class="sg-ico">${rest?UI.moon:(ICON[x.type]||'')}</div><div style="flex:1;min-width:0"><div class="sg-t">${esc(x.name)}</div>
    ${stMeta(x)?`<div class="sg-m">${esc(stMeta(x))}${stBars(x.effort)}</div>`:''}
    <div class="sg-s">${esc(x.how)}</div><div class="sg-s sg-why">${esc(x.why)}</div></div></div>
-   <div class="sg-btns">${a.done||rest||x.role==='race'?'':`<button class="btn-out sg-btn" onclick="switchTab('log');openLog('lWorkout');selEx('${ty}');$('exGrid').scrollIntoView({block:'center'})">Log ${ty.toLowerCase()}</button>`}<button class="btn-out sg-btn" onclick="switchTab('insights');$('stratCard').scrollIntoView({block:'start'})">Next 7 days</button></div>`;
+   <div class="sg-btns">${a.done||rest||x.role==='race'?'':`<button class="btn-out sg-btn" onclick="switchTab('log');openLog('lWorkout');wkPrefill(true);$('exGrid').scrollIntoView({block:'center'})">Log ${ty.toLowerCase()}</button>`}<button class="btn-out sg-btn" onclick="switchTab('insights');$('stratCard').scrollIntoView({block:'start'})">Next 7 days</button></div>`;
 }
 // Insights: the 7-day outline with this week's time target
 function renderStrategy(){

@@ -94,6 +94,7 @@
   </div>
 
   <div class="cc-h" id="verdictCard" style="display:none;margin:0 0 12px"></div>
+  <div id="soreSug"></div>
   <div class="card sug-card" id="sugCard" style="display:none"></div>
   <div class="card sug-card" id="fuelCard" style="display:none"></div>
   <div class="card goal-card" id="goalCard" style="display:none"></div>
@@ -269,6 +270,7 @@
       <div id="wkDup"></div>
       <div id="wkRecent"></div>
       <div class="sec" id="wkFormT" style="margin-top:16px">Add a workout</div>
+      <div class="set-note" id="wPre" style="display:none"></div>
       <div class="fg"><div class="fl">TYPE</div><div class="ex-grid" id="exGrid"></div></div>
       <div class="fg" id="wDurFg"><div class="fl">DURATION</div><div class="chip-row sp" id="wDurChips"></div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" oninput="swimPace();renderDurChips()" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" oninput="swimPace();renderDurChips()" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg" id="wDistFg"><div class="fl">DISTANCE</div><div class="fr"><input type="number" class="inp" id="wDist" placeholder="10.5" step="0.1" min="0" oninput="swimPace()"><span class="inp-unit" id="wDistU">km</span></div></div>
@@ -280,7 +282,7 @@
         <div class="str-picks" id="strPick"></div><div id="strList"></div></div>
       <details class="sl-more" id="wMore"><summary>Date, effort and note (optional)</summary>
       <div class="fg"><div class="fl">DATE</div><input type="date" class="inp" id="wDate"></div>
-      <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select></div>
+      <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select><div class="set-note" id="wEffNote"></div></div>
       <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Shown in your activity list"></div>
       </details>
       <button class="btn-gold" id="wSave" onclick="saveWorkout()">Save workout</button>
@@ -351,6 +353,7 @@
 
   <div class="log-sec" id="lInjury"><div class="log-hdr" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 10.01h.01" /><path d="M10 14.01h.01" /><path d="M14 10.01h.01" /><path d="M14 14.01h.01" /><path d="M18 6v12" /><path d="M6 6v12" /><rect x="2" y="6" width="20" height="12" rx="2" /></svg></div><div><div class="log-title">Injury</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
+      <div id="injSug"></div>
       <div class="hist-box" id="injDisplay"><div class="hist-ttl">ACTIVE / RECENT</div><div style="font-size:12px;color:var(--t3);padding:4px 0">No injuries logged</div></div>
       <div class="fg"><div class="fl">BODY PART</div><input type="text" class="inp" id="injPart" placeholder="e.g. Left knee, Right hamstring"></div>
       <div class="fg"><div class="fl">SEVERITY</div><select class="sel-inp" id="injSev"><option value="1">1 — Mild (train with caution)</option><option value="2">2 — Moderate (reduce load)</option><option value="3">3 — Severe (stop training)</option></select></div>
