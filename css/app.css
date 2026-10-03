@@ -732,10 +732,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .g-why summary{cursor:pointer;min-height:32px;display:flex;align-items:center}
 .g-why div{line-height:1.5;padding:2px 0 4px}.g-why b{color:var(--hero-fg);font-weight:600}
 
-.g-bed{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;padding:12px 14px;margin-bottom:16px;border:1px solid var(--chrome-bdr);border-radius:12px;background:var(--hero-chip)}
-.gb-t{font-size:15px;color:var(--hero-fg)}.gb-t b{font-weight:600;font-variant-numeric:tabular-nums;color:var(--teal)}
-.gb-s{display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;color:var(--hero-dim)}
-.gb-s input{font:inherit;font-size:13px;color:var(--hero-fg);background:transparent;border:1px solid var(--chrome-bdr);border-radius:8px;padding:6px 8px;min-height:36px;font-variant-numeric:tabular-nums}
 
 .rv-sub{margin-top:2px;font-size:11px}.rv-d{color:var(--t3)}.rv-d.up{color:var(--green)}.rv-d.down{color:var(--red)}
 .rv-g2{grid-template-columns:1fr 1fr}
@@ -747,7 +743,7 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .g-base{margin-top:12px;padding:8px 12px;border-radius:10px;background:var(--hero-chip);font-size:12px;line-height:1.5;color:var(--hero-dim)}
 
 /* ── DATA-FIRST (v66): no boxes; hairline dividers, big plain numbers ── */
-.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.rm-bar,.g-bed,.cc-h{background:transparent;border:0;border-radius:0;box-shadow:none}
+.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.rm-bar,.cc-h{background:transparent;border:0;border-radius:0;box-shadow:none}
 .card,.ci-card,.zone-card,.ins-block,.arch-trend,.prof-bar,.acc-box,.bt-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.log-sec,.cc-h,.rm-bar{border-top:1px solid var(--bdr);padding:20px 0;margin-bottom:0}
 .hero-card{padding:8px 0 20px;margin-bottom:0}
 .ci-card.done,.hab.done{background:transparent}
@@ -793,7 +789,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .ins-arch .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
 #offlineBar .ui-i{width:14px;height:14px;margin-right:4px;vertical-align:-2px}
 .g-num{font-size:26px}
-.g-bed{padding:4px 0 8px}
 .signin-ban{border-top:0;padding-top:8px}
 .week-ban{background:transparent;border:0;border-left:3px solid var(--gold);border-radius:0;padding:2px 0 2px 14px;margin-bottom:16px}
 .week-ban-lbl{color:var(--t3)}
