@@ -114,14 +114,6 @@ function activeDays(){const s=new Set();S().checkins.forEach(c=>{if(ciFull(c)||c
 function calcStreak(){const s=activeDays();let n=0,i=s.has(td())?0:1;while(s.has(dAgo(i))){n++;i++;}return n;}
 function bestStreak(){const a=[...activeDays()].sort();let best=0,run=0,prev=null;for(const x of a){run=prev&&daysAgoBetween(prev,x)===1?run+1:1;best=Math.max(best,run);prev=x;}return best;}
 const daysAgoBetween=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5);
-function renderStreak(){
-  const n=calcStreak(),act=activeDays();
-  $('streakNum').textContent=n;
-  $('streakTxt').textContent=n===1?'day streak':'day streak';
-  $('streakSub').textContent=n?(act.has(td())?'Today is done':'Check in today to keep it alive'):'Check in or meditate today to start one';
-  const L=['S','M','T','W','T','F','S'];
-  $('wkStrip').innerHTML=[6,5,4,3,2,1,0].map(i=>{const dt=new Date();dt.setDate(dt.getDate()-i);const k=ymd(dt);return`<div class="wk-d"><div class="wk-dot ${act.has(k)?'on':''} ${i===0?'now':''}">✓</div>${L[dt.getDay()]}</div>`;}).join('');
-}
 function barsHTML(vals,cls,max){
   const n=vals.length,tight=n>14;
   const bars=vals.map(v=>`<div class="bar-c"><div class="bar ${v.v?cls:''}" style="height:${v.v?Math.max(6,Math.round(v.v/max*100)):5}%"></div></div>`).join('');

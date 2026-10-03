@@ -98,7 +98,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .sbar-track{height:4px;background:var(--sur2);border-radius:2px;margin-top:8px;overflow:hidden;}
 .sbar-prog{height:100%;border-radius:2px;transition:width 0.8s ease;}
 
-.streak-ban{background:linear-gradient(90deg,rgba(255,107,31,0.1),rgba(255,107,31,0.05));border:1px solid rgba(255,107,31,0.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 
 
 .ins-nudge{background:rgba(255,107,31,0.08);border:1px solid rgba(255,107,31,0.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;}
@@ -362,14 +361,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .hab.done{background:var(--green-l);border-color:rgba(26,107,58,0.3);}
 .hab.done .hab-s{color:var(--green);font-weight:600;}
 
-.streak-card{background:linear-gradient(90deg,rgba(255,107,31,0.1),rgba(255,107,31,0.05));border:1px solid rgba(255,107,31,0.25);border-radius:12px;padding:12px 14px;margin-bottom:12px;}
-.streak-top{display:flex;align-items:center;gap:10px;}
-.streak-num{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;font-size:26px;color:var(--gold-dk);line-height:1;}
-.wk-strip{display:flex;justify-content:space-between;margin-top:10px;}
-.wk-d{display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--t3);}
-.wk-dot{width:24px;height:24px;border-radius:50%;background:var(--sur2);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;}
-.wk-dot.on{background:var(--gold);border-color:var(--gold);color:var(--char);font-weight:700;}
-.wk-dot.now{box-shadow:0 0 0 2px rgba(255,107,31,0.45);}
 
 .ci-note{width:100%;border:1px solid var(--bdr);background:var(--bg);border-radius:8px;padding:12px;font-family:var(--body);font-size:14px;color:var(--text);outline:none;margin-top:4px;min-height:44px;}
 .ci-note:focus{border-color:var(--gold);}
@@ -739,8 +730,8 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .g-base{margin-top:12px;padding:8px 12px;border-radius:10px;background:var(--hero-chip);font-size:12px;line-height:1.5;color:var(--hero-dim)}
 
 /* ── DATA-FIRST (v66): no boxes; hairline dividers, big plain numbers ── */
-.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.cc-h{background:transparent;border:0;border-radius:0;box-shadow:none}
-.card,.ci-card,.zone-card,.ins-block,.arch-trend,.prof-bar,.acc-box,.bt-card,.streak-card,.streak-ban,.ins-nudge,.signin-ban,.log-sec,.cc-h{border-top:1px solid var(--bdr);padding:20px 0;margin-bottom:0}
+.card,.ci-card,.zone-card,.log-sec,.ins-block,.arch-trend,.ins-hi,.prof-bar,.acc-box,.bt-card,.passive-chip,.sbar,.hab,.lg-tiles button,.hero-card,.ins-nudge,.signin-ban,.cc-h{background:transparent;border:0;border-radius:0;box-shadow:none}
+.card,.ci-card,.zone-card,.ins-block,.arch-trend,.prof-bar,.acc-box,.bt-card,.ins-nudge,.signin-ban,.log-sec,.cc-h{border-top:1px solid var(--bdr);padding:20px 0;margin-bottom:0}
 .hero-card{padding:8px 0 20px;margin-bottom:0}
 .ci-card.done,.hab.done{background:transparent}
 .zone-card{overflow:visible}
@@ -773,12 +764,12 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .cc-ok:not(span),.cc-warn:not(span),.cc-bad:not(span){background:transparent}
 .cc-t{font-size:26px;letter-spacing:-.02em}
 .signin-ban{border-style:solid;border-width:1px 0 0;border-color:var(--bdr)}
-.streak-card,.streak-ban,.ins-nudge{background:transparent}
+.ins-nudge{background:transparent}
 
 /* line icons in place of emoji */
 .ui-i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-4px}
 .ui-i.lg{width:28px;height:28px}
-.streak-top .ui-i,.ins-nudge .ui-i{color:var(--gold-dk);width:22px;height:22px}
+.ins-nudge .ui-i{color:var(--gold-dk);width:22px;height:22px}
 .empty-icon .ui-i{width:32px;height:32px;color:var(--t3)}
 .rv-pr .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
 .ins-arch .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
@@ -828,7 +819,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   --sh:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.04)}
 :root[data-theme="dark"]{--bg:#121316;--sur:#1C1E22;--sur2:#262930;--bdr:#2E3138;--text:#F1F2F4;--t2:#A9B0BA;--t3:#7C8491;--gold-l:#33190C;--chrome:#1C1E22;--chrome-bdr:#2E3138;--hero-bg:#1C1E22;--hero-chip:#262930;--ring-trk:#2A2D33;--sh:0 1px 2px rgba(0,0,0,.4)}
 #splash{background:var(--bg)}
-.card,.hero-card,.streak-card,.cc-h,.signin-ban,.log-sec,.ins-block,.zone-card,.bt-card,.ci-card,.arch-trend,.prof-bar,.acc-box,.ins-nudge,.streak-ban{background:var(--sur);border:0;border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:var(--sh)}
+.card,.hero-card,.cc-h,.signin-ban,.log-sec,.ins-block,.zone-card,.bt-card,.ci-card,.arch-trend,.prof-bar,.acc-box,.ins-nudge{background:var(--sur);border:0;border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:var(--sh)}
 .hero-card{padding:16px 16px 12px}
 .log-sec{border-bottom:0}.log-sec.open{border:0}
 .cc-h{border-left:3px solid var(--bdr);padding-left:14px}
@@ -942,8 +933,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 /* v88: food log and eaten-so-far */
 .fu-e{font-size:13px;line-height:1.5;color:var(--t2);margin-top:8px}.fu-e b{color:var(--text);font-weight:600}
 
-/* v102: streak flame holder (the v92 motion block and the briefing skeleton were removed in v103) */
-.streak-top .streak-ic{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;margin:-6px 0 -2px -6px}
 /* v94: raw wellness viewer (temporary, Phase 0 audit) */
 
 /* v96: field states in Log. Hints are placeholders in --t3, imported values carry a small source tag,
