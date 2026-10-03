@@ -1052,3 +1052,29 @@ details[open]>*:not(summary){animation:rise .26s var(--ease)}
 .inp.inp-est{border:1px dashed var(--t3);box-shadow:none}
 .log-sec.part .log-stat{color:var(--amber)}
 .log-sec.part .log-stat::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-right:6px;vertical-align:1px}
+
+/* ── v97: detail sheets from the Today gauges and factor rows ── */
+.g[role=button],.rf[role=button]{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.g[role=button]:active .g-ring{transform:scale(.96)}
+.dt-big{font-size:40px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.dt-sub{font-size:13px;color:var(--t2);line-height:1.5;margin-top:4px}
+.dt-src{font-size:12px;color:var(--t3);margin-top:4px}
+.dt-miss{font-size:14px;line-height:1.55;color:var(--t2)}
+.dt-sec{font-size:12px;font-weight:600;color:var(--t2);margin:18px 0 6px}
+.dt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:4px 0;border-top:1px solid var(--bdr);font-size:14px}
+.dt-row b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.dt-usual{margin-top:12px}
+.dt-parts .dt-row{min-height:36px}
+.dt-parts{margin-bottom:8px}
+.dt-eff{font-size:14px;line-height:1.55;color:var(--text)}
+.dt-note{font-size:12px;color:var(--t3);line-height:1.5;margin-top:4px}
+.dt-wake{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);white-space:nowrap}
+.dt-wake input{font:inherit;font-size:13px;color:var(--text);background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:6px 8px;min-height:36px;font-variant-numeric:tabular-nums}
+.dt-tr{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:88px;align-items:end}
+.dt-c{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}
+.dt-bv{font-size:10px;color:var(--t3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dt-b{width:100%;max-width:28px;border-radius:4px 4px 2px 2px;background:var(--t3);min-height:4px}
+.dt-b.now{background:var(--text)}
+.dt-b.off{background:var(--bdr)}
+.dt-bl{font-size:10px;color:var(--t3)}
+.dt-link{margin-top:20px}

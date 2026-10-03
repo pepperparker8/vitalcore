@@ -35,37 +35,37 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderBed();renderFactors();renderSleepStages();renderDays7();renderWeekLoad();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
+  renderFactors();if(typeof refreshDetail==='function')refreshDetail();renderSleepStages();renderDays7();renderWeekLoad();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
   $('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
 }
 function readinessFactors(){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60,out=[];
   const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
-  if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
-  else out.push({l:'Sleep',v:'Not logged',n:'Tap to log',st:'none',go:"logGo('lSleep')"});
+  if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({k:'sleep',l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
+  else out.push({k:'sleep',l:'Sleep',v:'Not logged',n:'Tap for details',st:'none'});
   const tsb=d.intervalsData.tsb;
-  if(tsb!==null&&tsb!==undefined)out.push({l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:tsb>=5?'Fresh':tsb>=-10?'Balanced':tsb>=-25?'Tired':'Very tired',st:tsb>=-10?'good':tsb>=-25?'warn':'bad'});
+  if(tsb!==null&&tsb!==undefined)out.push({k:'form',l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:tsb>=5?'Fresh':tsb>=-10?'Balanced':tsb>=-25?'Tired':'Very tired',st:tsb>=-10?'good':tsb>=-25?'warn':'bad'});
   const ci=todayCI();
-  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({l:'Check-in',v:p>=70?'Good':p>=50?'Okay':'Low',n:p+'/100',st:p>=70?'good':p>=50?'warn':'bad'});}
-  else out.push({l:'Check-in',v:'Not done',n:'Tap to check in',st:'none',go:"logGo('lCheckin')"});
+  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({k:'checkin',l:'Check-in',v:p>=70?'Good':p>=50?'Okay':'Low',n:p+'/100',st:p>=70?'good':p>=50?'warn':'bad'});}
+  else out.push({k:'checkin',l:'Check-in',v:'Not done',n:'Tap for details',st:'none'});
   const hv=latestOf('hrv'),hb=wSeries('hrv');
-  if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'usual '+Math.round(avg(hb)),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
-  else if(hv)out.push({l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
+  if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:'usual '+Math.round(avg(hb)),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
+  else if(hv)out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
   const rv=latestOf('rhr'),rb=rhrSeries();
-  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
-  else if(rv)out.push({l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
+  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
+  else if(rv)out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
   const pv=latestOf('resp'),pb=wSeries('resp');
-  if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({l:'Breathing',v:pv.v.toFixed(1)+' /min',n:'usual '+avg(pb).toFixed(1),st:df<=1?'good':df<=2?'warn':'bad'});}
-  if(ci&&ci.soreness>=2)out.push({l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
-  if(ci&&ci.coffeeLate)out.push({l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
+  if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({k:'breathing',l:'Breathing',v:pv.v.toFixed(1)+' /min',n:'usual '+avg(pb).toFixed(1),st:df<=1?'good':df<=2?'warn':'bad'});}
+  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
+  if(ci&&ci.coffeeLate)out.push({k:'coffee',l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
   const inj=d.injuries.filter(i=>i.active);
-  if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
+  if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({k:'injury',l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
   return out;
 }
 function renderFactors(){
   const el=$('rdFactors');if(!el)return;
   const f=readinessFactors();
-  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>`<div class="rf ${x.st}"${x.go?` onclick="${x.go}" role="button"`:''}><span class="rf-dot"></span><span class="rf-l">${x.l}</span><span class="rf-v">${x.v}</span><span class="rf-n">${x.n}</span></div>`).join('');
+  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>`<div class="rf ${x.st}" onclick="openDetail('${x.k}')" role="button" tabindex="0"><span class="rf-dot"></span><span class="rf-l">${x.l}</span><span class="rf-v">${x.v}</span><span class="rf-n">${x.n}</span></div>`).join('');
 }
 function renderSleepStages(){
   const el=$('slStages');if(!el)return;
@@ -127,13 +127,7 @@ function sleepNeed(st){
   return Math.round((goal+st/21*45+Math.min(45,debt/2))/5)*5;
 }
 const hhmm=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
-function setWake(v){if(!/^\d\d:\d\d$/.test(v))return;const d=S();d.profile.wakeTime=v;save(d);markProfile();renderBed();}
-function renderBed(){
-  const el=$('gBed');if(!el)return;
-  const d=S(),wk=/^([01]\d|2[0-3]):[0-5]\d$/.test(d.profile.wakeTime||'')?d.profile.wakeTime:'06:30',[h,m]=wk.split(':').map(Number);
-  const need=sleepNeed(strainOf(dayLoad(td())));
-  el.innerHTML=`<div class="gb-t">Asleep by <b>${hhmm(h*60+m-need)}</b></div><label class="gb-s">${fmtDur(need)} · wake at <input type="time" value="${wk}" onchange="setWake(this.value)" aria-label="Wake time"></label>`;
-}
+function setWake(v){if(!/^\d\d:\d\d$/.test(v))return;const d=S();d.profile.wakeTime=v;save(d);markProfile();if(typeof refreshDetail==='function')refreshDetail();}
 function renderZone(score){
   let z,ins;
   if(score===null){z='Start with a check-in';ins='Tap how you feel below. Your readiness score appears once you check in or log sleep.';}

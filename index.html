@@ -82,15 +82,14 @@
     <div class="hero-greeting" id="heroGreeting">Good morning</div>
     <div class="d7" id="d7"></div><div class="d7-det" id="d7Det"></div>
     <div class="g3">
-      <div class="g"><div class="g-ring"><svg viewBox="0 0 80 80"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF8A1F"/><stop offset="100%" stop-color="#FF3B2E"/></linearGradient></defs><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="ring-fill g-fill" id="ringFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="ringNum" style="color:var(--gold-dk)">—</div></div><div class="g-lbl">Recovery</div><div class="g-sub" id="gRecSub">&nbsp;</div></div>
-      <div class="g"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-strain" id="strFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="strNum">—</div></div><div class="g-lbl">Strain</div><div class="g-sub" id="gStrSub">&nbsp;</div></div>
-      <div class="g"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-sleep" id="slpFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="slpNum">—</div></div><div class="g-lbl">Sleep</div><div class="g-sub" id="gSlpSub">&nbsp;</div></div>
+      <div class="g" role="button" tabindex="0" onclick="openDetail('recovery')"><div class="g-ring"><svg viewBox="0 0 80 80"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF8A1F"/><stop offset="100%" stop-color="#FF3B2E"/></linearGradient></defs><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="ring-fill g-fill" id="ringFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="ringNum" style="color:var(--gold-dk)">—</div></div><div class="g-lbl">Recovery</div><div class="g-sub" id="gRecSub">&nbsp;</div></div>
+      <div class="g" role="button" tabindex="0" onclick="openDetail('strain')"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-strain" id="strFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="strNum">—</div></div><div class="g-lbl">Strain</div><div class="g-sub" id="gStrSub">&nbsp;</div></div>
+      <div class="g" role="button" tabindex="0" onclick="openDetail('sleep')"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-sleep" id="slpFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="slpNum">—</div></div><div class="g-lbl">Sleep</div><div class="g-sub" id="gSlpSub">&nbsp;</div></div>
     </div>
-    <div class="g-bed" id="gBed"></div>
     <div class="rf-list" id="rdFactors"></div>
     <div class="hero-txt"><div class="hero-zone" id="heroZone">Loading…</div><div class="hero-ins" id="heroIns">Calculating…</div></div>
     <div class="g-base" id="baseNote" style="display:none"></div>
-    <details class="g-why"><summary>What do these mean?</summary><div><b>Recovery</b> is how ready you are to train. <b>Strain</b> is how much you have trained today (0 to 21), with a target range based on your recovery. <b>Sleep</b> is last night's sleep against your sleep goal. <b>Asleep by</b> works back from your wake time using your sleep goal, plus extra for today's strain and any recent sleep debt.</div></details>
+    <details class="g-why"><summary>What do these mean?</summary><div><b>Recovery</b> is how ready you are to train. <b>Strain</b> is how much you have trained today (0 to 21), with a target range based on your recovery. <b>Sleep</b> is last night's sleep against your sleep goal. Tap a gauge or a row for the detail and its effect on the score.</div></details>
     <div class="hero-why" id="heroWhy"></div><div class="hero-miss" id="heroMissing"></div>
   </div>
 
@@ -433,6 +432,12 @@
 </div>
 
 <!-- SIGN IN -->
+<div class="modal-ov" id="dtModal" onclick="if(event.target===this)closeDetail()">
+  <div class="modal">
+    <div class="modal-title" id="dtTitle">Detail <button class="modal-close" onclick="closeDetail()" aria-label="Close">×</button></div>
+    <div id="dtBody"></div>
+  </div>
+</div>
 <div class="modal-ov z2" id="authModal">
   <div class="modal">
     <div class="modal-title">Sign in <button class="modal-close" onclick="closeAuth()">×</button></div>
@@ -481,6 +486,7 @@
 <script src="js/settings.js"></script>
 <script src="js/render.js"></script>
 <script src="js/recovery.js"></script>
+<script src="js/detail.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/form.js"></script>
 <script src="js/trends.js"></script>
