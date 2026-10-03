@@ -77,33 +77,3 @@ function renderGoal(){
   el.innerHTML=`<div class="gl-row"><div><div class="gl-n">${nm}</div><div class="gl-s">${sub}</div></div><div class="gl-big">${big}</div></div>${extra}`;
 }
 
-// ── CHECK-IN REMINDER: strip on Today (and a nav dot) after the chosen time if not checked in ──
-function remCfg(){const r=S().profile.remind||{};return{on:r.on!==false,time:/^\d\d:\d\d$/.test(r.time||'')?r.time:'19:00'};}
-function remDue(){
-  const c=remCfg();if(!c.on||ciFull(todayCI())||isExampleOnly())return false;
-  const n=new Date(),[h,m]=c.time.split(':').map(Number);return n.getHours()*60+n.getMinutes()>=h*60+m;
-}
-function renderRemind(){
-  const el=$('remBar'),nav=$('nav-today');if(!el)return;
-  const due=remDue();
-  if(nav)nav.classList.toggle('dot',due);
-  el.style.display=due?'flex':'none';
-  if(due){el.innerHTML=`<div><b>Time for your check-in</b><span>Four taps, takes ten seconds.</span></div><button class="btn-gold" style="margin:0" onclick="logGo('lCheckin')">Check in</button>`;remNotify();}
-}
-function remNotify(){
-  try{
-    if(!('Notification' in window)||Notification.permission!=='granted')return;
-    if(localStorage.getItem('vc-remn')===td())return;
-    localStorage.setItem('vc-remn',td());
-    navigator.serviceWorker?.getRegistration().then(r=>r&&r.showNotification('VitalCore',{body:'Time for your daily check-in.',icon:'icon-192.png',tag:'vc-checkin'}));
-  }catch(e){}
-}
-function remNoteUI(){
-  const b=$('sRemBtn');if(!b)return;
-  b.style.display=('Notification' in window&&Notification.permission==='default')?'block':'none';
-  const n=$('sRemNote');if(n)n.textContent=('Notification' in window&&Notification.permission==='granted')?'Shows on Today and as a phone notification when you open the app after this time.':'Shows a reminder on Today if you have not checked in by this time.';
-}
-function askNotify(){try{Notification.requestPermission().then(()=>remNotify_ui());}catch(e){}}
-function remNotify_ui(){remNoteUI();showToast(Notification.permission==='granted'?'Notifications on':'Notifications blocked');}
-setInterval(()=>{if(!document.hidden)renderRemind();},60000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderRemind();});
