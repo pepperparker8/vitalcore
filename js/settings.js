@@ -28,7 +28,7 @@ function saveSettings(){
   d.profile.goalName=$('sGoalName').value.trim();d.profile.goalDate=$('sGoalDate').value;
   const icuChanged=d.intervalsKey!==$('sInterKey').value.trim()||d.intervalsID!==$('sInterID').value.trim();
   d.claudeKey=$('sClaudeKey').value.trim();d.intervalsKey=$('sInterKey').value.trim();d.intervalsID=$('sInterID').value.trim();
-  save(d);markProfile();closeSettings();renderGreeting();renderGoal();renderFuel();refreshAll();showToast('Settings saved');
+  save(d);markProfile();closeSettings();renderGreeting();renderFuel();refreshAll();showToast('Settings saved');
   if(icuChanged&&d.intervalsKey&&d.intervalsID)syncAll(true);
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}

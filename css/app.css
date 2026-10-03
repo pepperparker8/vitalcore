@@ -521,11 +521,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);font-size:15
 .act-icon.today{color:#1A1A1A;}
 .chip .sp-ico{width:16px;height:16px;vertical-align:-3px;}
 #syncBtn{white-space:nowrap;}
-.goal-card{padding:12px 16px;}
-.gl-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.gl-n{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);overflow-wrap:anywhere;}
-.gl-s{font-size:13px;color:var(--t2);margin-top:2px;}
-.gl-big{font-family:var(--serif);font-size:28px;white-space:nowrap;color:var(--text);}
 .sug-card{padding:14px 16px;}
 .sg-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--t2);margin-bottom:8px;}
 .sg-row{display:flex;gap:12px;align-items:flex-start;}
@@ -666,8 +661,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 
 .gl-bar{height:8px;border-radius:4px;background:var(--sur2);margin-top:12px;overflow:hidden}.gl-bar>div{height:100%;background:var(--text);border-radius:4px}
 .gl-t{font-size:12px;color:var(--t2);margin-top:6px}
-.gl-ph{display:flex;gap:4px;margin-top:10px}.gl-ph span{flex:1;text-align:center;font-size:10px;font-weight:600;padding:6px 0;border-radius:8px;background:var(--sur2);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gl-ph span.past{opacity:.6}.gl-ph span.on{background:var(--text);color:var(--bg)}
 .hist-row{gap:12px;align-items:baseline}.hist-row>span:first-child{flex:none}.hist-val{text-align:right}
 #hBase .hist-row{padding:6px 0}#hBase .hist-val small{display:block;margin-top:2px}
 

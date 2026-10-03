@@ -37,7 +37,7 @@ function saveReflect(){
   put('checkins',rec);showToast('Reflection saved');refreshAll();
 }
 
-// countdown to the next race or goal (profile.goalName / goalDate) with a phase plan
+// race phases from profile.goalDate (the goal card was removed in v111; strategy, fuel and the briefing still use these)
 const RACE_PH=[
   {k:'Base',min:56,mult:1.0,tip:'Build steady volume. Keep most sessions easy.'},
   {k:'Build',min:28,mult:1.1,tip:'Add quality sessions: one hard day, the rest easy.'},
@@ -59,21 +59,5 @@ function raceLoad(){
     return d.workouts.filter(w=>w.date>=A&&w.date<B&&!w.isEx).reduce((t,w)=>t+(w.durMin||0),0);};
   const prev=[-4,-3,-2,-1].map(wk).filter(x=>x>0);
   return{base:prev.length>=2?avg(prev):null,now:wk(0)};
-}
-function renderGoal(){
-  const p=S().profile,el=$('goalCard');if(!el)return;
-  const r=racePhase();
-  if(!r||r.n<-3){el.style.display='none';return;}
-  const nm=esc(p.goalName||'Your goal');
-  let big,sub,extra='';
-  if(r.n<0){big='Done';sub='Well done. Set your next goal in Settings.';}
-  else if(r.n===0){big='Today';sub='Race day. Trust your training.';}
-  else{
-    big=r.n+(r.n===1?' day':' days');
-    sub=`<b>${r.k}${r.min?' phase':''}.</b> ${r.tip}`;
-    extra=`<div class="gl-ph">${RACE_PH.map((x,i)=>`<span class="${i===r.idx?'on':i<r.idx?'past':''}">${x.k}</span>`).join('')}</div>`;
-  }
-  el.style.display='';
-  el.innerHTML=`<div class="gl-row"><div><div class="gl-n">${nm}</div><div class="gl-s">${sub}</div></div><div class="gl-big">${big}</div></div>${extra}`;
 }
 
