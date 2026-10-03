@@ -321,7 +321,7 @@ function soreStreak(){
 const soreHTML=()=>{const s=soreStreak();return s?`<div class="wk-dup"><div class="wk-dup-t">Sore for three days in a row</div><div class="wk-dup-s">Your check-ins since ${fmtD(s.from)} say so. Logged as an injury, training bends around it and the briefing keeps an eye on it.</div><div class="wk-acts"><button type="button" onclick="soreToInjury()">Log an injury</button><button type="button" onclick="soreSkip()">Not now</button></div></div>`:'';};
 function soreToInjury(){const s=soreStreak();logGo('lInjury');if(s){$('injNotes').value='Sore since '+fmtD(s.from);$('injSev').value='1';}setTimeout(()=>$('injPart').focus(),300);}
 function soreSkip(){const s=soreStreak(),d=S();if(s)d.soreOk=s.from;save(d);refreshAll();}
-function renderSoreSug(){const a=$('soreSug'),b=$('injSug'),h=soreHTML();if(a)a.innerHTML=h;if(b)b.innerHTML=h;}
+function renderSoreSug(){const b=$('injSug');if(b)b.innerHTML=soreHTML();}
 function renderWkLog(){
   const d=S(),el=$('wkRecent');if(!el)return;
   const ws=d.workouts.filter(w=>daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));

@@ -945,7 +945,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 /* ── v99: confirmed suggestions ── */
 .lnk{background:none;border:0;padding:0;font:inherit;color:var(--t2);text-decoration:underline;cursor:pointer;min-height:0}
-#soreSug .wk-dup{margin:0 0 12px}
 #wPre{margin:0 0 12px}
 #wEffNote:empty{display:none}
 #wEffNote{margin-top:6px}
