@@ -29,7 +29,7 @@ function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.inn
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   const s=calcReadiness();recordReadiness(s);renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
-  renderWhy();renderGoal();renderFuel();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderReview();renderVerdict();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
+  renderWhy();renderGoal();renderFuel();renderRecovery();renderPlan();renderSuggest();renderMonthly();renderVerdict();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID))syncAll(false);updSyncStatus();});
