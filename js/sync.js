@@ -253,19 +253,6 @@ async function testIntervals(){
     else{res.textContent=icuErr(r.status);res.className='api-test-res fail';}
   }catch(e){res.textContent='Network error';res.className='api-test-res fail';}
 }
-// Phase 0 audit: show what Intervals.icu returns for the last 3 days (null fields removed)
-async function rawWellness(){
-  const out=$('icuRaw'),key=$('sInterKey').value,id=$('sInterID').value;
-  out.hidden=false;
-  if(!key||!id){out.textContent='Enter the athlete ID and API key first.';return;}
-  out.textContent='Loading…';
-  try{
-    const r=await fetch(`${icuBase(id)}/wellness?oldest=${dAgo(2)}&newest=${td()}`,{headers:icuHdr(key)});
-    if(!r.ok){out.textContent=icuErr(r.status);return;}
-    const rows=(await r.json()).map(w=>Object.fromEntries(Object.entries(w).filter(([,v])=>v!=null&&v!=='')));
-    out.textContent=rows.length?JSON.stringify(rows,null,1):'No wellness rows for the last 3 days.';
-  }catch(e){out.textContent='Network error';}
-}
 async function testClaudeKey(){
   const key=$('sClaudeKey').value.trim(),res=$('claudeTestRes');
   if(!key){res.textContent='Enter a key first';res.className='api-test-res fail';return;}

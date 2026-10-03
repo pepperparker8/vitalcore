@@ -1042,7 +1042,6 @@ details[open]>*:not(summary){animation:rise .26s var(--ease)}
 .streak-top .lt{margin:-6px 0 -2px -6px}
 .lt:empty{display:none}
 /* v94: raw wellness viewer (temporary, Phase 0 audit) */
-.raw-json{margin:8px 0 0;padding:10px 12px;max-height:50vh;overflow:auto;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-all;background:var(--sur2);color:var(--t2);border-radius:10px;font-variant-numeric:tabular-nums}
 
 /* v96: field states in Log. Hints are placeholders in --t3, imported values carry a small source tag,
    a time worked out from a recorded duration is dashed until the user confirms or corrects it. */
