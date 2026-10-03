@@ -656,12 +656,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .toast-act{margin-left:10px;min-height:36px;padding:0 12px;border:0;border-radius:14px;background:var(--gold);color:var(--char);font:700 13px var(--body);cursor:pointer}
 .day-del{min-height:44px;min-width:44px}
 
-.rv-h{font:600 22px var(--serif);margin:2px 0 10px}
-.rv-g{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-.rv-t{background:var(--sur2);border-radius:10px;padding:8px 6px;min-width:0}
-.rv-k{font-size:10px;color:var(--t3);font-weight:600}.rv-v{font-size:13px;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rv-pr{background:var(--gold-l);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px}
-.rv-b{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:12px}
 
 .more-today{margin-top:4px}
 .more-today>summary{list-style:none;cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--bdr);border-radius:12px;font-size:13px;font-weight:600;color:var(--t2);margin-bottom:12px}
@@ -724,8 +718,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .g-why div{line-height:1.5;padding:2px 0 4px}.g-why b{color:var(--hero-fg);font-weight:600}
 
 
-.rv-sub{margin-top:2px;font-size:11px}.rv-d{color:var(--t3)}.rv-d.up{color:var(--green)}.rv-d.down{color:var(--red)}
-.rv-g2{grid-template-columns:1fr 1fr}
 
 .g-base{margin-top:12px;padding:8px 12px;border-radius:10px;background:var(--hero-chip);font-size:12px;line-height:1.5;color:var(--hero-dim)}
 
@@ -748,10 +740,8 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .passive-chip{padding:10px 4px}
 .sbar-val{font-size:28px}
 .g-num{font-size:30px}
-.g-base,.why,.rv-pr,.rv-t,.ins-hi-arch,.ins-hist-cnt{background:transparent;border-radius:0;padding-left:0;padding-right:0}
+.g-base,.why,.ins-hi-arch,.ins-hist-cnt{background:transparent;border-radius:0;padding-left:0;padding-right:0}
 .why{padding:0;margin-right:10px;border:0}
-.rv-t{border-top:1px solid var(--bdr)}
-.rv-pr{color:var(--gold-dk);padding-top:0}
 .ins-hi{border-top:1px solid var(--bdr);padding:0}
 .ins-hi-arch{border:0;padding:0}
 .act-icon,.act-icon.past{background:none;color:var(--t2)}
@@ -771,7 +761,6 @@ button:focus-visible,[onclick]:focus-visible,.inp:focus-visible{outline:2px soli
 .ui-i.lg{width:28px;height:28px}
 .ins-nudge .ui-i{color:var(--gold-dk);width:22px;height:22px}
 .empty-icon .ui-i{width:32px;height:32px;color:var(--t3)}
-.rv-pr .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
 .ins-arch .ui-i{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
 #offlineBar .ui-i{width:14px;height:14px;margin-right:4px;vertical-align:-2px}
 .g-num{font-size:26px}
