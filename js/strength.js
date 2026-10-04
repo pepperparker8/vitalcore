@@ -244,10 +244,12 @@ function renderStrTrend(){
   }
   const wk=weeklySets(_range);
   const tt=document.querySelector('#strCard .tr-sum');if(tt)tt.textContent=_range>7?`avg sets per week per muscle, last ${_range} days`:'sets per muscle, last 7 days';
+  const lo=TH.SETS_LO,hi=TH.SETS_HI,grp={on:[],low:[],high:[],none:[]};
   $('strMuscles').innerHTML=MUSCLES.map(m=>{
-    const n=wk[m],col=n<10?'var(--amber)':n<=20?'var(--green)':'var(--red)',lbl=n===0?'none':n<10?'low':n<=20?'on target':'high';
-    return`<div class="mu-row"><span class="mu-n">${m}</span><span class="mu-bar"><span class="mu-fill" style="display:block;width:${Math.min(100,n/20*100)}%;background:${col}"></span></span><span class="mu-v" style="color:${col}">${n} · ${lbl}</span></div>`;
-  }).join('');
+    const n=wk[m],k=n===0?'none':n<lo?'low':n<=hi?'on':'high',col=k==='low'||k==='none'?'var(--amber)':k==='on'?'var(--green)':'var(--red)',lbl={none:'none',low:'low',on:'on target',high:'high'}[k];
+    grp[k].push(m);
+    return`<div class="mu-row"><span class="mu-n">${m}</span><span class="mu-bar"><span class="mu-fill" style="display:block;width:${Math.min(100,n/hi*100)}%;background:${col}"></span></span><span class="mu-v" style="color:${col}">${n} · ${lbl}</span></div>`;
+  }).join('')+`<div class="vc-mean">${[[grp.on,'On target'],[grp.low,'Under '+lo],[grp.high,'Over '+hi],[grp.none,'Not trained']].filter(g=>g[0].length).map(g=>g[1]+': '+g[0].join(', ')).join('. ')}.${grp.high.length?' Over '+hi+' sets a week is more than most people recover from; fewer, harder sets work as well.':grp.low.length&&grp.on.length?' Add a few sets for the muscles under '+lo+' if you want them to grow.':''}</div><div class="set-note">${lo} to ${hi} hard sets per muscle per week is a common target for building strength. A hard set ends within about 3 reps of failure; warm-ups do not count.</div>`;
   const names=[...hist.keys()].sort((a,b)=>last(hist.get(b)).date<last(hist.get(a)).date?-1:1);
   if(!names.includes(_strEx))_strEx=names[0];
   const sel=$('strSel');sel.style.display='block';
@@ -255,7 +257,12 @@ function renderStrTrend(){
   const a=hist.get(_strEx),weighted=a.some(x=>x.e1>0),timed=!weighted&&a.some(x=>x.secs);
   const val=x=>weighted?x.e1:timed?x.secs:x.reps,unit=weighted?'kg (est. 1RM)':timed?'sec':'reps';
   const cv=$('strCanvas'),fu=v=>Math.round(v)+' '+(weighted?'kg':timed?'s':'reps');
-  if(a.length>=2)mountChart('strCanvas',{key:'str'+_strEx,H:170,span:180,wide:true,yfmt:v=>Math.round(v),series:[{pts:a.map(x=>({d:x.date,v:val(x)})),color:'--gold-dk',name:_strEx,fmt:fu}]});else cv.innerHTML='';
+  if(a.length>=2)mountChart('strCanvas',{key:'str'+_strEx,H:170,span:180,wide:true,yfmt:v=>Math.round(v),label:_strEx,
+    series:[{pts:a.map(x=>({d:x.date,v:val(x)})),color:'--gold-dk',name:_strEx,fmt:fu}],
+    hi:true,stats:{one:'session',words:['Best','Lowest']},
+    means:info=>prMeaning(info,v=>fu(v),['Up','Down'],a.map(x=>x.date).filter((dt,i)=>i&&val(a[i])>Math.max(...a.slice(0,i).map(val))),'sessions'),
+    how:weighted?'Estimated 1RM is the most you could lift once, worked out from your best set of the session (weight and reps). It moves less than the weight on the bar, so a rise of a few kilograms over a couple of months is real progress.':'Each point is your best set of the session.'});
+  else cv.innerHTML='';
   const vals=a.slice(-20).map(val);
   const l=last(a),best=Math.max(...a.map(val));
   $('strSum').textContent=vals.length<2?`Log ${_strEx} once more to see a trend. Latest: ${Math.round(val(l))} ${unit}.`:`${_strEx}: latest ${Math.round(val(l))} ${unit} · best ${Math.round(best)} · ${a.length} sessions`;

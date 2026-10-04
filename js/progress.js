@@ -17,14 +17,15 @@ function prSeries(key,met){
     const pace=w=>sw?w.durMin/(w.distKm*10):w.durMin/w.distKm;
     const pl=sw?'/100 m':'/km';
     const dfmt=k=>sw?Math.round(k*1000)+' m':(Math.round(k*10)/10)+' km';
-    if(met==='dist')return{unit:'',pts:ws.map(w=>({date:w.date,v:w.distKm,txt:dfmt(w.distKm),sub:fmtDur(Math.round(w.durMin))})),yf:v=>sw?Math.round(v*1000):Math.round(v*10)/10,title:'Distance per session',better:'longer'};
-    if(cy)return{pts:ws.map(w=>({date:w.date,v:w.distKm/(w.durMin/60),txt:(w.distKm/(w.durMin/60)).toFixed(1)+' km/h',sub:dfmt(w.distKm)})),yf:v=>Math.round(v),title:'Average speed',better:'faster'};
-    return{pts:ws.map(w=>({date:w.date,v:-pace(w),txt:fmtPace(pace(w))+pl,sub:dfmt(w.distKm)})),yf:v=>fmtPace(-v),neg:true,title:'Average pace (higher on the chart = faster)',better:'faster'};
+    if(met==='dist')return{unit:'',pts:ws.map(w=>({date:w.date,v:w.distKm,txt:dfmt(w.distKm),sub:fmtDur(Math.round(w.durMin))})),yf:v=>sw?Math.round(v*1000):Math.round(v*10)/10,title:'Distance per session',better:'longer',f:dfmt,df:dfmt,words:['Longest','Shortest'],ch:['Up','Down']};
+    if(cy)return{pts:ws.map(w=>({date:w.date,v:w.distKm/(w.durMin/60),txt:(w.distKm/(w.durMin/60)).toFixed(1)+' km/h',sub:dfmt(w.distKm)})),yf:v=>Math.round(v),title:'Average speed',better:'faster',f:v=>v.toFixed(1)+' km/h',df:v=>v.toFixed(1)+' km/h',words:['Fastest','Slowest'],ch:['Faster by','Slower by']};
+    return{pts:ws.map(w=>({date:w.date,v:-pace(w),txt:fmtPace(pace(w))+pl,sub:dfmt(w.distKm)})),yf:v=>fmtPace(-v),neg:true,title:'Average pace (higher on the chart = faster)',better:'faster',f:v=>fmtPace(-v)+pl,df:v=>fmtPace(v)+pl,words:['Fastest','Slowest'],ch:['Faster by','Slower by']};
   }
   const a=exHistory().get(key)||[];
   const weighted=a.some(x=>x.e1>0),timed=!weighted&&a.some(x=>x.secs);
   const f={e1:[x=>x.e1,v=>'~'+Math.round(v*10)/10+' kg 1RM'],top:[x=>x.top,v=>fmtKg(v)+' kg'],vol:[x=>x.vol,v=>Math.round(v)+' kg total'],reps:[x=>x.reps,v=>v+' reps'],secs:[x=>x.secs,v=>v+' s']}[met];
-  return{pts:a.filter(x=>inR(x.date)&&f[0](x)>0).map(x=>({date:x.date,v:f[0](x),txt:f[1](f[0](x)),sub:x.top?`top ${fmtKg(x.top)} kg`:''})),yf:v=>Math.round(v),title:{e1:'Estimated 1RM',top:'Heaviest set',vol:'Session volume',reps:'Best reps in a set',secs:'Longest hold'}[met],better:'higher'};
+  const df={e1:v=>Math.round(v*10)/10+' kg',top:v=>fmtKg(v)+' kg',vol:v=>Math.round(v)+' kg',reps:v=>Math.round(v)+' reps',secs:v=>Math.round(v)+' s'}[met];
+  return{pts:a.filter(x=>inR(x.date)&&f[0](x)>0).map(x=>({date:x.date,v:f[0](x),txt:f[1](f[0](x)),sub:x.top?`top ${fmtKg(x.top)} kg`:''})),yf:v=>Math.round(v),title:{e1:'Estimated 1RM',top:'Heaviest set',vol:'Session volume',reps:'Best reps in a set',secs:'Longest hold'}[met],better:'higher',f:met==='reps'||met==='secs'?df:v=>f[1](Math.round(v*10)/10),df,words:['Best','Lowest'],ch:['Up','Down']};
 }
 function prMetrics(key){
   if(PR_SPORT.includes(key))return[[key==='Cycle'?'spd':'pace',key==='Cycle'?'Speed':'Pace'],['dist','Distance']];
@@ -48,11 +49,23 @@ function renderProgress(){
   let best=-Infinity;const marks=[];pts.forEach((p,i)=>{if(p.v>best+1e-9){if(i>0)marks.push(i);best=p.v;}});
   const bi=pts.reduce((b,p,i)=>p.v>pts[b].v?i:b,0),b=pts[bi],l=last(pts);
   h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${fmtD(b.date)}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${fmtD(l.date)}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">${marks.length} new best${marks.length===1?'':'s'}</div></div></div>`;
-  h+=`<div class="set-note">${prNext(_prKey,_prMet,b,l,pts)}</div><div class="set-note">Gold rings are sessions where you set a new best. Drag the chart to move through time, pinch to zoom.</div>`;
+  h+=`<div class="set-note">${prNext(_prKey,_prMet,b,l,pts)}</div>`;
   el.innerHTML=h;
   const byD=new Map(pts.map(p=>[p.date,p]));
-  mountChart('prCanvas',{key:'pr'+_prKey+_prMet,H:190,span:365,wide:true,yfmt:sr.yf,marks:marks.map(i=>pts[i].date),extra:dt=>{const p=byD.get(dt);return p?p.sub:'';},
-    series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:v=>{const p=pts.find(q=>q.v===v);return p?p.txt:v;}}]});
+  const md=marks.map(i=>pts[i].date);
+  mountChart('prCanvas',{key:'pr'+_prKey+_prMet,H:190,span:365,wide:true,yfmt:sr.yf,marks:md,extra:dt=>{const p=byD.get(dt);return p?p.sub:'';},label:_prKey+' progress',
+    series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:sr.f}],
+    hi:true,stats:{one:'session',words:sr.words},means:info=>prMeaning(info,sr.df,sr.ch,md,'sessions'),
+    how:'Each point is one session. Gold rings mark a new best: better than every session before it. One slow or light day means little; look at whether the points drift up over a month or two.'+(sr.neg?' Higher on the chart is faster.':'')});
+}
+// first few against last few sessions in view, plus the new bests in view
+function prMeaning(info,df,ch,marks,unit){
+  const v=info.pts;if(v.length<2)return'';
+  const k=v.length>=6?3:1,m=a=>a.reduce((s,p)=>s+p.v,0)/a.length,a=m(v.slice(0,k)),b=m(v.slice(-k)),d=b-a,pct=a?Math.round(Math.abs(d/a)*100):0;
+  let t=pct<2?`About level from the first to the last ${unit} in view.`:`${d>0?ch[0]:ch[1]} ${df(Math.abs(d))} (${pct}%) from your ${k>1?'first three':'first'} to your ${k>1?'last three':'last'} ${unit} in view.`;
+  const pr=marks.filter(x=>x>=info.from&&x<=info.to);
+  t+=pr.length?` ${pr.length} new best${pr.length!==1?'s':''} in view, the latest on ${fmtD(pr[pr.length-1])}.`:` No new best in view; your best here is ${info.fmt(info.hi.v)} on ${fmtD(info.hi.d)}.`;
+  return t;
 }
 function setPrM(v){_prMet=v;renderProgress();}
 function prNext(key,met,b,l,pts){

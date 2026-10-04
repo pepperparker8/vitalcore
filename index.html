@@ -119,8 +119,9 @@
     <div class="sec">Fitness, fatigue &amp; form</div>
     <div class="tr-sum" id="formSum"></div>
     <div id="formCanvas"></div>
+    <div class="sec" id="tsbSec" style="margin-top:16px">Form</div>
+    <div id="tsbCanvas"></div>
     <div class="set-note" id="formNote"></div>
-    <details class="fm-why"><summary>Why this matters</summary><p>Fitness (CTL) is your slow-building training base. Fatigue (ATL) is what you have done lately. Form (TSB) is fitness minus fatigue: above zero you are fresh, well below zero you are carrying a lot of tiredness.</p></details>
   </div>
   <div class="card" id="loadCard"></div>
   <div class="card" id="progCard"></div>
@@ -136,7 +137,7 @@
     <div id="rhrCanvas"></div>
     <div class="sec" id="respSec" style="margin-top:16px;display:none">Breathing rate while asleep</div>
     <div id="respCanvas"></div>
-    <div class="set-note">The shaded area is your usual range over the last 4 weeks. Heart rate variability above your range and resting heart rate below it usually mean you are well recovered. The opposite means take it easier. Breathing rate comes from your Polar via Intervals.icu and is normally very steady; a jump of a breath or more a minute can be an early sign of illness.</div>
+    <div class="set-note">The shaded area is your usual range: the average of the 4 weeks before each day, give or take a typical day's swing.</div>
   </div>
 
   <div class="card">
@@ -145,11 +146,9 @@
     <div class="set-note" id="moodNote"></div>
   </div>
 
-  <div class="sec" style="margin-top:4px">Sleep, last 7 nights</div>
-  <div class="card"><div class="sleep-bars" id="sleepBars"></div><div class="set-note" id="sleepDebt" style="margin-bottom:8px"></div><div class="sleep-stages"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
+  <div class="card"><div class="sec">Sleep</div><div id="sleepCanvas"></div><div class="set-note" id="sleepDebt" style="margin-bottom:8px"></div><div class="set-note" id="stNight"></div><div class="sleep-stages"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
 
-  <div class="sec">Body weight</div>
-  <div class="card"><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
+  <div class="card"><div class="sec">Body weight</div><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
 
   <details class="more-today" id="moreCharts" ontoggle="if(this.open)renderTrendsTab()"><summary>More charts</summary>
   <div class="card">
@@ -163,8 +162,7 @@
   <div class="card" id="strCard"><div class="tr-head"><div class="tr-title">Strength</div><div class="tr-sum">sets per muscle, last 7 days</div></div>
     <div id="strMuscles"></div>
     <select class="sel-inp" id="strSel" style="margin-top:12px" onchange="_strEx=this.value;renderStrTrend()"></select>
-    <div id="strCanvas" style="margin-top:8px"></div><div class="set-note" id="strSum"></div>
-    <div class="set-note">10–20 hard sets per muscle per week is a common target for building strength.</div></div>
+    <div id="strCanvas" style="margin-top:8px"></div><div class="set-note" id="strSum"></div></div>
 
   <div class="card" id="sportCard"><div class="tr-head"><div class="tr-title">Distance per week</div><div class="tr-sum" id="spSum">—</div></div>
     <div class="chip-row" id="spChips"></div><div id="spBars"></div><div class="set-note" id="spNote"></div></div>
@@ -174,10 +172,8 @@
     <div style="display:flex;align-items:flex-end;gap:12px"><div class="burnout-num" id="boScore">—</div><div class="bo-lbl">/ 100 — <span id="boLabel">—</span></div></div>
     <div class="burnout-break" id="boBreak"></div>
     <div class="set-note" id="boSub"></div>
+    <div id="boCanvas" style="margin-top:8px"></div>
   </div>
-  <div class="zone-card"><div class="zone-top" style="background:var(--teal)"></div><div class="zone-body"><div class="zone-title">Nervous System Recovery</div><div class="zone-sub">Resting HR proxy (7-day trend)</div><div class="zone-row"><div class="zone-val" id="zHRV" style="color:var(--teal)">—</div><div style="flex:1"><div class="zone-desc" id="zHRVd">Log morning resting HR in Measurements to track recovery.</div><div class="hrv-spark" id="hrvSpark"></div><div class="zone-why" onclick="toggleWhy('wHRV')">ⓘ Why this matters ▾</div><div class="zone-exp" id="wHRV">Resting HR trend is a proxy for recovery. A rising trend over several days signals incomplete recovery or illness onset, often before you consciously feel it.</div></div></div></div></div>
-  <div class="zone-card"><div class="zone-top" style="background:var(--amber)"></div><div class="zone-body"><div class="zone-title">Training Fatigue</div><div class="zone-sub">Acute Training Load — 7-day</div><div class="zone-row"><div class="zone-val" id="zATL" style="color:var(--amber)">—</div><div style="flex:1"><div class="zone-desc" id="zATLd">Connect Intervals.icu to see fatigue.</div><div class="zone-why" onclick="toggleWhy('wATL')">ⓘ Why this matters ▾</div><div class="zone-exp" id="wATL">ATL reflects recent training stress. High values are expected during hard blocks. Sustained high ATL without recovery leads to declining performance.</div></div></div></div></div>
-  <div class="zone-card"><div class="zone-top" style="background:var(--green)"></div><div class="zone-body"><div class="zone-title">How Fresh You Are</div><div class="zone-sub">Training Stress Balance (CTL − ATL)</div><div class="zone-row"><div class="zone-val" id="zTSB" style="color:var(--green)">—</div><div style="flex:1"><div class="zone-desc" id="zTSBd">Connect Intervals.icu to see freshness.</div><div class="zone-why" onclick="toggleWhy('wTSB')">ⓘ Why this matters ▾</div><div class="zone-exp" id="wTSB">TSB = CTL − ATL. Positive = fresh. Negative = fatigued. Optimal race-day TSB is +5 to +20. Deeply negative signals overtraining risk.</div></div></div></div></div>
   </details>
 
 </div><!-- /trCharts -->
@@ -240,12 +236,12 @@
   <div class="log-sec" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg></div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
       <div class="fg"><div class="fl">NIGHT ENDING ON</div><input type="date" class="inp" id="slDate" onchange="loadSleepFor(this.value)"><div class="set-note" id="slNote"></div></div>
-      <div class="fg"><div class="fl">BEDTIME AND WAKE-UP<span class="wk-src" id="slDurSrc" hidden>Intervals.icu</span></div><div class="fr"><input type="time" class="inp" id="slBed" oninput="slCalc('bed')" aria-label="Fell asleep at"><span class="inp-unit">to</span><input type="time" class="inp" id="slWake" oninput="slCalc('wake')" aria-label="Woke up at"></div><div class="set-note" id="slDur">Enter when you fell asleep and woke up.</div></div>
+      <div class="fg"><div class="fl">BEDTIME AND WAKE-UP</div><div class="fr"><input type="time" class="inp" id="slBed" oninput="slCalc('bed')" aria-label="Fell asleep at"><span class="inp-unit">to</span><input type="time" class="inp" id="slWake" oninput="slCalc('wake')" aria-label="Woke up at"></div><div class="set-note" id="slDur">Enter when you fell asleep and woke up.</div></div>
       <details class="sl-more" id="slMore"><summary>Sleep details (optional)</summary>
-      <div class="fg"><div class="fl">SLEEP SCORE<span class="wk-src" id="slScoreSrc" hidden>Intervals.icu</span></div><div class="fr"><input type="number" class="inp inp-sm" id="slScore" placeholder="74" min="0" max="100"><span class="inp-unit">/ 100</span></div></div>
+      <div class="fg"><div class="fl">SLEEP SCORE</div><div class="fr"><input type="number" class="inp inp-sm" id="slScore" placeholder="74" min="0" max="100"><span class="inp-unit">/ 100</span></div></div>
       <div class="fg"><div class="fl">DEEP SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slDH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slDM" placeholder="32" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">REM SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slRH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slRM" placeholder="18" min="0" max="59"><span class="inp-unit">min</span></div></div>
-      <div class="fg"><div class="fl">HOW RESTED?<span class="wk-src" id="slRestSrc" hidden>Intervals.icu</span></div><div class="ci-btns"><button class="ci-btn" onclick="selCI('rested',1,this)" aria-label="Not rested" title="Not rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('rested',2,this)" aria-label="So-so" title="So-so"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('rested',3,this)" aria-label="Rested" title="Rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('rested',4,this)" aria-label="Fully rested" title="Fully rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
+      <div class="fg"><div class="fl">HOW RESTED?</div><div class="ci-btns"><button class="ci-btn" onclick="selCI('rested',1,this)" aria-label="Not rested" title="Not rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('rested',2,this)" aria-label="So-so" title="So-so"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('rested',3,this)" aria-label="Rested" title="Rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('rested',4,this)" aria-label="Fully rested" title="Fully rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
       </details>
       <button class="btn-gold" onclick="saveSleep()">Save sleep</button>
       <button class="btn-out" id="slDel" style="display:none;margin-top:8px" onclick="delSleep()">Delete this night</button>
@@ -317,7 +313,7 @@
     <div class="log-body">
       <div class="hist-box"><div class="hist-ttl">RECENT</div>
         <div class="hist-row"><span>Blood Pressure</span><span class="hist-val" id="bpRec">—</span></div>
-        <div class="hist-row"><span>Weight</span><span class="hist-val" id="wtRec">—</span><span class="wk-src" id="wtRecSrc" hidden>Intervals.icu</span></div>
+        <div class="hist-row"><span>Weight</span><span class="hist-val" id="wtRec">—</span></div>
         <div class="hist-row"><span>Resting HR</span><span class="hist-val" id="hrRec">—</span></div>
       </div>
       <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div><div class="fh">Enter both systolic and diastolic together</div></div>

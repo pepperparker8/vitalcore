@@ -22,7 +22,6 @@ function go(id){const e=$(id);if(e)e.scrollIntoView({behavior:'smooth',block:'st
 function openLog(id){const e=$(id);if(e){document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));e.classList.add('open');}}
 function tlog(id){const e=$(id),was=e.classList.contains('open');document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));if(!was){e.classList.add('open');setTimeout(()=>e.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
 function lgOpen(id){document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));const e=$(id);e.classList.add('open');setTimeout(()=>e.scrollIntoView({behavior:'smooth',block:'start'}),60);}
-function toggleWhy(id){$(id).classList.toggle('open');}
 let _toastT=null;
 let _toastAct=null;
 function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.innerHTML=esc(msg)+(act?` <button class="toast-act" onclick="toastDo()">${esc(act.label)}</button>`:'');t.classList.toggle('act',!!act);t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show','act'),act?7000:3200);}

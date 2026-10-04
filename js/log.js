@@ -115,15 +115,15 @@ function slCalc(typed){
   }
   if(_slEst&&I(_slEst.k).value!==_slEst.v)_slEst=null;
   bI.classList.toggle('inp-est',_slEst?.k==='bed');wI.classList.toggle('inp-est',_slEst?.k==='wake');
-  const b=bI.value,w=wI.value,src=x?.src||{},imp=IMP_SRC.includes(src.durMin),nm=src.durMin==='polar'?'Polar':'Intervals.icu';
+  const b=bI.value,w=wI.value,src=x?.src||{},imp=IMP_SRC.includes(src.durMin);
   if(b&&w){
     // a Polar night with its own times: time asleep is the span minus time awake, so it is shorter than bedtime to wake-up
     const dur=slSpan(b,w),pol=src.durMin==='polar'&&x.bed===b&&x.wake===w?x.durMin:0;
-    el.textContent=_slEst?`${_slEst.k==='wake'?'Wake-up':'Bedtime'} estimated from ${fmtDur(rec)} recorded by ${nm}. Correct it if it is off.`
-      :pol?`Time asleep: ${fmtDur(pol)} by Polar${dur-pol>=5?` (awake ${fmtDur(dur-pol)} during the night)`:''}.`
-      :rec&&imp&&Math.abs(dur-rec)>5?`Time asleep from your times: ${fmtDur(dur)} (${nm} recorded ${fmtDur(rec)}). Your times win.`:'Time asleep: '+fmtDur(dur);
+    el.textContent=_slEst?`${_slEst.k==='wake'?'Wake-up':'Bedtime'} estimated from the ${fmtDur(rec)} asleep your watch recorded. Correct it if it is off.`
+      :pol?`Time asleep: ${fmtDur(pol)}${dur-pol>=5?` (awake ${fmtDur(dur-pol)} during the night)`:''}.`
+      :rec&&imp&&Math.abs(dur-rec)>5?`Time asleep from your times: ${fmtDur(dur)} (your watch recorded ${fmtDur(rec)}). Your times win.`:'Time asleep: '+fmtDur(dur);
   }
-  else if(rec)el.textContent=(imp?nm+' recorded ':'Saved: ')+fmtDur(rec)+'. Enter your bedtime or wake-up time and the other is worked out.';
+  else if(rec)el.textContent=(imp?'Recorded: ':'Saved: ')+fmtDur(rec)+'. Enter your bedtime or wake-up time and the other is worked out.';
   else el.textContent='Enter when you fell asleep and woke up.';
 }
 function loadSleepFor(date){
@@ -136,13 +136,8 @@ function loadSleepFor(date){
   $('slMore').open=!!(x&&(x.score!=null||x.deepH||x.deepM||x.remH||x.remM||x.rested));
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
-  // source tags: shown only on fields that still hold the imported value, named after the source (Polar or Intervals.icu)
-  const sn=k=>src[k]==='polar'?'Polar':src[k]==='icu'?'Intervals.icu':null,tag=(id,name)=>{const e=$(id);e.hidden=!name;if(name)e.textContent=name;};
-  tag('slDurSrc',x?sn('bed')||sn('wake')||(x.durMin&&!x.bed?sn('durMin'):null):null);
-  tag('slScoreSrc',x&&x.score!=null?sn('score'):null);
-  tag('slRestSrc',x&&x.rested?sn('rested'):null);
   $('slDel').style.display=x?'':'none';
-  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?`Recorded by ${slSrc(x)}. Add your bedtime or wake-up time to complete it.`:slIcu(x)?`Recorded by ${slSrc(x)}. Anything you change here is kept.`:'Editing the saved night. Change anything and save.';
+  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?'Recorded automatically. Add your bedtime or wake-up time to complete it.':slIcu(x)?'Recorded automatically. Anything you change here is kept.':'Editing the saved night. Change anything and save.';
 }
 // soft guardrail: unusual but possible values get a friendly confirm instead of a block
 const sane=m=>confirm(m+'\n\nSave it anyway?');
@@ -176,9 +171,9 @@ function delSleep(){
   showToast('Sleep deleted',{label:'Undo',fn:()=>{const d=S();d.gone=(d.gone||[]).filter(g=>g!==copy.id);put('sleep',copy);loadSleepFor(date);renderSleepBars();refreshAll();showToast('Sleep restored');}});
 }
 function editSleep(date){closeDayPanel();switchTab('log');openLog('lSleep');loadSleepFor(date);$('lSleep').scrollIntoView({behavior:'smooth'});}
-function setStages(dH,dM,rH,rM){
+function setStages(dH,dM,rH,rM,dur){
   $('stDeep').textContent=fmtHM(dH,dM);$('stREM').textContent=fmtHM(rH,rM);
-  const lm=Math.max(0,480-(dH*60+dM)-(rH*60+rM));
+  const lm=Math.max(0,(dur||480)-(dH*60+dM)-(rH*60+rM));
   $('stLight').textContent=(dH||dM||rH||rM)?fmtDur(lm):'—';
 }
 
@@ -277,7 +272,7 @@ function wkRow(w,today){
   if(w.distKm)meta.push(fmtDist(w));
   if(w.sets){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
   meta.push(w.rpe?'effort '+w.rpe+'/5':'effort not set');
-  return `<div class="act-item"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(w.type)}${isIcu(w)?'<span class="wk-src">Intervals.icu</span>':''}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="delWorkout('${esc(w.id)}')">Delete</button></div></div></div>`;
+  return `<div class="act-item"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="delWorkout('${esc(w.id)}')">Delete</button></div></div></div>`;
 }
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
 function findDups(){
@@ -289,7 +284,7 @@ function findDups(){
   return out;
 }
 function dupHTML(){
-  return findDups().map(({m,a})=>`<div class="wk-dup"><div class="wk-dup-t">${m.date===td()?"Today's":daysAgo(m.date)===1?"Yesterday's":fmtDay(m.date)} ${esc(m.type.toLowerCase())} is logged twice</div><div class="wk-dup-s">Once by hand and once from Intervals.icu. Combining keeps one workout with your effort, note${m.sets?', sets':''} and the watch data.</div><div class="wk-acts"><button type="button" onclick="mergeDup('${esc(m.id)}','${esc(a.id)}')">Combine into one</button><button type="button" onclick="keepDup('${esc(m.id)}','${esc(a.id)}')">Keep both</button></div></div>`).join('');
+  return findDups().map(({m,a})=>`<div class="wk-dup"><div class="wk-dup-t">${m.date===td()?"Today's":daysAgo(m.date)===1?"Yesterday's":fmtDay(m.date)} ${esc(m.type.toLowerCase())} is logged twice</div><div class="wk-dup-s">Once by hand and once recorded automatically. Combining keeps one workout with your effort, note${m.sets?', sets':''} and the watch data.</div><div class="wk-acts"><button type="button" onclick="mergeDup('${esc(m.id)}','${esc(a.id)}')">Combine into one</button><button type="button" onclick="keepDup('${esc(m.id)}','${esc(a.id)}')">Keep both</button></div></div>`).join('');
 }
 function mergeDup(mid,aid){
   const d=S(),m=d.workouts.find(w=>w.id===mid),a=d.workouts.find(w=>w.id===aid);if(!m||!a)return;
@@ -345,7 +340,7 @@ function renderWkLog(){
   $('wkDup').innerHTML=dupHTML()+effHTML();renderSoreSug();wkPrefill();
   const n=$('wkIcuNote'),on=!!(d.intervalsKey&&d.intervalsID);
   n.style.display=on?'':'none';
-  n.textContent=on?'Connected to Intervals.icu: workouts recorded by your watch arrive here on their own after a sync. Add by hand only what the watch did not record.':'';
+  n.textContent=on?'Workouts recorded by your watch arrive here on their own after a sync. Add by hand only what the watch did not record.':'';
   el.innerHTML=ws.length?`<div class="sec">Last 7 days</div>`+ws.map(w=>wkRow(w)).join(''):'';
   const nT=d.workouts.filter(w=>w.date===td()).length;
   $('wkStat').textContent=nT?nT+' logged today':'Nothing logged today';
@@ -368,13 +363,13 @@ function saveMeas(){
   put('meas',rec);
   ['bpSys','bpDia','wtKg','hrVal'].forEach(i=>$(i).value='');
   $('measStat').textContent='Saved today';
-  updMeasHist();renderHRVSpark();renderWtChart();showToast('Measurements saved');
+  updMeasHist();renderWtChart();showToast('Measurements saved');
 }
 function updMeasHist(){
   const ms=S().measurements;
   const b=last(ms.filter(m=>m.bpSys)),w=last(ms.filter(m=>m.weight)),h=last(ms.filter(m=>m.hr));
   $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg`:'—';
-  $('wtRec').textContent=w?`${w.weight} kg`:'—';$('wtRecSrc').hidden=!(w&&w.src&&w.src.weight==='icu');
+  $('wtRec').textContent=w?`${w.weight} kg`:'—';
   $('hrRec').textContent=h?`${h.hr} bpm`:'—';
   const l=last(ms);$('measStat').textContent=l?(l.date===td()?'Saved today':`Last: ${daysAgo(l.date)} days ago`):'Not logged yet';
 }
@@ -405,9 +400,9 @@ function clearInjury(id){
 }
 
 // ── BLOOD MARKERS ────────────────────────────────────────────────────────────
+const BM_RNG={glucose:{ok:[70,100],warn:[100,125]},chol:{ok:[0,200],warn:[200,239]},uric:{ok:[3.5,7.2],warn:[7.2,8.0]}};
 function scoreBM(v,t){
-  const r={glucose:{ok:[70,100],warn:[100,125]},chol:{ok:[0,200],warn:[200,239]},uric:{ok:[3.5,7.2],warn:[7.2,8.0]}};
-  const rng=r[t];if(!rng||!v)return{score:null,status:'—'};
+  const rng=BM_RNG[t];if(!rng||!v)return{score:null,status:'—'};
   if(v>=rng.ok[0]&&v<=rng.ok[1])return{score:90,status:'ok'};
   if(v>=rng.warn[0]&&v<=rng.warn[1])return{score:55,status:'warn'};
   return{score:20,status:'bad',low:v<rng.ok[0]};

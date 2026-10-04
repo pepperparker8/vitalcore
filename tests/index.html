@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VitalCore tests</title>
-<!-- v118 acceptance tests (Spec v2, Phase A). Open over a local server: /tests/. No library, not cached by sw.js, never writes storage. -->
+<!-- v118 acceptance tests (Spec v2, Phase A), v119 chart, briefing and import tests. Open over a local server: /tests/. No library, not cached by sw.js, never writes storage or calls the network. -->
 <style>
 :root{--bg:#F3F4F6;--card:#FFFFFF;--text:#14171C;--t2:#5B6472;--ok:#0D7A6B;--bad:#C2361B}
 @media (prefers-color-scheme:dark){:root{--bg:#121316;--card:#1C1E22;--text:#ECEDEF;--t2:#9AA2AE;--ok:#3FB8A5;--bad:#FF7A5C}}
@@ -26,6 +26,7 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <h1>VitalCore tests</h1>
 <p id="sum">Running…</p>
 <div id="out"></div>
+<div id="insContent" hidden></div>
 <script src="../js/core.js"></script>
 <script src="../js/sync.js"></script>
 <script src="../js/strength.js"></script>
@@ -48,7 +49,8 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <script src="../js/insights.js"></script>
 <script>
 // app.js is left out: it starts the app (init) and would load and save real data
-save=function(d){_s=d;};persistSave=function(){};flushSave=function(){};
+save=function(d){_s=d;};persistSave=function(){};flushSave=function(){};queuePush=function(){};updSyncStatus=function(){};
+const later=[];   // async tests (v119): each is a promise that calls check() itself
 const res=[];
 function check(name,ok,info){res.push({name,ok:!!ok,info});}
 function run(name,fn){try{fn();}catch(e){check(name,false,'Threw: '+e.message);}}
@@ -102,7 +104,7 @@ run('Test 12',()=>{
     const ok=got.join()===want.join();
     check(`Test 12: ${lab} in ${want.length?want.join():'no score or verdict'}`,ok,`found in: ${got.join(', ')||'none'}`);
   });
-  check('Test 12: soreness shapes the session only (strategy)',/sore/.test(strategy.toString()),'strategy() reads it; v119 moves it into the session rules');
+  check('Test 12: soreness shapes the session only (strategy)',/sore/.test(strategy.toString()),'strategy() reads it; v120 moves it into the session rules');
   check('Test 12: Body has no self-report, form or injury',!/tsb|injur|soreness|checkins|calcBurnout/i.test(calcBody.toString()),'calcBody reads HRV, resting heart rate and sleep only');
 });
 // Illness gate (A4)
@@ -146,10 +148,130 @@ run('Sync',()=>{
   check('Sync: a cloud row without the v118 columns adds no empty fields',!ks.includes('symptoms')&&!ks.includes('bodyFeel')&&!ks.includes('soreArea'),ks.join(', '));
 });
 
-const pass=res.filter(r=>r.ok).length;
-document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;
-document.getElementById('out').innerHTML=res.map(r=>`<div class="t ${r.ok?'pass':'fail'}"><b>${esc(r.name)}</b><small>${esc(r.info)}</small></div>`).join('');
-window.TEST_RESULT={pass,total:res.length};
+// v119 chart engine: zone words at the TH edges, window stats, Monday-start weeks
+run('Chart zones',()=>{
+  const z=v=>(chZone({zones:formZones()},v)||{}).label;
+  const r=[[TH.FORM_FRESH,'Fresh'],[TH.FORM_FRESH-0.1,'Balanced'],[TH.FORM_OK,'Balanced'],[TH.FORM_OK-0.1,'Tired'],[TH.FORM_TIRED,'Tired'],[TH.FORM_TIRED-0.1,'Very tired'],[TH.FORM_DEEP,'Very tired'],[TH.FORM_DEEP-0.1,'Overreached']].map(([v,w])=>[v,w,z(v)]);
+  check('Chart: form zones switch exactly at the TH cuts',r.every(x=>x[1]===x[2]),r.map(x=>`${x[0]} → ${x[2]}`).join(', '));
+  base();const st=t=>{_s.intervalsData.tsb=t;return calcLoad().state;};
+  const same=[[TH.FORM_FRESH,'Fresh'],[TH.FORM_DEEP-0.1,'Overreached']].every(([v,w])=>st(v)===w&&z(v)===w);
+  check('Chart: the chart and Load agree at the ends',same,`Fresh at ${TH.FORM_FRESH}, Overreached under ${TH.FORM_DEEP}`);
+});
+run('Chart stats',()=>{
+  const pts=[];for(let i=9;i>=0;i--)pts.push({d:dAgo(i),v:10-i});   // 1 … 10, today = 10
+  const a=DN(dAgo(4)),b=DN(td()),s=chStatsOf(pts,a,b,v=>v>=8);
+  check('Chart: stats cover only the days in view',s.n===5&&s.avg===8&&s.hi.v===10&&s.lo.v===6&&s.good===3&&s.first.d===dAgo(4)&&s.last.d===td(),`n ${s.n}, average ${s.avg}, high ${s.hi.v}, low ${s.lo.v}, ${s.good} of ${s.n} at 8 or more`);
+  const e=chStatsOf(pts,DN(dAgo(40)),DN(dAgo(30)));
+  check('Chart: an empty window gives no numbers',e.n===0&&e.good===null,JSON.stringify(e));
+});
+run('Week buckets',()=>{
+  // 1 Jan 2024 was a Monday
+  const w=weekBuckets([{d:'2023-12-31',v:1},{d:'2024-01-01',v:2},{d:'2024-01-07',v:3},{d:'2024-01-08',v:null}]);
+  check('Chart: weeks start on Monday, so a Sunday belongs to the week before',w.length===2&&w[0].d==='2023-12-25'&&w[0].v===1&&w[1].d==='2024-01-01'&&w[1].v===5&&w[1].n===2,JSON.stringify(w));
+  const m=weekBuckets([{d:'2024-01-01',v:2},{d:'2024-01-03',v:4}],'avg');
+  check('Chart: weekly average',m.length===1&&m[0].v===3,JSON.stringify(m));
+});
+
+// v119 streaming: server-sent events split anywhere, and the briefing read while it is still arriving
+run('Stream events',()=>{
+  const full='event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":5}}}\n\nevent: ping\ndata: {"type":"ping"}\n\r\nevent: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hel"}}\n\nevent: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"lo"}}\n\nevent: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":2}}\n\n';
+  let buf='',ev=[];for(let i=0;i<full.length;i+=7){const r=sseEvents(buf+full.slice(i,i+7));buf=r.rest;ev.push(...r.events);}
+  const txt=ev.filter(e=>e.event==='content_block_delta').map(e=>JSON.parse(e.data).delta.text).join('');
+  const stop=JSON.parse(ev.find(e=>e.event==='message_delta').data).delta.stop_reason;
+  check('Stream: events split across 7-character chunks come out whole',ev.length===5&&txt==='Hello'&&stop==='end_turn'&&buf==='',`${ev.length} events (${ev.map(e=>e.event).join(', ')}), text "${txt}", stop ${stop}`);
+});
+run('Stream partial',()=>{
+  const a=insPartial('{"archetype":"Steady builder","overall":"You slept \\"well\\" and","day":"Rec');
+  check('Stream: closed and open fields, escaped quotes',a.o.archetype==='Steady builder'&&a.o.overall==='You slept "well" and'&&a.o.day==='Rec'&&a.live==='day',JSON.stringify(a));
+  const b=insPartial('{"overall":"Line one\\nline two \\u00e9 and \\u00');
+  check('Stream: a half-arrived escape is held back',b.o.overall==='Line one\nline two é and '&&b.live==='overall',JSON.stringify(b));
+  const c=insPartial('{"overall":"Done.","questions":["Why?"]}');
+  check('Stream: a finished reply has nothing live',c.o.overall==='Done.'&&c.live===null,JSON.stringify(c));
+  const h=insLive('{"archetype":"Steady builder","overall":"Short <b>version</b>","day":"Today');
+  check('Stream: the live view escapes text and marks the section being written',/Short &lt;b&gt;version/.test(h)&&(h.match(/ins-caret/g)||[]).length===1&&/Today<span class="ins-caret">/.test(h),h.replace(/<svg[\s\S]*?<\/svg>/g,'').slice(0,240));
+});
+// a canned stream through askClaudeStream, with fetch replaced (no network)
+const sseResp=(chunks,status=200)=>new Response(new ReadableStream({start(c){const e=new TextEncoder();chunks.forEach(x=>c.enqueue(e.encode(x)));c.close();}}),{status,headers:{'Content-Type':'text/event-stream'}});
+const realFetch=window.fetch;
+later.push((async()=>{
+  try{
+    const ev=(t,o)=>`event: ${t}\ndata: ${JSON.stringify({type:t,...o})}\n\n`;
+    const body=ev('message_start',{message:{usage:{input_tokens:9}}})+ev('content_block_start',{index:0,content_block:{type:'thinking',thinking:''}})+ev('content_block_delta',{delta:{type:'thinking_delta',thinking:'hmm'}})+ev('content_block_delta',{delta:{type:'text_delta',text:'{"overall":"Fine'}})+ev('content_block_delta',{delta:{type:'text_delta',text:'."}'}})+ev('message_delta',{delta:{stop_reason:'end_turn'},usage:{output_tokens:4}})+ev('message_stop',{});
+    let sent=null;window.fetch=async(u,o)=>{sent=JSON.parse(o.body);return sseResp([body.slice(0,50),body.slice(50,51),body.slice(51)]);};
+    const seen=[];const r=await askClaudeStream('k',{model:'m',max_tokens:10,messages:[]},t=>seen.push(t));
+    check('Stream: askClaudeStream collects text only, with the stop reason',r.ok&&r.data.content[0].text==='{"overall":"Fine."}'&&r.data.stop_reason==='end_turn'&&sent.stream===true&&seen[seen.length-1]==='{"overall":"Fine."}',`text ${r.data.content[0].text}, stop ${r.data.stop_reason}, ${seen.length} updates, usage ${JSON.stringify(r.data.usage)}`);
+    window.fetch=async()=>sseResp([ev('content_block_delta',{delta:{type:'text_delta',text:'x'}})+'event: error\ndata: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}\n\n']);
+    const e=await askClaudeStream('k',{},null);
+    check('Stream: an error event mid-stream is a failure (overloaded = 529)',!e.ok&&e.status===529&&/529/.test(insApiError(e)),`${e.status}: ${insApiError(e)}`);
+    window.fetch=async()=>new Response(JSON.stringify({error:{type:'authentication_error',message:'invalid x-api-key'}}),{status:401});
+    const f=await askClaudeStream('k',{},null);
+    check('Stream: a refused request returns its error body',!f.ok&&f.status===401&&f.data.error.type==='authentication_error',`${f.status}: ${insApiError(f)}`);
+    // genInsight: low effort, streamed, cached instructions; an effort the API rejects is dropped and the schema kept
+    base();_s.claudeKey='test';_s.checkins=[ci()];const calls=[];
+    window.fetch=async(u,o)=>{const b=JSON.parse(o.body);calls.push(b);return calls.length===1?new Response(JSON.stringify({error:{type:'invalid_request_error',message:'output_config.effort: Extra inputs are not permitted'}}),{status:400}):new Response(JSON.stringify({error:{type:'authentication_error',message:'invalid x-api-key'}}),{status:401});};
+    await genInsight(true);
+    const[a,b]=calls,oc=a&&a.output_config||{},oc2=b&&b.output_config||{};
+    check('Briefing: the request is low effort, streamed, with the instructions cached',calls.length===2&&a.stream===true&&oc.effort==='low'&&oc.format&&oc.format.type==='json_schema'&&a.max_tokens===8000&&a.system[0].cache_control&&a.system[0].cache_control.type==='ephemeral'&&a.model===CLAUDE_MODEL,`calls ${calls.length}; effort ${oc.effort}, schema ${!!oc.format}, max ${a&&a.max_tokens}, cached ${!!(a&&a.system[0].cache_control)}`);
+    check('Briefing: a rejected effort setting is dropped, the schema kept, and the error shown with the quick summary',b&&!('effort' in oc2)&&oc2.format&&/did not load/.test($('insContent').innerHTML)&&/Quick summary/.test($('insContent').innerHTML),`second call: ${JSON.stringify(Object.keys(oc2))}`);
+  }catch(e){check('Stream: async tests',false,'Threw: '+e.message);}
+  finally{window.fetch=realFetch;}
+})());
+
+// v119 briefing data: trimmed, no duplicate check-in or night, no app or device names
+run('Briefing data',()=>{
+  base();const s=_s;s.profile.age=40;s.profile.height=175;s.intervalsData={ctl:55,atl:60,tsb:-5,prs:[]};
+  const long='Felt fine after a steady week of training and work, slept a bit late on some nights and ate well most days. '.repeat(4);
+  for(let i=0;i<30;i++){const dt=dAgo(i);
+    s.checkins.push({id:'ci-'+dt,date:dt,energy:3,mood:3,stress:2,motivation:3,soreness:2,coffee:2,mindfulMin:10,gratitude:'Family and a good run',reflection:long.slice(0,300),bodyFeel:4});
+    s.workouts.push({id:'w'+i,date:dt,type:i%2?'Run':'Cycle',durMin:60,distKm:10,rpe:3,notes:'Easy aerobic, felt smooth',sub:{icu:{hr:140,hrMax:160,kcal:600,elev:100,load:60}}});
+    s.measurements.push({id:'mi-'+dt,date:dt,weight:70+i/10,hr:null,bpSys:null,bpDia:null});
+  }
+  s.checkins.reverse();
+  for(let i=0;i<6;i++)s.bloodLogs.push({id:'b'+i,date:dAgo(i*30),glucose:90+i,chol:180+i,uric:5+i/10,hdl:50,ldl:110});
+  s.polarNights=[];for(let i=0;i<14;i++){const dt=dAgo(i);
+    s.polarNights.push({id:'pn-'+dt,date:dt,data:{start:dt+'T23:00:00',end:dt+'T06:30:00',span:450,asleep:420,goal:450,rating:3,stages:{wake:30,rem:90,light:230,deep:100,unknown:0,remPct:20,deepPct:22},score:78,parts:{duration:80,solidity:70,refresh:75},eff:93,cont:3.5,inter:{total:30,long:10,short:20,n:12,nLong:2,nShort:10},hyp:Array.from({length:60},(_,k)=>[k*450,k%4]),cycles:[[0,1],[5400,2],[10800,2],[16200,1],[21600,1]],hrv:[{t:dt+'T23:05:00',dt:300,v:Array.from({length:80},()=>50)}],br:[{t:dt+'T23:05:00',dt:300,v:Array.from({length:80},()=>4000)}],rc:{rri:1100,rmssd:52,resp:4000,baseRri:1080,baseRmssd:50,baseResp:4050}}});}
+  s.insightLog=[0,1,2].map(i=>({date:dAgo(i+1),time:'07:00',ts:Date.now()-i,archetype:'Steady builder',...Object.fromEntries(INS_KEYS.map(k=>[k,long])),qa:[{q:'Why?',a:long,ts:1}]}));
+  const D=insightData(),J=JSON.stringify(D);window.HEAVY=D;
+  check('Briefing data: a heavy month stays under 15,000 characters',J.length<15000,`${J.length} characters`);
+  check("Briefing data: today's check-in and last night appear once",D.today.checkin&&!(D.week.checkins||[]).some(c=>c.date===td())&&D.today.lastNight&&!(D.week.sleep||[]).some(x=>x.date===D.today.lastNight.date||x.date===td()),`week check-ins ${(D.week.checkins||[]).length}, week nights ${(D.week.sleep||[]).length}`);
+  check('Briefing data: no app or device names',!/Polar|Intervals|Garmin|Xiaomi/i.test(J),(J.match(/.{30}(Polar|Intervals|Garmin|Xiaomi).{30}/i)||['none'])[0]);
+  check('Briefing data: blood keeps the latest 3 results per marker and 2 earlier briefings',(D.health.bloodMgDl||[]).length===3&&D.health.bloodMgDl[0].date===dAgo(60)&&D.previousBriefings.length===2,`${(D.health.bloodMgDl||[]).length} blood tests from ${(D.health.bloodMgDl||[]).map(x=>x.date).join(', ')}; ${D.previousBriefings.length} briefings`);
+  check('Briefing data: empty fields are left out',!/:null|:""|:\{\}/.test(J),(J.match(/.{40}(:null|:""|:\{\}).{10}/)||['none'])[0]);
+});
+// v119: the data screens never name the app or device a number came from
+run('No source names',()=>{
+  base();const dt=dAgo(0);
+  _s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);
+  _s.sleepLogs.push({id:'sl-'+dt,date:dt,durMin:420,score:78,bed:'23:00',wake:'06:30',src:{durMin:'polar',score:'polar',bed:'polar',wake:'polar'}});
+  _s.polarNights=[{id:'pn-'+dt,date:dt,data:{start:dt+'T23:00:00',end:dt+'T06:30:00',span:450,asleep:420,rating:3,stages:{wake:30,rem:90,light:230,deep:100,remPct:20,deepPct:22},score:78,parts:{duration:80,solidity:70,refresh:75},eff:93,inter:{total:30,long:10,short:20,n:12,nLong:2,nShort:10},hyp:[[0,1],[3600,2],[7200,3]],cycles:[[0,1]],rc:{rri:1100,rmssd:52,resp:4000,baseRri:1080,baseRmssd:50,baseResp:4050}}}];
+  const keys=['recovery','strain','sleep','form','checkin','hrv','rhr','breathing','soreness','coffee','injury'],bad=[];
+  keys.forEach(k=>{let t='';try{t=JSON.stringify(dtSpec(k));}catch(e){t='threw '+e.message;bad.push(k+' threw');}if(/Polar|Intervals/.test(t))bad.push(k);});
+  check('Sheets: no app or device names in any detail sheet',!bad.length,bad.length?'named in: '+bad.join(', '):keys.length+' sheets checked');
+  const code=f=>String(f).replace(/\/\/[^\n]*/g,'');
+  const fns={slCalc,wkRow,dupHTML,effHTML,loadSleepFor,renderSleepBars};
+  const named=Object.entries(fns).filter(([k,f])=>/Polar|Intervals\.icu/.test(code(f))).map(([k])=>k);
+  check('Log: the sleep, workout and suggestion texts name no source',!named.length,named.length?'named in: '+named.join(', '):Object.keys(fns).join(', '));
+});
+// v119 weight import: a weigh-in from the scale creates its own record and never replaces a weight you typed
+run('Weight import',()=>{
+  base();_s.measurements=[];const a=dAgo(3),b=dAgo(2);
+  const n1=icuWeight(_s,a,71.26),r1=_s.measurements.find(m=>m.id==='mi-'+a);
+  check('Weight: a weigh-in creates mi-<date>, rounded to 0.1 kg',n1===1&&r1&&r1.weight===71.3,JSON.stringify(r1));
+  _s.measurements.push({id:'xTyped',date:b,weight:70,hr:null,bpSys:null,bpDia:null});
+  const n2=icuWeight(_s,b,72);
+  check('Weight: a day with a typed weight is left alone',n2===0&&!_s.measurements.some(m=>m.id==='mi-'+b),`${_s.measurements.length} records`);
+  r1.weight=69.9;r1.src={weight:'man'};const n3=icuWeight(_s,a,71.5);
+  check('Weight: an imported weight you corrected stays corrected',n3===0&&_s.measurements.find(m=>m.id==='mi-'+a).weight===69.9,JSON.stringify(_s.measurements.find(m=>m.id==='mi-'+a)));
+  _s.gone=['mi-'+dAgo(1)];const n4=icuWeight(_s,dAgo(1),70);
+  check('Weight: a deleted weigh-in is not brought back',n4===0,`${n4} added`);
+});
+
+Promise.all(later).then(()=>{
+  const pass=res.filter(r=>r.ok).length;
+  document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;
+  document.getElementById('out').innerHTML=res.map(r=>`<div class="t ${r.ok?'pass':'fail'}"><b>${esc(r.name)}</b><small>${esc(r.info)}</small></div>`).join('');
+  window.TEST_RESULT={pass,total:res.length,failed:res.filter(r=>!r.ok).map(r=>r.name)};
+});
 </script>
 </body>
 </html>

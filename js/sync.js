@@ -229,12 +229,7 @@ async function pullIntervals(){
     const sm=inc.sleepMin,pn=polarOn(date),sv=pn?{rested:icuRested(w.sleepQuality)}:{score:w.sleepScore?Math.round(w.sleepScore):null,durMin:sm,rested:icuRested(w.sleepQuality)},ex=d.sleepLogs.find(s=>s.date===date);
     if(!pn&&(sv.score||sm)&&!ex&&!isGone('sl-'+date)){const r={id:'sl-'+date,date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null};icuFill(r,sv);put('sleep',r);n++;}
     else if(ex){const r={...ex};if(icuFill(r,sv)){put('sleep',r);n++;}}
-    // weight: resting HR is no longer copied onto the weigh-in (it lives in wellness)
-    if(w.weight&&!isGone('mi-'+date)){
-      const wt=Math.round(w.weight*10)/10,mi=d.measurements.find(m=>m.id==='mi-'+date);
-      if(mi){const r={...mi};if(icuFill(r,{weight:wt})){put('meas',r);n++;}}
-      else if(!d.measurements.some(m=>m.date===date&&m.weight)){const r={id:'mi-'+date,date,bpSys:null,bpDia:null,weight:null,hr:null};icuFill(r,{weight:wt});put('meas',r);n++;}
-    }
+    n+=icuWeight(d,date,w.weight);
   }
   if(latest){const ctl=Math.round(latest.ctl),atl=Math.round(latest.atl);d.intervalsData={ctl,atl,tsb:ctl-atl};}
   if(ar.ok){
@@ -257,8 +252,21 @@ async function pullIntervals(){
       put('workouts',{id,date,type,distKm:!wt&&a.distance?Math.round(a.distance/100)/10:0,durMin:dm,rpe:null,notes:a.name||'',...(has?{sub:{icu}}:{})});n++;
     }
   }
+  // once per phone (v119): weigh-ins from the year before the 90-day window, so the weight chart has your history
+  if(!d.wtBack){
+    try{const r=await fetch(`${base}/wellness?oldest=${dAgo(365)}&newest=${dAgo(91)}`,H);if(r.ok){for(const w of await r.json())if(w.id)n+=icuWeight(d,w.id,w.weight);d.wtBack=td();}}catch(e){}
+  }
   save(d);
   return{n};
+}
+// one weigh-in from Intervals.icu (your scale's app passes it on); a typed weight that day is never replaced.
+// Resting HR is not copied onto the weigh-in (it lives in wellness). Returns 1 when something changed.
+function icuWeight(d,date,kg){
+  if(!kg||isGone('mi-'+date))return 0;
+  const wt=Math.round(kg*10)/10,mi=d.measurements.find(m=>m.id==='mi-'+date);
+  if(mi){const r={...mi};if(icuFill(r,{weight:wt})){put('meas',r);return 1;}return 0;}
+  if(d.measurements.some(m=>m.date===date&&m.weight))return 0;
+  const r={id:'mi-'+date,date,bpSys:null,bpDia:null,weight:null,hr:null};icuFill(r,{weight:wt});put('meas',r);return 1;
 }
 async function testIntervals(){
   const res=$('icuTestRes'),key=$('sInterKey').value,id=$('sInterID').value;

@@ -195,7 +195,7 @@ function renderRecovery(){
   const el=$('recCard');if(!el)return;
   const dr=recoveryDrivers();
   if(!dr.length){
-    el.innerHTML=`<div class="rc-lbl">RECOVERY</div><div class="set-note">Recovery drivers appear once you have a week of sleep durations, or HRV and resting heart rate from Intervals.icu. Log time asleep in the Log tab.</div>`;return;
+    el.innerHTML=`<div class="rc-lbl">RECOVERY</div><div class="set-note">Recovery drivers appear once you have a week of sleep durations, or HRV and resting heart rate from your watch. Log time asleep in the Log tab.</div>`;return;
   }
   const bad=dr.filter(x=>x.st==='bad').length,warn=dr.filter(x=>x.st==='warn').length;
   const head=bad>=2?'Your body is asking for recovery.':bad?'Mostly fine, one thing needs attention.':warn?'Mostly fine, watch a couple of things.':'Recovery signals look good.';

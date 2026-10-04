@@ -14,24 +14,22 @@ function toggleBT(k){
   const b=$('btb_'+k);if(b)b.textContent=open?'Hide trend ▴':'Trend & what moves it ▾';
   if(open)drawBloodChart(k);
 }
-// time-scaled chart of every result for one marker, with the reference band shaded
+// every result for one marker on the shared chart: normal, borderline and high zones from scoreBM's ranges (mg/dL)
 function drawBloodChart(k){
-  const c=$('btc_'+k);if(!c)return;
-  const pts=S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:1).map(x=>({t:new Date(x.date+'T12:00:00').getTime(),v:x[k],date:x.date}));
-  const{ctx,W}=sizeCanvas(c,150),H=150,L=32,R=12,T=10,B=20;
-  const rng={glucose:[70,100],chol:[0,200],uric:[3.5,7.2]}[k];
-  let mn=Math.min(...pts.map(p=>p.v),rng[0]||0),mx=Math.max(...pts.map(p=>p.v),rng[1]);
-  const pad=(mx-mn)*0.15||1;mn=Math.max(0,mn-pad);mx+=pad;
-  const t0=pts[0].t,t1=Math.max(last(pts).t,t0+30*864e5);
-  const X=t=>L+(t-t0)*(W-L-R)/(t1-t0),Y=v=>T+(mx-v)*(H-T-B)/(mx-mn);
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle=cssv('--green');ctx.globalAlpha=0.12;ctx.fillRect(L,Y(rng[1]),W-L-R,Y(Math.max(rng[0],mn))-Y(rng[1]));ctx.globalAlpha=1;
-  ctx.font='9px Inter,sans-serif';ctx.textBaseline='middle';ctx.textAlign='right';
-  for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3,y=Y(v);ctx.strokeStyle=cssv('--bdr');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillStyle=cssv('--t3');ctx.fillText(Math.round(v*10)/10,L-4,y);}
-  ctx.textAlign='center';ctx.fillStyle=cssv('--t3');
-  [pts[0],last(pts)].forEach((p,i)=>{if(i&&pts.length<2)return;ctx.textAlign=i?'right':'left';ctx.fillText(p.date.slice(2),i?W-R:L,H-6);});
-  ctx.strokeStyle=cssv('--text');ctx.lineWidth=1.5;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(X(p.t),Y(p.v)):ctx.moveTo(X(p.t),Y(p.v)));ctx.stroke();
-  pts.forEach(p=>{const st=scoreBM(p.v,k).status;ctx.fillStyle=cssv(st==='ok'?'--green':st==='warn'?'--amber':'--red');ctx.beginPath();ctx.arc(X(p.t),Y(p.v),4,0,7);ctx.fill();});
+  const name=(BM.find(x=>x[1]===k)||[])[0]||k,r=BM_RNG[k],e=1e-9,u=' mg/dL',f=v=>(k==='uric'?r1(v):Math.round(v))+u;
+  const pts=S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:1).map(x=>({d:x.date,v:x[k]}));
+  const zones=[{lo:r.warn[1]+e,hi:null,color:'--red',label:'High'},{lo:r.ok[1]+e,hi:r.warn[1]+e,color:'--amber',label:'Borderline'},{lo:r.ok[0],hi:r.ok[1]+e,color:'--green',label:'Normal'}];
+  if(r.ok[0]>0)zones.push({lo:null,hi:r.ok[0],color:'--red',label:'Low'});
+  const rg=v=>k==='uric'?v:Math.round(v);
+  mountChart('btc_'+k,{key:'bt'+k,H:150,span:730,label:name,yfmt:v=>k==='uric'?r1(v):Math.round(v),empty:'One result so far. The chart appears after your second test.',
+    series:[{name,color:'--text',thin:true,fmt:f,pts,dotColor:v=>{const st=scoreBM(v,k).status;return st==='ok'?'--green':st==='warn'?'--amber':'--red';}}],
+    zones,hi:true,stats:{good:v=>scoreBM(v,k).status==='ok',label:'in the normal range',unit:'results',one:'result'},
+    means:info=>{
+      const l=info.last,i=pts.findIndex(p=>p.d===l.d),pv=i>0?pts[i-1]:null,z=chZone({zones},l.v),df=pv?l.v-pv.v:0;
+      let t=`${fmtD(l.d)}: ${f(l.v)}, ${z?z.label.toLowerCase():'—'} (normal is ${r.ok[0]>0?rg(r.ok[0])+' to '+rg(r.ok[1]):'under '+rg(r.ok[1])}).`;
+      if(pv)t+=Math.abs(df)<(k==='uric'?0.1:1)?` Unchanged since ${fmtD(pv.d)}.`:` ${df>0?'Up':'Down'} ${f(Math.abs(df))} since ${fmtD(pv.d)}`+(z&&z.label!=='Normal'&&((df<0)===(l.v>r.ok[1]))?', moving towards normal.':'.');
+      return t;},
+    how:`Green is the normal range, amber borderline (${rg(r.warn[0])} to ${rg(r.warn[1])}), red high${r.ok[0]>0?' or low':''}. A single result can move with the day (food, sleep, training, how long you fasted); two or three tests in a row tell you more.`});
 }
 const stCol=s=>s==='ok'?'var(--green)':s==='warn'?'var(--amber)':'var(--red)';
 const stTxt=s=>s==='ok'?'In range':s==='warn'?'Borderline':'Out of range';
@@ -80,7 +78,7 @@ function renderHealth(){
       return`<div class="bt-card"><div class="bt-h"><div><div class="bm-name">${name}</div><div class="bm-unit">Reference: ${ref}</div></div><div style="text-align:right"><div class="bt-now" style="color:${stCol(s.status)}">${cur[k]}</div><div class="bt-st" style="color:${stCol(s.status)}">${stTxt(s.status)}</div></div></div>
         <div class="bt-row">${bars}</div>${dif!==null?`<div class="set-note" style="margin-top:6px">${dif===0?'Unchanged':(dif>0?'Up ':'Down ')+Math.abs(dif)} since ${fmtD(prev.date)}.</div>`:'<div class="set-note" style="margin-top:6px">First result. Add another test to see the change.</div>'}
         <button class="bt-more" id="btb_${k}" onclick="toggleBT('${k}')">Trend & what moves it ▾</button>
-        <div class="bt-panel" id="btp_${k}"><canvas id="btc_${k}" style="width:100%;height:150px;display:block"></canvas><div class="set-note" style="margin-top:8px">${pts.length<2?'One result so far. The chart becomes useful after your second test. ':'Green band is the reference range. '}${BM_NOTE[k]}</div></div></div>`;
+        <div class="bt-panel" id="btp_${k}"><div id="btc_${k}"></div><div class="set-note" style="margin-top:8px">${BM_NOTE[k]}</div></div></div>`;
     }).join('')+'<div class="set-note">Reference ranges are general adult guides. Your doctor decides what is right for you.</div>';
   }
   const inj=d.injuries.filter(i=>i.active);
@@ -102,7 +100,7 @@ function buildReport(days=30){
   const wl=Object.entries(d.wellness||{}).filter(([dt])=>daysAgo(dt)<days).map(x=>x[1]),hv=wl.filter(w=>w.hrv).map(w=>w.hrv),rh=rhrIn(dt=>daysAgo(dt)<days);
   sec+=`<h3>Recovery</h3><table>${dm.length?row('Average time asleep',`${fmtDur(Math.round(avg(dm)))} (goal ${fmtDur(goal)}, ${pl(dm.length,'night')})`)+row('Nights under goal by 1h+',`${dm.filter(m=>m<goal-60).length} of ${dm.length}`):''}${hv.length?row('HRV',`avg ${Math.round(avg(hv))} ms, range ${Math.round(Math.min(...hv))}–${Math.round(Math.max(...hv))}`):''}${rh.length?row('Resting HR (wearable)',`avg ${Math.round(avg(rh))} bpm, range ${Math.round(Math.min(...rh))}–${Math.round(Math.max(...rh))}`):''}${!dm.length&&!hv.length&&!rh.length?row('No sleep duration or HRV data',''):''}</table>`;
   const by={};ws.forEach(w=>{const b=by[w.type]=by[w.type]||{n:0,min:0,km:0,sets:0};b.n++;b.min+=w.durMin||0;b.km+=w.distKm||0;b.sets+=(w.sets||[]).filter(isWork).length;});
-  sec+=`<h3>Training</h3><table>${Object.keys(by).length?Object.entries(by).map(([t,b])=>row(t,`${pl(b.n,'session')}${b.sets?`, ${pl(b.sets,'set')}`:`, ${fmtDur(b.min)}`}${b.km?`, ${t==='Swim'?Math.round(b.km*1000)+' m':r1(b.km)+' km'}`:''}`)).join(''):row('No workouts logged','')}${d.intervalsData.ctl!=null?row('Fitness / fatigue / form (Intervals.icu)',`${d.intervalsData.ctl} / ${d.intervalsData.atl} / ${d.intervalsData.tsb>0?'+':''}${d.intervalsData.tsb}`):''}</table>`;
+  sec+=`<h3>Training</h3><table>${Object.keys(by).length?Object.entries(by).map(([t,b])=>row(t,`${pl(b.n,'session')}${b.sets?`, ${pl(b.sets,'set')}`:`, ${fmtDur(b.min)}`}${b.km?`, ${t==='Swim'?Math.round(b.km*1000)+' m':r1(b.km)+' km'}`:''}`)).join(''):row('No workouts logged','')}${d.intervalsData.ctl!=null?row('Fitness / fatigue / form',`${d.intervalsData.ctl} / ${d.intervalsData.atl} / ${d.intervalsData.tsb>0?'+':''}${d.intervalsData.tsb}`):''}</table>`;
   if(typeof planWeek==='function'){const pw=planWeek();if(pw.planned)sec+=`<h3>Weekly plan</h3><table>${row('Sessions planned this week',pw.planned)}${row('Done so far',`${pw.done}${pw.due?` (${Math.round(pw.days.filter(x=>x.p&&x.p.type!=='Rest'&&x.dt<=td()&&x.st==='done').length/pw.due*100)}% of those due)`:''}`)}${row('Plan',pw.days.map(x=>PL_DAYS[x.i]+' '+(x.p?esc(x.p.type)+(x.p.note?' ('+esc(x.p.note)+')':''):'—')).join(', '))}</table>`;}
   const m=k=>ci.length?r1(avg(ci.map(c=>c[k]))):null;
   const mind=d.checkins.filter(rng).reduce((a,c)=>a+(c.mindfulMin||0),0);
