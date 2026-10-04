@@ -78,8 +78,12 @@ async function sbFetch(path,opts={},retry=true){
 let _pushT=null,_pushing=false,_syncing=false;
 let _pushErr='';
 function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(e=>{const m=String(e.message||e);if(m!==_pushErr){_pushErr=m;showToast('Upload failed: '+m.slice(0,80));}}),1500);}
-const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub'||a==='reflection')&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
-const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if((a==='sets'||a==='sub'||a==='reflection')&&x[b]==null)continue;r[a]=x[b];}return r;};
+// fields left out of a row while empty; the v118 check-in fields too, so check-ins keep syncing before docs/supabase-v118.sql has been run
+const SKIP_NULL=new Set(['sets','sub','reflection','symptoms','soreArea','bodyFeel']);
+const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if(SKIP_NULL.has(a)&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
+const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if(SKIP_NULL.has(a)&&x[b]==null)continue;r[a]=x[b];}return r;};
+// a bulk upsert needs the same keys in every row: a key that one row left out (SKIP_NULL) is sent as null in the others of the same batch
+const sameKeys=rows=>{const ks=[...new Set(rows.flatMap(o=>Object.keys(o)))];return rows.map(o=>{const x={};ks.forEach(k=>{x[k]=k in o?o[k]:null;});return x;});};
 
 async function pushAll(){
   if(!_auth||_pushing)return;
@@ -92,7 +96,7 @@ async function pushAll(){
       let rows=[],path;
       if(n==='profile'){rows=[{user_id:_auth.user.id,data:d.profile,updated_at:new Date(d.profileTs||Date.now()).toISOString()}];path='/rest/v1/profile?on_conflict=user_id';}
       else if(n==='insight'){rows=items.map(([k])=>d.insightLog.find(e=>e.date===k.slice(8))).filter(Boolean).map(e=>({user_id:_auth.user.id,date:e.date,time:e.time,rendered:JSON.stringify(e)}));path='/rest/v1/insights?on_conflict=user_id,date';}
-      else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));path=`/rest/v1/${TBL[n].t}?on_conflict=id`;}
+      else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));rows=sameKeys(rows);path=`/rest/v1/${TBL[n].t}?on_conflict=id`;}
       if(rows.length){
         const r=await sbFetch(path,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
         if(!r.ok){if(TBL[n]?.opt){d[OPT_FLAG[n]]=true;continue;}throw new Error(await errMsg(r));}

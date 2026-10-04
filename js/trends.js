@@ -51,7 +51,7 @@ function loadWeeks(){
     ws.forEach(x=>{const v=f(x);if(v)by[x.type]=(by[x.type]||0)+v;});
     out.push({start:A,total:Object.values(by).reduce((s,x)=>s+x,0),by});
   }
-  out.forEach((o,i)=>{const prev=out.slice(Math.max(0,i-4),i).filter(x=>x.total>0);const b=prev.length?avg(prev.map(x=>x.total)):null;o.jump=b&&o.total>b*1.25&&!(i===out.length-1)?Math.round((o.total/b-1)*100):null;o.base=b;});
+  out.forEach((o,i)=>{const prev=out.slice(Math.max(0,i-4),i).filter(x=>x.total>0);const b=prev.length?avg(prev.map(x=>x.total)):null;o.jump=b&&o.total>b*TH.RAMP_CAUTION&&!(i===out.length-1)?Math.round((o.total/b-1)*100):null;o.base=b;});
   return out;
 }
 function renderLoad(){

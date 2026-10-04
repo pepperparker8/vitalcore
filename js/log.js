@@ -20,29 +20,39 @@ function finishWelcome(skip){
 }
 
 // ── CHECK-IN ─────────────────────────────────────────────────────────────────
-let _ci={energy:null,mood:null,stress:null,motivation:null,rested:null};
-function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
+let _ci={energy:null,mood:null,stress:null,motivation:null,rested:null,symptoms:null,bodyFeel:null,soreArea:[]};
+function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');if(k==='soreness')$('ciAreaRow').style.display=v>=3?'':'none';}
+// v118: where it is sore, shown from Moderate up; several areas allowed
+function selArea(a,btn){const i=_ci.soreArea.indexOf(a);if(i<0)_ci.soreArea.push(a);else _ci.soreArea.splice(i,1);btn.classList.toggle('sel',i<0);}
 function todayCI(){return S().checkins.find(c=>c.date===td());}
 let _ciKey='';
 const ciKey=()=>td()+'|'+(todayCI()?.ts||0);
 function fillCI(){
   const c=todayCI();_ciKey=ciKey();
-  ['energy','mood','stress','motivation','soreness','coffee'].forEach(k=>{
+  ['energy','mood','stress','motivation','soreness','coffee','symptoms','bodyFeel'].forEach(k=>{
     _ci[k]=c?.[k]??null;
     document.querySelectorAll(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).forEach(b=>b.classList.toggle('sel',c?.[k]===+b.getAttribute('onclick').match(/,(\d),this/)[1]));
   });
+  _ci.soreArea=c?.soreArea?c.soreArea.split(',').filter(Boolean):[];
+  document.querySelectorAll('#ciAreaRow .ci-btn').forEach(b=>b.classList.toggle('sel',_ci.soreArea.includes(b.dataset.a)));
+  $('ciAreaRow').style.display=(c?.soreness||0)>=3?'':'none';
   $('ciGrat').value=c?.gratitude||'';$('ciLate').checked=!!c?.coffeeLate;
   const done=ciFull(c);
   $('ciCard').classList.toggle('done',done);$('ciStat').textContent=done?'Done today':'Not done today';
   $('ciCta').textContent=done?'Update check-in':'Save check-in';
   const sum=$('ciSum');
-  if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}${c.soreness?` · Soreness ${EM.soreness[c.soreness]}`:''}${c.coffee!=null?` · Coffee ${c.coffee===4?'4+':c.coffee}${c.coffeeLate?' (late)':''}`:''}`;sum.classList.add('show');}
+  if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}${c.bodyFeel?` · Body ${EM.bodyFeel[c.bodyFeel]}`:''}${c.soreness?` · Soreness ${EM.soreness[c.soreness]}${c.soreArea&&c.soreness>=3?` (${c.soreArea.split(',').map(a=>EM.soreArea[a]||'').filter(Boolean).join(', ').toLowerCase()})`:''}`:''}${c.symptoms?` · Symptoms ${EM.symptoms[c.symptoms].toLowerCase()}`:''}${c.coffee!=null?` · Coffee ${c.coffee===4?'4+':c.coffee}${c.coffeeLate?' (late)':''}`:''}`;sum.classList.add('show');}
   else sum.classList.remove('show');
 }
 function ciRec(){return todayCI()||{id:'ci-'+td(),date:td(),energy:null,mood:null,stress:null,motivation:null,mindfulMin:0,gratitude:''};}
 function submitCI(){
   if(!_ci.energy||!_ci.mood||!_ci.stress||!_ci.motivation){showToast('Tap one face for each of the four rows');return;}
   const rec={...ciRec(),energy:_ci.energy,mood:_ci.mood,stress:_ci.stress,motivation:_ci.motivation,soreness:_ci.soreness??null,coffee:_ci.coffee??null,coffeeLate:$('ciLate').checked,gratitude:$('ciGrat').value.trim()};
+  // v118 fields are written only once set, so check-ins keep syncing before docs/supabase-v118.sql is run; a cleared sore area is '' (not null) so the cloud copy clears too
+  if(_ci.symptoms!=null)rec.symptoms=_ci.symptoms;
+  if(_ci.bodyFeel!=null)rec.bodyFeel=_ci.bodyFeel;
+  const area=(_ci.soreness||0)>=3?_ci.soreArea.join(','):'';
+  if(area||rec.soreArea)rec.soreArea=area;
   put('checkins',rec);
   fillCI();showToast('Check-in saved');refreshAll();
 }

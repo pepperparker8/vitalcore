@@ -16,7 +16,7 @@ let _saveTimer=null;
 
 // tables: local list name -> Supabase table + field map (local -> column)
 const TBL={
-  checkins:{k:'checkins',t:'checkins',f:{energy:'energy',mood:'mood',stress:'stress',motivation:'motivation',mindfulMin:'mindful_min',gratitude:'gratitude',reflection:'reflection',soreness:'soreness',coffee:'coffee',coffeeLate:'coffee_late'}},
+  checkins:{k:'checkins',t:'checkins',f:{energy:'energy',mood:'mood',stress:'stress',motivation:'motivation',mindfulMin:'mindful_min',gratitude:'gratitude',reflection:'reflection',soreness:'soreness',coffee:'coffee',coffeeLate:'coffee_late',symptoms:'symptoms',soreArea:'sore_area',bodyFeel:'body_feel'}},
   workouts:{k:'workouts',t:'workouts',f:{type:'type',distKm:'dist_km',durMin:'dur_min',rpe:'rpe',notes:'notes',sets:'sets',sub:'sub'}},
   sleep:{k:'sleepLogs',t:'sleep_logs',f:{score:'score',deepH:'deep_h',deepM:'deep_m',remH:'rem_h',remM:'rem_m',rested:'rested',durMin:'dur_min',bed:'bed',wake:'wake'}},
   meas:{k:'measurements',t:'measurements',f:{bpSys:'bp_sys',bpDia:'bp_dia',weight:'weight',hr:'hr'}},
@@ -72,14 +72,35 @@ const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).tri
 const last=a=>a[a.length-1];
 const $=id=>document.getElementById(id);
 const ciFull=c=>!!(c&&c.energy&&c.mood&&c.stress&&c.motivation);
+// One set of thresholds (Spec v2, A1): every score band, verdict cut and note reads from here, never an inline number.
+const TH={
+  BODY_GREEN:67,BODY_YELLOW:34,          // Body score: green 67+, yellow 34 to 66, red under 34
+  FORM_FRESH:5,FORM_OK:-10,FORM_TIRED:-20,FORM_DEEP:-30, // form (TSB): fresh from +5, balanced to -10, tired to -20, very tired to -30, overreached below
+  RAMP_CAUTION:1.25,RAMP_HIGH:1.5,       // this week's minutes against the 4-week mean
+  BURNOUT_HIGH:60,                       // 7-day psychological burnout risk, 0 to 100
+  MIN_BASE_DAYS:14,                      // days of a metric before its baseline is trusted
+  CORR_MIN_N:14,                         // paired days before a correlation is reported
+  HRV_FLOOR:3,RHR_FLOOR:1.5,             // smallest band SD used (ms, bpm), so a flat month does not blow up z
+  HRV_SE:Math.sqrt(7),                   // HRV z is for a 7-day mean, so the band SD is divided by this (one knob, tune after 8 weeks)
+  HRV_MIN_7:4,                           // nights with HRV needed inside the last 7 before the 7-day mean counts
+  Z_GAIN:20,                             // Body points per z unit: 50 ± 20 z
+  W_HRV:45,W_RHR:20,W_SLEEP:35,          // Body weights, re-weighted when a part is missing
+  SLEEP_FLOOR:0.6,SOLIDITY_W:0.3,        // time asleep at 60 % of need scores 0; Polar solidity share of the sleep part
+  MIND_GOOD:70,MIND_FLAT:50,             // today's check-in on 0 to 100 (energy, mood, calm, motivation): Good from 70, Flat from 50, Strained below
+  BURNOUT_MOD:30,                        // burnout risk: low under 30, moderate to 59, high from BURNOUT_HIGH
+  ILL_RESP:1.0,ILL_RHR_Z:1.5,ILL_HRV_Z:-1.5, // illness gate: breathing above band mean by this, with resting HR z or 7-day HRV z past these
+  PARALLEL_DAYS:14,                      // days the old readiness score runs alongside Body before the gauge switches
+  OLD_BAD:45,OLD_WARN:65,OLD_MOD:50,OLD_HIGH:80 // the old readiness cuts (verdict bad / warn, zone moderate / primed); retired after the parallel run
+};
 const zL=(v,t)=>{
   if(t==='atl')return v>70?'High':v>45?'Moderate':'Low';
   if(t==='sleep')return v>=80?'Excellent':v>=65?'Good':v>=50?'Fair':'Low';
-  if(t==='tsb')return v>=5?'Fresh':v>=-10?'Balanced':v>=-25?'Tired':'Very tired';
+  if(t==='tsb')return v>=TH.FORM_FRESH?'Fresh':v>=TH.FORM_OK?'Balanced':v>=TH.FORM_TIRED?'Tired':'Very tired';
+  if(t==='body')return v==null?'—':v>=TH.BODY_GREEN?'Green':v>=TH.BODY_YELLOW?'Yellow':'Red';
   return'—';
 };
-const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe']};
-const APP_VER=117; // keep in step with the cache name in sw.js
+const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe'],bodyFeel:['','Wrecked','Tired','Okay','Good','Strong'],symptoms:['None','Above the neck','Below the neck'],soreArea:{legs:'Legs',hips:'Hips',back:'Back',upper:'Shoulders and arms',core:'Core'}};
+const APP_VER=118; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
 const POLAR_API='https://vitalcore-backend.vercel.app/api'; // the owner's Vercel functions; they hold the Polar tokens, the app sends its app key
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5" /><circle cx="5.5" cy="17.5" r="3.5" /><circle cx="15" cy="5" r="1" /><path d="M12 17.5V14l-3-3 4-3 2 3h2" /></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5a2 2 0 0 0-2 2v11" /><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /><path d="M7 13h10" /><path d="M7 9h10" /><path d="M9 5a2 2 0 0 0-2 2v11" /></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" /><path d="m2.5 21.5 1.4-1.4" /><path d="m20.1 3.9 1.4-1.4" /><path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" /><path d="m9.6 14.4 4.8-4.8" /></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" /><path d="m9 20 3-6 3 6" /><path d="m6 8 6 2 6-2" /><path d="M12 10v4" /></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1" /><circle cx="12" cy="8" r="2" /><path d="M12 10v12" /><path d="M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z" /><path d="M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z" /></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></svg>']];

@@ -811,6 +811,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .ci-btn.sel{color:var(--gold-dk);background:var(--gold-l);border-color:var(--gold);box-shadow:none}
 /* soreness + coffee chips (v78) */
 .ci-txt .ci-btn{font-size:12px;font-weight:500;padding:0 2px;min-width:0}
+/* v118: body feel (five faces) and symptoms take the full width so every button stays 44px+ at 360px; sore-area chips wrap */
+.ci-wide .ci-metric{width:100%}
+.ci-wide .ci-btns{flex:1 1 100%;gap:2px}
+.ci-wide .ci-ends{width:100%;margin-left:0}
+.ci-area{flex-wrap:wrap}
+.ci-area .ci-btn{flex:1 0 auto;padding:0 12px}
 .ci-late{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13px;color:var(--t2);margin:-4px 0 6px}.ci-late input{width:18px;height:18px;accent-color:var(--gold)}
 /* v80: flatten the last gradient cards so both themes match the pro palette */
 .burnout-card{background:var(--sur);color:var(--text);border:1px solid var(--bdr);border-radius:14px;box-shadow:var(--sh);padding:20px}

@@ -87,14 +87,14 @@ function showTodayInsight(){
 function regenInsight(){genInsight(true);}
 // ── Insight context: trends, baselines and correlations computed in code ─────
 function pearson(p){
-  if(p.length<8)return null;
+  if(p.length<TH.CORR_MIN_N)return null;
   const mx=avg(p.map(a=>a[0])),my=avg(p.map(a=>a[1]));
   let sxy=0,sx=0,sy=0;p.forEach(([x,y])=>{sxy+=(x-mx)*(y-my);sx+=(x-mx)**2;sy+=(y-my)**2;});
   return sx&&sy?+(sxy/Math.sqrt(sx*sy)).toFixed(2):null;
 }
 function corrNote(name,p,unit){
   const r=pearson(p);
-  if(r===null)return{link:name,note:p.length<8?`not enough paired days yet (${p.length}, need 8)`:'no variation in one of the two measures, so no link can be measured'};
+  if(r===null)return{link:name,note:p.length<TH.CORR_MIN_N?`not enough paired days yet (${p.length}, need ${TH.CORR_MIN_N})`:'no variation in one of the two measures, so no link can be measured'};
   const a=Math.abs(r);
   return{link:name,r,days:p.length,strength:a>=0.5?'strong':a>=0.3?'moderate':'weak or none',direction:r>0?'positive':'negative'};
 }
@@ -190,17 +190,24 @@ function insightData(){
   const dg=(a,b)=>{const x=digestWeek(a,b);return{sessions:x.sessions,trainingMin:x.min,km:r1(x.km),swimM:Math.round(x.swimM),hardSets:x.sets,sleepScore:r1(x.sleep),sleepHours:r1(x.sleepMin==null?null:x.sleepMin/60),mood:r1(x.mood),energy:r1(x.energy),calm:r1(x.calm),checkins:x.nCi,mindfulMin:x.mindful,hrv:r1(x.hrv),restingHr:r1(x.rhr),weightKg:x.weight,daysLogged:x.days};};
   const rh=Object.entries(d.readHist||{}),rAvg=(a,b)=>r1(avg(rh.filter(([dt,x])=>x!=null&&daysAgo(dt)>=a&&daysAgo(dt)<b).map(x=>x[1])));
   const L=raceLoad(),bn=calcBurnout();
+  // v118: Body, Load and Mind, each from its own signals (A3 ledger); bodyHist mirrors readHist
+  const B=calcBody(),Ld=calcLoad(),M=calcMind(),il=illness(),bh=Object.entries(d.bodyHist||{}),bAvg=(a,b)=>r1(avg(bh.filter(([dt,x])=>x!=null&&daysAgo(dt)>=a&&daysAgo(dt)<b).map(x=>x[1])));
   return{
     today:{date:t,weekday:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][dw],readiness:calcReadiness(),verdict:v?v.head[0]:null,strain0to21:load?strainOf(load):0,
+      scoreInUse:bodyLive()?'body':'readiness',
+      body:{score:B.score,confidence:B.conf,missing:B.missing.map(m=>m.k),hrv7NightPoints:B.parts.hrv?Math.round(B.parts.hrv.pts):null,restingHrPoints:B.parts.rhr?Math.round(B.parts.rhr.pts):null,sleepPoints:B.parts.sleep?Math.round(B.parts.sleep.pts):null},
+      load:{state:Ld.state,rampFlag:Ld.rampFlag,hardSessionsLast4Days:Ld.hard4},
+      mind:{state:M.state,burnoutHigh:M.burnoutHigh},
+      illness:il?il.lvl:null,
       lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null,lateCoffeeEveningBefore:!!(ciOn(dAgo(daysAgo(sl.date)+1))||{}).coffeeLate,polar:insPolar(sl.date)}:null,
       sorenessStreak:(typeof soreStreak==='function'&&soreStreak())?{days:3,since:soreStreak().from}:null,
-      checkin:ci?{energy:ci.energy??null,mood:ci.mood??null,stress:ci.stress??null,motivation:ci.motivation??null,soreness:ci.soreness??null,coffeeCups:ci.coffee??null,coffeeLate:ci.coffeeLate??null,mindfulMin:ci.mindfulMin||0}:null,
+      checkin:ci?{energy:ci.energy??null,mood:ci.mood??null,stress:ci.stress??null,motivation:ci.motivation??null,soreness:ci.soreness??null,soreArea:ci.soreArea||null,bodyFeel1to5:ci.bodyFeel??null,symptoms:ci.symptoms!=null?EM.symptoms[ci.symptoms]:null,coffeeCups:ci.coffee??null,coffeeLate:ci.coffeeLate??null,mindfulMin:ci.mindfulMin||0}:null,
       hrv:wl.hrv??null,restingHr:rhrOn(t)?.v??null,restingHrSource:rhrOn(t)?(rhrOn(t).src==="icu"?"Intervals.icu":"manual"):null,breathingPerMin:wl.resp??null,
       workoutsDone:wT.map(wo),planned:pl&&pl.type?{type:pl.type,note:pl.note||undefined}:null,prescription:sg?{title:sg.title,why:sg.why}:null,
       recoveryDrivers:recoveryDrivers().map(x=>({k:x.k,now:x.val,vs:x.base,status:x.st})),burnoutScore0to100:bn.score},
     strategy:insStrategy(),
     nutrition:insNutrition(),
-    week:{last7days:dg(0,7),previous7days:dg(7,14),readinessAvg:rAvg(0,7),readinessAvgPrev:rAvg(7,14),thisCalendarWeekMin:Math.round(L.now),usualWeekMin:L.base?Math.round(L.base):null,
+    week:{last7days:dg(0,7),previous7days:dg(7,14),readinessAvg:rAvg(0,7),readinessAvgPrev:rAvg(7,14),bodyAvg:bAvg(0,7),bodyAvgPrev:bAvg(7,14),thisCalendarWeekMin:Math.round(L.now),usualWeekMin:L.base?Math.round(L.base):null,
       workouts:d.workouts.filter(w=>daysAgo(w.date)<14).map(wo),hardSetsPerMuscle:weeklySets(),
       checkins:d.checkins.filter(c=>daysAgo(c.date)<14).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,soreness:c.soreness??null,coffeeCups:c.coffee??null,mindfulMin:c.mindfulMin||0,grateful:c.gratitude||null,reflection:reflOf(c)})),
       sleep:d.sleepLogs.filter(s=>daysAgo(s.date)<14).map(s=>({date:s.date,hours:r1(s.durMin?s.durMin/60:null),bed:s.bed||null,wake:s.wake||null,score:s.score??null,polar:insPolar(s.date,true)}))},
@@ -214,6 +221,7 @@ function insightData(){
   };
 }
 const INS_COMMON=`Scales: check-in values are 1-4. Stress: 1 = calm, 4 = very stressed. "calm" is inverted stress, higher is better. Soreness: 1 = none, 4 = very sore. Readiness 20-100. Strain 0-21. Blood is mg/dL. null means not measured.
+today.body is the objective recovery score 0-100 (green ${TH.BODY_GREEN}+, yellow ${TH.BODY_YELLOW}-${TH.BODY_GREEN-1}, red below), from heart rate variability (7-night average), resting heart rate and sleep against this person's own usual range only; check-ins, form, soreness and injuries are not in it. today.scoreInUse says whether the app shows Body or the older readiness: Body runs alongside readiness for two weeks, then replaces it. today.load is training fatigue (form, weekly ramp, recent hard sessions), today.mind is how the person feels (check-in and a week of mood). today.illness "systemic" means rest; "mild" means keep the day easy; never diagnose an illness.
 Rules:
 - Interpret, do not recite. Say what a result means for this person before giving the number, and use at most two or three numbers in a field, only the ones that carry the point. Round them. Always give the comparison that makes a number meaningful (your usual, last week, the month before).
 - Explain cause and effect by linking data in the order it happened, for example a short night, then a lower heart rate variability, then a session that felt harder. Cite a correlation only when its strength is moderate or strong, and call it an association.
@@ -316,7 +324,7 @@ function buildFallback(){
   if(sl&&sl.score<65)t+='Sleep quality is below your usual. Aim for 7 to 8 hours tonight. ';
   if(ci?.stress>=3)t+='Stress elevated. Try a 5-minute breathing session and a lighter day. ';
   if(ci?.energy<=2)t+='Energy is low. Avoid hard training today. ';
-  if(d.intervalsData.tsb!==null&&d.intervalsData.tsb<-20)t+='Significant training fatigue detected. A recovery day is appropriate. ';
+  if(d.intervalsData.tsb!=null&&d.intervalsData.tsb<TH.FORM_TIRED)t+='Significant training fatigue detected. A recovery day is appropriate. ';
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length)t+=`Active injury: ${inj[0].part}. Modify training accordingly. `;
   return t||'All indicators look stable. Maintain your current routine.';

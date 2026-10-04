@@ -2,14 +2,14 @@
 function readinessReasons(){
   const d=S(),out=[],sl=last(d.sleepLogs.filter(s=>s.score)),ci=last(d.checkins.filter(ciFull)),tsb=d.intervalsData.tsb;
   if(sl)out.push([`Sleep ${sl.score}`,sl.score>=75?1:sl.score>=55?0:-1]);
-  if(tsb!==null&&tsb!==undefined)out.push([`Freshness ${tsb>0?'+':''}${tsb}`,tsb>=0?1:tsb>-10?0:-1]);
+  if(tsb!==null&&tsb!==undefined)out.push([`Freshness ${tsb>0?'+':''}${tsb}`,tsb>=TH.FORM_FRESH?1:tsb>=TH.FORM_OK?0:-1]);
   if(ci){
     const m=ci.mood,e=ci.energy,s=ci.stress;
     out.push([m>=3?'Mood good':m===2?'Mood so-so':'Mood low',m>=3?1:m===2?0:-1]);
     out.push([e>=3?'Energy good':e===2?'Energy so-so':'Energy low',e>=3?1:e===2?0:-1]);
     out.push([s<=1?'Calm':s===2?'Some stress':'Stressed',s<=1?1:s===2?0:-1]);
   }
-  d.injuries.filter(i=>i.active).forEach(i=>out.push([`${i.part} −${i.sev*8}`,-1]));
+  d.injuries.filter(i=>i.active).forEach(i=>out.push([bodyLive()?`${i.part} injury`:`${i.part} −${i.sev*8}`,-1]));
   return out;
 }
 function renderWhy(){

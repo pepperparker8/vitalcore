@@ -23,17 +23,18 @@ function stWeek(){
   const wk=o=>{const a=new Date(m);a.setDate(a.getDate()+o*7);const b=new Date(a);b.setDate(b.getDate()+7);const A=ymd(a),B=ymd(b);
     return ws.filter(w=>w.date>=A&&w.date<B).reduce((t,w)=>t+(w.durMin||0),0);};
   const base=L.base,p3=[-3,-2,-1].map(wk);
-  const rh=Object.entries(d.readHist||{}).filter(([k,v])=>v!=null&&daysAgo(k)>=1&&daysAgo(k)<7).map(x=>x[1]);
-  const sc=calcReadiness();if(sc!=null)rh.push(sc);
+  const rh=Object.entries(heroHist()).filter(([k,v])=>v!=null&&daysAgo(k)>=1&&daysAgo(k)<7).map(x=>x[1]);
+  const sc=heroScore();if(sc!=null)rh.push(sc);
   const rAvg=rh.length>=3?avg(rh):sc;
   const full=base&&p3.every(x=>x>=base*0.9);
   const pm=ph&&ph.n>=0?ph.mult:1;
   let mode,f;
   if(pm<1){mode='taper';f=pm;}
   else if(!base){mode='start';f=1;}
-  else if((rAvg!=null&&rAvg<50)||calcBurnout().score>=60){mode='recover';f=0.85;}
+  // v118 (A3 ledger): burnout lives under Mind and spends here, on the week, not on today's verdict
+  else if((rAvg!=null&&rAvg<scoreCuts().mod)||calcMind().burnoutHigh){mode='recover';f=0.85;}
   else if(full){mode='easier';f=0.75;}
-  else if(rAvg==null||rAvg<65||p3[2]>base*1.25){mode='hold';f=Math.min(1.2,pm);}
+  else if(rAvg==null||rAvg<scoreCuts().warn||p3[2]>base*TH.RAMP_CAUTION){mode='hold';f=Math.min(1.2,pm);}
   else{mode='build';f=Math.min(1.2,1.07*pm);}
   const r5=n=>Math.max(5,Math.round(n/5)*5);
   // next week: easier if this one would be the third full week; back to normal after an easier week
@@ -46,8 +47,8 @@ function stWeek(){
   return{mode,f,base,now:Math.round(L.now),target:base?r5(base*f):null,label:mode==='taper'&&ph?ph.k:ST_MODE[mode][0],why:ST_MODE[mode][1],fAt,ph};
 }
 function strategy(){
-  const sc=calcReadiness();if(sc===null)return null;
-  const d=S(),t=td(),ws=stWs(),W=stWeek(),v=coachVerdict(),tsb=d.intervalsData&&d.intervalsData.tsb;
+  const sc=heroScore();if(sc===null)return null;
+  const d=S(),t=td(),ws=stWs(),W=stWeek(),v=coachVerdict();
   const rec=ws.filter(w=>daysAgo(w.date)>=0&&daysAgo(w.date)<=42);
   const cnt=ty=>rec.filter(w=>w.type===ty).length;
   const med=ty=>{const a=rec.filter(w=>w.type===ty&&w.durMin).map(w=>w.durMin).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:ST_DEF[ty]||40;};
@@ -114,12 +115,13 @@ function strategy(){
     // today bends to the body's signals
     if(i===0&&role!=='race'){
       const hf=coachFlags().find(x=>x.hard);
-      if(sev>=3||(v&&v.lvl==='bad')){
+      // v118 (A3 ledger): the verdict alone decides rest (a severe injury sets it inside coachVerdict); form no longer bends today
+      if(v&&v.lvl==='bad'){
         const was=pl&&pl.type!=='Rest'?` Your plan says ${pl.type}. Move it a day.`:'';
         role='recover';o.bent=!!was;
-        why=(sev>=3?'A serious injury is active.':sc<45?'Recovery is low, so rest is the training today.':hf?hf.t+'.':'Recovery is the priority today.')+was;
+        why=(sev>=3?'A serious injury is active.':v.ill&&v.ill.lvl==='systemic'?v.ill.why+' Rest until it clears.':sc<scoreCuts().bad?'Recovery is low, so rest is the training today.':hf?hf.t+'.':'Recovery is the priority today.')+was;
       }else if(role!=='rest'&&role!=='gentle'){
-        const cap=prev.hard?'You trained hard yesterday.':sore>=3?'You are sore today.':sc<65?'Recovery is moderate.':(tsb!=null&&tsb<-12)?'You are carrying fatigue.':v&&v.lvl==='warn'?'Some recovery signals are off.':'';
+        const cap=v&&v.ill?'You have symptoms above the neck.':prev.hard?'You trained hard yesterday.':sore>=3?'You are sore today.':v&&v.lvl==='warn'?(bodyLive()?'Body is middling today.':'Recovery is moderate.'):'';
         if(cap){
           if(role==='hard'||role==='long'||role==='steady'){o.bent=hasPlan;role='easy';why=cap+' Keep it easy and short.'+(hasPlan&&pl?` Plan: ${pl.type}${pl.note?', '+pl.note:''}.`:'');}
           else if(role==='strength'){o.light=true;why=cap+' Lift lighter than usual.';}

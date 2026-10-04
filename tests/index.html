@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VitalCore tests</title>
+<!-- v118 acceptance tests (Spec v2, Phase A). Open over a local server: /tests/. No library, not cached by sw.js, never writes storage. -->
+<style>
+:root{--bg:#F3F4F6;--card:#FFFFFF;--text:#14171C;--t2:#5B6472;--ok:#0D7A6B;--bad:#C2361B}
+@media (prefers-color-scheme:dark){:root{--bg:#121316;--card:#1C1E22;--text:#ECEDEF;--t2:#9AA2AE;--ok:#3FB8A5;--bad:#FF7A5C}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif}
+h1{font-size:18px;margin:0 0 4px}
+#sum{margin:0 0 12px;color:var(--t2)}
+.t{background:var(--card);border-radius:12px;padding:10px 12px;margin:0 0 8px}
+.t b{display:block}
+.t small{color:var(--t2);display:block;word-break:break-word}
+.pass b::before{content:"PASS  ";color:var(--ok)}
+.fail b::before{content:"FAIL  ";color:var(--bad)}
+</style>
+<script>
+// the app's scripts save on pagehide; the test fixtures must never reach the app's storage on this origin
+try{Storage.prototype.setItem=function(){};}catch(e){}
+</script>
+</head>
+<body>
+<h1>VitalCore tests</h1>
+<p id="sum">Running…</p>
+<div id="out"></div>
+<script src="../js/core.js"></script>
+<script src="../js/sync.js"></script>
+<script src="../js/strength.js"></script>
+<script src="../js/log.js"></script>
+<script src="../js/today.js"></script>
+<script src="../js/settings.js"></script>
+<script src="../js/render.js"></script>
+<script src="../js/recovery.js"></script>
+<script src="../js/detail.js"></script>
+<script src="../js/chart.js"></script>
+<script src="../js/form.js"></script>
+<script src="../js/trends.js"></script>
+<script src="../js/progress.js"></script>
+<script src="../js/plan.js"></script>
+<script src="../js/coach.js"></script>
+<script src="../js/strategy.js"></script>
+<script src="../js/fuel.js"></script>
+<script src="../js/health.js"></script>
+<script src="../js/digest.js"></script>
+<script src="../js/insights.js"></script>
+<script>
+// app.js is left out: it starts the app (init) and would load and save real data
+save=function(d){_s=d;};persistSave=function(){};flushSave=function(){};
+const res=[];
+function check(name,ok,info){res.push({name,ok:!!ok,info});}
+function run(name,fn){try{fn();}catch(e){check(name,false,'Threw: '+e.message);}}
+
+// a steady athlete: 35 days of HRV (56/64 alternating, the last week at 64), resting HR 49/51, 7h30 asleep every night (goal 7h30), no training
+function base(o={}){
+  const s=JSON.parse(JSON.stringify(DEFAULTS));s.onboardingDone=true;s.readHist={};s.bodyHist={};
+  s.profile.sleepGoal=7.5;
+  for(let i=0;i<35;i++){
+    const dt=dAgo(i);
+    s.wellness[dt]={hrv:i<=6?64:(i%2?56:64),rhr:i===0?50:(i%2?49:51)};
+    if(!o.noSleep||i>=2)s.sleepLogs.push({id:'sl-'+dt,date:dt,durMin:450});
+  }
+  s.sleepLogs.reverse();
+  if(o.hrvDays!=null)Object.keys(s.wellness).forEach(dt=>{if(daysAgo(dt)>=o.hrvDays)delete s.wellness[dt].hrv;});
+  const live=o.live===false?0:o.bodyDays??14;
+  for(let i=1;i<=live;i++)s.bodyHist[dAgo(i)]=80;
+  _s=s;return s;
+}
+const ci=(o={})=>({id:'ci-'+td(),date:td(),energy:3,mood:3,stress:2,motivation:3,...o});
+
+// Test 2: one low HRV morning moves Body a little and leaves the verdict alone
+run('Test 2',()=>{
+  base();const a=calcBody().score,va=coachVerdict().lvl;
+  _s.wellness[td()].hrv=52;const b=calcBody().score,vb=coachVerdict().lvl;
+  check('Test 2: a single-morning HRV dip leaves the verdict unchanged',bodyLive()&&va===vb&&va==='ok',`Body ${a} → ${b} after HRV 64 → 52 this morning; verdict ${va} → ${vb}`);
+});
+// and the control: a week of low HRV does move it
+run('Test 2b',()=>{
+  base();for(let i=0;i<7;i++)_s.wellness[dAgo(i)].hrv=50;
+  const B=calcBody(),v=coachVerdict().lvl;
+  check('Test 2b (control): a week of low HRV does change the verdict',v!=='ok',`Body ${B.score}, HRV z ${B.parts.hrv.z.toFixed(1)}, verdict ${v}`);
+});
+// Test 10: no sleep record dated today or yesterday: sleep is missing and re-weighted; the night two days ago is not used
+run('Test 10',()=>{
+  base({noSleep:true});const B=calcBody(),p=B.parts;
+  const expect=p.hrv&&p.rhr?Math.round((p.hrv.pts*TH.W_HRV+p.rhr.pts*TH.W_RHR)/(TH.W_HRV+TH.W_RHR)):null;
+  check('Test 10: no sleep today or yesterday → sleep missing, re-weighted, no older night',p.sleep===null&&B.missing.some(m=>m.k==='sleep')&&B.score===expect&&B.conf==='low',`score ${B.score} (HRV and resting HR only: ${expect}), confidence ${B.conf}, missing: ${B.missing.map(m=>m.k).join(', ')}`);
+});
+// Test 11: HRV on only 6 days: under TH.MIN_BASE_DAYS, so HRV is left out and confidence is low
+run('Test 11',()=>{
+  base({hrvDays:6});const B=calcBody();
+  check('Test 11: 6 days of HRV → HRV excluded, confidence Low',B.parts.hrv===null&&B.conf==='low'&&B.score!=null,`score ${B.score}, confidence ${B.conf}; ${(B.missing.find(m=>m.k==='hrv')||{}).why||'HRV not listed as missing'}`);
+});
+// Test 12: each signal sits in exactly one place of the score and verdict path (the code is read as text)
+run('Test 12',()=>{
+  const paths={calcBody,calcLoad,calcMind,illness,coachVerdict};
+  const sig=[['form (TSB)',/tsb/i,['calcLoad']],['injury',/injur/i,['coachVerdict']],['check-in (energy, mood, motivation)',/\.(energy|mood|motivation)\b/,['calcMind']],['soreness',/soreness/i,[]]];
+  sig.forEach(([lab,re,want])=>{
+    const got=Object.keys(paths).filter(k=>re.test(paths[k].toString()));
+    const ok=got.join()===want.join();
+    check(`Test 12: ${lab} in ${want.length?want.join():'no score or verdict'}`,ok,`found in: ${got.join(', ')||'none'}`);
+  });
+  check('Test 12: soreness shapes the session only (strategy)',/sore/.test(strategy.toString()),'strategy() reads it; v119 moves it into the session rules');
+  check('Test 12: Body has no self-report, form or injury',!/tsb|injur|soreness|checkins|calcBurnout/i.test(calcBody.toString()),'calcBody reads HRV, resting heart rate and sleep only');
+});
+// Illness gate (A4)
+run('Illness',()=>{
+  base();_s.checkins=[ci({symptoms:2})];
+  check('Illness: below the neck → systemic, verdict Rest',(illness()||{}).lvl==='systemic'&&coachVerdict().lvl==='bad',`illness ${(illness()||{}).lvl}, verdict ${coachVerdict().lvl}`);
+  _s.checkins=[ci({symptoms:1})];
+  check('Illness: above the neck → mild, verdict capped at Hold steady',(illness()||{}).lvl==='mild'&&coachVerdict().lvl==='warn',`illness ${(illness()||{}).lvl}, Body ${calcBody().score}, verdict ${coachVerdict().lvl}`);
+  _s.checkins=[ci({symptoms:0})];
+  check('Illness: no symptoms and normal nights → no gate',illness()===null&&coachVerdict().lvl==='ok',`illness ${illness()}, verdict ${coachVerdict().lvl}`);
+  base();for(let i=0;i<35;i++)_s.wellness[dAgo(i)].resp=i===0?15.6:(i%2?14.0:14.4);_s.wellness[td()].rhr=55;
+  check('Illness: breathing up 1+ and resting HR z ≥ 1.5 → systemic',(illness()||{}).lvl==='systemic',(illness()||{}).why||'no gate');
+  _s.wellness[td()].rhr=50;
+  check('Illness: breathing up alone → no gate',illness()===null,`illness ${illness()}`);
+});
+// Parallel run (A6): the old readiness leads until Body has 14 recorded days
+run('Parallel',()=>{
+  base({bodyDays:13});_s.checkins=[ci()];
+  const a=bodyLive(),ha=heroScore()===calcReadiness();
+  base({bodyDays:14});
+  const b=bodyLive(),hb=heroScore()===calcBody().score;
+  check('Parallel run: 13 Body days → old readiness, 14 → Body',!a&&ha&&b&&hb,`13 days: live ${a}; 14 days: live ${b}`);
+});
+// Load and Mind
+run('Load',()=>{
+  base();const st=t=>{_s.intervalsData.tsb=t;return calcLoad().state;};
+  const r=[[8,'Fresh'],[0,'Normal'],[-25,'Tired'],[-35,'Overreached']].map(([t,w])=>[t,w,st(t)]);
+  check('Load: form bands from TH',r.every(x=>x[1]===x[2]),r.map(x=>`form ${x[0]} → ${x[2]}`).join(', '));
+});
+run('Mind',()=>{
+  base();_s.checkins=[ci({energy:4,mood:4,stress:1,motivation:4})];const a=calcMind().state;
+  _s.checkins=[ci({energy:2,mood:2,stress:3,motivation:2})];const b=calcMind().state;
+  _s.checkins=[ci({energy:1,mood:1,stress:4,motivation:1})];const c=calcMind().state;
+  check('Mind: Good, Flat, Strained',a==='Good'&&b==='Flat'&&c==='Strained',`${a}, ${b}, ${c}`);
+});
+// Sync: a batch keeps the same keys in every row, and the new fields stay out while empty
+run('Sync',()=>{
+  const rows=sameKeys([{id:'a',symptoms:1},{id:'b'}]);
+  check('Sync: rows in one upload share their keys','symptoms' in rows[1]&&rows[1].symptoms===null,JSON.stringify(rows));
+  const ks=Object.keys(fromRow('checkins',{id:'x',date:td(),updated_at:new Date().toISOString(),energy:3}));
+  check('Sync: a cloud row without the v118 columns adds no empty fields',!ks.includes('symptoms')&&!ks.includes('bodyFeel')&&!ks.includes('soreArea'),ks.join(', '));
+});
+
+const pass=res.filter(r=>r.ok).length;
+document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;
+document.getElementById('out').innerHTML=res.map(r=>`<div class="t ${r.ok?'pass':'fail'}"><b>${esc(r.name)}</b><small>${esc(r.info)}</small></div>`).join('');
+window.TEST_RESULT={pass,total:res.length};
+</script>
+</body>
+</html>

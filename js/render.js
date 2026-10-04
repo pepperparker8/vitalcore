@@ -21,7 +21,7 @@ function strainRef(){
 }
 function strainTarget(){
   const v=coachVerdict();if(!v)return null;
-  return v.lvl==='bad'?[0,5]:v.lvl==='warn'?[6,11]:v.sc>=80?[13,17]:[10,14];
+  return v.lvl==='bad'?[0,5]:v.lvl==='warn'?[6,11]:v.sc>=scoreCuts().high?[13,17]:[10,14];
 }
 function setGauge(id,numId,frac,txt){
   const f=$(id),n=$(numId);if(!f||!n)return;
@@ -35,8 +35,8 @@ function renderGauges(){
   if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderFactors();if(typeof refreshDetail==='function')refreshDetail();const sc=calcReadiness();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<7;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of 7 days logged. Scores and usual ranges get more personal after a week of data.`:'';}
-  $('gRecSub').textContent=sc===null?'Check in':sc>=80?'Primed':sc>=65?'Good':sc>=50?'Moderate':'Low';
+  renderFactors();if(typeof refreshDetail==='function')refreshDetail();const sc=heroScore();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<TH.MIN_BASE_DAYS;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of ${TH.MIN_BASE_DAYS} days logged. Scores and usual ranges get more personal after two weeks of data.`:'';}
+  $('gRecSub').textContent=scoreWord(sc);
 }
 function readinessFactors(){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60,out=[];
@@ -44,9 +44,9 @@ function readinessFactors(){
   if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({k:'sleep',l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
   else out.push({k:'sleep',l:'Sleep',v:'Not logged',n:'Tap for details',st:'none'});
   const tsb=d.intervalsData.tsb;
-  if(tsb!==null&&tsb!==undefined)out.push({k:'form',l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:tsb>=5?'Fresh':tsb>=-10?'Balanced':tsb>=-25?'Tired':'Very tired',st:tsb>=-10?'good':tsb>=-25?'warn':'bad'});
+  if(tsb!==null&&tsb!==undefined)out.push({k:'form',l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:zL(tsb,'tsb'),st:tsb>=TH.FORM_OK?'good':tsb>=TH.FORM_DEEP?'warn':'bad'});
   const ci=todayCI();
-  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({k:'checkin',l:'Check-in',v:p>=70?'Good':p>=50?'Okay':'Low',n:p+'/100',st:p>=70?'good':p>=50?'warn':'bad'});}
+  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({k:'checkin',l:'Check-in',v:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Okay':'Low',n:p+'/100',st:p>=TH.MIND_GOOD?'good':p>=TH.MIND_FLAT?'warn':'bad'});}
   else out.push({k:'checkin',l:'Check-in',v:'Not done',n:'Tap for details',st:'none'});
   const hv=latestOf('hrv'),hb=wSeries('hrv');
   if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:'usual '+Math.round(avg(hb)),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
@@ -56,7 +56,7 @@ function readinessFactors(){
   else if(rv)out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
   const pv=latestOf('resp'),pb=wSeries('resp');
   if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({k:'breathing',l:'Breathing',v:pv.v.toFixed(1)+' /min',n:'usual '+avg(pb).toFixed(1),st:df<=1?'good':df<=2?'warn':'bad'});}
-  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
+  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:bodyLive()?'shapes today\'s session':'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
   if(ci&&ci.coffeeLate)out.push({k:'coffee',l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({k:'injury',l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
@@ -67,19 +67,27 @@ function renderFactors(){
   const f=readinessFactors();
   el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>`<div class="rf ${x.st}" onclick="openDetail('${x.k}')" role="button" tabindex="0"><span class="rf-dot"></span><span class="rf-l">${x.l}</span><span class="rf-v">${x.v}</span><span class="rf-n">${x.n}</span></div>`).join('');
 }
-function sleepNeed(st){
-  const d=S(),goal=(d.profile.sleepGoal||7.5)*60;
-  const debt=[1,2,3].reduce((a,i)=>{const l=d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)===i);return l.length?a+Math.max(0,goal-l[l.length-1].durMin):a;},0);
+// sleep needed for the night ending on date (default tonight): goal, plus up to 45 min for the day's strain, plus half the debt of the 3 nights before
+function sleepNeed(st,date){
+  const d=S(),goal=(d.profile.sleepGoal||7.5)*60,ref=date?daysAgo(date):0;
+  const debt=[1,2,3].reduce((a,i)=>{const l=d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)===ref+i);return l.length?a+Math.max(0,goal-l[l.length-1].durMin):a;},0);
   return Math.round((goal+st/21*45+Math.min(45,debt/2))/5)*5;
 }
 const hhmm=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function setWake(v){if(!/^\d\d:\d\d$/.test(v))return;const d=S();d.profile.wakeTime=v;save(d);markProfile();if(typeof refreshDetail==='function')refreshDetail();}
 function renderZone(score){
   let z,ins;
-  if(score===null){z='Start with a check-in';ins='Tap how you feel below. Your readiness score appears once you check in or log sleep.';}
-  else if(score>=80){z='Ready to push hard';ins='All systems green. Good day to train hard or race.';}
-  else if(score>=65){z='Solid day ahead';ins='Good recovery. Normal training appropriate today.';}
-  else if(score>=50){z='Moderate readiness';ins='Some fatigue. Keep intensity moderate today.';}
+  if(bodyLive()){
+    // Body (v118): green, yellow, red from TH.BODY_*
+    if(score===null){z='Waiting for your watch';ins='Body needs HRV or resting heart rate from Intervals.icu (or a Polar night). Sync to refresh.';}
+    else if(score>=TH.BODY_GREEN){z='Body is recovered';ins='HRV, resting heart rate and sleep are in your usual range. A good day to train as planned.';}
+    else if(score>=TH.BODY_YELLOW){z='Body is middling';ins='Some overnight signals are off. Train, but keep it controlled.';}
+    else{z='Body needs recovery';ins='Your overnight signals are well off your usual. Rest or easy movement.';}
+  }
+  else if(score===null){z='Start with a check-in';ins='Tap how you feel below. Your readiness score appears once you check in or log sleep.';}
+  else if(score>=TH.OLD_HIGH){z='Ready to push hard';ins='All systems green. Good day to train hard or race.';}
+  else if(score>=TH.OLD_WARN){z='Solid day ahead';ins='Good recovery. Normal training appropriate today.';}
+  else if(score>=TH.OLD_MOD){z='Moderate readiness';ins='Some fatigue. Keep intensity moderate today.';}
   else{z='Recovery day needed';ins='Body is under stress. Prioritise rest and sleep tonight.';}
   $('heroZone').textContent=z;$('heroIns').textContent=ins;
 }
@@ -215,16 +223,14 @@ function calcBurnout(){
   if(!cis.length)return{score:0,label:'No data',sub:'Do a few check-ins and this fills in.',psy:0,phys:0};
   const avgS=cis.reduce((a,c)=>a+(5-c.stress),0)/cis.length,avgE=cis.reduce((a,c)=>a+c.energy,0)/cis.length,avgM=cis.reduce((a,c)=>a+c.mood,0)/cis.length;
   const psy=Math.round((avgS+avgE+avgM)/(4*3)*100);
-  const{atl,tsb}=d.intervalsData;
-  // both halves are "how well you are coping" (100 = fine); physical comes from form: 0 = 100, -40 or lower = 0
-  const phys=tsb==null?null:Math.round(Math.max(0,Math.min(100,100+tsb*2.5)));
-  const score=Math.max(0,Math.min(100,Math.round(100-(phys==null?psy:psy*0.6+phys*0.4))));
-  return{score,label:score<30?'Low risk':score<60?'Moderate risk':'High risk',sub:score<30?'Physiological and psychological markers stable.':score<60?'Some stress signals. Monitor energy and sleep.':'Elevated stress and fatigue. Reduce training load.',psy,phys};
+  // psychological only since v118 (A3 ledger): training fatigue is read under Load, not here. psy is "how well you are coping", 100 = fine
+  const score=Math.max(0,Math.min(100,Math.round(100-psy)));
+  return{score,label:score<TH.BURNOUT_MOD?'Low risk':score<TH.BURNOUT_HIGH?'Moderate risk':'High risk',sub:score<TH.BURNOUT_MOD?'Energy, mood and calm are steady.':score<TH.BURNOUT_HIGH?'Some stress signals. Watch energy and sleep.':'Low energy, low mood or stress for a week. Keep hard days few and protect sleep.',psy,phys:null,n:cis.length};
 }
 function renderBurnout(){
   const b=calcBurnout();
   $('boScore').textContent=b.score;$('boLabel').textContent=b.label;$('boSub').textContent=b.sub;
-  $('boBreak').textContent=b.psy||b.phys?`Mind ${b.psy} of 100 · Body ${b.phys==null?'no data':b.phys+' of 100'} (higher is better)`:'';
+  $('boBreak').textContent=b.n?`From your last ${b.n} check-in${b.n!==1?'s':''}: energy, mood and calm ${b.psy} of 100 (higher is better). Training fatigue counts under Load, not here.`:'';
 }
 function renderMoodChart(){
   const d=S(),host=$('moodCanvas');if(!host)return;
@@ -261,8 +267,8 @@ function renderBodyChart(){
 function renderWeekBanner(){
   const d=S(),wk=d.workouts.filter(w=>daysAgo(w.date)<7).length;
   const sl=d.sleepLogs.filter(s=>s.score).slice(-7),avg=sl.length?Math.round(sl.reduce((a,s)=>a+s.score,0)/sl.length):0;
-  const sc=calcReadiness(),mm=seriesFor(7,mindOn).reduce((a,x)=>a+x.v,0);
-  $('weekStats').textContent=`${wk} workout${wk!==1?'s':''} · ${mm?fmtDur(mm)+' mindful':'no mindfulness yet'} · readiness ${sc??'—'} · sleep ${avg?avg+'/100':'—'}`;
+  const sc=heroScore(),mm=seriesFor(7,mindOn).reduce((a,x)=>a+x.v,0);
+  $('weekStats').textContent=`${wk} workout${wk!==1?'s':''} · ${mm?fmtDur(mm)+' mindful':'no mindfulness yet'} · ${bodyLive()?'body':'readiness'} ${sc??'—'} · sleep ${avg?avg+'/100':'—'}`;
 }
 
 // ── RENDER: HISTORY ──────────────────────────────────────────────────────────
