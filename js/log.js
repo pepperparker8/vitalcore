@@ -187,9 +187,25 @@ function renderExGrid(){
   $('wDurFg').style.display=st?'none':'block';
   $('wSwim').style.display=sw?'block':'none';$('wStr').style.display=st?'block':'none';
   if(st)renderStrength();
+  if(!$('wPainRow').innerHTML)painSet(null);
   renderDurChips();
 }
 function selEx(t){if(IS_STR(t)&&t!==_selEx)_sess=[];_selEx=t;renderExGrid();}
+// v121: pain 0 to 10, stored as sub.pain; a second tap on the chosen number clears it
+const painOf=w=>w&&w.sub&&typeof w.sub.pain==='number'?w.sub.pain:null;
+const painVal=()=>{const v=$('wPain').value;return v===''?null:+v;};
+function painSet(v){
+  $('wPain').value=v==null?'':String(v);
+  $('wPainRow').innerHTML=Array.from({length:11},(_,i)=>`<button type="button" class="pn-c${i===v?' sel':''}" aria-pressed="${i===v}" aria-label="Pain ${i} of 10" onclick="painTap(${i})">${i}</button>`).join('');
+}
+function painTap(i){painSet(painVal()===i?null:i);}
+// while an injury is logged or a comeback after one is running, the pain field is opened once a day and says why it matters
+let _pnOpen='';
+function painMark(){
+  const ir=typeof injRet==='function'?injRet():null,inj=S().injuries.some(x=>x.active);
+  $('wPainNote').textContent=ir?'Part of your return plan: a run at 3 or less moves you on, 5 or more steps back. 0 is none, 10 is the worst.':inj?'You have an injury logged, so a pain score helps the plan and the briefing follow it. 0 is none, 10 is the worst.':'0 is none, 10 is the worst. Used when you come back from an injury.';
+  if((ir||inj)&&!_editId&&_pnOpen!==td()){_pnOpen=td();$('wMore').open=true;}
+}
 // one-tap durations fill the hour and minute boxes
 function renderDurChips(){
   const el=$('wDurChips');if(!el)return;
@@ -227,9 +243,12 @@ function saveWorkout(){
   const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||null,notes:$('wNotes').value.trim()};
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
   const oi=_editId&&wIcu(S().workouts.find(x=>x.id===_editId));if(oi&&Object.keys(oi).length)rec.sub={...(rec.sub||{}),icu:oi};
+  const pn=painVal();if(pn!=null)rec.sub={...(rec.sub||{}),pain:pn};
   const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Save workout';$('wCancel').style.display='none';
-  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';wkPreClear();renderDurChips();
-  showToast(prs.length?`New best: ${prs[0]}`:wasEdit?'Workout updated':rec.rpe?'Workout recorded':'Workout recorded, effort not set');refreshAll();
+  ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';painSet(null);_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';wkPreClear();renderDurChips();
+  // pain during a comeback run moves the return plan back a step (injRet reads it)
+  const ir=pn!=null&&pn>=TH.PAIN_BACK&&rec.type==='Run'&&typeof injRet==='function'?injRet():null;
+  showToast(prs.length?`New best: ${prs[0]}`:pn!=null&&pn>=TH.PAIN_STOP?`Pain ${pn} of 10: stop training on it and get it checked.`:ir&&rec.date>=ir.healed?`Pain ${pn} of 10: your next run steps back.`:wasEdit?'Workout updated':rec.rpe?'Workout recorded':'Workout recorded, effort not set');refreshAll();
 }
 let _editId=null;
 function editWorkout(id){
@@ -240,20 +259,20 @@ function editWorkout(id){
   $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
   $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');
   if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}
-  $('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';wkPreClear();
+  $('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';painSet(painOf(w));wkPreClear();
   const ir=wIcu(w).rpe;$('wEffNote').textContent=ir&&!w.rpe?`Your watch recorded ${ir} of 10, about ${effOf5(ir)} of 5. Pick it here if it felt like that.`:'';
   _editId=id;$('wSave').textContent='Update workout';$('wCancel').style.display='block';
   $('wMore').open=true;$('wkFormT').textContent='Edit workout';renderDurChips();
   setTimeout(()=>$('wkFormT').scrollIntoView({behavior:'smooth',block:'start'}),120);
   showToast('Editing '+w.type+' from '+w.date);
 }
-function cancelEdit(){_editId=null;wkPreClear();$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
+function cancelEdit(){_editId=null;wkPreClear();$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';painSet(null);$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
 function repeatLast(){
   const w=last(S().workouts);if(!w){showToast('No previous workout');return;}
   _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
   $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
   $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}$('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
-  $('wDate').value=td();renderDurChips();
+  painSet(null);$('wDate').value=td();renderDurChips();
   showToast('Last workout loaded. Check it and save.');
 }
 function delWorkout(id){
@@ -272,6 +291,7 @@ function wkRow(w,today){
   if(w.distKm)meta.push(fmtDist(w));
   if(w.sets){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
   meta.push(w.rpe?'effort '+w.rpe+'/5':'effort not set');
+  if(painOf(w)!=null)meta.push('pain '+painOf(w)+' of 10');
   return `<div class="act-item"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="delWorkout('${esc(w.id)}')">Delete</button></div></div></div>`;
 }
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
@@ -337,7 +357,7 @@ function renderSoreSug(){const b=$('injSug');if(b)b.innerHTML=soreHTML();}
 function renderWkLog(){
   const d=S(),el=$('wkRecent');if(!el)return;
   const ws=d.workouts.filter(w=>daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));
-  $('wkDup').innerHTML=dupHTML()+effHTML();renderSoreSug();wkPrefill();
+  $('wkDup').innerHTML=dupHTML()+effHTML();renderSoreSug();wkPrefill();painMark();
   const n=$('wkIcuNote'),on=!!(d.intervalsKey&&d.intervalsID);
   n.style.display=on?'':'none';
   n.textContent=on?'Workouts recorded by your watch arrive here on their own after a sync. Add by hand only what the watch did not record.':'';

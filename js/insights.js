@@ -166,10 +166,25 @@ const insRefl=c=>{const r=reflOf(c);return r?{gave:insClip(r.gave,200),drained:i
 // the last two briefings before today, so the model can check its own earlier advice (v119: the advice only, to keep the snapshot short)
 function insPrev(){return S().insightLog.filter(e=>e.date<td()).slice(0,2).map(e=>({date:e.date,daysAgo:daysAgo(e.date),overall:insClip(e.overall,220),oneThingThatDay:insClip(e.today,200),focusForTheWeek:insClip(e.focus,160)}));}
 // the app's own 7-day outline, so the briefing explains it instead of inventing another one
+// v121: the main set of each training day (sessSum), how targets are given per sport, and a comeback after time off or an injury
+const INS_BY={pace:'pace',hr:'heart rate',pw:'power',eff:'effort'};
 function insStrategy(){
   const st=strategy();if(!st)return null;
+  const ir=st.ir,r=st.ret,tk=st.tk||{};
+  const back=ir?{after:'injury',part:ir.part,now:ir.stage==='ladder'?`run-walk step ${ir.step} of ${RET_LADDER.length}`:`this week adds ${ST_STAGE[ir.stage]}`,lastPain0to10:ir.pain}
+    :r?{after:'time off',daysOff:r.gap,week:r.week,of:r.of,shareOfUsualWeekPct:Math.round(r.pct*100)}:null;
   return{weekMode:st.label,why:st.why,weekTargetMin:st.target,weekDoneMin:st.now,usualWeekMin:st.base,followsWeeklyPlan:st.hasPlan,
-    days:st.days.map(x=>({date:x.date,weekday:PL_DAYS[x.wd],session:x.name,minMin:x.lo||undefined,maxMin:x.hi||undefined,effort1to5:x.effort||undefined,reason:x.why,planChanged:x.bent||undefined}))};
+    targetsBy:{run:INS_BY[tk.Run],ride:INS_BY[tk.Cycle],swim:INS_BY[tk.Swim]},comeback:back,
+    days:st.days.map(x=>({date:x.date,weekday:PL_DAYS[x.wd],session:x.name,minMin:x.lo||undefined,maxMin:x.hi||undefined,effort1to5:x.effort||undefined,
+      main:!x.done&&x.sess?sessSum(x.sess):undefined,swappedFrom:x.swapFrom||undefined,reason:x.why,planChanged:x.bent||undefined}))};
+}
+// v121: the watch's fitness estimate, only when two values sit 28+ days apart (pain sits on week.workouts[])
+function insTraining(){
+  const v=Object.entries(S().wellness||{}).filter(([,w])=>w.vo2).sort((a,b)=>a[0]<b[0]?-1:1);
+  let fm=null;
+  if(v.length>=2){const[ld,lw]=v[v.length-1],pr=v.filter(([dt])=>daysAgoBetween(dt,ld)>=28).pop();
+    if(pr)fm={now:lw.vo2,before:pr[1].vo2,daysApart:daysAgoBetween(pr[0],ld),change:+(lw.vo2-pr[1].vo2).toFixed(1)};}
+  return{fitnessMarker:fm};
 }
 // the app's food targets for today, so food questions get the same numbers as the Today card
 function insNutrition(){
@@ -205,7 +220,7 @@ function insightRaw(){
   const v=coachVerdict(),sl=last(d.sleepLogs.filter(x=>daysAgo(x.date)<=1)),ci=d.checkins.find(c=>c.date===t);
   const wT=d.workouts.filter(w=>w.date===t),load=dayLoad(t),ph=racePhase(),sg=suggestWorkout(),dw=(new Date(t+'T12:00:00').getDay()+6)%7,pl=(p.plan||{})[dw];
   const wl=(d.wellness||{})[t]||{};
-  const wo=w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,effort1to5:w.rpe,watchEffort1to10:wIcu(w).rpe,notes:daysAgo(w.date)<7?insClip(w.notes,200)||undefined:undefined,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?{pool:w.sub.pool,stroke:w.sub.stroke}:undefined,avgHr:wIcu(w).hr,maxHr:wIcu(w).hrMax,kcal:wIcu(w).kcal,climbM:wIcu(w).elev,load:wIcu(w).load});
+  const wo=w=>({date:w.date,type:w.type,durMin:w.durMin,distKm:w.distKm,effort1to5:w.rpe,watchEffort1to10:wIcu(w).rpe,pain0to10:typeof w.sub?.pain==='number'?w.sub.pain:undefined,notes:daysAgo(w.date)<7?insClip(w.notes,200)||undefined:undefined,sets:w.sets?setsText(w):undefined,swim:w.sub?.stroke?{pool:w.sub.pool,stroke:w.sub.stroke}:undefined,avgHr:wIcu(w).hr,maxHr:wIcu(w).hrMax,kcal:wIcu(w).kcal,climbM:wIcu(w).elev,load:wIcu(w).load});
   const dg=(a,b)=>{const x=digestWeek(a,b);return{sessions:x.sessions,trainingMin:x.min,km:r1(x.km),swimM:Math.round(x.swimM),hardSets:x.sets,sleepScore:r1(x.sleep),sleepHours:r1(x.sleepMin==null?null:x.sleepMin/60),mood:r1(x.mood),energy:r1(x.energy),calm:r1(x.calm),checkins:x.nCi,mindfulMin:x.mindful,hrv:r1(x.hrv),restingHr:r1(x.rhr),weightKg:x.weight,daysLogged:x.days};};
   const rh=Object.entries(d.readHist||{}),rAvg=(a,b)=>r1(avg(rh.filter(([dt,x])=>x!=null&&daysAgo(dt)>=a&&daysAgo(dt)<b).map(x=>x[1])));
   const L=raceLoad(),bn=calcBurnout();
@@ -225,6 +240,7 @@ function insightRaw(){
       workoutsDone:wT.map(wo),planned:pl&&pl.type?{type:pl.type,note:pl.note||undefined}:null,prescription:sg?{title:sg.title,why:sg.why}:null,
       recoveryDrivers:recoveryDrivers().map(x=>({k:x.k,now:x.val,vs:x.base,status:x.st})),burnoutScore0to100:bn.score},
     strategy:insStrategy(),
+    training:insTraining(),
     nutrition:insNutrition(),
     week:{last7days:dg(0,7),previous7days:dg(7,14),readinessAvg:rAvg(0,7),readinessAvgPrev:rAvg(7,14),bodyAvg:bAvg(0,7),bodyAvgPrev:bAvg(7,14),thisCalendarWeekMin:Math.round(L.now),usualWeekMin:L.base?Math.round(L.base):null,
       workouts:d.workouts.filter(w=>daysAgo(w.date)<14).map(wo),hardSetsPerMuscle:weeklySets(),
@@ -246,7 +262,10 @@ Rules:
 - Explain cause and effect by linking data in the order it happened, for example a short night, then a lower heart rate variability, then a session that felt harder. Cite a correlation only when its strength is moderate or strong, and call it an association.
 - Do not invent patterns from null or missing values. If a horizon has too little data, say so in one sentence and name the one log that would unlock it.
 - Blood, weight and blood pressure: comment on direction over time and on lifestyle factors that plausibly move the marker. Never diagnose and never suggest medication. For a high or worsening result, advise discussing it with a doctor.
-- today.prescription and strategy (the next 7 days, with minutes and effort 1-5 per day) are computed by the app from recovery, load, the weekly plan and training history. Base training advice on them and quote their durations and effort levels. If the data clearly calls for something different, say so and give the reason in one sentence.
+- today.prescription and strategy (the next 7 days, with minutes and effort 1-5 per day, and the main set of each training day in strategy.days[].main) are computed by the app from recovery, load, the weekly plan and training history. Base training advice on them and quote their durations, effort levels and main sets. strategy.targetsBy says whether the app gives targets by pace, heart rate, power or effort; never invent a pace, a wattage or a heart rate. If the data clearly calls for something different, say so and give the reason in one sentence.
+- strategy.comeback is a return after time off (the week and the share of the usual week) or after an injury (a run-walk step or the next thing added back). Keep every suggestion inside it; never suggest more running, more time or harder sessions than it allows.
+- week.workouts[].pain0to10 is the pain the person gave on that workout, 0 (none) to 10 (worst). 3 or less: fine to carry on. 5 or more: step back to the previous step. 7 or more: stop running on it and have it checked by a doctor or physiotherapist. Never diagnose an injury.
+- training.fitnessMarker is the watch's own aerobic fitness estimate now and daysApart earlier (four weeks or more). It is a progress marker, not a target: mention it only when it changed, in one sentence.
 - nutrition holds the app's protein, carbs and fat targets for today in grams, computed from body weight, today's training and the person's food goal. Use these numbers for food questions and turn them into everyday foods and portions (rice, chicken, eggs, tempeh, tofu, fish, fruit). nutrition.eatenToday and lastWeekLogged are what the person logged, often a rough guess and often incomplete for today; estimatedUseKcal is an estimate without all-day activity data, so speak of both as approximate. nutrition.nextSession holds the app's advice for eating before and during the next session; repeat it rather than inventing other amounts. Never prescribe a diet to treat a blood result; for that, advise a doctor or dietitian.
 - today.lastNight.night and week.sleep[].night hold the detailed night from the sleep tracker when there is one: sleep stages in minutes, awake breaks, efficiency, the tracker's own sleep score with its three parts (amount of sleep, solidity, regeneration), and overnight heart rate, heart rate variability and breathing against the tracker's usual (its 28-night baseline). Use them to say how the night went in everyday words (deep sleep, dreaming sleep for REM, time awake, how broken the night was). The tracker's sleep score is its own scale, not the app's recovery score. One pattern across several nights matters more than one night. Never diagnose a sleep disorder from them.
 - Never name an app, a device brand or a data source. Say "your watch" or "your scale" only when where a number came from matters.

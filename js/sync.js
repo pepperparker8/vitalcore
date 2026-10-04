@@ -215,13 +215,16 @@ async function pullIntervals(){
   // wellness is kept per day and merged field by field (never wiped); a day older than 400 days is dropped
   d.wellness=d.wellness||{};
   Object.keys(d.wellness).forEach(k=>{if(daysAgo(k)>400)delete d.wellness[k];});
-  let latest=null;
+  let latest=null,eftp=null;
   const num=v=>typeof v==='number'&&v>0?v:null;
   for(const w of wl){
     const date=w.id;if(!date)continue;
     const cur=d.wellness[date]=d.wellness[date]||{};
     const inc={steps:w.steps??null,rhr:w.restingHR??null,hrv:w.hrv??null,slHr:num(w.avgSleepingHR),spo2:num(w.spO2),sleepScore:w.sleepScore??null,sleepMin:w.sleepSecs?Math.round(w.sleepSecs/60):null,sleepQual:num(w.sleepQuality),resp:num(w.respiration),ctl:w.ctl??null,atl:w.atl??null};
     for(const [k,v] of Object.entries(inc)){if(v!=null)cur[k]=v;else if(!(k in cur))cur[k]=null;}
+    // v121: the watch's VO2max, a progress marker only (stored only on days that have one); the Ride eFTP backs up a missing FTP
+    const vo=num(w.vo2max);if(vo&&vo>=20&&vo<=95)cur.vo2=Math.round(vo*10)/10;
+    const ri=(w.sportInfo||[]).find(x=>x&&x.type==='Ride');if(ri&&num(ri.eftp))eftp=ri.eftp;
     if(w.ctl!=null&&w.atl!=null)latest=w;
     // sleep: new nights are created; on an existing night only empty fields and earlier imports are touched.
     // A night Polar already delivered in detail (v117) takes only "rested" from here: Intervals.icu's duration and
@@ -239,12 +242,14 @@ async function pullIntervals(){
       if(!a.id||!date||isGone(id))continue;
       const dm=Math.round((a.moving_time||a.elapsed_time||0)/60);
       const num=(v,lo,hi)=>typeof v==='number'&&v>=lo&&v<=hi?Math.round(v):null;
-      const icu={hr:num(a.average_heartrate,30,230),hrMax:num(a.max_heartrate,30,250),kcal:num(a.calories,1,20000),elev:num(a.total_elevation_gain,1,15000),load:num(a.icu_training_load,1,2000),rpe:num(a.perceived_exertion??a.icu_rpe,1,10)};
+      // pw/np: average and weighted average watts; dw: 1 when the watts came from a power meter (v121, picks power targets)
+      const icu={hr:num(a.average_heartrate,30,230),hrMax:num(a.max_heartrate,30,250),kcal:num(a.calories,1,20000),elev:num(a.total_elevation_gain,1,15000),load:num(a.icu_training_load,1,2000),rpe:num(a.perceived_exertion??a.icu_rpe,1,10),
+        pw:num(a.icu_average_watts??a.average_watts,1,2500),np:num(a.icu_weighted_avg_watts,1,2500),dw:a.device_watts===true?1:null};
       Object.keys(icu).forEach(k=>{if(icu[k]==null)delete icu[k];});
       const has=Object.keys(icu).length>0,old=d.workouts.find(w=>w.id===id);
       if(old){
-        // already imported: fill in or refresh the Intervals.icu details only
-        const oi=wIcu(old),chg=has&&['hr','hrMax','kcal','elev','load','rpe'].some(k=>(oi[k]??null)!==(icu[k]??null)),fixDur=!old.durMin&&!old.sets&&dm>0;
+        // already imported: fill in or refresh the Intervals.icu details only (sub.pain and swim details stay)
+        const oi=wIcu(old),chg=has&&ICU_KEYS.some(k=>(oi[k]??null)!==(icu[k]??null)),fixDur=!old.durMin&&!old.sets&&dm>0;
         if(chg||fixDur){put('workouts',{...old,...(fixDur?{durMin:dm}:{}),...(chg?{sub:{...(old.sub||{}),icu}}:{})});n++;}
         continue;
       }
@@ -256,8 +261,28 @@ async function pullIntervals(){
   if(!d.wtBack){
     try{const r=await fetch(`${base}/wellness?oldest=${dAgo(365)}&newest=${dAgo(91)}`,H);if(r.ok){for(const w of await r.json())if(w.id)n+=icuWeight(d,w.id,w.weight);d.wtBack=td();}}catch(e){}
   }
+  await icuThrPull(d,base,H,eftp);
   save(d);
   return{n};
+}
+const ICU_KEYS=['hr','hrMax','kcal','elev','load','rpe','pw','np','dw'];
+// v121: your thresholds from the Intervals.icu sport settings, kept on this phone only (d.icuThr) and read by
+// stThr() in sessions.js. At most once a day; a failure keeps the last ones. Each value is range-checked so a
+// typo there cannot set silly targets: LTHR 100-210, max HR 120-230, FTP 50-600 W, threshold pace 2-7 m/s.
+async function icuThrPull(d,base,H,eftp){
+  const t=d.icuThr=d.icuThr||{},rg=(v,lo,hi)=>typeof v==='number'&&v>=lo&&v<=hi?v:null;
+  if(rg(eftp,50,600))t.ride={...(t.ride||{}),eftp:Math.round(eftp)};
+  if(t.at&&Date.now()-t.at<864e5)return;
+  try{
+    const r=await fetch(base,H);if(!r.ok)return;
+    const ss=(await r.json()).sportSettings||[],of=k=>ss.find(s=>(s.types||[]).includes(k));
+    const pick=(s,run)=>{const o={};if(!s)return o;
+      const l=rg(s.lthr,100,210),m=rg(s.max_hr,120,230);if(l)o.lthr=Math.round(l);if(m)o.maxHr=Math.round(m);
+      if(run){const p=rg(s.threshold_pace,2,7);if(p)o.pace=Math.round(p*1000)/1000;}else{const f=rg(s.ftp,50,600);if(f)o.ftp=Math.round(f);}
+      return o;};
+    const ef=t.ride&&t.ride.eftp;
+    d.icuThr={run:pick(of('Run'),1),ride:{...pick(of('Ride')),...(ef?{eftp:ef}:{})},at:Date.now()};
+  }catch(e){}
 }
 // one weigh-in from Intervals.icu (your scale's app passes it on); a typed weight that day is never replaced.
 // Resting HR is not copied onto the weigh-in (it lives in wellness). Returns 1 when something changed.
@@ -277,6 +302,63 @@ async function testIntervals(){
     if(r.ok){res.textContent='Connected ✓';res.className='api-test-res ok';}
     else{res.textContent=icuErr(r.status);res.className='api-test-res fail';}
   }catch(e){res.textContent='Network error';res.className='api-test-res fail';}
+}
+// ── v121: a planned session to Intervals.icu, which passes it to the watch at the watch's next sync ──
+// Only our own events are ever deleted: the id stored when we sent it, or an external_id starting ICU_PFX.
+// The owner's own events (no external_id, or one from another app) are never touched.
+// Sent state is this phone only: d.icuSent {date:{id, sig, at}}, kept 14 days. TH.SEND_DAYS days can be sent (1 = today).
+const ICU_PFX='vc-',ICU_OUT={Run:'Run',Cycle:'Ride',Swim:'Swim'};
+const icuOwn=(e,was)=>!!e&&(String(e.external_id||'').startsWith(ICU_PFX)||(!!was&&was.id!=null&&String(e.id)===String(was.id)));
+// the event for a plan day, or null when it cannot go to the watch (rest, strength, yoga, no session)
+function icuEvent(x,thr){
+  const type=x&&x.sess&&ICU_OUT[x.sess.type];if(!type)return null;
+  const description=sessIcu(x.sess,thr);if(!description)return null;
+  return{category:'WORKOUT',type,start_date_local:x.date+'T00:00:00',name:x.sess.name,description,external_id:ICU_PFX+x.date};
+}
+// a short fingerprint of the event, so an unchanged session is not sent twice
+const icuSig=ev=>{const s=canon(ev);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return(h>>>0).toString(36);};
+async function icuF(url,o){try{return await fetch(url,o);}catch(e){throw new Error('Intervals.icu unreachable — offline?');}}
+// delete our own planned workouts on that date; when the list cannot be read, only the id we stored
+async function icuDropOurs(base,H,date,was){
+  const r=await icuF(`${base}/events?oldest=${date}&newest=${date}&category=WORKOUT`,H);
+  if(r.status===401||r.status===403)throw new Error(icuErr(r.status));
+  const evs=r.ok?await r.json():null;
+  const ids=Array.isArray(evs)?evs.filter(e=>(e.start_date_local||'').slice(0,10)===date&&icuOwn(e,was)).map(e=>e.id):was&&was.id!=null?[was.id]:[];
+  for(const id of ids){
+    const x=await icuF(`${base}/events/${encodeURIComponent(id)}`,{method:'DELETE',...H});
+    if(!x.ok&&x.status!==404)throw new Error(icuErr(x.status));
+  }
+  return ids.length;
+}
+let _icuBusy='';
+// Send to watch (rm: take ours off instead). A plan that changed replaces ours; an unchanged one is not sent again.
+async function icuSendDay(date,rm){
+  const d=S();
+  if(!d.intervalsKey||!d.intervalsID){showToast('Connect Intervals.icu in Settings first');return;}
+  if(_icuBusy)return;
+  const st=strategy(),x=st&&st.days.find(y=>y.date===date);
+  if(!x||x.i>=TH.SEND_DAYS||x.done)return;
+  const ev=rm?null:icuEvent(x,st.thr),was=(d.icuSent||{})[date];
+  if(!ev&&!was)return;
+  const sig=ev&&icuSig(ev);
+  if(ev&&was&&was.sig===sig){showToast('Already on your watch');return;}
+  const base=icuBase(d.intervalsID),H={headers:icuHdr(d.intervalsKey)};
+  let gone=false,rec=null;
+  _icuBusy=date;refreshAll();
+  try{
+    await icuDropOurs(base,H,date,was);gone=true;
+    if(ev){
+      const r=await icuF(`${base}/events`,{method:'POST',headers:{...H.headers,'Content-Type':'application/json'},body:JSON.stringify(ev)});
+      if(!r.ok)throw new Error(icuErr(r.status));
+      const j=await r.json();rec={id:j&&j.id!=null?j.id:null,sig,at:Date.now()};
+    }
+    showToast(ev?'Sent to Intervals.icu. It reaches your watch at the next sync.':'Taken off Intervals.icu. It leaves your watch at the next sync.');
+  }catch(e){showToast(e.message||'Could not send it');}
+  finally{
+    // our old event is gone once the delete ran, so the stored one goes too, even when the new one failed
+    if(gone||rec){const n=S(),k={};Object.entries(n.icuSent||{}).forEach(([dt,v])=>{if(dt!==date&&daysAgo(dt)<=14)k[dt]=v;});if(rec)k[date]=rec;n.icuSent=k;save(n);}
+    _icuBusy='';refreshAll();
+  }
 }
 async function testClaudeKey(){
   const key=$('sClaudeKey').value.trim(),res=$('claudeTestRes');

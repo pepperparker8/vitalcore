@@ -265,9 +265,10 @@
       <div id="wStr" style="display:none"><div class="gym-top"><div class="fl" id="strLbl">EXERCISES</div><button type="button" class="gym-tgl" id="gymTgl" onclick="toggleGym()">Gym mode</button></div>
         <input type="text" class="inp" id="strSearch" placeholder="Search or type a new exercise" oninput="strPick()" style="margin-bottom:8px">
         <div class="str-picks" id="strPick"></div><div id="strList"></div></div>
-      <details class="sl-more" id="wMore"><summary>Date, effort and note (optional)</summary>
+      <details class="sl-more" id="wMore"><summary>Date, effort, pain and note (optional)</summary>
       <div class="fg"><div class="fl">DATE</div><input type="date" class="inp" id="wDate"></div>
       <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select><div class="set-note" id="wEffNote"></div></div>
+      <div class="fg" id="wPainFg"><div class="fl">PAIN</div><div class="pn-row" id="wPainRow" role="group" aria-label="Pain, 0 to 10"></div><input type="hidden" id="wPain"><div class="set-note" id="wPainNote">0 is none, 10 is the worst. Used when you come back from an injury.</div></div>
       <div class="fg"><div class="fl">NOTES</div><input type="text" class="inp" id="wNotes" placeholder="Shown in your activity list"></div>
       </details>
       <button class="btn-gold" id="wSave" onclick="saveWorkout()">Save workout</button>
@@ -400,6 +401,7 @@
       <div class="fg"><div class="fl">INTERVALS.ICU API KEY</div><input type="password" class="inp" id="sInterKey" placeholder="Your API key" autocomplete="off">
         <div class="set-note">Intervals.icu → Settings → Developer Settings. Stays on this phone only.</div>
         <div class="api-test-row"><button class="api-test-btn" onclick="testIntervals()">Test connection</button><span class="api-test-res" id="icuTestRes"></span></div>
+        <div class="set-note">To get planned sessions on your watch, turn on Upload planned workouts in Intervals.icu (Settings, under your watch's connection). Insights then has Send to watch on today's session.</div>
       </div>
       <div class="fg"><div class="fl">POLAR APP KEY</div><input type="password" class="inp" id="sPolarKey" placeholder="APP_TOKEN of your VitalCore backend" autocomplete="off">
         <div class="set-note">Brings each night in detail from your Polar Loop 2: sleep stages, score, heart rate variability and breathing while asleep. The key is the APP_TOKEN of your VitalCore backend on Vercel. Stays on this phone only.</div>
@@ -484,6 +486,7 @@
 <script src="js/progress.js"></script>
 <script src="js/plan.js"></script>
 <script src="js/coach.js"></script>
+<script src="js/sessions.js"></script>
 <script src="js/strategy.js"></script>
 <script src="js/fuel.js"></script>
 <script src="js/health.js"></script>

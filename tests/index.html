@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VitalCore tests</title>
-<!-- v118 acceptance tests (Spec v2, Phase A), v119 chart, briefing and import tests. Open over a local server: /tests/. No library, not cached by sw.js, never writes storage or calls the network. -->
+<!-- v118 acceptance tests (Spec v2, Phase A), v119 chart, briefing and import tests, v120 mood chart, v121 training plan, pain, threshold import and send-to-watch tests. Open over a local server: /tests/. No library, not cached by sw.js, never writes storage or calls the network. -->
 <style>
 :root{--bg:#F3F4F6;--card:#FFFFFF;--text:#14171C;--t2:#5B6472;--ok:#0D7A6B;--bad:#C2361B}
 @media (prefers-color-scheme:dark){:root{--bg:#121316;--card:#1C1E22;--text:#ECEDEF;--t2:#9AA2AE;--ok:#3FB8A5;--bad:#FF7A5C}}
@@ -42,6 +42,7 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <script src="../js/progress.js"></script>
 <script src="../js/plan.js"></script>
 <script src="../js/coach.js"></script>
+<script src="../js/sessions.js"></script>
 <script src="../js/strategy.js"></script>
 <script src="../js/fuel.js"></script>
 <script src="../js/health.js"></script>
@@ -248,12 +249,14 @@ run('Briefing data',()=>{
     s.measurements.push({id:'mi-'+dt,date:dt,weight:70+i/10,hr:null,bpSys:null,bpDia:null});
   }
   s.checkins.reverse();
+  s.workouts.slice(0,14).forEach((w,i)=>{w.sub.pain=i%4;});for(let i=0;i<60;i+=2)(s.wellness[dAgo(i)]=s.wellness[dAgo(i)]||{}).vo2=52-i/20;   // v121: pain and the fitness estimate
   for(let i=0;i<6;i++)s.bloodLogs.push({id:'b'+i,date:dAgo(i*30),glucose:90+i,chol:180+i,uric:5+i/10,hdl:50,ldl:110});
   s.polarNights=[];for(let i=0;i<14;i++){const dt=dAgo(i);
     s.polarNights.push({id:'pn-'+dt,date:dt,data:{start:dt+'T23:00:00',end:dt+'T06:30:00',span:450,asleep:420,goal:450,rating:3,stages:{wake:30,rem:90,light:230,deep:100,unknown:0,remPct:20,deepPct:22},score:78,parts:{duration:80,solidity:70,refresh:75},eff:93,cont:3.5,inter:{total:30,long:10,short:20,n:12,nLong:2,nShort:10},hyp:Array.from({length:60},(_,k)=>[k*450,k%4]),cycles:[[0,1],[5400,2],[10800,2],[16200,1],[21600,1]],hrv:[{t:dt+'T23:05:00',dt:300,v:Array.from({length:80},()=>50)}],br:[{t:dt+'T23:05:00',dt:300,v:Array.from({length:80},()=>4000)}],rc:{rri:1100,rmssd:52,resp:4000,baseRri:1080,baseRmssd:50,baseResp:4050}}});}
   s.insightLog=[0,1,2].map(i=>({date:dAgo(i+1),time:'07:00',ts:Date.now()-i,archetype:'Steady builder',...Object.fromEntries(INS_KEYS.map(k=>[k,long])),qa:[{q:'Why?',a:long,ts:1}]}));
   const D=insightData(),J=JSON.stringify(D);window.HEAVY=D;
-  check('Briefing data: a heavy month stays under 15,000 characters',J.length<15000,`${J.length} characters`);
+  // v121: 16,000 (was 15,000): v120 sent 14,928 for this month; the training plan detail adds about 600 (main sets, targets, comeback, pain, fitness estimate)
+  check('Briefing data: a heavy month stays under 16,000 characters',J.length<16000,`${J.length} characters`);
   check("Briefing data: today's check-in and last night appear once",D.today.checkin&&!(D.week.checkins||[]).some(c=>c.date===td())&&D.today.lastNight&&!(D.week.sleep||[]).some(x=>x.date===D.today.lastNight.date||x.date===td()),`week check-ins ${(D.week.checkins||[]).length}, week nights ${(D.week.sleep||[]).length}`);
   check('Briefing data: no app or device names',!/Polar|Intervals|Garmin|Xiaomi/i.test(J),(J.match(/.{30}(Polar|Intervals|Garmin|Xiaomi).{30}/i)||['none'])[0]);
   check('Briefing data: blood keeps the latest 3 results per marker and 2 earlier briefings',(D.health.bloodMgDl||[]).length===3&&D.health.bloodMgDl[0].date===dAgo(60)&&D.previousBriefings.length===2,`${(D.health.bloodMgDl||[]).length} blood tests from ${(D.health.bloodMgDl||[]).map(x=>x.date).join(', ')}; ${D.previousBriefings.length} briefings`);
@@ -285,6 +288,352 @@ run('Weight import',()=>{
   check('Weight: an imported weight you corrected stays corrected',n3===0&&_s.measurements.find(m=>m.id==='mi-'+a).weight===69.9,JSON.stringify(_s.measurements.find(m=>m.id==='mi-'+a)));
   _s.gone=['mi-'+dAgo(1)];const n4=icuWeight(_s,dAgo(1),70);
   check('Weight: a deleted weigh-in is not brought back',n4===0,`${n4} added`);
+});
+
+// ── v121 sessions ──
+const THR_FULL={run:{lthr:170,maxHr:190,pace:4},ride:{ftp:250,lthr:160,maxHr:185},at:Date.now()};
+const fams=Object.keys(SESS),lvFams=fams.filter(f=>!SESS[f].time&&!SESS[f].str&&f!=='runReturn');
+run('Sessions library',()=>{
+  base();const bad=[];
+  fams.forEach(f=>{for(let l=1;l<=10;l++){const s=sessFit(f,l,10,400,null,{});
+    if(!s){bad.push(`${f} ${l} null`);continue;}
+    const all=[...s.w,...s.m,...s.c].flatMap(x=>x.set?x.set:[x]);
+    all.forEach(x=>{const n=['min','mtr','sets'].filter(k=>x[k]!=null).length;if(n!==1)bad.push(`${f} ${l} step "${x.lbl}" has ${n} durations`);});
+    if(s.m.some(x=>x.set&&x.set.some(y=>y.set)))bad.push(`${f} nested`);}});
+  check('Sessions: every family builds at levels 1 to 10, one duration per step, no nesting',!bad.length,bad.slice(0,4).join('; ')||`${fams.length} families`);
+  const down=lvFams.filter(f=>{let p=-1;for(let l=1;l<=10;l++){const q=sessMake(f,l).q;if(q<p)return true;p=q;}return false;});
+  check('Sessions: quality minutes never go down as the level rises',!down.length,down.join(', ')||lvFams.map(f=>`${f} ${sessMake(f,1).q} → ${sessMake(f,10).q}`).join(', '));
+  const names=new Set(Object.values(CAT).flat().map(x=>x[0])),strN=['wt','cal'].flatMap(f=>[1,6,10].flatMap(l=>[sessMake(f,l,{}),sessMake(f,l,{noLower:1})]).flatMap(s=>s.m.map(x=>x.lbl)));
+  const miss=strN.filter(n=>!names.has(n)),nl=sessMake('wt',5,{noLower:1}).m.map(x=>x.lbl);
+  check('Sessions: strength names come from the exercise list; no legs when the lower body is hurt',!miss.length&&!nl.some(n=>/Squat|Deadlift|Calf|Lunge/.test(n))&&nl.includes('Plank'),miss.join(', ')||nl.join(', '));
+});
+run('Sessions targets',()=>{
+  base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));const T=stThr();
+  const p=sessTarget({z:'z4',min:5},'Run',T,'pace');
+  check('Targets: pace from threshold speed, watch text in % of pace',p.txt==='4:10 to 4:26\u00a0/km'&&p.icu==='94-100% Pace',JSON.stringify(p));
+  const h=sessTarget({z:'z4',min:5},'Run',T,'hr'),hs=sessTarget({z:'z5',min:2},'Run',T,'hr');
+  check('Targets: heart rate from threshold heart rate; a short hard step uses words',h.txt==='162 to 168 bpm'&&h.icu==='95-99% LTHR'&&hs.icu===''&&/hard/.test(hs.txt),`${JSON.stringify(h)} ${JSON.stringify(hs)}`);
+  const w=sessTarget({z:'z4',min:8},'Cycle',T,'pw');
+  check('Targets: power from threshold power, watch text in bare %',w.txt==='225 to 250 W'&&w.icu==='90-100%',JSON.stringify(w));
+  _s.workouts=[1,2].map(i=>({id:'r'+i,date:dAgo(i*3),type:'Cycle',durMin:60,sub:{icu:{pw:180,dw:1}}}));
+  const a=sessKind('Cycle',T);_s.workouts[1].sub.icu.dw=0;const b=sessKind('Cycle',T);
+  check('Targets: rides use power with 2 recent power-meter rides, else heart rate',a==='pw'&&b==='hr',`${a}, then ${b}`);
+  _s.icuThr={};_s.workouts=[150,160,170,180,185,188,190].map((x,i)=>({id:'h'+i,date:dAgo(i+1),type:'Run',durMin:40,sub:{icu:{hrMax:x}}}));
+  const E=stThr(),e=sessTarget({z:'z4',min:5},'Run',E,sessKind('Run',E));
+  check('Targets: without thresholds, heart rate is estimated from max HR, shown as about, never sent',E.run.est&&E.run.maxHr===190&&E.run.lthr===167&&/^about /.test(e.txt)&&e.icu==='',`${JSON.stringify(E.run)} ${JSON.stringify(e)}`);
+  _s.workouts=[];const N=stThr(),k=sessKind('Run',N),n=sessTarget({z:'z2',min:30},'Run',N,k);
+  check('Targets: with no heart rate data, effort words',k==='eff'&&n.txt===ZN.eff.z2&&n.icu==='',`${k}: ${n.txt}`);
+});
+run('Sessions watch text',()=>{
+  base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));const T=stThr();
+  const t=sessIcu(sessFit('runTempo',4,50,60,null),T),secs=t.split('\n\n');
+  const steps=t.split('\n').filter(l=>l.startsWith('- '));
+  const cues=steps.map(l=>l.slice(2).split(/ \d/)[0]);
+  check('Watch text: Warmup, a repeat set and Cooldown, separated by blank lines',/^Warmup\n- /.test(secs[0])&&secs.some(x=>/^Main Set 2x\n- Steady hard 8m 94-100% Pace\n- Jog 2m 70-78% Pace$/.test(x))&&/^Cooldown\n/.test(last(secs)),t);
+  check('Watch text: cues are letters and spaces only, each step ends in a % target',cues.every(c=>/^[A-Za-z ]+$/.test(c))&&steps.every(l=>/\d+-\d+% Pace$/.test(l)),steps.join(' | '));
+  const r=sessIcu(sessFit('rideHard',3,60,70,null),{...T}),rw=r.split('\n').filter(l=>l.startsWith('- '));
+  check('Watch text: heart rate rides end in % LTHR',rw.every(l=>/% LTHR$/.test(l)),rw.join(' | '));
+  _s.icuThr={};_s.workouts=[150,160,170,180,185,188,190].map((x,i)=>({id:'h'+i,date:dAgo(i+1),type:'Run',durMin:40,sub:{icu:{hrMax:x}}}));
+  const e=sessIcu(sessFit('runTempo',2,45,55,null));
+  check('Watch text: estimated heart rates send no targets; strength and yoga send nothing',!/%/.test(e)&&/Steady hard 6m/.test(e)&&sessIcu(sessFit('wt',3,30,60,null))===''&&sessIcu(sessFit('yoga',1,20,30,null))==='',e.replace(/\n/g,' | '));
+  const h=sessIcu(sessFit('runHard',3,40,60,null),T);
+  check('Watch text: short steps in seconds, no digits in a cue',/- Stride 20s/.test(h)&&/- Jog 150s/.test(h),h.replace(/\n/g,' | '));
+});
+run('Sessions fit',()=>{
+  base();const r=[[30,40],[45,55],[90,100]].map(([lo,hi])=>{
+    const s=sessFit('runTempo',10,lo,hi,null),e=sessFit('runEasy',1,lo,hi,null);
+    return{lo,hi,ok:s&&s.min>=lo-0.01&&s.min<=hi+0.01&&e.min>=lo&&e.min<=hi,t:s&&Math.round(s.min),lv:s&&s.lvl,e:e.min};});
+  check('Fit: hard and easy sessions land inside the time range',r.every(x=>x.ok),r.map(x=>`${x.lo}-${x.hi}: tempo level ${x.lv} ${x.t} min, easy ${x.e} min`).join('; '));
+  const c=sessFit('runTempo',10,90,100,{thr:12,int:20,rep:10});
+  check('Fit: the quality cap steps the level down',c&&c.q<=12&&c.lvl===2,c&&`level ${c.lvl}, ${c.q} min quality`);
+  const n=sessFit('runHard',1,20,25,null);
+  check('Fit: no room even at level 1 gives nothing (the plan makes the day easy)',n===null,JSON.stringify(n&&n.min));
+  const L=sessLines(sessFit('runTempo',3,40,50,null),{run:{pace:4},ride:{}});
+  check('Fit: screen lines show warm-up, main set with real paces, cool-down',L.w.length&&/^3 times: Steady hard 5min at 4:10 to 4:26\s\/km, then Jog 2min at /.test(L.m[0])&&L.c.length,L.m.join(' / '));
+});
+// ── v121 strategy: a training athlete with a fixed weekly pattern (weekday 0 = Monday: [type, minutes, effort]) for 6 weeks up to yesterday ──
+const PAT5={1:['Run',50,4],2:['Run',45,2],3:['Cycle',60,2],5:['Run',100,2],6:['Run',45,2]};
+const PAT7={...PAT5,0:['Run',30,2],4:['Run',30,2]};
+const wdOf=dt=>(new Date(dt+'T12:00:00').getDay()+6)%7,WK0=stMon(td());
+const inCal=(dt,k)=>dt>=stAdd(WK0,k*7)&&dt<stAdd(WK0,k*7+7);   // calendar week k (0 = this week, -1 = last week)
+const wk1=(dt,i,ty,min,rpe,o)=>({id:'w'+dt+i,date:dt,type:ty,durMin:min,distKm:ty==='Run'?Math.round(min/5.5*10)/10:ty==='Cycle'?Math.round(min/2.5):0,rpe,notes:'',sets:[],...(o||{})});
+function trn(o={}){
+  base();const pat=o.pat||PAT5,W=[];
+  for(let i=1;i<=(o.days||42);i++){const dt=dAgo(i),p=pat[wdOf(dt)];if(p&&!(o.skip&&o.skip(dt,wdOf(dt),i)))W.push(wk1(dt,0,...p));}
+  _s.workouts=W;_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));return _s;
+}
+// one long session missing three weeks ago, so the last three weeks are not all full (no easier week)
+const noLong3=(dt,wd)=>inCal(dt,-3)&&wd===5;
+// a run every day from `from` days ago to `to` days ago, effort 4 and 2 in turn
+const daily=(from,to)=>{const W=[];for(let i=from;i>=to;i--)W.push(wk1(dAgo(i),0,'Run',40,i%2?4:2));return W;};
+const stOut=st=>st.days.map(x=>`${x.date.slice(5)} ${x.role} ${x.type}${x.fam?' '+x.fam+' L'+x.lvl:''}${x.lo?' '+x.lo+'-'+x.hi:''}`).join('; ');
+const r5t=n=>Math.max(5,Math.round(n/5)*5);
+// Plan caps: quality caps and hard days
+run('Plan caps',()=>{
+  [['five days a week',{skip:noLong3}],['every day',{pat:PAT7,skip:noLong3}]].forEach(([lab,o])=>{
+    trn(o);const st=strategy(),D=st.days.filter(x=>!x.done),hard=st.days.filter(x=>x.role==='hard'),T=st.target;
+    const b2b=st.days.some((x,i)=>i&&x.role==='hard'&&st.days[i-1].role==='hard')||(st.days[0].role==='hard'&&stHard(dAgo(1),_s.workouts.filter(w=>w.date===dAgo(1))));
+    const q=c=>D.filter(x=>x.sess&&(!c||x.sess.cap===c)).reduce((a,x)=>a+x.sess.q,0);
+    check(`Plan caps (${lab}): 1 or 2 hard days, never back to back, each a session from the library`,hard.length>=1&&hard.length<=2&&!b2b&&hard.every(x=>x.sess&&x.sess.cap),`${st.mode}: ${stOut(st)}`);
+    check(`Plan caps (${lab}): quality minutes within the weekly caps, so 80% or more stays easy`,q('thr')<=T*TH.SESS_THR+0.01&&q('int')<=T*TH.SESS_INT+0.01&&q('rep')<=T*TH.SESS_REP+0.01&&q()<=T*0.2+0.01,`target ${T} min: steady hard ${q('thr')}, hard ${q('int')}, strides and hills ${q('rep')} min`);
+  });
+});
+run('Plan ride',()=>{
+  trn({pat:{1:['Cycle',40,2],3:['Cycle',40,2],5:['Cycle',120,2],6:['Cycle',30,2]},skip:noLong3});let st=strategy(),H=st.days.filter(x=>x.role==='hard');
+  check('Plan ride: a hard ride may run a little over your usual ride (at most a quarter) rather than drop to easy',H.length&&H.every(x=>/^ride/.test(x.fam)&&x.hi<=r5t(45*1.25)),stOut(st));
+  trn({pat:{1:['Cycle',30,2],2:['Cycle',30,2],5:['Cycle',120,2]},skip:noLong3});st=strategy();const E=st.days.find(x=>/needs more time/.test(x.why));
+  check('Plan ride: a hard session that does not fit your time turns easy with that reason, and the week still gets its strength and long days',E&&!st.days.some(x=>x.role==='hard')&&st.days.some(x=>x.role==='strength')&&st.days.some(x=>x.role==='long'),stOut(st));
+});
+// Plan long: long sessions: 10% over the longest in 30 days, 30% of the week, a run at most 2 h 30 min
+run('Plan long',()=>{
+  trn({pat:{1:['Run',60,2],2:['Run',60,2],3:['Run',60,2],5:['Run',60,2],6:['Run',60,2]},skip:noLong3});_s.workouts.push(wk1(dAgo(38),1,'Run',150,2));
+  let st=strategy(),L=st.days.find(x=>x.role==='long');
+  check('Plan long: a long run grows at most 10% over your longest in the last 30 days',L&&L.hi<=Math.floor(60*TH.LONG_GROW/5)*5&&L.lo>=55,L?`${L.lo} to ${L.hi} min (longest in 30 days 60; 150 min 38 days ago)`:stOut(st));
+  trn({pat:{1:['Run',120,2],2:['Run',120,2],3:['Run',120,2],5:['Run',170,2],6:['Run',120,2]},skip:noLong3});
+  st=strategy();L=st.days.find(x=>x.role==='long');
+  check('Plan long: a long run is at most 2 h 30 min',L&&L.hi===TH.LONG_RUN_MAX&&L.lo<TH.LONG_RUN_MAX,L?`${L.lo} to ${L.hi} min, week target ${st.target}`:stOut(st));
+  const lp=ty=>{trn({pat:{1:[ty,30,2],2:[ty,30,2],5:[ty,120,2]},skip:noLong3});const s=strategy();return{s,L:s.days.find(x=>x.role==='long')};};
+  const a=lp('Run'),b=lp('Cycle');
+  check('Plan long: a long run is at most 30% of the week; a long ride is limited by the 30-day growth only',a.L&&a.L.hi<=a.s.target*TH.LONG_SHARE&&b.L&&b.L.hi>b.s.target*TH.LONG_SHARE&&b.L.hi<=Math.floor(120*TH.LONG_GROW/5)*5,`run ${a.L&&a.L.lo}-${a.L&&a.L.hi} of ${a.s.target}; ride ${b.L&&b.L.lo}-${b.L&&b.L.hi} of ${b.s.target}`);
+});
+// Plan growth: weekly growth caps; a level up holds the time
+run('Plan growth',()=>{
+  trn({skip:(dt,wd)=>inCal(dt,-1)&&(wd===1||wd===5)});
+  const st=strategy(),b=raceLoad().base,unc=r5t(b*1.07),exp=r5t(Math.max(b,150*TH.WK_UP));
+  check('Plan growth: after a light week, the target grows at most 10% over it (never below your usual week)',st.mode==='build'&&st.target===exp&&exp<unc,`${st.mode}: target ${st.target} (usual ${Math.round(b)}, last week 150, uncapped ${unc})`);
+  const lvl=rpe2=>{trn({pat:PAT7,skip:noLong3});_s.planHist={};[9,2].forEach(n=>{const dt=dAgo(n),w=_s.workouts.find(x=>x.date===dt);w.rpe=n===2?rpe2:4;_s.planHist[dt]={fam:w.type==='Run'?'runTempo':'rideTempo',type:w.type,role:'hard',effort:4};});
+    const f=_s.planHist[dAgo(2)].fam,st=strategy();return{f,lv:st.lv[f],mode:st.mode,target:st.target,base:st.base};};
+  const A=lvl(4),B=lvl(5);
+  check('Plan growth: two planned sessions done as planned: one level up, and the week holds its time (Harder sessions)',A.lv===B.lv+1&&A.mode==='harder'&&A.target<=r5t(A.base)&&B.mode==='build',`done twice: ${A.f} level ${A.lv}, ${A.mode}, target ${A.target}; one harder than planned: level ${B.lv}, ${B.mode}`);
+});
+// Plan levels: levels up and down
+run('Plan levels',()=>{
+  const P=(ds,o={})=>{base();_s.workouts=[...(o.seed||[])];_s.planHist={};
+    ds.forEach(([n,rpe])=>{const dt=dAgo(n);_s.planHist[dt]={fam:'runTempo',type:'Run',role:'hard',effort:4};if(rpe)_s.workouts.push(wk1(dt,1,'Run',45,rpe));});
+    if(o.low)_s.bodyHist[dAgo(o.low)]=20;return progAll().lv.runTempo;};
+  const a=P([[12,3],[10,3],[8,3],[6,3]]);
+  check('Plan levels: up one after two sessions done as planned, and at most once in 7 days',a===2,`four done in 6 days: level 1 → ${a}`);
+  const b=P([[6,3],[4,3]],{low:5}),c=P([[6,3],[4,3]]);
+  check('Plan levels: no step up after a low score in the 3 days before',b===1&&c===2,`with a low score: ${b}; without: ${c}`);
+  const seed=[22,20,18,16,14,12,10,8].map(n=>wk1(dAgo(n),0,'Run',45,4));
+  const d=P([],{seed}),e=P([[6,5],[4,5]],{seed}),f=P([[6,5],[4,5],[2,0]],{seed});
+  check('Plan levels: down one after two harder than planned, and one more after a missed one',d===5&&e===4&&f===3,`seed ${d}, two harder ${e}, then missed ${f}`);
+  const g=P([[6,3],[4,3]],{seed:[]});_s.workouts.find(w=>w.date===dAgo(4)).rpe=5;const h=progAll().lv.runTempo;
+  check('Plan levels: editing a workout\'s effort changes the level',g===2&&h===1,`${g}, after the edit ${h}`);
+});
+// Plan time off: coming back after time off
+run('Plan time off',()=>{
+  const G=g=>{base();_s.workouts=daily(60,g+1);_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));return stReturn();};
+  const r6=G(6),r10=G(10),s10=strategy(),r20=G(20),lv20=progAll().lv.runTempo,r35=G(35);
+  check('Plan time off: 6 days off is not a break',r6===null,JSON.stringify(r6));
+  check('Plan time off: 10 days off: one level down, the first week at 65%, no hard days',r10&&r10.pen===1&&r10.pct===0.65&&s10.mode==='back'&&s10.target===r5t(r10.base*0.65)&&!s10.days.some(x=>x.role==='hard'),r10&&`${s10.mode}, target ${s10.target} of usual ${r10.base}; ${stOut(s10)}`);
+  check('Plan time off: 20 days off: two levels down, half the usual week',r20&&r20.pen===2&&r20.pct===0.5&&lv20===3,r20&&`week ${r20.week} of ${r20.of} at ${r20.pct}; steady hard level ${lv20} (5 before the break)`);
+  check('Plan time off: 35 days off: three levels down, a third of the usual week, 4 weeks back',r35&&r35.pen===3&&r35.pct===0.33&&r35.of===4,JSON.stringify(r35));
+  base();_s.workouts=[...daily(60,36),...daily(25,1)];const done=stReturn();
+  _s.workouts=[...daily(60,14),...daily(3,1)];const mid=stReturn();
+  check('Plan time off: a return ends after its weeks; one that started 3 days ago is still on',done===null&&mid&&mid.gap===10&&mid.week<=2,`${JSON.stringify(done)}; ${mid&&`gap ${mid.gap}, week ${mid.week} of ${mid.of}`}`);
+});
+// Plan injury: back to running after a knee injury
+run('Plan injury',()=>{
+  const K=(runs,o={})=>{trn();_s.workouts=_s.workouts.filter(w=>!(w.type==='Run'&&daysAgo(w.date)<=10));
+    _s.injuries=[{id:'inj1',date:dAgo(30),part:'Knee',sev:2,notes:'',active:!!o.active,ts:Date.now()-(o.healed||10)*864e5}];
+    runs.forEach(([n,p])=>_s.workouts.push(wk1(dAgo(n),1,'Run',20,2,{sub:p==null?null:{pain:p}})));
+    _s.checkins=o.ci||[];return injRet();};
+  const s=[K([[6,2]]),K([[6,2],[4,4]]),K([[6,2],[4,4],[2,5]]),K([[6,2],[4,null]])].map(x=>x&&x.step);
+  check('Plan injury: run-walk steps: pain 2 up, pain 4 stays, pain 5 back, no pain score stays',s.join()==='2,2,1,2',`steps ${s.join(', ')}`);
+  const r=K([[6,2]],{ci:[{id:'c1',date:dAgo(6),soreness:1},{id:'c2',date:dAgo(5),soreness:3}]});
+  check('Plan injury: sore the next morning: the step does not go up',r&&r.step===1,JSON.stringify(r));
+  K([[6,2]]);const st=strategy(),R=st.days.filter(x=>x.type==='Run'&&x.role!=='rest'&&!x.done);
+  const b2b=st.days.some((x,i)=>x.type==='Run'&&x.role!=='rest'&&(i?st.days[i-1].type==='Run'&&st.days[i-1].role!=='rest':_s.workouts.some(w=>w.date===dAgo(1)&&w.type==='Run')));
+  check('Plan injury: on the ladder every run is a run-walk at your step, no hard or long runs, never two days in a row',st.ir&&R.length&&R.every(x=>x.fam==='runReturn'&&x.lvl===2&&x.role!=='hard'&&x.role!=='long')&&!b2b,stOut(st));
+  check('Plan injury: healed 90 days ago: no return plan',K([[6,2]],{healed:90})===null,'');
+  K([],{active:true});const A=strategy(),moving=A.days.filter(x=>!x.done&&x.lo&&!IS_STR(x.type)&&x.type!=='Yoga');
+  check('Plan injury: an active knee injury: no runs or rides, swims instead',moving.length&&moving.every(x=>x.type==='Swim'),stOut(A));
+});
+// Plan swaps: swaps keep the day's role
+run('Plan swaps',()=>{
+  trn({skip:noLong3});let st=strategy();const H=st.days.find(x=>x.role==='hard'&&x.type==='Run'&&!x.done);
+  _s.stSwap={[H.date]:'Cycle'};st=strategy();const X=st.days.find(x=>x.date===H.date);
+  check('Plan swaps: a hard run swapped for a ride stays a hard day, as a ride session',X.role==='hard'&&X.type==='Cycle'&&X.swapFrom==='Run'&&/^ride/.test(X.fam)&&X.swaps.includes('Run'),`${X.role} ${X.type} ${X.fam}, swaps: ${X.swaps.join(', ')}`);
+  _s.stSwap={[H.date]:'Yoga'};const Y=strategy().days.find(x=>x.date===H.date);
+  check('Plan swaps: a swap the role does not allow is ignored',Y.type==='Run'&&!Y.swapFrom,`${Y.role} ${Y.type}`);
+  _s.injuries=[{id:'inj1',date:dAgo(3),part:'Ankle',sev:2,notes:'',active:true}];_s.stSwap={[H.date]:'Run'};st=strategy();
+  check('Plan swaps: with an active leg injury no run, ride, hike or walk is offered, and a run swap is ignored',st.days.every(x=>!x.swaps.some(y=>['Run','Cycle','Hike','Walk'].includes(y)))&&st.days.find(x=>x.date===H.date).type!=='Run',st.days.map(x=>`${x.type}: ${x.swaps.join('/')}`).join('; '));
+});
+// Plan memory: today's plan is remembered until you train, then compared with what you logged
+run('Plan memory',()=>{
+  const T=td(),sv=save;let n=0;save=function(d){n++;sv(d);};
+  try{
+    trn({skip:noLong3});_s.planHist={};stSnap();const p=_s.planHist[T],x=strategy().days[0];
+    check('Plan memory: today\'s session is remembered with its family, level, role, effort and time',p&&p.fam===x.fam&&p.lvl===x.lvl&&p.role===x.role&&p.effort===x.effort&&p.lo===x.lo&&p.hi===x.hi&&n===1,JSON.stringify(p));
+    stSnap();check('Plan memory: nothing is saved again while the plan is the same',n===1,`${n} saves`);
+    const old={};for(let i=1;i<=50;i++)old[dAgo(i)]={fam:null,role:'rest',type:'Run'};_s.planHist={...old,[T]:{...p,lo:p.lo+99}};stSnap();
+    const k=Object.keys(_s.planHist).sort();
+    check('Plan memory: a change before you train updates it, and only the newest 42 days are kept',k.length===TH.PLAN_HIST_N&&k[k.length-1]===T&&k[0]===dAgo(TH.PLAN_HIST_N-1)&&canon(_s.planHist[T])===canon(p),`${k.length} days, oldest ${k[0]}`);
+    _s.planHist[T]={...p,lo:p.lo+99};const before=canon(_s.planHist[T]);_s.workouts.push(wk1(T,1,'Run',30,2));stSnap();
+    check('Plan memory: once you log a workout today, the remembered plan stays as it was',canon(_s.planHist[T])===before,'');
+    trn();_s.workouts=_s.workouts.map(w=>({...w,isEx:true}));_s.wellness={};_s.checkins=[];_s.sleepLogs=[];_s.measurements=[];_s.planHist={};stSnap();
+    check('Plan memory: example data is never remembered',!Object.keys(_s.planHist).length,'');
+  }finally{save=sv;}
+  trn();const D=dAgo(3);_s.workouts=_s.workouts.filter(w=>w.date!==D);_s.planHist={[D]:{fam:'runTempo',type:'Run',role:'hard',effort:4},[T]:{fam:'runEasy',type:'Run',role:'easy',effort:2}};
+  const M=w=>{_s.workouts=_s.workouts.filter(x=>x.date!==D);if(w)_s.workouts.push(w);return stMatch(D);};
+  const r=[M(null),M(wk1(D,1,'Cycle',45,3)),M(wk1(D,1,'Run',45,3,{sub:{pain:4}})),M(wk1(D,1,'Run',45,5)),M(wk1(D,1,'Run',45,null,{sub:{icu:{rpe:9}}}))];
+  check('Plan memory: a planned day reads missed, other sport, done (with effort and pain), harder, and harder from the watch effort',r[0].m==='missed'&&r[1].m==='other'&&r[2].m==='done'&&r[2].eff===3&&r[2].pain===4&&r[3].m==='harder'&&r[4].m==='harder'&&r[4].eff===5&&stMatch(T)===null,r.map(x=>x.m+(x.eff?' '+x.eff:'')+(x.pain!=null?' pain '+x.pain:'')).join(', '));
+});
+// Plan briefing: the briefing gets each day's main set, how targets are given, the comeback, pain on each workout and the fitness estimate
+run('Plan briefing',()=>{
+  trn({skip:noLong3});let st=strategy(),D=insightData(),S7=D.strategy,J=JSON.stringify(D);
+  const mainOk=st.days.every((x,i)=>{const m=S7.days[i].main;return x.done||!x.sess?m===undefined:m===sessSum(x.sess)&&m.length<=70;});
+  check('Plan briefing: each training day carries its main set (70 characters at most), rest and done days none; targets by pace, heart rate (no power meter) and effort',mainOk&&st.days.some(x=>x.sess)&&S7.targetsBy.run==='pace'&&S7.targetsBy.ride==='heart rate'&&S7.targetsBy.swim==='effort'&&!S7.comeback,`${S7.days.map(x=>x.main||'-').join(' | ')}; ${JSON.stringify(S7.targetsBy)}`);
+  check('Plan briefing: no app or device names and no empty fields',!/Polar|Intervals|Garmin/i.test(J)&&!/:null|:""|:\{\}/.test(J),(J.match(/.{30}(Polar|Intervals|Garmin|:null|:""|:\{\}).{30}/i)||['none'])[0]);
+  trn();_s.workouts=_s.workouts.filter(w=>!(w.type==='Run'&&daysAgo(w.date)<=10));
+  _s.injuries=[{id:'inj1',date:dAgo(30),part:'Knee',sev:2,notes:'',active:false,ts:Date.now()-10*864e5}];_s.workouts.push(wk1(dAgo(6),1,'Run',20,2,{sub:{pain:2}}));
+  const cbI=insightData().strategy.comeback;
+  base();_s.workouts=daily(60,11);_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));const cbT=insightData().strategy.comeback;
+  check('Plan briefing: a comeback after an injury gives the run-walk step and the last pain; after time off the week and share of the usual week',cbI&&cbI.after==='injury'&&cbI.part==='Knee'&&cbI.now===`run-walk step 2 of ${RET_LADDER.length}`&&cbI.lastPain0to10===2&&cbT&&cbT.after==='time off'&&cbT.daysOff===10&&cbT.week===1&&cbT.shareOfUsualWeekPct===65,`${JSON.stringify(cbI)}; ${JSON.stringify(cbT)}`);
+  base();_s.workouts=[wk1(dAgo(20),1,'Run',30,2,{sub:{pain:6}}),wk1(dAgo(9),1,'Run',30,2,{sub:{pain:0}}),wk1(dAgo(3),1,'Run',30,2,{sub:{pain:5}}),wk1(dAgo(2),1,'Cycle',30,2)];
+  const vo=(...a)=>{Object.values(_s.wellness).forEach(w=>delete w.vo2);a.forEach(([n,v])=>{(_s.wellness[dAgo(n)]=_s.wellness[dAgo(n)]||{}).vo2=v;});return insightData();};
+  const D1=vo([1,51]),T1=D1.training||{},T2=vo([1,51],[20,50]).training||{},T3=vo([1,51.4],[20,51],[34,50]).training||{};
+  const pn=D1.week.workouts.map(x=>x.date+' '+(x.pain0to10??'-')).sort().join();
+  check('Plan briefing: each workout of the last 14 days carries its pain, 0 kept, none when not given',pn===`${dAgo(9)} 0,${dAgo(3)} 5,${dAgo(2)} -`,pn);
+  check('Plan briefing: the fitness estimate only with two values 28 or more days apart',!T1.fitnessMarker&&!T2.fitnessMarker&&T3.fitnessMarker&&T3.fitnessMarker.now===51.4&&T3.fitnessMarker.before===50&&T3.fitnessMarker.daysApart===33&&T3.fitnessMarker.change===1.4,`${JSON.stringify(T2.fitnessMarker)}; ${JSON.stringify(T3.fitnessMarker)}`);
+  check('Plan briefing: the rules say never invent targets, keep inside a comeback, the pain bands, and the fitness estimate only when it changed',/never invent a pace, a wattage or a heart rate/.test(INS_COMMON)&&/strategy\.comeback/.test(INS_COMMON)&&/pain0to10.*3 or less: fine.*5 or more: step back.*7 or more: stop running on it/.test(INS_COMMON)&&/mention it only when it changed/.test(INS_COMMON),'');
+});
+// Plan rows: the Insights outline opens a day: the session in three parts, swaps, planned against done, the comeback line, no source names
+run('Plan rows',()=>{
+  const box=document.createElement('div');box.hidden=true;box.innerHTML='<div id="stratCard"></div>';document.body.appendChild(box);
+  const stub={refreshAll:()=>renderStrategy()};Object.assign(window,stub);
+  const all=[],R=()=>{renderStrategy();const h=$('stratCard').innerHTML;all.push(h);return h;};
+  const row=dt=>$('stratCard').querySelector(`details.st-x[data-d="${dt}"]`);
+  try{
+    trn({skip:noLong3});_stOpen.clear();R();let st=strategy();
+    const plain=st.days.filter(x=>x.role==='rest'||x.role==='race'),X=$('stratCard').querySelectorAll('details.st-x');
+    check('Plan rows: every day with a session opens; rest and race days stay plain',X.length===st.days.length-plain.length&&plain.every(x=>!row(x.date)),`${X.length} open rows, ${plain.length} plain`);
+    const H=st.days.find(x=>x.role==='hard'&&x.type==='Run'&&!x.done),hx=row(H.date),ht=hx.querySelector('.st-sx').textContent;
+    check('Plan rows: a hard run shows warm-up, main set and cool-down with real paces',/Warm-up/.test(ht)&&/Main set/.test(ht)&&/Cool-down/.test(ht)&&/\/km/.test(ht)&&!hx.open,ht.slice(0,160));
+    _s.stSwap={[dAgo(2)]:'Cycle'};hx.querySelector('.st-sw[onclick*="Cycle"]').click();
+    const sw={...(_s.stSwap||{})},hy=row(H.date),back=hy&&[...hy.querySelectorAll('.st-sw')].find(b=>/^Back to run$/.test(b.textContent));
+    check('Plan rows: a swap is stored for that day, past swaps are dropped, and the row stays open with a way back',sw[H.date]==='Cycle'&&!(dAgo(2) in sw)&&hy.open&&back&&/Swapped from run/.test(hy.textContent),JSON.stringify(sw));
+    back.click();stSwapTo(H.date,'Hacked');
+    check('Plan rows: back to the planned sport clears the swap; an unknown sport is ignored',!(H.date in (_s.stSwap||{}))&&strategy().days.find(x=>x.date===H.date).type==='Run',JSON.stringify(_s.stSwap));
+    _s.workouts.push(wk1(td(),1,'Run',45,5,{sub:{pain:8}}));_s.planHist={[td()]:{fam:'runTempo',lvl:2,type:'Run',role:'hard',effort:4,lo:45,hi:55}};_stOpen.add(td());R();
+    const dt=row(td()),dtt=dt&&dt.textContent;
+    check('Plan rows: a done day shows what was planned and what you did, with effort and pain',dt&&dt.open&&/Planned\s*Steady hard run/.test(dtt)&&/Done\s*Run .*effort 5 of 5 · pain 8 of 10/.test(dtt)&&/Harder than planned/.test(dtt)&&/stop training on it/.test(dtt),dtt);
+    base();_s.workouts=daily(60,11);_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));R();const g=($('stratCard').querySelector('.st-ret')||{}).textContent;
+    _s.injuries=[{id:'inj1',date:dAgo(40),part:'Knee',sev:2,notes:'',active:false,ts:Date.now()-12*864e5}];_s.workouts.push(wk1(dAgo(1),1,'Run',20,2,{sub:{pain:2}}));R();const k=($('stratCard').querySelector('.st-ret')||{}).textContent,both=strategy();
+    check('Plan rows: after time off one line says the week and the share; a leg injury comeback takes its place',/^Coming back after 10 days off: week 1 of 2 at about two thirds of your usual\.$/.test(g)&&both.ret&&both.ir&&/^Coming back from your knee injury: run-walk step 2 of 7\. .* Last pain 2 of 10\.$/.test(k)&&$('stratCard').querySelectorAll('.st-ret').length===1,`${g} | ${k}`);
+    const bad=all.join(' ').match(/polar|intervals|garmin/ig);
+    check('Plan rows: the outline never names an app or a device',!bad,bad?bad.join(', '):`${all.length} renders`);
+  }finally{box.remove();Object.keys(stub).forEach(k=>delete window[k]);_stOpen.clear();}
+});
+// async tests that replace fetch run one after another, after every plain test
+const seq=(name,fn)=>{const p=Promise.all([...later]).then(fn).catch(e=>check(name,false,'Threw: '+e.message)).finally(()=>{window.fetch=realFetch;});later.push(p);};
+// Tests 14-15: thresholds once a day and range-checked, VO2max only when present, power refreshes an import and keeps the pain
+seq('Sync thresholds',async()=>{
+  base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1',wtBack:td(),icuThr:{}});
+  _s.workouts=[{id:'icu-1',date:dAgo(2),type:'Cycle',durMin:60,distKm:30,rpe:null,notes:'',sub:{pain:2,icu:{hr:140,pw:170,dw:1}}}];
+  const calls=[],J=x=>new Response(JSON.stringify(x),{status:200});
+  window.fetch=async u=>{calls.push(u);
+    if(u.includes('/wellness'))return J([{id:dAgo(1),vo2max:52.34,sportInfo:[{type:'Ride',eftp:241.6}]},{id:td(),restingHR:50}]);
+    if(u.includes('/activities'))return J([{id:1,start_date_local:dAgo(2)+'T07:00:00',type:'Ride',moving_time:3600,distance:30000,average_heartrate:140,icu_average_watts:180,icu_weighted_avg_watts:195,device_watts:true}]);
+    if(/\/athlete\/i1$/.test(u))return J({sportSettings:[{types:['Run','TrailRun'],lthr:172,max_hr:191,threshold_pace:4.16667},{types:['Ride','VirtualRide'],ftp:9999,lthr:158,max_hr:300}]});
+    return new Response('',{status:404});};
+  await pullIntervals();
+  const t=_s.icuThr,T=stThr();
+  check('Sync: thresholds come in range-checked; a missing FTP falls back to the estimated one',t.run.lthr===172&&t.run.maxHr===191&&t.run.pace===4.167&&t.ride.lthr===158&&!t.ride.ftp&&!t.ride.maxHr&&t.ride.eftp===242&&T.ride.ftp===242,JSON.stringify(t));
+  const n1=calls.filter(u=>/\/athlete\/i1$/.test(u)).length;await pullIntervals();const n2=calls.filter(u=>/\/athlete\/i1$/.test(u)).length;
+  check('Sync: thresholds are fetched at most once a day',n1===1&&n2===1,`${n1}, then ${n2} requests`);
+  check('Sync: VO2max is stored only on a day that has one',_s.wellness[dAgo(1)].vo2===52.3&&!('vo2' in _s.wellness[td()]),JSON.stringify([_s.wellness[dAgo(1)].vo2,_s.wellness[td()]]));
+  const w=_s.workouts.find(x=>x.id==='icu-1');
+  check('Sync: a change in watts refreshes the workout and keeps your pain score',w.sub.icu.pw===180&&w.sub.icu.np===195&&w.sub.icu.dw===1&&w.sub.pain===2,JSON.stringify(w.sub));
+  const one=pmOn();_s.workouts.push({id:'icu-2',date:dAgo(9),type:'Cycle',durMin:60,sub:{icu:{pw:170,dw:1}}});const two=pmOn();
+  _s.workouts[1].date=dAgo(50);const old=pmOn();
+  check('Sync: power targets need 2 power-meter rides in the last 6 weeks',!one&&two&&!old,`${one}, ${two}, ${old}`);
+});
+// Plan pain: the pain field on the real workout form (copied from index.html): save, edit, clear, repeat, the list row and the toasts
+seq('Plan pain',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.hidden=true;
+  box.innerHTML=doc.getElementById('lWorkout').outerHTML+'<div id="dayPanel"></div>';document.body.appendChild(box);
+  const toasts=[],stub={showToast:m=>toasts.push(m),refreshAll:()=>{},switchTab:()=>{},lgOpen:()=>{}};Object.assign(window,stub);
+  const form=(ty,min,o={})=>{selEx(ty);$('wDH').value='';$('wDM').value=String(min);$('wDist').value=o.dist||'';if(o.pool)$('wPool').value=o.pool;if(o.pain!=null)painTap(o.pain);};
+  const chip=()=>[...$('wPainRow').querySelectorAll('.pn-c.sel')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')).join();
+  try{
+    base();_s.workouts=[];_s.injuries=[];renderExGrid();
+    check('Plan pain: the form has 11 pain chips, 0 to 10, none chosen',$('wPainRow').querySelectorAll('.pn-c').length===11&&$('wPainRow').textContent==='012345678910'&&painVal()===null&&!chip(),$('wPainRow').textContent);
+    painTap(4);const a=painVal(),ac=chip();painTap(4);const b=painVal();
+    check('Plan pain: a tap chooses a number, a second tap clears it',a===4&&ac==='4:true'&&b===null&&!chip(),`${a} (${ac}), then ${b}`);
+    form('Run',40,{pain:4});saveWorkout();let w=_s.workouts[0];
+    check('Plan pain: saved on the workout as 0 to 10, and the form is empty again',w&&w.sub&&w.sub.pain===4&&painVal()===null&&!chip()&&toasts.pop()==='Workout recorded, effort not set',JSON.stringify(w&&w.sub));
+    check('Plan pain: the workout list shows it',/pain 4 of 10/.test(wkRow(w)),'');
+    editWorkout(w.id);const ep=painVal(),ec=chip();painTap(4);saveWorkout();w=_s.workouts.find(x=>x.id===w.id);
+    check('Plan pain: editing loads it, and clearing it removes it from the workout',ep===4&&ec==='4:true'&&!(w.sub&&'pain' in w.sub)&&!/pain/.test(wkRow(w)),`loaded ${ep}; after clearing ${JSON.stringify(w.sub)}`);
+    _s.workouts.push({id:'icu-9',date:dAgo(1),type:'Run',durMin:50,distKm:9,rpe:null,notes:'',sub:{icu:{hr:150,load:60}}});
+    editWorkout('icu-9');painTap(3);saveWorkout();const iw=_s.workouts.find(x=>x.id==='icu-9');
+    check('Plan pain: on a workout from the watch, the watch details stay',iw.sub.pain===3&&iw.sub.icu.hr===150&&iw.sub.icu.load===60,JSON.stringify(iw.sub));
+    form('Swim',30,{dist:1500,pool:'open',pain:2});saveWorkout();const sw=_s.workouts.find(x=>x.type==='Swim');
+    check('Plan pain: a swim keeps its pool and stroke next to the pain',sw&&sw.sub.pool==='open'&&sw.sub.stroke==='Freestyle'&&sw.sub.pain===2,JSON.stringify(sw&&sw.sub));
+    painTap(6);repeatLast();
+    check('Plan pain: repeating the last workout starts with no pain chosen',_selEx==='Swim'&&painVal()===null&&!chip(),`${_selEx}, pain ${painVal()}`);
+    cancelEdit();
+    form('Cycle',45,{pain:8});saveWorkout();const t8=toasts.pop();
+    form('Run',30,{pain:5});saveWorkout();const t5=toasts.pop();
+    _s.injuries=[{id:'inj1',date:dAgo(30),part:'Knee',sev:2,notes:'',active:false,ts:Date.now()-10*864e5}];
+    form('Run',20,{pain:5});saveWorkout();const tr=toasts.pop();form('Cycle',20,{pain:5});saveWorkout();const tc=toasts.pop();
+    check('Plan pain: 7 or more says get it checked; 5 or more on a comeback run says the next run steps back; otherwise the usual message',/^Pain 8 of 10: stop training on it and get it checked/.test(t8)&&/^Workout recorded/.test(t5)&&/^Pain 5 of 10: your next run steps back/.test(tr)&&/^Workout recorded/.test(tc),[t8,t5,tr,tc].join(' | '));
+    $('wMore').open=false;_pnOpen='';painMark();const on=$('wMore').open,note=$('wPainNote').textContent;
+    $('wMore').open=false;painMark();const again=$('wMore').open;
+    _s.injuries=[];painMark();
+    check('Plan pain: during a comeback the field opens once a day and says it is part of the return plan',on&&/^Part of your return plan/.test(note)&&!again&&/^0 is none/.test($('wPainNote').textContent),note);
+  }finally{box.remove();Object.keys(stub).forEach(k=>delete window[k]);}
+});
+// Tests 16 and 19: send today's session to the watch (canned fetch): our events only, nothing twice, keys and sent state stay on the phone
+seq('Plan send',async()=>{
+  const box=document.createElement('div');box.hidden=true;box.innerHTML='<div id="stratCard"></div>';document.body.appendChild(box);
+  const toasts=[],stub={showToast:m=>toasts.push(m),refreshAll:()=>renderStrategy()};Object.assign(window,stub);
+  const T=td(),calls=[],J=(x,s=200)=>new Response(JSON.stringify(x),{status:s});
+  let evs=[],getSt=200,postId=500,postSt=200;
+  window.fetch=async(u,o={})=>{const m=o.method||'GET';calls.push({m,u,b:o.body?JSON.parse(o.body):null,h:o.headers});
+    if(m==='GET'&&/\/events\?/.test(u))return getSt===200?J(evs):new Response('',{status:getSt});
+    if(m==='POST')return postSt===200?J({id:postId,...JSON.parse(o.body)}):new Response('',{status:postSt});
+    if(m==='DELETE')return J({});
+    return new Response('',{status:404});};
+  const sendBtn=()=>{const r=$('stratCard').querySelector(`details.st-x[data-d="${T}"]`);return r&&r.querySelector('.st-send');};
+  const theirs=[{id:77,external_id:'garmin-1',start_date_local:T+'T06:00:00'},{id:78,external_id:'',start_date_local:T+'T07:00:00'},{id:79,start_date_local:T+'T08:00:00'}];
+  try{
+    trn({skip:noLong3});_s.profile.plan={0:{type:'Run',note:'easy'},2:{type:'Cycle',note:'tempo'},5:{type:'Run',note:'long'}};
+    _s.intervalsKey='';_s.intervalsID='';_s.icuSent={};_s.pending={};_stOpen.clear();renderStrategy();
+    await icuSendDay(T);
+    check('Plan send: without the keys nothing is sent and the row has no send button',!calls.length&&!sendBtn()&&/^Connect Intervals\.icu in Settings/.test(toasts.pop()),`${calls.length} requests`);
+    Object.assign(_s,{intervalsKey:'k',intervalsID:'i1'});const P0=JSON.stringify(_s.profile);renderStrategy();
+    const b0=sendBtn();evs=theirs;await icuSendDay(T);
+    const post=calls.find(c=>c.m==='POST'),ev=post&&post.b,sent=_s.icuSent[T];
+    check('Plan send: today goes as one planned workout: the day is read first, then one event is created, with no colour',b0&&b0.textContent==='Send to watch'&&calls.length===2&&calls[0].m==='GET'&&/\/athlete\/i1\/events\?oldest=.*&newest=.*&category=WORKOUT$/.test(calls[0].u)&&post&&/\/athlete\/i1\/events$/.test(post.u)&&/^Basic /.test(post.h.Authorization)&&ev.category==='WORKOUT'&&ev.type==='Run'&&ev.start_date_local===T+'T00:00:00'&&ev.external_id==='vc-'+T&&ev.name===strategy().days[0].sess.name&&/^Warmup\n/.test(ev.description)&&/% Pace/.test(ev.description)&&!('color' in ev)&&sent&&sent.id===500&&sent.sig&&/^Sent to Intervals\.icu/.test(toasts.pop()),calls.map(c=>c.m).join(', ')+' | '+JSON.stringify(ev&&{...ev,description:ev.description.slice(0,40)}));
+    renderStrategy();const r1=$('stratCard').querySelector(`details.st-x[data-d="${T}"]`).textContent;
+    check('Plan send: the row then says it is on your watch, and names no app',/On your watch · sent \d\d:\d\d/.test(r1)&&/Take it off/.test(r1)&&!/polar|intervals|garmin/i.test($('stratCard').innerHTML),r1.slice(-80));
+    let n=calls.length;await icuSendDay(T);
+    check('Plan send: an unchanged session is not sent again',calls.length===n&&toasts.pop()==='Already on your watch',`${calls.length-n} requests`);
+    _s.stSwap={[T]:'Cycle'};renderStrategy();const r2=$('stratCard').querySelector(`details.st-x[data-d="${T}"]`).textContent;
+    evs=[...theirs,{id:500,external_id:'vc-'+T,start_date_local:T+'T00:00:00'},{id:501,external_id:'vc-'+T,start_date_local:T+'T00:00:00'},{id:502,external_id:'vc-'+stAdd(T,1),start_date_local:stAdd(T,1)+'T00:00:00'}];
+    postId=600;n=calls.length;await icuSendDay(T);
+    const c2=calls.slice(n),del=c2.filter(c=>c.m==='DELETE').map(c=>c.u.split('/').pop()).join();
+    check('Plan send: a changed plan replaces only our own events that day; your other events are never touched',/Changed since you sent it/.test(r2)&&/Send the new version/.test(r2)&&del==='500,501'&&c2[c2.length-1].m==='POST'&&c2[c2.length-1].b.type==='Ride'&&_s.icuSent[T].id===600,`${c2.map(c=>c.m).join(', ')}; deleted ${del}`);
+    _s.stSwap={};getSt=500;n=calls.length;await icuSendDay(T);const c3=calls.slice(n);
+    check('Plan send: when the day cannot be read, only the event we stored is deleted',c3.filter(c=>c.m==='DELETE').map(c=>c.u.split('/').pop()).join()==='600'&&c3[c3.length-1].m==='POST',c3.map(c=>c.m+' '+c.u.split('/').pop()).join(', '));
+    getSt=200;_s.stSwap={[T]:'Swim'};const before=JSON.stringify(_s.icuSent);getSt=401;n=calls.length;await icuSendDay(T);
+    check('Plan send: a refused key shows why and changes nothing',calls.length===n+1&&JSON.stringify(_s.icuSent)===before&&/rejected the API key/.test(toasts.pop()),`${calls.length-n} requests`);
+    getSt=200;postSt=500;evs=[{id:500,external_id:'vc-'+T,start_date_local:T+'T00:00:00'}];_s.icuSent[T]={id:500,sig:'x',at:1};n=calls.length;await icuSendDay(T);
+    check('Plan send: when the new event fails after ours was deleted, the stored one is forgotten',!(T in _s.icuSent)&&calls.slice(n).map(c=>c.m).join()==='GET,DELETE,POST'&&/error 500/.test(toasts.pop()),JSON.stringify(_s.icuSent));
+    postSt=200;n=calls.length;await icuSendDay(stAdd(T,1));
+    check('Plan send: tomorrow cannot be sent yet (today only until one event has been checked on the watch)',TH.SEND_DAYS===1&&calls.length===n&&!$('stratCard').querySelector(`details.st-x[data-d="${stAdd(T,2)}"] .st-send`),`${calls.length-n} requests`);
+    _s.icuSent={[T]:{id:700,sig:'x',at:1},[dAgo(20)]:{id:1,sig:'y',at:1}};evs=[...theirs,{id:700,start_date_local:T+'T00:00:00'}];n=calls.length;await icuSendDay(T,1);
+    check('Plan send: take it off deletes ours only, sends nothing, and old sent days are dropped',calls.slice(n).map(c=>c.m+(c.m==='DELETE'?' '+c.u.split('/').pop():'')).join()==='GET,DELETE 700'&&!Object.keys(_s.icuSent).length&&/^Taken off/.test(toasts.pop()),JSON.stringify(_s.icuSent));
+    _s.icuSent={[T]:{id:1,sig:'s',at:1}};_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));_s.planHist={[T]:{fam:'runEasy'}};_s.stSwap={[T]:'Cycle'};
+    let got='';const dl=download;download=(nm,ty,tx)=>{got=tx;};try{backupJSON();}finally{download=dl;}
+    const B=JSON.parse(got),leak=['claudeKey','intervalsKey','intervalsID','polarKey','icuSent','pending','tomb'].filter(k=>k in B);
+    const pk=Object.keys(_s.pending);
+    check('Plan send: keys, your athlete ID and the sent list stay out of the backup; none of the plan state is synced',!leak.length&&!pk.length&&JSON.stringify(_s.profile)===P0&&!/icuSent|icuThr|planHist|stSwap/.test(JSON.stringify(_s.profile)),`backup has ${leak.join(', ')||'none'}; pending ${pk.join(', ')||'none'}`);
+  }finally{box.remove();Object.keys(stub).forEach(k=>delete window[k]);_stOpen.clear();}
 });
 
 Promise.all(later).then(()=>{

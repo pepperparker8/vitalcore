@@ -28,7 +28,7 @@ function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.inn
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
   // v118 parallel run: the old readiness and Body are both recorded; the hero shows Body once TH.PARALLEL_DAYS of it exist (heroScore)
-  recordReadiness(calcReadiness());recordBody(calcBody().score);
+  recordReadiness(calcReadiness());recordBody(calcBody().score);stSnap();
   const s=heroScore();renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
   renderWhy();renderRecovery();renderPlan();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }
