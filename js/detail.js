@@ -3,7 +3,7 @@
 // the last 30 days (v119) and the effect on the recovery score in plain words, plus an Edit link.
 let _dtKey=null,_dtCh=null;
 const dtGoal=()=>Math.round((S().profile.sleepGoal||7.5)*60);
-const dtPsy=c=>ciFull(c)?Math.round((c.energy+c.mood+(5-c.stress)+c.motivation)/16*100):null;
+const dtPsy=c=>mindOf(c);
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const dtPts=n=>{n=Math.round(n);return n===0?'no change':(n>0?'+':'−')+Math.abs(n)+(Math.abs(n)===1?' point':' points');};
 const dtAvg=(fn,days=30)=>{const a=[];for(let i=1;i<=days;i++){const v=fn(dAgo(i));if(v!=null)a.push(v);}return a;};
@@ -127,7 +127,7 @@ function dtSpec(k){
     const ci=last(d.checkins.filter(c=>ciFull(c)&&fresh(c))),fn=dt=>dtPsy(ciOn(dt)),u=dtAvg(fn);
     // the same cuts and words as Mind (calcMind)
     const tr=dtTrend(fn,v=>Math.round(v)+'/100',{label:'Check-in',min:0,max:100,yfmt:v=>Math.round(v),stats:{good:v=>v>=TH.MIND_FLAT,label:'flat or better'},
-      zones:[{lo:TH.MIND_GOOD,hi:null,color:'--green',label:'Good'},{lo:TH.MIND_FLAT,hi:TH.MIND_GOOD,label:'Flat'},{lo:null,hi:TH.MIND_FLAT,color:'--amber',label:'Strained'}]});
+      zones:mindZones()});
     if(!ci)return{title:'Check-in',missing:'No check-in in the last three days. It takes four taps: energy, mood, stress and motivation.',link:['Check in',"logGo('lCheckin')"],trend:tr};
     const p=dtPsy(ci),e=EM,old=ci.date!==t?`From ${daysAgo(ci.date)===1?'yesterday':fmtD(ci.date)}, until you check in today. `:'';
     return{title:'Check-in',val:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Flat':'Strained',sub:`${old}${p}/100 · energy ${e.energy[ci.energy].toLowerCase()}, mood ${e.mood[ci.mood].toLowerCase()}, stress ${e.stress[ci.stress].toLowerCase()}, motivation ${e.motivation[ci.motivation].toLowerCase()}`,

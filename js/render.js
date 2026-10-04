@@ -270,26 +270,53 @@ function renderBurnout(){
       return t;},
     how:`Each point uses your last 7 check-ins: energy, mood and calm (stress turned around). Under ${TH.BURNOUT_MOD} is low, ${TH.BURNOUT_MOD} to ${TH.BURNOUT_HIGH-1} moderate, ${TH.BURNOUT_HIGH} and over high. A single bad day barely moves it; a week of low energy or high stress does. Training fatigue is not part of it.`});
 }
+// v120: one line at a time. "All four" is the Mind score (calcMind's maths) with its zones; the chips show one answer
+// on its own, Low to Great. Tapping a day always lists the four answers in words. Four overlapping lines were hard to read.
+let _moodK='Mind';
 function renderMoodChart(){
-  const d=S(),host=$('moodCanvas');if(!host)return;
+  const d=S(),host=$('moodCanvas'),ch=$('moodChips');if(!host)return;
   const cis=d.checkins.filter(ciFull).sort((a,b)=>a.date<b.date?-1:1);
   $('moodNote').textContent=cis.length>1?'':cis.length?'One check-in so far. Check in again tomorrow and your trend appears.':'Your trends appear after your first check-in in the Log tab.';
-  if(cis.length<2){host.innerHTML='';return;}
+  if(cis.length<2){host.innerHTML='';if(ch)ch.innerHTML='';return;}
   const L=['','Low','Fair','Good','Great'],f=v=>L[Math.round(v)]||'';
-  const K=[['Mood','--green',c=>c.mood],['Energy','--amber',c=>c.energy],['Calm','--t2',c=>5-c.stress],['Motivation','--text',c=>c.motivation]];
-  mountChart('moodCanvas',{key:'mood',H:170,min:1,max:4,span:30,yfmt:f,label:'Mood and energy',
-    series:K.map(([name,color,fn])=>({name,color,fmt:f,pts:cis.map(c=>({d:c.date,v:fn(c)}))})),
-    lines:[{v:3,label:'Good',color:'--t3'}],
-    means:info=>{
-      const v=cis.filter(c=>c.date>=info.from&&c.date<=info.to);if(!v.length)return'';
-      const m=K.map(([n,,fn])=>[n,avg(v.map(fn))]).sort((a,b)=>a[1]-b[1]),lo=m[0],low=v.filter(c=>K.some(k=>k[2](c)<=1));
-      let t=`Over ${v.length} check-in${v.length>1?'s':''}, ${lo[0].toLowerCase()} is your lowest on average (${f(lo[1])})`+(lo[0]==='Calm'?': stress is the one to work on.':m[3][1]-lo[1]<0.3?', but all four are close.':'.');
-      t+=low.length?` ${low.length} day${low.length>1?'s':''} had at least one Low, the latest ${fmtD(last(low).date)}.`:' No day had a Low.';
-      // a run of days with two or more answers under Good
-      let run=0,best=0;v.forEach(c=>{run=K.filter(k=>k[2](c)<3).length>=2?run+1:0;best=Math.max(best,run);});
-      if(best>=3)t+=` ${best} check-ins in a row had two or more answers under Good; look at sleep, training and stress around then.`;
-      return t;},
-    how:'Each line is one check-in answer, from Low to Great; higher is better for all four, and calm is the opposite of stress. The dashed line marks Good. Several days with two or more lines under it often follow short sleep, heavy training or a stressful stretch.'});
+  // an average in words, to the nearest half step: 3.4 is "Good", 3.5 "between Good and Great"
+  const fa=v=>{const h=Math.round(v*2)/2;return h%1?`between ${L[Math.floor(h)]} and ${L[Math.ceil(h)]}`:L[h];};
+  const K=[['Mood',c=>c.mood],['Energy',c=>c.energy],['Calm',c=>5-c.stress],['Motivation',c=>c.motivation]];
+  if(!K.some(k=>k[0]===_moodK))_moodK='Mind';
+  if(ch)ch.innerHTML=[['Mind','All four'],...K.map(k=>[k[0],k[0]])].map(([k,n])=>`<button class="chip ${k===_moodK?'sel':''}" onclick="_moodK='${k}';renderMoodChart()">${n}</button>`).join('');
+  const byDate={};cis.forEach(c=>byDate[c.date]=c);
+  const extra=dt=>byDate[dt]?K.map(([n,fn])=>n+' '+f(fn(byDate[dt]))).join(' · '):'';
+  const inView=info=>cis.filter(c=>c.date>=info.from&&c.date<=info.to);
+  // a run of check-ins with two or more answers under Good
+  const runNote=v=>{let run=0,best=0;v.forEach(c=>{run=K.filter(k=>k[1](c)<3).length>=2?run+1:0;best=Math.max(best,run);});
+    return best>=3?` ${best} check-ins in a row had two or more answers under Good; look at sleep, training and stress around then.`:'';};
+  if(_moodK==='Mind'){
+    const zones=mindZones();
+    mountChart('moodCanvas',{key:'mood',H:170,min:25,max:100,span:30,label:'Mind',yfmt:v=>String(Math.round(v)),zones,hi:true,extra,
+      series:[{name:'Mind',color:'--text',fmt:v=>String(Math.round(v)),pts:cis.map(c=>({d:c.date,v:mindOf(c)}))}],
+      stats:{good:v=>v>=TH.MIND_GOOD,label:'good'},
+      means:info=>{
+        const v=inView(info);if(!v.length)return'';
+        const cnt=zones.map(z=>[z.label,v.filter(c=>chZone({zones},mindOf(c))===z).length]).filter(x=>x[1]);
+        let t=`Of ${v.length} check-in${v.length>1?'s':''} here: `+cnt.map(([l,n])=>`${n} ${l.toLowerCase()}`).join(', ')+'.';
+        const m=K.map(([n,fn])=>[n,avg(v.map(fn))]).sort((a,b)=>a[1]-b[1]),lo=m[0];
+        t+=m[3][1]-lo[1]<0.3?` All four answers are close (${fa(avg(m.map(x=>x[1])))} on average).`:lo[1]>=2.75?` ${lo[0]} is the lowest of the four, still ${fa(lo[1])} on average.`:` ${lo[0]} pulls it down most (${fa(lo[1])} on average)`+(lo[0]==='Calm'?': stress is the one to work on.':'.');
+        return t+runNote(v);},
+      how:`One score from your four check-in answers (mood, energy, calm and motivation), from 25 when all four are Low to 100 when all four are Great. Good is ${TH.MIND_GOOD} and up, Flat ${TH.MIND_FLAT} to ${TH.MIND_GOOD-1}, Strained under ${TH.MIND_FLAT}. Tap a day to see the four answers; tap an answer above to see it on its own. Several strained days in a row often follow short sleep, heavy training or a stressful stretch.`});
+  }else{
+    const fn=K.find(k=>k[0]===_moodK)[1],nm=_moodK.toLowerCase();
+    mountChart('moodCanvas',{key:'mood',H:170,min:1,max:4,span:30,label:_moodK,yfmt:f,extra,
+      series:[{name:_moodK,color:'--text',fmt:f,pts:cis.map(c=>({d:c.date,v:fn(c)}))}],
+      lines:[{v:3,color:'--t3'}],
+      stats:{good:v=>v>=3,label:'Good or Great',words:['Best','Worst']},
+      means:info=>{
+        const v=inView(info);if(!v.length)return'';
+        const lows=v.filter(c=>fn(c)<=1),under=v.filter(c=>fn(c)<3);
+        let t=`Your ${nm} averaged ${fa(avg(v.map(fn)))} over ${v.length} check-in${v.length>1?'s':''}`+(under.length?`, under Good on ${under.length}`:', Good or better every time')+'.';
+        if(lows.length)t+=` Low on ${lows.length} day${lows.length>1?'s':''}, the latest ${fmtD(last(lows).date)}.`;
+        return t+(_moodK==='Calm'&&under.length*2>=v.length?' Calm is the opposite of stress, so stress is the one to work on.':'');},
+      how:`Your ${nm} answer from each check-in, from Low to Great; higher is better${_moodK==='Calm'?' (calm is the opposite of stress)':''}. The dashed line marks Good. Tap All four for the combined score.`});
+  }
 }
 function renderBodyChart(){
   const d=S(),host=$('bodyCanvas');if(!host)return;

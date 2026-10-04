@@ -160,10 +160,14 @@ function calcLoad(){
   else if(band==='fresh'&&hard4===0)state='Fresh';
   return{state,tsb:tsb??null,formWord:tsb==null?null:zL(tsb,'tsb'),ramp,rampFlag,hard4,base:L.base,now:L.now};
 }
+// Mind score of one full check-in: energy, mood, calm (5 - stress) and motivation on 0 to 100 (25 when all four are Low)
+const mindOf=c=>ciFull(c)?Math.round((c.energy+c.mood+(5-c.stress)+c.motivation)/16*100):null;
+// Mind zones for charts (Trends mood chart, check-in sheet): Good, Flat (no fill), Strained
+const mindZones=()=>[{lo:TH.MIND_GOOD,hi:null,color:'--green',label:'Good'},{lo:TH.MIND_FLAT,hi:TH.MIND_GOOD,label:'Flat'},{lo:null,hi:TH.MIND_FLAT,color:'--amber',label:'Strained'}];
 // Mind: today's check-in (energy, mood, calm, motivation) on 0 to 100, and the psychological burnout risk over the last 7 check-ins
 function calcMind(){
   const ci=S().checkins.find(c=>c.date===td()&&ciFull(c))||null;
-  const score=ci?Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100):null;
+  const score=ci?mindOf(ci):null;
   const b=calcBurnout();
   return{state:score==null?null:score>=TH.MIND_GOOD?'Good':score>=TH.MIND_FLAT?'Flat':'Strained',score,burnout:b.score,burnoutHigh:b.score>=TH.BURNOUT_HIGH,checkin:ci};
 }

@@ -822,6 +822,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .arch-trend-lbl{font-family:inherit;letter-spacing:0;text-transform:none}
 #wDurChips{flex-wrap:wrap;gap:8px;margin-bottom:8px}
 #wDurChips .chip{min-height:44px}
+/* v120: mood chart chips, five on one row at 360px */
+#moodChips{flex-wrap:nowrap;gap:6px;margin:4px 0 8px}
+#moodChips .chip{flex:1 1 auto;min-width:44px;padding:0 6px;white-space:nowrap}
 .ins-hist-sec{margin-top:20px}
 .ins-hist-head{font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--t2)}
 .ins-hi-date{font-family:inherit}

@@ -97,10 +97,11 @@ run('Test 11',()=>{
 });
 // Test 12: each signal sits in exactly one place of the score and verdict path (the code is read as text)
 run('Test 12',()=>{
-  const paths={calcBody,calcLoad,calcMind,illness,coachVerdict};
+  // calcMind reads the check-in through mindOf (v120), so both are its text
+  const paths={calcBody,calcLoad,calcMind:String(calcMind)+String(mindOf),illness,coachVerdict};
   const sig=[['form (TSB)',/tsb/i,['calcLoad']],['injury',/injur/i,['coachVerdict']],['check-in (energy, mood, motivation)',/\.(energy|mood|motivation)\b/,['calcMind']],['soreness',/soreness/i,[]]];
   sig.forEach(([lab,re,want])=>{
-    const got=Object.keys(paths).filter(k=>re.test(paths[k].toString()));
+    const got=Object.keys(paths).filter(k=>re.test(String(paths[k])));
     const ok=got.join()===want.join();
     check(`Test 12: ${lab} in ${want.length?want.join():'no score or verdict'}`,ok,`found in: ${got.join(', ')||'none'}`);
   });
@@ -139,6 +140,26 @@ run('Mind',()=>{
   _s.checkins=[ci({energy:2,mood:2,stress:3,motivation:2})];const b=calcMind().state;
   _s.checkins=[ci({energy:1,mood:1,stress:4,motivation:1})];const c=calcMind().state;
   check('Mind: Good, Flat, Strained',a==='Good'&&b==='Flat'&&c==='Strained',`${a}, ${b}, ${c}`);
+});
+// v120 mood chart: one line (the Mind score with its zones) or one answer at a time; a tapped day lists all four
+run('Mood chart',()=>{
+  base();
+  const lo=mindOf(ci({energy:1,mood:1,stress:4,motivation:1})),hi=mindOf(ci({energy:4,mood:4,stress:1,motivation:4}));
+  check('Mood chart: the Mind score runs from 25 to 100, with calm as 5 minus stress',lo===25&&hi===100&&mindOf({energy:3})===null,`all Low ${lo}, all Great ${hi}`);
+  const z=v=>(chZone({zones:mindZones()},v)||{}).label;
+  const r=[[TH.MIND_GOOD,'Good'],[TH.MIND_GOOD-1,'Flat'],[TH.MIND_FLAT,'Flat'],[TH.MIND_FLAT-1,'Strained']].map(([v,w])=>[v,w,z(v)]);
+  const agree=[[4,4,1,4],[3,3,2,3],[2,3,2,2],[2,2,3,2],[1,2,4,1]].every(([e,m,s,mo])=>{_s.checkins=[ci({energy:e,mood:m,stress:s,motivation:mo})];const M=calcMind();return z(M.score)===M.state;});
+  check('Mood chart: zones switch at the TH cuts and agree with Mind',r.every(x=>x[1]===x[2])&&agree,r.map(x=>`${x[0]} → ${x[2]}`).join(', ')+(agree?'; Mind agrees':'; Mind disagrees'));
+  const host=document.createElement('div');host.style.width='328px';host.innerHTML='<div id="moodChips"></div><div id="moodCanvas"></div><div id="moodNote"></div>';document.body.appendChild(host);
+  try{
+    _s.checkins=[[6,3,4,1,3],[4,2,2,3,2],[2,4,3,1,4],[0,2,1,4,2]].map(([a,m,e,s,mo])=>({id:'c'+a,date:dAgo(a),mood:m,energy:e,stress:s,motivation:mo}));
+    _moodK='Mind';renderMoodChart();const A=_ch.moodCanvas.cfg,chips=[...host.querySelectorAll('#moodChips .chip')];
+    check('Mood chart: All four is one Mind line with zones, and five chips',A.series.length===1&&A.series[0].name==='Mind'&&A.zones.length===3&&A.series[0].pts[3].v===mindOf(_s.checkins[3])&&chips.length===5&&chips[0].classList.contains('sel'),`${A.series.length} line (${A.series[0].name}), ${chips.length} chips: ${chips.map(c=>c.textContent).join(', ')}`);
+    const x=A.extra(dAgo(0));
+    check('Mood chart: a tapped day lists all four answers in words',x==='Mood Fair · Energy Low · Calm Low · Motivation Fair'&&A.extra(dAgo(1))==='',x);
+    chips[3].click();const C=_ch.moodCanvas.cfg;
+    check('Mood chart: a chip shows that answer on its own, Low to Great',_moodK==='Calm'&&C.series.length===1&&C.series[0].name==='Calm'&&C.series[0].pts.map(p=>p.v).join()==='4,2,4,1'&&C.min===1&&C.max===4&&host.querySelector('#moodChips .sel').textContent==='Calm',`${C.series[0].name}: ${C.series[0].pts.map(p=>p.v).join(', ')}`);
+  }finally{_moodK='Mind';host.remove();}
 });
 // Sync: a batch keeps the same keys in every row, and the new fields stay out while empty
 run('Sync',()=>{
