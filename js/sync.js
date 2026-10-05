@@ -5,13 +5,16 @@ function setAuth(a){_auth=a;try{a?localStorage.setItem('vitalcore-auth',JSON.str
 const authFrom=j=>({access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Math.floor(Date.now()/1000)+(j.expires_in||3600),user:{id:j.user?.id,email:j.user?.email}});
 const errMsg=async r=>{try{const j=await r.json();return j.msg||j.error_description||j.message||j.error||('Error '+r.status);}catch(e){return'Error '+r.status;}};
 
+// v124: invite only. The app never creates an account: the owner invites people in Supabase (Authentication > Users), and sign-ups are off there
+const noInvite=j=>!!j&&(/otp_disabled|signup_disabled|user_not_found/.test(j.error_code||'')||/signups? not allowed|user not found/i.test(j.msg||j.message||j.error_description||''));
 async function sendCode(){
   const email=$('authEmail').value.trim().toLowerCase();
   if(!/^\S+@\S+\.\S+$/.test(email)){$('authErr').textContent='Enter a valid email address.';return;}
   $('authErr').textContent='';$('authSend').textContent='Sending…';
   try{
-    const r=await fetch(SB_URL+'/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,create_user:true})});
-    if(!r.ok){const m=await errMsg(r);$('authErr').textContent=r.status===429?'Too many emails sent. Wait a few minutes and try again.':m;return;}
+    const r=await fetch(SB_URL+'/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,create_user:false})});
+    if(!r.ok){let j=null;try{j=await r.clone().json();}catch(e){}
+      $('authErr').textContent=r.status===429?'Too many emails sent. Wait a few minutes and try again.':noInvite(j)?'This email is not on the invite list. Ask for an invite, then try again.':await errMsg(r);return;}
     $('authSent').textContent=`We sent an email to ${email}. Tap the sign-in link in it on this phone. If the email shows a number code instead, type it below.`;
     $('authStep1').style.display='none';$('authStep2').style.display='block';$('authCode').focus();
   }catch(e){$('authErr').textContent='No internet connection.';}
@@ -30,23 +33,42 @@ async function verifyCode(){
 }
 function authBack(){$('authStep1').style.display='block';$('authStep2').style.display='none';$('authErr').textContent='';}
 function afterSignIn(){
+  const uid=_auth.user.id;let d=S(),fresh=false;
+  // v124: data on this phone that belongs to another account is never uploaded into this one
+  if(d.dataUid&&d.dataUid!==uid){
+    const n=Object.keys(d.pending).length+d.tomb.length;
+    if(!confirm(`This phone holds another account's data. Signing in as ${_auth.user.email||'this account'} clears it from this phone. It stays in that account's cloud${n?`, except ${n} change${n>1?'s':''} that never uploaded`:''}. Continue?`)){setAuth(null);updSyncStatus();showGate();return;}
+    _s=JSON.parse(JSON.stringify(DEFAULTS));d=S();fresh=true;
+  }
+  d.dataUid=uid;
   closeAuth();
-  const d=S();
   // first time on this account: queue everything already on the phone
   for(const [n,T] of Object.entries(TBL))d[T.k].forEach(r=>{d.pending[n+'|'+r.id]=r.ts||Date.now();});
   d.insightLog.forEach(e=>{d.pending['insight|'+e.date]=e.ts||Date.now();});
-  d.pending['profile|1']=Date.now();d.profileTs=Date.now();
+  // v124: a phone that never finished setup (the sign-in wall comes first now) takes the account's profile from the cloud instead of overwriting it
+  if(d.onboardingDone){d.pending['profile|1']=Date.now();d.profileTs=Date.now();}
   save(d);
+  if(fresh){initUI();refreshAll();}
   showToast('Signed in ✓ — syncing…');
-  updSyncStatus();syncAll(true);
+  updSyncStatus();
+  // the cloud profile marks onboarding done for an account that has used the app before
+  Promise.resolve(syncAll(true)).then(()=>{if(S().onboardingDone)$('welcome').style.display='none';}).catch(()=>{});
 }
 async function signOut(){
-  if(!confirm('Sign out? Your data stays on this phone and in the cloud. New entries will not back up until you sign in again.'))return;
-  setAuth(null);updSyncStatus();loadSetUI();showToast('Signed out');
+  if(!confirm('Sign out? The app locks until you sign in again. Your data stays on this phone and in the cloud.'))return;
+  const d=S();if(navigator.onLine&&(Object.keys(d.pending).length||d.tomb.length)){try{await pushAll();}catch(e){}}
+  setAuth(null);updSyncStatus();loadSetUI();closeSettings();showGate();showToast('Signed out');
 }
+// v124: sign-in wall. Until an invited account signs in on this phone, the app shows only the sign-in sheet (it cannot be closed)
+const gateOn=()=>!_auth;
+function showGate(){const m=$('authModal');if(!m)return;const on=gateOn();m.classList.toggle('gate',on);if(on){$('authErr').textContent='';authBack();m.classList.add('open');}}
+// older phones: the data already here belongs to the account signed in now
+function ownData(){const d=S();if(_auth&&_auth.user&&_auth.user.id&&!d.dataUid){d.dataUid=_auth.user.id;save(d);}}
 function openAuth(){closeSettings();$('authErr').textContent='';authBack();const e=_auth?.user?.email;if(e)$('authEmail').value=e;$('authModal').classList.add('open');}
-function closeAuth(){$('authModal').classList.remove('open');}
+function closeAuth(){if(gateOn())return;$('authModal').classList.remove('open','gate');}
 async function handleAuthHash(){
+  if(/[#&]error(_code)?=/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));history.replaceState(null,'',location.pathname);
+    showToast(p.get('error_code')==='otp_expired'?'That sign-in link has expired. Enter your email for a new one.':'Sign-in link failed. Try signing in again.');return;}
   if(!location.hash.includes('access_token'))return;
   try{
     const p=new URLSearchParams(location.hash.slice(1));
@@ -85,6 +107,10 @@ const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||
 // a bulk upsert needs the same keys in every row: a key that one row left out (SKIP_NULL) is sent as null in the others of the same batch
 const sameKeys=rows=>{const ks=[...new Set(rows.flatMap(o=>Object.keys(o)))];return rows.map(o=>{const x={};ks.forEach(k=>{x[k]=k in o?o[k]:null;});return x;});};
 
+// v124: rows are keyed by person and id (docs/supabase-v124.sql), so two people can both have 'sl-<date>'. Until that script has run,
+// the cloud answers 42P10 (no such key) and the upload falls back to the id alone for the rest of the session
+let _idKey=false;
+const pgCode=async r=>{try{return (await r.clone().json()).code||'';}catch(e){return'';}};
 async function pushAll(){
   if(!_auth||_pushing)return;
   _pushing=true;
@@ -96,16 +122,18 @@ async function pushAll(){
       let rows=[],path;
       if(n==='profile'){rows=[{user_id:_auth.user.id,data:d.profile,updated_at:new Date(d.profileTs||Date.now()).toISOString()}];path='/rest/v1/profile?on_conflict=user_id';}
       else if(n==='insight'){rows=items.map(([k])=>d.insightLog.find(e=>e.date===k.slice(8))).filter(Boolean).map(e=>({user_id:_auth.user.id,date:e.date,time:e.time,rendered:JSON.stringify(e)}));path='/rest/v1/insights?on_conflict=user_id,date';}
-      else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));rows=sameKeys(rows);path=`/rest/v1/${TBL[n].t}?on_conflict=id`;}
+      else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));rows=sameKeys(rows);path=`/rest/v1/${TBL[n].t}?on_conflict=${_idKey?'id':'user_id,id'}`;}
       if(rows.length){
-        const r=await sbFetch(path,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
+        const post=p=>sbFetch(p,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
+        let r=await post(path);
+        if(!r.ok&&r.status===400&&TBL[n]&&!_idKey&&await pgCode(r)==='42P10'){_idKey=true;r=await post(path.replace('user_id,id','id'));}
         if(!r.ok){if(TBL[n]?.opt){d[OPT_FLAG[n]]=true;continue;}throw new Error(await errMsg(r));}
         if(TBL[n]?.opt)d[OPT_FLAG[n]]=false;
       }
       items.forEach(([k,ts])=>{if(d.pending[k]===ts)delete d.pending[k];});
     }
     for(const t of [...d.tomb]){
-      const r=await sbFetch(`/rest/v1/${TBL[t.n].t}?id=eq.${encodeURIComponent(t.id)}`,{method:'DELETE'});
+      const r=await sbFetch(`/rest/v1/${TBL[t.n].t}?id=eq.${encodeURIComponent(t.id)}&user_id=eq.${_auth.user.id}`,{method:'DELETE'});
       if(!r.ok){if(TBL[t.n].opt)continue;throw new Error(await errMsg(r));}
       d.tomb=d.tomb.filter(x=>x!==t);
     }
@@ -488,10 +516,12 @@ async function testPolar(){
   }catch(e){res.textContent=e.message;res.className='api-test-res fail';}
 }
 // saves the typed key, then goes to Polar to approve the app; Polar sends you back to the app with ?polar=connected
-function polarConnect(){
+// v124: the key travels only in the X-App-Key header; the backend answers with Polar's login address, which carries no key
+async function polarConnect(){
   const key=$('sPolarKey').value.trim();if(!key){showToast('Enter the app key first');return;}
   const d=S();d.polarKey=key;save(d);flushSave();
-  location.href=`${POLAR_API}/polar-login?key=${encodeURIComponent(key)}`;
+  try{const j=await polarFetch('/polar-status',key);if(!j||!/^https:\/\/auth\.polar\.com\//.test(j.connect||''))throw new Error('The backend did not give a Polar login address');location.href=j.connect;}
+  catch(e){showToast(e.message);}
 }
 async function polarDisconnect(){
   const key=$('sPolarKey').value.trim()||S().polarKey;if(!key){showToast('Nothing to disconnect');return;}

@@ -6,13 +6,14 @@ VitalCore is a personal health intelligence PWA. It combines training load, slee
 Current version: **7.0**. Built iteratively in claude.ai as an artifact. This repo is the move to a standalone, deployable app.
 
 ## User context
-- Single user: an endurance athlete (running, cycling, hiking, weights, yoga). Swims (Swim is allowed, distance in metres).
-- Primary device: Samsung Galaxy S24 (Android, Chrome). Minimum viewport 360px.
-- Wearable: Polar Loop 2, connected since v116 through the owner's own backend (Polar AccessLink V4; a direct browser call was 403, so the OAuth tokens live in Vercel functions, repo `vitalcore-backend`). Polar supplies the detailed night; Intervals.icu stays the source of daily wellness (HRV, resting HR, breathing) and of the readiness score. Polar's own recovery verdicts are not imported.
-- Devices in use (owner, v118): a Garmin watch for workouts and the day, the Polar Loop 2 for sleep and sometimes most of the day. Intervals.icu wellness therefore mixes both devices, which is why the Body resting heart rate baseline uses all imported values rather than one device.
+- Invite only (v124): the owner and the people the owner invites in Supabase; each person sees only their own data. Personal notes about the owner (devices, phone, habits) live in the gitignored `CLAUDE.local.md`; never put them back here, the repo is public.
+- Sports: running, cycling (e-bike too), hiking, weights, yoga, swimming (distance in metres).
+- Android Chrome first. Minimum viewport 360px.
+- Polar, connected since v116 through the owner's own backend (Polar AccessLink V4; a direct browser call was 403, so the OAuth tokens live in Vercel functions, repo `vitalcore-backend`, one token row, so the owner's only). Polar supplies the detailed night; Intervals.icu stays the source of daily wellness (HRV, resting HR, breathing) and of the readiness score. Polar's own recovery verdicts are not imported.
+- Intervals.icu wellness can mix two devices (a watch for the day, a ring or band for sleep), which is why the Body resting heart rate baseline uses all imported values rather than one device.
 - Training data: Intervals.icu (CTL, ATL, TSB, PRs).
-- Blood tests come from Indonesian labs: all markers in **mg/dL**, never mmol/L.
-- AI: Anthropic Messages API with the user's own key.
+- Blood markers in **mg/dL**, never mmol/L.
+- AI: Anthropic Messages API with each user's own key.
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
@@ -38,6 +39,7 @@ profile.useSteps  null (not asked) | true | false (v99); local-only effOk[], sor
 insightLog[]   max 365, newest first, one per day; each may hold questions[] and qa[{q,a,ts}]
 lastInsight    gone: an old session cache, deleted by migrate()
 wtBack         local only: date of the one-time weight backfill from Intervals.icu (v119)
+dataUid        local only: the account this phone's data belongs to (v124, left out of backups)
 icuThr, planHist, icuSent, stSwap   local only (v121, top level, never put(), never in profile; icuSent is left out of backups and kept on restore): thresholds {run:{lthr,maxHr,pace m/s}, ride:{ftp,eftp,lthr,maxHr}, at}; what each day's outline asked for {date:{fam,lvl,type,role,effort,lo,hi,kind}} newest 42; sessions sent to the watch {date:{id,sig,at}} 14 days; swaps {date:type}
 polarNights[]  {id 'pn-<date>', date, data}  one per night from Polar (v116), newest 120 kept; data described in the v116 section
 readHist, bodyHist  {date: score}  local only, newest 120; the old readiness and Body (v118), one snapshot a day
@@ -75,7 +77,7 @@ exDismissed, hasRealData, onboardingDone
 ## Status
 Done: persistence, Anthropic header and model, PWA, Supabase sync, file split, strength/swim logger, Today redesign, Trends, Health tab. Redesign plan: `docs/REDESIGN_PLAN.md`.
 Intervals.icu allows browser calls from the site origin (checked: CORS allows Authorization), so no proxy is needed.
-Open: verify the Intervals.icu connection with real keys, offline check on the S24, real passive activity (steps, kcal).
+Open: verify the Intervals.icu connection with real keys, offline check on the phone, real passive activity (steps, kcal).
 Verify after each change; don't batch.
 
 ## Backlog
@@ -102,6 +104,7 @@ Verify after each change; don't batch.
 - CSP meta in `index.html` limits `connect-src` to self, Supabase, Anthropic, Intervals.icu and Google Fonts; add any new origin there.
 - Everything user-typed or cloud-pulled goes through `esc()` before `innerHTML` (injury part, custom exercise names, muscle). Suggested workout type is whitelisted against `PL_TYPES` before use in an inline handler.
 - Model id lives in one constant, `CLAUDE_MODEL` (core.js).
+- Access (v124): invite only, a sign-in wall, every cloud table "own rows" with nothing for anyone signed out (`docs/supabase-v124.sql`), the Polar app key in the `X-App-Key` header only. Details in the v124 bullet. Never add a way to create an account from the app, a policy wider than own rows, or a key in an address.
 - Onboarding is a full-screen 3-step overlay (`#welcome` above the header, `obGo/obNext` in log.js); `finishWelcome(skip)` unchanged.
 - Trends has a Soreness & coffee chart (`renderBodyChart`) with a coffee-vs-next-night-sleep note.
 - Workout details from Intervals.icu (v82): average/max heart rate, calories, elevation gain and training load are stored on imported workouts as `sub.icu {hr,hrMax,kcal,elev,load}` (inside the existing synced `sub` column, so no Supabase change). Read with `wIcu(w)`, shown with `fmtIcu(w)` (numbers only). `pullIntervals` backfills already-imported `icu-` workouts and compares field by field (never by JSON string; jsonb reorders keys). `dayLoad` uses `wLoad(w)`: the Intervals.icu load scaled by `loadK()` (your median minutes x effort per load point, 3.3 until 5 workouts have both), else minutes x effort. Editing a workout keeps its details. No input fields for these.
@@ -158,7 +161,7 @@ Verify after each change; don't batch.
   - Briefing data: `strategy.days[].main` (`sessSum`), `strategy.targetsBy` (pace, heart rate, power, effort per sport), `strategy.comeback` (time off: daysOff, week, of, shareOfUsualWeekPct; injury: part, now, lastPain0to10), `week.workouts[].pain0to10`, `training.fitnessMarker` (the watch's VO2max now and `daysApart` earlier, only when two values sit 28+ days apart). `INS_COMMON`: quote the main sets, never invent a pace, a wattage or a heart rate, keep advice inside a comeback, the pain bands (3 or less fine, 5+ step back, 7+ stop and get it checked), mention the fitness estimate only when it changed, never diagnose. The heavy-month size test is now under 16,000 characters (v120 sent 14,928; the plan detail adds about 600).
   - Sync: `pw`, `np`, `dw` on `sub.icu` and `wellness[date].vo2` (20 to 95, only when present). `backupJSON` leaves out `intervalsID` and `icuSent`; restore keeps this phone's `icuSent`.
   - Tests: 143. Testing tip: `sw.js` answers with `ignoreSearch:true`, so a new `?r=` does not bypass the cache; delete the file's entries from `caches` and fetch it with `{cache:'reload'}` before reloading the tests page.
-- Recovery rules that read heart rate, and a workout sheet (v122). After a 75-minute e-bike ride the outline said "Coming back" and planned three rest days: the usual week came from one short week after a long break, walks counted in one rule and not another, and an imported ride with no typed effort read as hard from strain alone. Owner's decisions: recovery is advice by day (no hours number; Garmin's recovery time and training effect are not in the Intervals.icu API, so they cannot be imported); workout insights are worked out by the app only (no AI button); e-bike rides count as cycling by time and heart rate; walks under an hour are recovery; tapping a workout row opens its detail.
+- Recovery rules that read heart rate, and a workout sheet (v122). After a long e-bike ride the outline said "Coming back" and planned three rest days: the usual week came from one short week after a long break, walks counted in one rule and not another, and an imported ride with no typed effort read as hard from strain alone. Owner's decisions: recovery is advice by day (no hours number; Garmin's recovery time and training effect are not in the Intervals.icu API, so they cannot be imported); workout insights are worked out by the app only (no AI button); e-bike rides count as cycling by time and heart rate; walks under an hour are recovery; tapping a workout row opens its detail.
   - Thresholds (`TH`, core.js): `WALK_TR_MIN` 60 / `WALK_TR_STEADY` 10, `RET_BASE_MIN` 60 / `RET_BASE_WKS` 2, `ZN_STEADY` .89 / `ZN_HARD` .94 / `LT_FROM_MAX` .87, `HARD_MIN` 10 / `HARD_SUM` 30 / `MOD_SUM` 10, `BIG_MIN` 30 / `BIG_DUR` 90, `REC_HARD_D` 2 / `REC_BIG_D` 3, `DRIFT_OK` 5 / `DRIFT_HIGH` 10 / `DRIFT_MIN` 30, `WK_PTS` 600, `CLIMB_DIP` 5 / `CLIMB_MIN` 20, `SIM_N` 5 / `SIM_DUR` .25, `HR_NEAR` 3 / `HRR_NEAR` 5, `MIX_EASY` .8 / `MIX_HARD` .25 / `MIX_SH` .5.
   - One reading of each workout (`js/workout.js`, logic at the top, shared by the outline, the levels, the sheet and the briefing): `stTrains(w)` (yoga never; a walk only at `WALK_TR_MIN`+ or with `WALK_TR_STEADY`+ steady-or-harder minutes); `wkLt(w)` threshold heart rate (the workout's `lt`, else `stThr()` for that sport unless estimated, else `LT_FROM_MAX` × its `mx`); `wkMix(w)` easy/steady/hard minutes from `z`/`zb`, each zone classed by its middle against the threshold, so 5 and 7 zones both work; `wkEffOf(w)` `{e 1-5, src 'you'|'watch'|'hr'}` in that order (typed, the watch's `effOf5`, the zone mix, the average heart rate against threshold; strength never from heart rate), `wkEff`, `wkHard` (4+); `wkRec(w)` `{hardOn, n, e, txt}` (hard training fits again the next day, `REC_HARD_D` after effort 4, `REC_BIG_D` after 5, in everyday words relative to today); `wkLabel` ("E-bike ride"), `wkEb`, `wkNoun`, `wkWhen`.
   - Strategy (strategy.js): `stReturn()` uses `stTrains`, needs `RET_BASE_WKS` weeks with training and a usual week of `RET_BASE_MIN`+ before the break (else no comeback; the normal modes and growth caps build from now), and ends early once any rolling 7 days since restarting reach the usual week. `stTrains` replaces "anything logged" in `seq.tr`, the usual-days count and `nTr`. `stHard` uses `wkHard`; the strain rule stays only for an imported day with no effort, zones or heart rate. `progAll` and `stMatch` read effort through `wkEffOf`. Recovery in the outline: `recW` = the latest `wkRec().hardOn` from the last `REC_BIG_D` days; a hard day before it becomes easy, "Plan says hard. Kept easy: still recovering from yesterday's e-bike ride." The sheet and the outline use the same rule.
@@ -179,6 +182,14 @@ Verify after each change; don't batch.
   - Log: no "Start with what is still open today.", no "Editing the saved night…" (`#slNote` hides when empty), no blood pressure hint (a half pair still gets a toast), "Resting heart rate (morning)", a shorter symptoms note.
   - Do not bring back without asking: the Recovery details card, the "In view" stats line, the drag hint, "How to read this" on charts or the workout trace, "What stood out", the outline footnote and "How this is worked out", "Based on N of 14 days" with enough data, "effort not set".
   - Tests: 210.
+- Invite only (v124). Owner's decisions: a sign-in wall (only invited people can use the app, then it works offline as before); no app lock or encryption on the phone; personal notes out of the public repo (`CLAUDE.local.md`, gitignored).
+  - Sign-in wall (sync.js): `gateOn()` = not signed in; `showGate()` (called by `init()` after `handleAuthHash()`, by `signOut` and by a cancelled account switch) opens `#authModal` with class `gate`: full screen above everything but the splash (z 450, `--bg` page, the sheet as a card, `.auth-gate` logo and "Invite only" line, no ×), and `closeAuth()` does nothing while it is on. Signing out pushes waiting changes first (when online) and locks the app. An expired sign-in link (`#error_code=otp_expired`) gives a toast and a clean address.
+  - No account from the app: `sendCode` posts `create_user:false`; `noInvite(j)` turns Supabase's answer for an unknown email (422 `otp_disabled`, "Signups not allowed") into "This email is not on the invite list". The owner turns sign-ups off in Supabase and invites from Authentication > Users. Never send `create_user:true` again.
+  - One account per phone's data: `dataUid` (local only, left out of backups, kept on restore). `ownData()` at start marks existing data as the signed-in account's; `afterSignIn` with a different account asks first, then clears the phone (keys included) before anything is queued, so nothing of one account is uploaded into another; cancelling signs out and keeps the data. A phone that has not finished setup does not queue its blank profile, so the account's profile comes from the cloud.
+  - Rows per person (`docs/supabase-v124.sql`, the owner runs it): every table RLS on, older policies dropped, one "own rows" policy for `authenticated`, `revoke all` from `anon`; record tables keyed by `(user_id, id)` (ids made from dates would collide between people); `polar_tokens` closed to the app entirely. Tested on a throwaway Postgres (PGlite) with two users, twice in a row. Push uses `on_conflict=user_id,id`; until the script has run, the cloud answers 42P10 and `pushAll` falls back to `on_conflict=id` for the session (`_idKey`). A delete names `user_id` as well as `id`.
+  - Polar: `polarConnect()` asks `polar-status` (key in the header) for Polar's login address and only follows an `https://auth.polar.com/` one; the backend no longer reads `?key=`, `api/polar-login` and the open `api/intervals.js` relay are gone (backend repo, deployed by the owner with `vercel --prod` after the app update is live).
+  - Settings > Account says only invited people can sign in and each sees only their own data. Polar stays the owner's only (one token row); invited people use Intervals.icu and their own Anthropic key.
+  - Tests: 229.
 - Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
 
 ## Conventions
@@ -197,4 +208,4 @@ Duration/HR fields for weight training, decimal sleep hours, numeric check-in bu
 - Check-in, sleep, workout, measurements, blood, injury: each saves, survives reload, updates dependent views.
 - Insight: generates, caches on tab switch, appears in history, regenerate works.
 - Offline: banner appears, app still loads from service worker.
-- S24 viewport: nothing clips, tooltips and toast positioned correctly.
+- 360px phone viewport: nothing clips, tooltips and toast positioned correctly.

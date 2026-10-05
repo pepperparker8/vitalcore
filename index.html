@@ -431,7 +431,8 @@
 </div>
 <div class="modal-ov z2" id="authModal">
   <div class="modal">
-    <div class="modal-title">Sign in <button class="modal-close" onclick="closeAuth()">×</button></div>
+    <div class="auth-gate"><img src="assets/mark.svg" alt="" width="48" height="48"><div class="auth-gate-t">VitalCore</div><div class="set-note">Invite only. Sign in with the email address you were invited with.</div></div>
+    <div class="modal-title">Sign in <button class="modal-close" onclick="closeAuth()" aria-label="Close">×</button></div>
     <div id="authStep1">
       <div class="set-note" style="font-size:13px;margin-bottom:12px;color:var(--t2)">Enter your email. We'll email you a sign-in link. Tap it on this phone and you're in. No password needed.</div>
       <div class="fg"><div class="fl">EMAIL</div><input type="email" class="inp" id="authEmail" placeholder="you@example.com" autocomplete="email" autocapitalize="off"></div>

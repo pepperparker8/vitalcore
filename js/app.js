@@ -53,11 +53,12 @@ function initUI(){
 }
 async function init(){
   await persistLoad();
-  loadAuth();
+  loadAuth();ownData();
   initUI();
   setTimeout(()=>$('splash').classList.add('gone'),700);
   if(!navigator.onLine)$('offlineBar').classList.add('show');
   await handleAuthHash();
+  showGate();   // v124: invite only; nothing shows until an invited account has signed in on this phone
   // background refresh: cloud, Intervals.icu and Polar at most once an hour; straight away when back from the Polar sign-in
   const d=S(),back=/[?&]polar=connected/.test(location.search);
   if(back){history.replaceState(null,'',location.pathname);showToast('Polar connected ✓'+(d.polarKey?' — pulling your nights…':'. Enter the app key in Settings to pull your nights.'));}

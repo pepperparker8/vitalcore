@@ -919,6 +919,76 @@ run('v123 text',()=>{
   check('v123 text: the briefing asks for 1 to 2 sentences a field, allows an empty field and keeps follow-up answers to 1 to 4',/1 to 2 short sentences per field/.test(INS_SYS)&&/empty string for any field \(except overall, day and today\)/.test(INS_SYS)&&/at most 3 sentences/.test(INS_SYS)&&/1 to 4 short sentences/.test(INS_QA_SYS)&&/Be brief\./.test(INS_COMMON)&&/At most one number per sentence/.test(INS_COMMON));
 });
 
+// v124: invite only. A sign-in wall until an invited account signs in, no account created from the app, each person's rows kept apart,
+// and data on a phone never uploaded into another account. Canned fetch only: nothing is sent, no account is touched
+seq('v124 access',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.hidden=true;
+  box.innerHTML=doc.getElementById('authModal').outerHTML+'<div id="welcome"></div><input id="sPolarKey">';document.body.appendChild(box);
+  const keep={},stub=(k,f)=>{keep[k]=window[k];window[k]=f;};
+  const toasts=[],seen={init:0,sync:0};let ok=true;
+  stub('showToast',m=>toasts.push(m));stub('refreshAll',()=>{});stub('initUI',()=>{seen.init++;});stub('syncAll',async()=>{seen.sync++;});
+  stub('closeSettings',()=>{});stub('loadSetUI',()=>{});stub('confirm',()=>ok);stub('download',(n,t,x)=>{seen.file=x;});
+  const rm=Storage.prototype.removeItem;Storage.prototype.removeItem=function(){};
+  const A={access_token:'x',refresh_token:'x',expires_at:9e9,user:{id:'uid-a',email:'a@example.com'}},B={...A,user:{id:'uid-b',email:'b@example.com'}};
+  const m=()=>$('authModal'),open=()=>m().classList.contains('open')&&m().classList.contains('gate');
+  try{
+    _auth=null;showGate();closeAuth();
+    check('v124 access: signed out, the sign-in sheet covers the app and cannot be closed',open()&&/Invite only/.test(m().textContent),m().className);
+    _auth=A;closeAuth();
+    check('v124 access: once signed in the sheet closes',!m().classList.contains('open')&&!m().classList.contains('gate'),m().className);
+
+    // the app never creates an account, and says plainly when an email is not invited
+    _auth=null;showGate();const calls=[];let ans=()=>new Response(JSON.stringify({code:422,error_code:'otp_disabled',msg:'Signups not allowed for otp'}),{status:422});
+    window.fetch=async(u,o={})=>{calls.push({u,b:o.body?JSON.parse(o.body):null});return ans();};
+    $('authEmail').value='stranger@example.com';await sendCode();
+    check('v124 access: the sign-in email asks never to create an account',calls.length===1&&/\/auth\/v1\/otp/.test(calls[0].u)&&calls[0].b.create_user===false,JSON.stringify(calls[0]&&calls[0].b));
+    check('v124 access: an email that was not invited is told so',$('authErr').textContent==='This email is not on the invite list. Ask for an invite, then try again.',$('authErr').textContent);
+    ans=()=>new Response(JSON.stringify({error_code:'over_email_send_rate_limit',msg:'Too many'}),{status:429});await sendCode();const e429=$('authErr').textContent;
+    ans=()=>new Response('{}',{status:200});await sendCode();
+    check('v124 access: too many emails keeps its own message, and an invited email moves on to the code step',/^Too many emails/.test(e429)&&$('authStep2').style.display==='block',e429);
+    check('v124 access: the invite check reads the cloud\'s answer, not just the status',noInvite({error_code:'signup_disabled'})&&noInvite({msg:'Signups not allowed for this instance'})&&!noInvite({error_code:'over_email_send_rate_limit'})&&!noInvite(null));
+    location.hash='#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired';await handleAuthHash();
+    check('v124 access: an expired sign-in link says so and leaves the address clean',/has expired/.test(toasts.pop())&&!location.hash,location.hash);
+
+    // data on the phone belongs to one account
+    base();_s.dataUid='';_s.claudeKey='mine';_s.checkins=[ci()];_auth=A;ownData();
+    check('v124 access: data already on the phone is marked as the signed-in account\'s',_s.dataUid==='uid-a');
+    _auth=B;ownData();check('v124 access: and is never re-marked as someone else\'s',_s.dataUid==='uid-a');
+    base();_s.dataUid='uid-a';_s.checkins=[ci()];_s.pending={};_auth=A;showGate();afterSignIn();
+    check('v124 access: the same account signing in again keeps the data and queues it',_s.checkins.length===1&&_s.pending['checkins|'+ci().id]&&_s.pending['profile|1']&&!m().classList.contains('open')&&seen.sync===1,Object.keys(_s.pending).join());
+    base();_s.dataUid='uid-a';_s.claudeKey='a-key';_s.checkins=[ci()];_s.pending={['checkins|x']:1};ok=false;_auth=B;afterSignIn();
+    check('v124 access: another account, cancelled: nothing changes, the phone stays signed out',_auth===null&&_s.dataUid==='uid-a'&&_s.checkins.length===1&&_s.claudeKey==='a-key'&&open()&&seen.sync===1);
+    ok=true;_auth=B;const n0=seen.init;afterSignIn();
+    check('v124 access: another account, confirmed: the phone is cleared first, keys included, and nothing of the first account is uploaded',_s.dataUid==='uid-b'&&!_s.checkins.length&&!_s.claudeKey&&!Object.keys(_s.pending).length&&!_s.onboardingDone&&seen.init===n0+1&&seen.sync===2,Object.keys(_s.pending).join());
+    base();_s.onboardingDone=false;_s.dataUid='';_s.pending={};_s.sleepLogs=[];_auth=A;afterSignIn();
+    check('v124 access: a new phone takes the profile from the cloud instead of uploading a blank one',!_s.pending['profile|1']&&_s.dataUid==='uid-a',Object.keys(_s.pending).join());
+
+    // the cloud: rows keyed by person and id; a cloud without that key yet falls back to the id
+    base();_auth=A;_idKey=false;_s.pending={['checkins|'+ci().id]:5};_s.checkins=[ci({ts:5})];_s.tomb=[{n:'sleep',id:'sl-2026-10-01'}];
+    const up=[];let n42=1;
+    window.fetch=async(u,o={})=>{up.push({m:o.method||'GET',u});
+      if(o.method==='POST'&&/on_conflict=user_id,id/.test(u)&&n42-->0)return new Response(JSON.stringify({code:'42P10',message:'there is no unique or exclusion constraint matching the ON CONFLICT specification'}),{status:400});
+      return new Response('',{status:201});};
+    await pushAll();
+    const posts=up.filter(x=>x.m==='POST').map(x=>x.u.replace(SB_URL,'')),del=up.find(x=>x.m==='DELETE');
+    check('v124 access: a record is uploaded keyed by person and id, and falls back to the id while the cloud has not been updated',posts[0]==='/rest/v1/checkins?on_conflict=user_id,id'&&posts[1]==='/rest/v1/checkins?on_conflict=id'&&!_s.pending['checkins|'+ci().id]&&_idKey===true,posts.join(' | '));
+    check('v124 access: a delete names the person as well as the id',del&&del.u.endsWith('/rest/v1/sleep_logs?id=eq.sl-2026-10-01&user_id=eq.uid-a')&&!_s.tomb.length,del&&del.u);
+    _idKey=false;
+
+    // Polar: the app key is sent in a header, never in an address
+    const pc=[];window.fetch=async(u,o={})=>{pc.push({u,h:o.headers||{}});return new Response(JSON.stringify({connected:false,connect:'https://evil.example/authorize'}),{status:200});};
+    $('sPolarKey').value='pk-test';await polarConnect();
+    check('v124 access: Connect to Polar asks the backend with the key in a header, and refuses a login address that is not Polar\'s',pc.length===1&&/\/polar-status$/.test(pc[0].u)&&pc[0].h['X-App-Key']==='pk-test'&&!/pk-test/.test(pc[0].u)&&/did not give a Polar login/.test(toasts.pop())&&!/polar-login|\?key=/.test(polarConnect.toString()),pc[0]&&pc[0].u);
+
+    base();_s.dataUid='uid-a';backupJSON();const bk=JSON.parse(seen.file||'{}');
+    check('v124 access: a backup leaves out which account the phone belongs to',bk.checkins&&!('dataUid' in bk));
+    const sql=await (await realFetch('../docs/supabase-v124.sql',{cache:'no-store'})).text(),app=await (await realFetch('../js/app.js',{cache:'no-store'})).text();
+    check('v124 access: the database script sets one own-rows policy, shuts out anyone signed out, keys rows by person and id, and opens nothing',/create policy "own rows" on public\.%I for all to authenticated using \(user_id = auth\.uid\(\)\) with check \(user_id = auth\.uid\(\)\)/.test(sql)&&/revoke all on public\.%I from anon/.test(sql)&&/primary key \(user_id, id\)/.test(sql)&&/revoke all on public\.polar_tokens from anon, authenticated/.test(sql)&&!/using \(true\)|grant /i.test(sql));
+    check('v124 access: the app shows the wall at start, after a sign-in link is read',/await handleAuthHash\(\);\s*showGate\(\);/.test(app)&&/loadAuth\(\);ownData\(\);/.test(app));
+  }finally{Object.entries(keep).forEach(([k,f])=>{window[k]=f;});Storage.prototype.removeItem=rm;_auth=null;_idKey=false;box.remove();}
+});
+
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;

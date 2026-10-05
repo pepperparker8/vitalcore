@@ -12,7 +12,7 @@ function loadSetUI(){
   $('claudeTestRes').textContent='';$('icuTestRes').textContent='';$('polTestRes').textContent='';$('polNote').textContent=polarNote();
   const n=Object.keys(d.pending).length;
   if(_auth){
-    $('accBox').innerHTML=`<b>Signed in as ${esc(_auth.user.email||'your account')}</b>${n?`${n} change${n>1?'s':''} waiting to upload.`:'Everything is backed up online.'}`;
+    $('accBox').innerHTML=`<b>Signed in as ${esc(_auth.user.email||'your account')}</b>${n?`${n} change${n>1?'s':''} waiting to upload.`:'Everything is backed up online.'} Only people you invite can sign in, and each person sees only their own data.`;
     $('accBtn').textContent='Sign out';$('accBtn').onclick=signOut;$('accBtn').className='btn-out';$('accBtn').style.marginTop='0';
   }else{
     $('accBox').innerHTML=`<b>Saved on this phone only</b>Sign in and your data is backed up online, so you never lose it.`;
@@ -33,7 +33,7 @@ function saveSettings(){
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function backupJSON(){
-  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;
+  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;
   download(`vitalcore-backup-${td()}.json`,'application/json',JSON.stringify(d));
   showToast('Backup downloaded');
 }
@@ -46,7 +46,7 @@ function restoreBackup(inp){
       if(!Array.isArray(b.checkins)||!Array.isArray(b.workouts))throw new Error('bad');
       if(!confirm('Replace the data on this phone with this backup?'))return;
       const d=S();
-      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey,intervalsID:d.intervalsID||b.intervalsID||'',polarKey:d.polarKey,icuSent:d.icuSent};
+      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey,intervalsID:d.intervalsID||b.intervalsID||'',polarKey:d.polarKey,icuSent:d.icuSent,dataUid:d.dataUid};
       const safe={};for(const k of Object.keys(DEFAULTS))if(k in b)safe[k]=b[k];
       _s={...JSON.parse(JSON.stringify(DEFAULTS)),...safe,...keep,pending:{},tomb:[],onboardingDone:true};
       migrate();

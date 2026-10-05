@@ -999,3 +999,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 /* ── v123: an empty note takes no space ── */
 #slNote:empty,#spNote:empty{display:none}
+
+/* v124: sign-in wall. The sign-in sheet covers the whole app until an invited account signs in; it cannot be closed */
+.auth-gate{display:none}
+#authModal.gate{background:var(--bg);z-index:450;align-items:center}
+#authModal.gate .modal{background:var(--sur);box-shadow:var(--sh);border-radius:14px;margin:0 auto;width:calc(100% - 32px);max-width:480px}
+#authModal.gate .modal-close{display:none}
+#authModal.gate .auth-gate{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px}
+#authModal.gate .auth-gate img{border-radius:22%}
+.auth-gate-t{font-size:20px;font-weight:600;color:var(--text)}
+#authModal.gate .auth-gate .set-note{margin:0;color:var(--t2)}
