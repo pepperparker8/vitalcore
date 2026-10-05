@@ -249,38 +249,38 @@ const wkDriftOn=w=>{const i=wIcu(w);return i.dec!=null&&!wkEb(w)&&(w.type==='Run
 function wkIns(w,a,thr,B,pm){
   const o=[],i=wIcu(w),eb=wkEb(w),dur=w.durMin||0,m=wkMix(w,thr);
   if(m){
-    const t=m.easy+m.steady+m.hard,ln=`${m.easy} of ${t} minutes easy, ${m.steady} steady, ${m.hard} hard`;
-    o.push(m.easy>=t*TH.MIX_EASY?`Mostly easy: ${ln}.`:m.hard>=t*TH.MIX_HARD?`Plenty of hard work: ${ln}.`:m.steady+m.hard>=t*TH.MIX_SH?`Mostly steady to hard: ${ln}.`:`A mix of easy and steady: ${ln}.`);
+    // v123: the minutes sit right above in the zone bars, so the sentence gives the meaning only
+    const t=m.easy+m.steady+m.hard;
+    o.push(m.easy>=t*TH.MIX_EASY?'Mostly easy.':m.hard>=t*TH.MIX_HARD?'Plenty of hard work.':m.steady+m.hard>=t*TH.MIX_SH?'Mostly steady to hard.':'A mix of easy and steady.');
   }
   if(wkDriftOn(w)){
     const by=w.type==='Run'?'pace':pm?'power':'speed',d=i.dec,r=Math.round(Math.abs(d)*10)/10;
-    o.push(d<=0?`Your heart rate held steady against your ${by} from the first half to the second: well paced.`
-      :`Your heart rate rose ${r}% against your ${by} from the first half to the second: `+(d<TH.DRIFT_OK?'well paced.':d<TH.DRIFT_HIGH?'some drift, common on a long or warm day.':'a lot. Heat, too little to drink or eat, or more than your fitness holds for this long can do this.'));
+    o.push(d<=0?`Well paced: heart rate held steady against ${by}.`:d<TH.DRIFT_OK?`Well paced: heart rate drifted ${r}% against ${by}.`
+      :d<TH.DRIFT_HIGH?`Heart rate drifted ${r}% against ${by}, common on a long or warm day.`:`Heart rate drifted ${r}% against ${by}: heat, too little to drink or eat, or a long day for your fitness.`);
   }
   if(a&&a.b5){
-    const s=b=>`${b.hr} bpm${wkClsAt(B,b.hr)?' ('+wkClsAt(B,b.hr)+')':''}${pm&&b.pw?`, ${b.pw} W`:''}, ${b.at<60?'from the start':'starting '+fmtDur(Math.round(b.at/60))+' in'}`;
-    o.push(`Hardest 5 minutes: ${s(a.b5)}.`+(a.T>=1800&&a.b20?` Hardest 20 minutes: ${s(a.b20)}.`:''));
+    const b=a.b5;
+    o.push(`Hardest 5 minutes: ${b.hr} bpm${wkClsAt(B,b.hr)?' ('+wkClsAt(B,b.hr)+')':''}${pm&&b.pw?`, ${b.pw} W`:''}, ${b.at<60?'from the start':fmtDur(Math.round(b.at/60))+' in'}.`+(a.T>=1800&&a.b20?` Hardest 20: ${a.b20.hr} bpm${pm&&a.b20.pw?`, ${a.b20.pw} W`:''}.`:''));
   }
   if(a&&a.climb){
     const c=a.climb,mn=Math.max(1,Math.round((c.to-c.at)/60));
-    o.push(`Biggest climb: ${c.gain} m${c.km?` over ${c.km} km`:''}${c.grade?` (${c.grade}% on average)`:''} in ${fmtDur(mn)}${c.hr0&&c.hr1?`; your heart rate went from ${c.hr0} to ${c.hr1} bpm`:''}.`);
+    o.push(`Biggest climb: ${c.gain} m${c.km?` over ${c.km} km`:''}${c.grade?` (${c.grade}%)`:''} in ${fmtDur(mn)}${c.hr0&&c.hr1?`, heart rate ${c.hr0} to ${c.hr1} bpm`:''}.`);
   }
   if(i.hrr>0){
     const prev=stWs().filter(x=>x.id!==w.id&&x.type===w.type&&wkEb(x)===eb&&x.date<w.date&&wIcu(x).hrr>0).sort((x,y)=>x.date<y.date?1:-1).slice(0,10).map(x=>wIcu(x).hrr);
-    let t=`Your heart rate came down ${Math.round(i.hrr)} beats within a minute of a hard effort`;
-    if(prev.length>=3){const u=Math.round(avg(prev)),d=i.hrr-u;t+=Math.abs(d)<=TH.HRR_NEAR?`, about your usual of ${u}.`:d>0?`, more than your usual of ${u}: a good sign.`:`, less than your usual of ${u}. Tiredness, heat or a short cool-down can do this.`;}
+    let t=`Heart rate fell ${Math.round(i.hrr)} beats in the minute after a hard effort`;
+    if(prev.length>=3){const u=Math.round(avg(prev)),d=i.hrr-u;t+=Math.abs(d)<=TH.HRR_NEAR?`, about your usual ${u}.`:d>0?`, more than your usual ${u}: a good sign.`:`, less than your usual ${u}: tiredness, heat or a short cool-down.`;}
     o.push(prev.length>=3?t:t+'.');
   }
   const sim=IS_STR(w.type)?[]:wkSim(w);
   if(i.hr&&sim.length>=2){
     const u=Math.round(avg(sim.map(x=>wIcu(x).hr))),d=Math.round(i.hr)-u;
-    let t=`Average heart rate ${Math.round(i.hr)} bpm: ${Math.abs(d)<=TH.HR_NEAR?'about the same as':d>0?`${d} higher than`:`${-d} lower than`} your last ${sim.length} ${wkPl(w)} of a similar length (${u} bpm)`;
-    const sp=x=>x.distKm>0&&x.durMin>0?x.distKm/(x.durMin/60):null,me=sp(w),th=sim.map(sp).filter(v=>v);
-    if(!eb&&w.type!=='Swim'&&me&&th.length>=2){
-      const v=avg(th);t+=`, at ${w.type==='Cycle'?'an average speed of':'a pace of'} ${wkSpdTxt(w,me)} against ${wkSpdTxt(w,v)}.`;
-      if(d<-TH.HR_NEAR&&me>=v*0.99)t+=' A lower heart rate at the same or a faster speed is a sign your fitness is building.';
-      else if(d>TH.HR_NEAR&&me<=v*1.01)t+=' A higher heart rate for the same speed: tiredness or heat can do this.';
-    }else t+='.';
+    let t=`Average heart rate ${Math.round(i.hr)} bpm, ${Math.abs(d)<=TH.HR_NEAR?'about the same as':d>0?`${d} higher than`:`${-d} lower than`} your last ${sim.length} similar ${wkPl(w)}`;
+    const sp=x=>x.distKm>0&&x.durMin>0?x.distKm/(x.durMin/60):null,me=sp(w),th=sim.map(sp).filter(v=>v),v=th.length>=2?avg(th):null;
+    // v123: the speed only when it carries the point (same speed, different heart rate)
+    if(!eb&&w.type!=='Swim'&&me&&v&&d<-TH.HR_NEAR&&me>=v*0.99)t+=', at the same speed or faster: fitness is building.';
+    else if(!eb&&w.type!=='Swim'&&me&&v&&d>TH.HR_NEAR&&me<=v*1.01)t+=', at the same speed or slower: tiredness or heat can do this.';
+    else t+='.';
     o.push(t);
   }
   return o.slice(0,6);
@@ -300,12 +300,12 @@ function wkSpec(id){
   if(!w){_wkC=null;return{title:'Workout',html:'<div class="dt-miss">This workout is no longer in your log.</div>'};}
   const i=wIcu(w),thr=stThr(),eb=wkEb(w),pm=w.type==='Cycle'&&!eb&&!!i.dw&&!!i.pw,B=wkBands(w,thr),g=wkStGot(w),a=g&&g.ok?g.a:null;
   const wd=new Date(w.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'});
-  const sum=[wd+' '+fmtD(w.date)+(i.t?', '+i.t:''),!w.sets&&w.durMin?fmtDur(w.durMin):'',w.distKm?fmtDist(w):'',i.elev>0?Math.round(i.elev)+' m climb':''].filter(Boolean).join(' · ');
+  const sum=[wd+' '+fmtD(w.date)+(i.t?', '+i.t:''),!(w.sets&&w.sets.length)&&w.durMin?fmtDur(w.durMin):'',w.distKm?fmtDist(w):'',i.elev>0?Math.round(i.elev)+' m climb':''].filter(Boolean).join(' · ');
   const C=[],cell=(l,v,s)=>C.push(`<div><span>${l}</span><b>${esc(String(v))}</b>${s?`<small>${esc(s)}</small>`:''}</div>`);
   if(i.hr)cell('Average heart rate',Math.round(i.hr),'bpm');
   if(i.hrMax)cell('Max heart rate',Math.round(i.hrMax),'bpm');
   if(i.kcal)cell('Energy',Math.round(i.kcal),'kcal');
-  const vt=wkSpdTxt(w,i.spd||(w.distKm>0&&w.durMin>0&&!w.sets?w.distKm/(w.durMin/60):null));
+  const vt=wkSpdTxt(w,i.spd||(w.distKm>0&&w.durMin>0&&!(w.sets&&w.sets.length)?w.distKm/(w.durMin/60):null));
   if(vt){const[v,...u]=vt.split(' ');cell(w.type==='Cycle'?'Average speed':'Average pace',v,u.join(' '));}
   if(pm)cell('Average power',Math.round(i.pw),'W');
   if(i.cad)cell('Cadence',Math.round(i.cad),w.type==='Cycle'?'rpm':'per min');
@@ -335,7 +335,7 @@ function wkSpec(id){
   if(daysAgo(w.date)<=2&&stTrains(w,thr)){const r=wkRec(w,thr);if(r.e)h+=`<div class="dt-sec">Recovery</div><div class="dt-eff">${esc(r.txt)}</div>`;}
   const ph=(S().planHist||{})[w.date];
   if(ph&&ph.fam)h+=`<div class="dt-sec">Planned against done</div><div class="wk-pv">${stRowX({date:w.date,done:1,snap:ph,match:stMatch(w.date,thr),sheet:1},null)}</div>`;
-  if(w.sets)h+=`<div class="dt-sec">Sets</div><div class="dt-eff">${esc(setsText(w))}</div>`;
+  if(w.sets&&w.sets.length)h+=`<div class="dt-sec">Sets</div><div class="dt-eff">${esc(setsText(w))}</div>`;
   if(w.notes)h+=`<div class="dt-sec">Note</div><div class="dt-eff">${esc(w.notes)}</div>`;
   h+=`<button type="button" class="btn-out dt-link" onclick="closeDetail();editWorkout('${esc(w.id)}')">Edit in Log</button>`;
   return{title:wkLabel(w),html:h};
@@ -358,18 +358,10 @@ function wkMount(){
   const C=_wkC,host=$('wkTr');if(!C||!host)return;
   const ms=C.ms=wkMets(C);if(!ms.some(([k])=>k===C.m))C.m=ms.length?ms[0][0]:'hr';
   host.innerHTML=(ms.length>1?`<div class="wk-chs" role="group" aria-label="Show on the chart">${ms.map(([k,l])=>`<button type="button" class="wk-ch" data-m="${k}" aria-pressed="${k===C.m}">${l}</button>`).join('')}</div>`:'')+
-    `<div class="vc-ro wk-ro"></div><canvas class="vc-cv wk-cv" tabindex="0" role="img" style="width:100%;height:${WK_H}px;display:block"></canvas><details class="fm-why" data-k="wkHow"><summary>How to read this</summary><div>${wkHow(C)}</div></details>`;
+    `<div class="vc-ro wk-ro"></div><canvas class="vc-cv wk-cv" tabindex="0" role="img" style="width:100%;height:${WK_H}px;display:block"></canvas>`;
   host.querySelectorAll('.wk-ch').forEach(b=>b.onclick=()=>{C.m=b.dataset.m;host.querySelectorAll('.wk-ch').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));wkDraw();});
   C.cv=host.querySelector('canvas');C.ro=host.querySelector('.wk-ro');
   wkBind(C);wkDraw();
-}
-function wkHow(C){
-  const p=['The line runs from the start of the session to the end. Tap or drag along it to read any moment; the arrow keys step through it and Esc clears.'];
-  if(C.a.has.hr&&C.B.length)p.push('The shaded bands are your heart rate zones grouped into easy, steady and hard, set from your threshold heart rate: the highest you can hold for about an hour.');
-  if(C.a.has.alt&&C.ms.some(([k])=>k!=='alt'))p.push('The grey area along the bottom is the height of the route, so you can see where the climbs were.');
-  if(C.ms.some(([k])=>k==='spd')&&C.w.type!=='Cycle')p.push('On the pace chart higher is faster.');
-  if(C.a.pts.some(x=>x.g))p.push('A gap in the line is a pause.');
-  return p.map(t=>`<p>${t}</p>`).join('');
 }
 // nearest chart point to a time (binary search on t)
 function wkIdx(P,t){let lo=0,hi=P.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(P[m].t<t)lo=m;else hi=m;}return Math.abs(P[hi].t-t)<Math.abs(P[lo].t-t)?hi:lo;}

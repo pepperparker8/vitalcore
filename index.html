@@ -94,8 +94,7 @@
   <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
   <div class="habits" id="habits"></div>
 
-  <details class="more-today" id="moreToday"><summary>Recovery details, plan and training</summary>
-  <div class="card rec-card" id="recCard"></div>
+  <details class="more-today" id="moreToday"><summary>Plan and training</summary>
 
 
   <div class="card sug-card" id="planCard"></div>
@@ -137,7 +136,7 @@
     <div id="rhrCanvas"></div>
     <div class="sec" id="respSec" style="margin-top:16px;display:none">Breathing rate while asleep</div>
     <div id="respCanvas"></div>
-    <div class="set-note">The shaded area is your usual range: the average of the 4 weeks before each day, give or take a typical day's swing.</div>
+    <div class="set-note">Shaded: your usual range.</div>
   </div>
 
   <div class="card">
@@ -147,7 +146,7 @@
     <div class="set-note" id="moodNote"></div>
   </div>
 
-  <div class="card"><div class="sec">Sleep</div><div id="sleepCanvas"></div><div class="set-note" id="sleepDebt" style="margin-bottom:8px"></div><div class="set-note" id="stNight"></div><div class="sleep-stages"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
+  <div class="card"><div class="sec">Sleep</div><div id="sleepCanvas"></div><div class="set-note" id="stNight"></div><div class="sleep-stages" id="stBox"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
 
   <div class="card"><div class="sec">Body weight</div><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
 
@@ -171,7 +170,6 @@
   <div class="burnout-card">
     <div class="sec">Burnout risk</div>
     <div style="display:flex;align-items:flex-end;gap:12px"><div class="burnout-num" id="boScore">—</div><div class="bo-lbl">/ 100 — <span id="boLabel">—</span></div></div>
-    <div class="burnout-break" id="boBreak"></div>
     <div class="set-note" id="boSub"></div>
     <div id="boCanvas" style="margin-top:8px"></div>
   </div>
@@ -200,7 +198,7 @@
 
 <!-- LOG -->
 <div class="page page-fade" id="pg-log">
-  <div class="lg-top"><div class="lg-h">Log</div><div class="lg-s">Start with what is still open today.</div><div class="lg-prog" id="lgProg"></div></div>
+  <div class="lg-top"><div class="lg-h">Log</div><div class="lg-prog" id="lgProg"></div></div>
   <div class="lg-grp">Every day</div>
   <div class="log-sec" id="lCheckin"><div class="log-hdr" onclick="tlog('lCheckin')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" /></svg></div><div><div class="log-title">Check-in</div><div class="log-stat" id="ciStat">Not done today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></div></div>
     <div class="log-body">
@@ -214,7 +212,7 @@
     <div class="ci-row"><div class="ci-metric">SORENESS</div><div class="ci-btns ci-txt" data-k="soreness"><button class="ci-btn" onclick="selCI('soreness',1,this)">None</button><button class="ci-btn" onclick="selCI('soreness',2,this)">Mild</button><button class="ci-btn" onclick="selCI('soreness',3,this)">Moderate</button><button class="ci-btn" onclick="selCI('soreness',4,this)">Severe</button></div></div>
     <div class="ci-row ci-wide" id="ciAreaRow" style="display:none"><div class="ci-metric">WHERE · tap all that apply</div><div class="ci-btns ci-txt ci-area" data-k="soreArea"><button class="ci-btn" data-a="legs" onclick="selArea('legs',this)">Legs</button><button class="ci-btn" data-a="hips" onclick="selArea('hips',this)">Hips</button><button class="ci-btn" data-a="back" onclick="selArea('back',this)">Back</button><button class="ci-btn" data-a="upper" onclick="selArea('upper',this)">Shoulders and arms</button><button class="ci-btn" data-a="core" onclick="selArea('core',this)">Core</button></div></div>
     <div class="ci-row ci-wide"><div class="ci-metric">SYMPTOMS · cold or illness</div><div class="ci-btns ci-txt" data-k="symptoms"><button class="ci-btn" onclick="selCI('symptoms',0,this)">None</button><button class="ci-btn" onclick="selCI('symptoms',1,this)">Above the neck</button><button class="ci-btn" onclick="selCI('symptoms',2,this)">Below the neck</button></div></div>
-    <div class="set-note" style="margin:-4px 0 10px">Above the neck: runny nose, sore throat; keep today easy. Below the neck: fever, chest, body aches, stomach; rest today.</div>
+    <div class="set-note" style="margin:-4px 0 10px">Above the neck: runny nose, sore throat. Below: fever, aches, chest, stomach.</div>
     <div class="ci-row"><div class="ci-metric">COFFEE</div><div class="ci-btns ci-txt" data-k="coffee"><button class="ci-btn" onclick="selCI('coffee',0,this)">0</button><button class="ci-btn" onclick="selCI('coffee',1,this)">1</button><button class="ci-btn" onclick="selCI('coffee',2,this)">2</button><button class="ci-btn" onclick="selCI('coffee',3,this)">3</button><button class="ci-btn" onclick="selCI('coffee',4,this)">4+</button></div></div>
     <label class="ci-late"><input type="checkbox" id="ciLate"> Last cup after 14:00</label>
     <div class="fl" style="margin-top:6px">ONE THING I'M GRATEFUL FOR (optional)</div>
@@ -318,10 +316,9 @@
         <div class="hist-row"><span>Weight</span><span class="hist-val" id="wtRec">—</span></div>
         <div class="hist-row"><span>Resting HR</span><span class="hist-val" id="hrRec">—</span></div>
       </div>
-      <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div><div class="fh">Enter both systolic and diastolic together</div></div>
+      <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div></div>
       <div class="fg"><div class="fl">WEIGHT</div><div class="fr"><input type="number" class="inp" id="wtKg" placeholder="73.5" step="0.1" min="30" max="250"><span class="inp-unit">kg</span></div></div>
-      <!-- PHASE 3: HRV manual entry as resting HR proxy -->
-      <div class="fg"><div class="fl">RESTING HR (morning, proxy for HRV)</div><div class="fr"><input type="number" class="inp" id="hrVal" placeholder="58" min="30" max="200"><span class="inp-unit">bpm</span></div><div class="fh">Log immediately after waking, before getting up</div></div>
+      <div class="fg"><div class="fl">RESTING HEART RATE (morning)</div><div class="fr"><input type="number" class="inp" id="hrVal" placeholder="58" min="30" max="200"><span class="inp-unit">bpm</span></div><div class="fh">Right after waking, before getting up</div></div>
       <button class="btn-gold" onclick="saveMeas()">Save results</button>
     </div>
   </div>
@@ -353,7 +350,7 @@
 <!-- INSIGHTS -->
 <div class="page page-fade" id="pg-insights">
   <div class="ins-hdr"><div class="ins-title">Your Health Briefing</div><div class="ins-stamp" id="insStamp">Not yet generated today</div></div>
-  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI briefing</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">One briefing that reads today, this week, this month and your longer trends, and tells you what to do next.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
+  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI briefing</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">Today, this week and your trends in one read, with what to do next.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
   <div class="card" id="coachCard"></div>
   <div class="card" id="stratCard" style="display:none"></div>
   <div class="card" id="digestCard"></div>

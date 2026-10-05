@@ -193,9 +193,9 @@ function sessLines(s,thr){
   thr=thr||stThr();const kind=sessKind(s.type,thr);
   const part=a=>a.map(x=>x.set?`${x.n} times: ${x.set.map(y=>sStep(y,s.type,thr,kind)).join(', then ')}`:sStep(x,s.type,thr,kind));
   let note='';
-  if(kind==='eff'&&s.type!=='Swim')note=s.type==='Run'?'No threshold pace or heart rate yet, so effort is described in words.':'No threshold power or heart rate yet, so effort is described in words.';
-  else if(kind==='hr'&&(s.type==='Run'?thr.run:thr.ride).est)note='Heart rates are estimated from your hardest sessions, so the watch gets this session without heart rate targets.';
-  else if(s.type==='Swim')note=`Times use about ${fmtPace(s.swPace||SW_PACE)} per 100 m.`;
+  if(kind==='eff'&&s.type!=='Swim')note='No threshold yet, so targets are by feel.';
+  else if(kind==='hr'&&(s.type==='Run'?thr.run:thr.ride).est)note='Heart rates are estimated, so the watch gets no heart rate targets.';
+  else if(s.type==='Swim')note=`Times assume about ${fmtPace(s.swPace||SW_PACE)} per 100 m.`;
   return{w:part(s.w),m:part(s.m),c:part(s.c),note};
 }
 // the main set in short for the briefing (at most 70 characters; the session name sits beside it)

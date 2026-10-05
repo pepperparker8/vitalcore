@@ -51,31 +51,31 @@ function recoveryDrivers(){
   if(hv&&hb.length>=RB_MIN){
     const b=avg(hb),pc=Math.round((hv.v/b-1)*100);
     out.push({k:'hrv',label:'Heart rate variability',val:Math.round(hv.v)+' ms',base:`usual ${Math.round(b)} ms`,delta:pc,st:pc>=-5?'ok':pc>=-15?'warn':'bad',
-      txt:pc>=-5?'HRV is normal. Your body is coping well.':`HRV is ${-pc}% below your usual. Your body is under strain.`});
+      ft:`Heart rate variability ${-pc}% below usual`,txt:'Your body is under strain. Keep today easy.'});
   }
   const rv=latestOf('rhr'),rb=rhrSeries();
   if(rv&&rb.length>=RB_MIN){
     const b=avg(rb),df=Math.round(rv.v-b);
     out.push({k:'rhr',label:'Resting heart rate',val:Math.round(rv.v)+' bpm',base:`usual ${Math.round(b)} bpm`,delta:-df,st:df<=2?'ok':df<=5?'warn':'bad',
-      txt:df<=2?'Resting HR is normal.':`Resting HR is ${df} bpm above usual. This often means fatigue, illness or poor sleep.`});
+      ft:`Resting heart rate ${df} bpm above usual`,txt:'Often fatigue, illness or poor sleep. Keep today easy.'});
   }
   const pv=latestOf('resp'),pb=wSeries('resp');
   if(pv&&pb.length>=RB_MIN){
     const b=avg(pb),df=Math.round((pv.v-b)*10)/10;
     out.push({k:'resp',label:'Breathing rate (asleep)',val:pv.v.toFixed(1)+' /min',base:`usual ${b.toFixed(1)} /min`,delta:-df,st:df<=1?'ok':df<=2?'warn':'bad',
-      txt:df<=1?'Breathing rate is normal.':`Breathing rate is ${df.toFixed(1)} breaths a minute above usual. This can be an early sign of illness, a hard day or poor recovery.`});
+      ft:`Breathing ${df.toFixed(1)} a minute above usual`,txt:'Can be an early sign of illness. Watch how you feel.'});
   }
   const goal=Math.round((d.profile.sleepGoal||7.5)*60),sl=last(d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<=1));
   if(sl){
     const df=sl.durMin-goal;
     out.push({k:'sleep',label:'Last night',val:fmtDur(sl.durMin),base:`goal ${fmtDur(goal)}`,delta:df,st:df>=-20?'ok':df>=-60?'warn':'bad',
-      txt:df>=-20?'You met your sleep goal.':`You slept ${fmtDur(-df)} less than your goal.`});
+      ft:`Short night: ${fmtDur(-df)} under your goal`,txt:'An earlier night tonight helps.'});
   }
   const wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7);
   if(wk.length>=3){
     const debt=wk.reduce((a,s)=>a+(goal-s.durMin),0);
     out.push({k:'debt',label:'Sleep debt, 7 nights',val:debt>0?fmtDur(debt):'none',base:`${wk.length} nights logged`,delta:-debt,st:debt<=60?'ok':debt<=180?'warn':'bad',
-      txt:debt<=60?'No meaningful sleep debt.':`You owe about ${fmtDur(debt)} of sleep. Add earlier nights, not just one long lie-in.`});
+      ft:`Sleep debt: ${fmtDur(debt)} this week`,txt:'A few earlier nights will clear it.'});
   }
   const yl=dayLoad(dAgo(1));
   const base=[];for(let i=2;i<=29;i++)base.push(dayLoad(dAgo(i)));
@@ -83,7 +83,7 @@ function recoveryDrivers(){
   if(trained>=4){
     const r=ba>0?yl/ba:0,lab=yl===0?'Rest':r<0.7?'Light':r<1.4?'Moderate':'Hard';
     out.push({k:'load',label:"Yesterday's effort",val:lab,base:'vs your daily average',delta:0,st:lab==='Hard'?'warn':'ok',
-      txt:lab==='Hard'?'Yesterday was hard for you. Expect some carry-over fatigue today.':lab==='Rest'?'A rest day helps recovery.':'A normal amount of training.'});
+      ft:'Hard day yesterday',txt:'Expect some tiredness today.'});
   }
   return out;
 }
@@ -194,14 +194,4 @@ function scoreWord(sc){
   const c=scoreCuts();
   if(bodyLive())return sc>=c.high?'Good':sc>=c.mod?'Moderate':'Low';
   return sc>=c.high?'Primed':sc>=c.warn?'Good':sc>=c.mod?'Moderate':'Low';
-}
-function renderRecovery(){
-  const el=$('recCard');if(!el)return;
-  const dr=recoveryDrivers();
-  if(!dr.length){
-    el.innerHTML=`<div class="rc-lbl">RECOVERY</div><div class="set-note">Recovery drivers appear once you have a week of sleep durations, or HRV and resting heart rate from your watch. Log time asleep in the Log tab.</div>`;return;
-  }
-  const bad=dr.filter(x=>x.st==='bad').length,warn=dr.filter(x=>x.st==='warn').length;
-  const head=bad>=2?'Your body is asking for recovery.':bad?'Mostly fine, one thing needs attention.':warn?'Mostly fine, watch a couple of things.':'Recovery signals look good.';
-  el.innerHTML=`<div class="rc-lbl">RECOVERY</div><div class="rc-head">${head}</div>`+dr.map(x=>`<details class="rc-row"><summary><span class="rc-dot ${x.st}"></span><span class="rc-name">${x.label}</span><span class="rc-val">${x.val}</span></summary><div class="rc-more"><b>${x.base}</b><br>${esc(x.txt)}</div></details>`).join('');
 }

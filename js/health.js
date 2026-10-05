@@ -20,16 +20,15 @@ function drawBloodChart(k){
   const pts=S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:1).map(x=>({d:x.date,v:x[k]}));
   const zones=[{lo:r.warn[1]+e,hi:null,color:'--red',label:'High'},{lo:r.ok[1]+e,hi:r.warn[1]+e,color:'--amber',label:'Borderline'},{lo:r.ok[0],hi:r.ok[1]+e,color:'--green',label:'Normal'}];
   if(r.ok[0]>0)zones.push({lo:null,hi:r.ok[0],color:'--red',label:'Low'});
-  const rg=v=>k==='uric'?v:Math.round(v);
   mountChart('btc_'+k,{key:'bt'+k,H:150,span:730,label:name,yfmt:v=>k==='uric'?r1(v):Math.round(v),empty:'One result so far. The chart appears after your second test.',
     series:[{name,color:'--text',thin:true,fmt:f,pts,dotColor:v=>{const st=scoreBM(v,k).status;return st==='ok'?'--green':st==='warn'?'--amber':'--red';}}],
-    zones,hi:true,stats:{good:v=>scoreBM(v,k).status==='ok',label:'in the normal range',unit:'results',one:'result'},
+    zones,hi:true,
+    // v123: one line, the zone of the latest result and the change since the first one in view
     means:info=>{
-      const l=info.last,i=pts.findIndex(p=>p.d===l.d),pv=i>0?pts[i-1]:null,z=chZone({zones},l.v),df=pv?l.v-pv.v:0;
-      let t=`${fmtD(l.d)}: ${f(l.v)}, ${z?z.label.toLowerCase():'—'} (normal is ${r.ok[0]>0?rg(r.ok[0])+' to '+rg(r.ok[1]):'under '+rg(r.ok[1])}).`;
-      if(pv)t+=Math.abs(df)<(k==='uric'?0.1:1)?` Unchanged since ${fmtD(pv.d)}.`:` ${df>0?'Up':'Down'} ${f(Math.abs(df))} since ${fmtD(pv.d)}`+(z&&z.label!=='Normal'&&((df<0)===(l.v>r.ok[1]))?', moving towards normal.':'.');
-      return t;},
-    how:`Green is the normal range, amber borderline (${rg(r.warn[0])} to ${rg(r.warn[1])}), red high${r.ok[0]>0?' or low':''}. A single result can move with the day (food, sleep, training, how long you fasted); two or three tests in a row tell you more.`});
+      const l=info.last,a=info.first,z=chZone({zones},l.v),w=z?(z.label==='Normal'?'In range':z.label):'',df=l.v-a.v;
+      if(!w)return'';if(a.d===l.d)return w+'.';
+      if(Math.abs(df)<(k==='uric'?0.1:1))return`${w}, about the same since ${fmtD(a.d)}.`;
+      return`${w}, ${df>0?'up':'down'} ${f(Math.abs(df))} since ${fmtD(a.d)}`+(z.label!=='Normal'&&((df<0)===(l.v>r.ok[1]))?': moving towards normal.':'.');}});
 }
 const stCol=s=>s==='ok'?'var(--green)':s==='warn'?'var(--amber)':'var(--red)';
 const stTxt=s=>s==='ok'?'In range':s==='warn'?'Borderline':'Out of range';

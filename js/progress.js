@@ -49,34 +49,20 @@ function renderProgress(){
   // running bests
   let best=-Infinity;const marks=[];pts.forEach((p,i)=>{if(p.v>best+1e-9){if(i>0)marks.push(i);best=p.v;}});
   const bi=pts.reduce((b,p,i)=>p.v>pts[b].v?i:b,0),b=pts[bi],l=last(pts);
-  h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${fmtD(b.date)}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${fmtD(l.date)}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">${marks.length} new best${marks.length===1?'':'s'}</div></div></div>`;
-  h+=`<div class="set-note">${prNext(_prKey,_prMet,b,l,pts)}</div>`;
+  h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${fmtD(b.date)}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${fmtD(l.date)}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">&nbsp;</div></div></div>`;
   el.innerHTML=h;
   const byD=new Map(pts.map(p=>[p.date,p]));
   const md=marks.map(i=>pts[i].date);
   mountChart('prCanvas',{key:'pr'+_prKey+_prMet,H:190,span:365,wide:true,yfmt:sr.yf,marks:md,extra:dt=>{const p=byD.get(dt);return p?p.sub:'';},label:_prKey+' progress',
     series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:sr.f}],
-    hi:true,stats:{one:'session',words:sr.words},means:info=>prMeaning(info,sr.df,sr.ch,md,'sessions'),
-    how:'Each point is one session. Gold rings mark a new best: better than every session before it. One slow or light day means little; look at whether the points drift up over a month or two.'+(sr.neg?' Higher on the chart is faster.':'')});
+    hi:true,stats:{words:sr.words},means:info=>prMeaning(info,sr.df,sr.ch,md,'sessions')});
 }
-// first few against last few sessions in view, plus the new bests in view
+// v123: one line. First few against last few sessions in view, plus the new bests in view
 function prMeaning(info,df,ch,marks,unit){
   const v=info.pts;if(v.length<2)return'';
   const k=v.length>=6?3:1,m=a=>a.reduce((s,p)=>s+p.v,0)/a.length,a=m(v.slice(0,k)),b=m(v.slice(-k)),d=b-a,pct=a?Math.round(Math.abs(d/a)*100):0;
-  let t=pct<2?`About level from the first to the last ${unit} in view.`:`${d>0?ch[0]:ch[1]} ${df(Math.abs(d))} (${pct}%) from your ${k>1?'first three':'first'} to your ${k>1?'last three':'last'} ${unit} in view.`;
+  const t=pct<2?'About level':`${d>0?ch[0]:ch[1]} ${df(Math.abs(d))} over these ${unit}`;
   const pr=marks.filter(x=>x>=info.from&&x<=info.to);
-  t+=pr.length?` ${pr.length} new best${pr.length!==1?'s':''} in view, the latest on ${fmtD(pr[pr.length-1])}.`:` No new best in view; your best here is ${info.fmt(info.hi.v)} on ${fmtD(info.hi.d)}.`;
-  return t;
+  return t+(pr.length?`; ${pr.length===1?'a new best on ':pr.length+' new bests, the latest on '}${fmtD(pr[pr.length-1])}.`:'.');
 }
 function setPrM(v){_prMet=v;renderProgress();}
-function prNext(key,met,b,l,pts){
-  if(PR_SPORT.includes(key)){
-    if(met==='dist')return`Longest so far ${b.txt}. A gradual step of 5 to 10% on your next long session is a safe way to beat it.`;
-    return l===b?'Your latest session is your best. Repeat it, then aim for a slightly harder one.':'Beat this by holding your PR effort for a little longer, or bring an easy day into the mix to recover for a hard one.';
-  }
-  if(met==='e1'){
-    const t=b.v+1,pick=[3,5,8].map(r=>{const kg=Math.ceil(t/(1+r/30)/2.5)*2.5;return`${fmtKg(kg)} kg × ${r}`;});
-    return`To set a new estimated PR (above ${Math.round(b.v*10)/10} kg), lift ${pick.join(', or ')}.`;
-  }
-  return l===b?'Your latest session is your best.':'Aim to beat your best next session, and keep recovery in check.';
-}

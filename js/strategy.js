@@ -379,7 +379,7 @@ function stRowX(x,st){
     const did=ws.map(w=>[wkLabel(w),w.durMin?fmtDur(w.durMin):''].filter(Boolean).join(' ')).join(', ');
     h+=x.snap?`<div class="st-pv"><span>Planned</span>${esc(stPlanned(x.snap))}</div>`:'';
     h+=`<div class="st-pv"><span>Done</span>${esc([did,eff!=null?`effort ${eff} of 5${m.src==='hr'?' from heart rate':''}`:'',pn.length?`pain ${Math.max(...pn)} of 10`:''].filter(Boolean).join(' · '))}</div>`;
-    const say=!m||!x.snap?'':m.m==='other'?'A different sport from the plan, so it does not move your level.':m.m==='harder'?'Harder than planned. Two in a row bring that kind of session down a level.':eff==null?'Effort not set. Add it in Log so the plan can tell how it went.':'Done as planned, which counts towards the next level.';
+    const say=!m||!x.snap?'':m.m==='other'?'A different sport from the plan.':m.m==='harder'?'Harder than planned.':eff==null?'Add the effort in Log so the plan learns from it.':'Done as planned.';
     if(say)h+=`<div class="set-note">${say}</div>`;
     if(pn.length&&Math.max(...pn)>=TH.PAIN_STOP)h+=`<div class="set-note">Pain ${Math.max(...pn)} of 10: stop training on it and get it checked.</div>`;
     // v122: each workout of the day opens its sheet (not inside the sheet itself)
@@ -392,7 +392,7 @@ function stRowX(x,st){
     h+=ST_PH.filter(([k])=>L[k].length).map(([k,lab])=>`<div class="st-ph">${solo?'':`<span>${lab}</span>`}<ul>${L[k].map(l=>`<li>${esc(l)}</li>`).join('')}</ul></div>`).join('');
     if(L.note&&!IS_STR(x.type)&&x.type!=='Yoga')h+=`<div class="set-note">${esc(L.note)}</div>`;
   }
-  if(x.swapFrom)h+=`<div class="set-note">Swapped from ${esc(x.swapFrom.toLowerCase())}. Same kind of day, same time and effort.</div>`;
+  if(x.swapFrom)h+=`<div class="set-note">Swapped from ${esc(x.swapFrom.toLowerCase())}.</div>`;
   if(x.swaps&&x.swaps.length){
     const ch=x.swaps.map(y=>y===x.swapFrom?`<button type="button" class="st-sw" onclick="stSwapTo('${x.date}','')">Back to ${y.toLowerCase()}</button>`:`<button type="button" class="st-sw" onclick="stSwapTo('${x.date}','${y}')">${y}</button>`).join('');
     h+=`<div class="st-swl">Swap for</div><div class="st-sws">${ch}</div>`;
@@ -409,7 +409,7 @@ function stSendHTML(x,st){
   const at=was&&was.at?new Date(was.at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
   if(!ev){
     if(was)return`<div class="st-sendr"><span class="st-sent">The session sent earlier is still on your watch.</span>${btn('Take it off',1)}</div>`;
-    return x.sess?'<div class="set-note">Strength and yoga stay on this phone. Runs, rides and swims can go to your watch.</div>':'';
+    return x.sess?'<div class="set-note">Strength and yoga stay on this phone.</div>':'';
   }
   if(was&&was.sig===icuSig(ev))return`<div class="st-sendr"><span class="st-sent">On your watch${at?` · sent ${at}`:''}</span>${btn('Take it off',1)}</div>`;
   return`<div class="st-sendr">${was?'<span class="st-sent">Changed since you sent it.</span>':''}${btn(was?'Send the new version':'Send to watch')}</div>`;
@@ -432,18 +432,17 @@ function renderStrategy(){
   const head=st.target?`<div class="st-tg"><b>${fmtDur(st.now)}</b> of about ${fmtDur(st.target)} this week</div><div class="gl-bar"><div style="width:${pc}%"></div></div>`:'';
   const t=td();[..._stOpen].forEach(k=>{if(k<t)_stOpen.delete(k);});
   // v121: a row with a session, swaps or a done workout opens to show it; rest and race rows stay plain
+  // v123: a reason shows once in the week, so three rest days do not repeat the same sentence
+  const seen=new Set();
   const rows=st.days.map(x=>{
+    const why=seen.has(x.why)?'':x.why;seen.add(x.why);
     const dt=new Date(x.date+'T12:00:00');
     const r=`<div class="st-r${x.i===0?' now':''}${x.role==='rest'||x.role==='recover'?' off':''}"><div class="st-d">${x.i===0?'Today':PL_DAYS[x.wd]}<small>${dt.getDate()}</small></div>
-     <div class="st-b"><div class="st-n">${esc(x.name)}</div>${stMeta(x)?`<div class="st-s">${esc(stMeta(x))}</div>`:''}<div class="st-s st-w">${esc(x.why)}</div></div>${stBars(x.effort)}`;
+     <div class="st-b"><div class="st-n">${esc(x.name)}</div>${stMeta(x)?`<div class="st-s">${esc(stMeta(x))}</div>`:''}${why?`<div class="st-s st-w">${esc(why)}</div>`:''}</div>${stBars(x.effort)}`;
     const body=(x.role==='rest'||x.role==='race'?'':stRowX(x,st))+stSendHTML(x,st);
     if(!body)return r+'</div>';
     return`<details class="st-x" data-d="${x.date}" ontoggle="stTog(this)"${_stOpen.has(x.date)?' open':''}><summary>${r}<svg class="st-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></summary><div class="st-sx">${body}</div></details>`;
   }).join('');
   el.innerHTML=`<div class="sec">Next 7 days</div><div class="st-mode">${esc(st.label)}</div><div class="set-note" style="margin:2px 0 10px">${esc(st.why)}</div>${stRetHTML(st)}${head}
-   <div class="st-list">${rows}</div>
-   <div class="set-note" style="margin-top:12px">${st.hardN} hard ${st.hardN===1?'day':'days'}, ${st.restN} rest ${st.restN===1?'day':'days'}${st.hi?`, about ${fmtDur(st.lo)} to ${fmtDur(st.hi)} in total`:''}. ${st.hasPlan?'Follows your weekly plan and bends it when your body needs it.':'No weekly plan set, so this is built from your recent training.'} Worked out again every morning from your sleep, recovery, soreness and load. Tap a day for the session.</div>
-   <details class="fm-why"><summary>How this is worked out</summary><p>Your usual week is the average of the last four weeks${st.base?` (${fmtDur(st.base)})`:''}. When recovery is good the target rises by about 7 percent, and never more than a tenth over last week. After three full weeks an easier week follows at about three quarters. About four fifths of the time stays easy: hard work is capped each week, hard days are never back to back and there are at most two in any seven days.</p>
-   <p>Each kind of session has a level from 1 to 10. Two done at or under the planned effort move it up, at most once a week, and that week the time holds steady. Two harder than planned, or one missed, move it down. After more than a week off, time and levels come back step by step. After a leg injury, running comes back through run and walk steps guided by your pain score.</p>
-   <p>Low recovery, soreness, injuries or a hard day yesterday turn today into an easy day or rest.</p></details>`;
+   <div class="st-list">${rows}</div>`;
 }

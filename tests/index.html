@@ -716,7 +716,7 @@ seq('Plan pain',async()=>{
     painTap(4);const a=painVal(),ac=chip();painTap(4);const b=painVal();
     check('Plan pain: a tap chooses a number, a second tap clears it',a===4&&ac==='4:true'&&b===null&&!chip(),`${a} (${ac}), then ${b}`);
     form('Run',40,{pain:4});saveWorkout();let w=_s.workouts[0];
-    check('Plan pain: saved on the workout as 0 to 10, and the form is empty again',w&&w.sub&&w.sub.pain===4&&painVal()===null&&!chip()&&toasts.pop()==='Workout recorded, effort not set',JSON.stringify(w&&w.sub));
+    check('Plan pain: saved on the workout as 0 to 10, and the form is empty again',w&&w.sub&&w.sub.pain===4&&painVal()===null&&!chip()&&toasts.pop()==='Workout recorded',JSON.stringify(w&&w.sub));
     check('Plan pain: the workout list shows it',/pain 4 of 10/.test(wkRow(w)),'');
     editWorkout(w.id);const ep=painVal(),ec=chip();painTap(4);saveWorkout();w=_s.workouts.find(x=>x.id===w.id);
     check('Plan pain: editing loads it, and clearing it removes it from the workout',ep===4&&ec==='4:true'&&!(w.sub&&'pain' in w.sub)&&!/pain/.test(wkRow(w)),`loaded ${ep}; after clearing ${JSON.stringify(w.sub)}`);
@@ -827,8 +827,8 @@ seq('Workout sheet',async()=>{
     check('Workout sheet: a chart and time in each zone, grouped easy, steady and hard from your threshold',!!$('dtBody').querySelector('canvas.wk-cv')&&/Heart rate during the session/.test(txt())&&zn.length===7&&zc==='easy,easy,steady,hard,hard,hard,hard'&&zl==='up to 144 bpm,145–151 bpm,152–160 bpm,161–168 bpm,169–173 bpm,174–180 bpm,over 180 bpm'&&/1h easy\s*8min steady\s*7min hard/.test($('dtBody').querySelector('.wk-mix').textContent),`${zc} · ${zl} · ${($('dtBody').querySelector('.wk-mix')||{}).textContent}`);
     const li=[...$('dtBody').querySelectorAll('.wk-in li')].map(x=>x.textContent),L=li.join(' | ');
     check('Workout sheet: plain sentences on the mix, hardest stretches, the climb, recovery of heart rate and similar e-bike rides; no drift on an e-bike',
-      li[0]==='Mostly easy: 60 of 75 minutes easy, 8 steady, 7 hard.'&&/^Hardest 5 minutes: 155 bpm \(steady\), starting 30min in\. Hardest 20 minutes: \d+ bpm \(\w+\), starting \d+min in\.$/.test(li[1])&&/^Biggest climb: 1[45]\d m over 2\.\d km \([56]\.\d% on average\) in 1[45]min; your heart rate went from 13\d to 1[45]\d bpm\.$/.test(li[2])
-      &&li[3]==='Your heart rate came down 31 beats within a minute of a hard effort, more than your usual of 23: a good sign.'&&li[4]==='Average heart rate 128 bpm: 7 lower than your last 3 e-bike rides of a similar length (135 bpm).'&&!/drift|first half/i.test(L)&&li.length===5,L);
+      li[0]==='Mostly easy.'&&/^Hardest 5 minutes: 155 bpm \(steady\), 30min in\. Hardest 20: \d+ bpm\.$/.test(li[1])&&/^Biggest climb: 1[45]\d m over 2\.\d km \([56]\.\d%\) in 1[45]min, heart rate 13\d to 1[45]\d bpm\.$/.test(li[2])
+      &&li[3]==='Heart rate fell 31 beats in the minute after a hard effort, more than your usual 23: a good sign.'&&li[4]==='Average heart rate 128 bpm, 7 lower than your last 3 similar e-bike rides.'&&!/drift|first half/i.test(L)&&li.length===5,L);
     const pv=($('dtBody').querySelector('.wk-pv')||{}).textContent||'';
     check('Workout sheet: recovery advice for a recent session and planned against done, without a details button inside the sheet',/Recovery\s*A moderate session\. Hard training fits again tomorrow\./.test(txt())&&/Planned/.test(pv)&&/Done\s*E-bike ride 1h 15min · effort 3 of 5 from heart rate/.test(pv)&&!$('dtBody').querySelector('.wk-pv button'),pv);
     const bad=body().match(/polar|intervals|garmin|strava|gold|#ff6b1f/ig);
@@ -866,6 +866,57 @@ seq('Workout sheet',async()=>{
     const sx=stRowX({date:td(),done:1,snap:_s.planHist[td()],match:stMatch(td())},null);
     check('Workout sheet: a done day in the outline has a button to the workout',/class="st-sw" onclick="openDetail\('wk:icu-i90'\)">Workout details</.test(sx),sx.slice(-200));
   }finally{closeDetail();editWorkout=orig.editWorkout;delWorkout=orig.delWorkout;box.remove();_wkSt.clear();}
+});
+
+// v123: less text. A chart shows its value and one plain line: no "In view" line, no drag hint, no "How to read this"
+run('v123 chart',()=>{
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:328px';host.innerHTML='<div class="page"><div id="v123c"></div></div>';document.body.appendChild(host);
+  try{
+    const pts=[];for(let i=20;i>=0;i--)pts.push({d:dAgo(i),v:50+(i%3)});
+    mountChart('v123c',{series:[{name:'HRV',color:'--teal',pts}],stats:{good:v=>v>50},means:()=>'Steady, inside your usual range.',how:'old note',key:'t'});
+    const t=host.textContent,lab=host.querySelector('.vc-date').textContent;
+    check('v123 chart: one line under the chart, no stats line, no drag hint, no How to read this',!host.querySelector('.vc-stat,.vc-how,details')&&!/In view|Drag to move|How to read/.test(t)&&host.querySelector('.vc-mean').textContent==='Steady, inside your usual range.',t.slice(-160));
+    check('v123 chart: the readout says Today, not Latest',lab==='Today'&&!/Latest/.test(t),lab);
+    pts.pop();mountChart('v123c',{series:[{name:'HRV',color:'--teal',pts}],key:'t2'});const l2=host.querySelector('.vc-date').textContent;
+    check('v123 chart: when the newest value is older, the readout names its day',l2===dLab(DN(dAgo(1)),true),l2);
+  }finally{chUnmount('v123c');host.remove();}
+});
+
+// v123: every chart and sheet line is short and plain; Today, the outline, the coach card and the week summary carry no method notes
+run('v123 text',()=>{
+  const lines=[],L=x=>{lines.push(x);return x;};
+  const seq=v=>v.map((x,i)=>({d:dAgo(v.length-1-i),v:x}));
+  const steady=seq(Array.from({length:30},(_,i)=>i%2?55:57).concat([56]));
+  const low=seq(Array.from({length:28},(_,i)=>i%2?55:57).concat([40,40,40]));
+  const high=seq(Array.from({length:30},(_,i)=>i%2?55:57).concat([80]));
+  const bm=pts=>L(bandMeaning({pts},rollBand(pts,TH.HRV_FLOOR),v=>v+' ms',BAND_TXT.hrv));
+  const b1=bm(steady),b2=bm(low),b3=bm(high);
+  check('v123 text: the HRV line says steady, below for 3 days with what to do, or above',b1==='Steady, inside your usual range.'&&b2==='Below your usual for 3 days. Keep today easy.'&&b3==='Above your usual: well recovered.',[b1,b2,b3].join(' | '));
+  const fz=v=>chZone({zones:formZones()},v),fi=(v,c)=>({last:{d:td(),v},zone:fz,from:dAgo(30),to:td(),pts:[]});
+  const flat=(a,b)=>seq(Array.from({length:31},(_,i)=>a+(b-a)*i/30));
+  const f1=L(formMeaning(fi(0),flat(40,40),flat(40,40))),f2=L(formMeaning(fi(-15),flat(40,41),flat(55,56))),f3=L(formMeaning(fi(0),flat(35,40),flat(35,40)));
+  check('v123 text: form says balanced, tired with the easy days back, and fitness only when it moved 3 or more',f1==='Balanced.'&&/^Tired: (one easy day gets you|about \d+ easy days to get) back to balanced\.$/.test(f2)&&f3==='Balanced. Fitness built from 35 to 40.',[f1,f2,f3].join(' | '));
+  const sp=seq([80,82,81,83,80,84,82,81,80,79,81,83,82,80]),sd=seq([80,82,81,83,80,84,82,81,80,79,81,83,82,68]);
+  const s1=L(scoreMeaning({pts:sp,n:sp.length})),s2=L(scoreMeaning({pts:sd,n:sd.length}));
+  check('v123 text: the score line says mostly good, or the drop with what to look at',/^(All|Mostly) good\.$/.test(s1)&&/^Down 1[0-9] points in (a day|[23] days)\. Look at sleep, stress and training\.$/.test(s2),[s1,s2].join(' | '));
+  const pr=seq([50,51,52,55,56,58]),p1=L(prMeaning({pts:pr,from:pr[0].d,to:td()},v=>Math.round(v)+' kg',['Up','Down'],[pr[5].d],'sessions'));
+  check('v123 text: progress gives the change and the new best in one line',/^Up \d+ kg over these sessions; a new best on .+\.$/.test(p1),p1);
+  const bad=lines.filter(x=>x.length>140||(x.match(/[.!?](?=\s|$)/g)||[]).length>2||/In view|Of \d|readings in a row|Nothing to act on/.test(x));
+  check('v123 text: every line is at most 2 sentences and 140 characters, with no counting or method words',!bad.length,bad.join(' | ')||lines.length+' lines');
+  const r=wkRow({id:'w1',date:td(),type:'Run',durMin:45,distKm:8,rpe:null,notes:'',sets:[]},true);
+  check('v123 text: a workout with an empty sets list shows its time, no sets and no effort nag; the Recovery details card is gone',r.includes(fmtDur(45))&&!/\bsets?\b|effort not set/.test(r.replace(/<[^>]+>/g,' '))&&typeof renderRecovery==='undefined',r.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160));
+  const box=document.createElement('div');box.hidden=true;box.innerHTML='<div id="stratCard"></div><div id="coachCard"></div><div id="digestCard"></div>';document.body.appendChild(box);
+  try{
+    trn();_stOpen.clear();renderStrategy();const sc=$('stratCard'),ws=[...sc.querySelectorAll('.st-w')].map(e=>e.textContent);
+    check('v123 text: the outline has no footnote or How this is worked out, and no reason twice',!/How this is worked out|Worked out again|Tap a day/.test(sc.textContent)&&new Set(ws).size===ws.length&&ws.length>0,ws.join(' | '));
+    base();_s.sleepLogs.forEach(x=>{if(daysAgo(x.date)<7)x.durMin=390;});renderCoach();const cc=$('coachCard'),fl=[...cc.querySelectorAll('.cc-f')].map(e=>e.textContent);
+    const debt=fl.find(x=>/^Sleep debt/.test(x))||'';
+    check('v123 text: the coach card drops "Based on" with enough days, and a flag gives the fact once and the action once',!/Based on/.test(cc.textContent)&&/^Sleep debt: 7h this week\s*A few earlier nights will clear it\.$/.test(debt),fl.join(' | '));
+    base();_s.workouts=[wk1(dAgo(1),1,'Run',40,3),wk1(dAgo(9),1,'Run',40,3)];_s.checkins=[ci({date:dAgo(1)})];renderDigest();
+    check('v123 text: the week summary has no What stood out',!/What stood out/.test($('digestCard').textContent)&&/Your week in numbers/.test($('digestCard').textContent),$('digestCard').textContent.slice(-120));
+  }finally{box.remove();_stOpen.clear();}
+  {const c1=cupsLine(1.8,8,20),c2=cupsLine(1,1,20),c3=cupsLine(0.2,0,5);check('v123 text: coffee reads as whole cups, "often late" only when it happens often',c1==='About 2 cups of coffee a day, often late in the day.'&&c2==='About 1 cup of coffee a day.'&&c3==='Little coffee.',[c1,c2,c3].join(' | '));}
+  check('v123 text: the briefing asks for 1 to 2 sentences a field, allows an empty field and keeps follow-up answers to 1 to 4',/1 to 2 short sentences per field/.test(INS_SYS)&&/empty string for any field \(except overall, day and today\)/.test(INS_SYS)&&/at most 3 sentences/.test(INS_SYS)&&/1 to 4 short sentences/.test(INS_QA_SYS)&&/Be brief\./.test(INS_COMMON)&&/At most one number per sentence/.test(INS_COMMON));
 });
 
 Promise.all(later).then(()=>{

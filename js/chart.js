@@ -4,7 +4,7 @@
 //   H, yfmt, min, max, zero, band:[{d,lo,hi}], ref:[{v,label}] (gold: the weight goal only), marks:[dates], extra(date), empty, label, key, span, wide,
 //   zones:[{lo,hi,color,label}] shaded threshold bands (lo inclusive, hi exclusive, null = open; zs = the series they describe, default 0),
 //   lines:[{v,label,color,dash}] threshold lines, hi (ring the high and low in view, fill the latest point),
-//   stats:{s,good(v,d),label,unit,avg,one,words:['Fastest','Slowest']} the "In view" line (words rename high and low, here and on the chart), means(info) one plain sentence for the window in view, how (collapsed note),
+//   stats:{s,good(v,d),words:['Fastest','Slowest']} which series means() reads and what counts as good (words rename high and low on the chart), means(info) the one plain line under the chart for the window in view (v123: no stats line, no drag hint, no "How to read this"),
 //   group (charts that pan and zoom together)}
 // Colours are CSS variable names; '--teal/.5' draws at half strength.
 const _ch={};
@@ -44,11 +44,10 @@ function mountChart(id,cfg){
   const dmin=Math.min(...pts.map(p=>DN(p.d))),dmax=Math.max(DN(td()),...cfg.series.flatMap(s=>s.pts.map(p=>DN(p.d)+((s.w||1)-1))));
   st.dmin=dmin;st.dmax=dmax;st.on=true;
   if(!st.view||st.dataKey!==cfg.key){st.dataKey=cfg.key;const span=Math.min(dmax-dmin,cfg.span||90);st.view=[dmax-Math.max(span,13),dmax];st.hover=null;}
-  const howOpen=!!host.querySelector('.vc-how[open]');
   host.innerHTML=`<div class="vc-tb"><div class="vc-chips">${CH_R.map(([l,n])=>`<button data-n="${n}">${l}</button>`).join('')}</div>
     <div class="vc-nav"><button data-a="prev" aria-label="Earlier">‹</button><button class="vc-win" data-a="reset"></button><button data-a="next" aria-label="Later">›</button></div></div>
     <div class="vc-ro"></div><canvas class="vc-cv" tabindex="0" style="width:100%;height:${cfg.H||190}px;display:block"></canvas><div class="vc-sub"></div>
-    ${cfg.stats?'<div class="vc-stat"></div>':''}${cfg.means?'<div class="vc-mean"></div>':''}${cfg.how?`<details class="fm-why vc-how"${howOpen?' open':''}><summary>How to read this</summary><div>${cfg.how}</div></details>`:''}`;
+    ${cfg.means?'<div class="vc-mean"></div>':''}`;
   st.cv=host.querySelector('canvas');st.host=host;
   host.querySelectorAll('.vc-chips button').forEach(b=>b.onclick=()=>chZoomTo(id,+b.dataset.n));
   host.querySelector('[data-a=prev]').onclick=()=>chShift(id,-0.5);host.querySelector('[data-a=next]').onclick=()=>chShift(id,0.5);
@@ -203,29 +202,20 @@ function chReadout(id){
   host.querySelector('.vc-win').textContent=dLab(Math.ceil(a))+' – '+dLab(Math.floor(b));
   const s0=cfg.series[0],wk=s0&&s0.w>1,p0=st.hover!=null&&s0?chNear(s0,st.hover):null;
   let day=st.hover,lab;
-  if(day!=null){lab=wk&&p0?'Week of '+dLab(DN(p0.d)):dLab(day,true);}else{day=Math.min(Math.floor(b),st.dmax);lab=wk?'Latest week':'Latest';}
+  if(day!=null){lab=wk&&p0?'Week of '+dLab(DN(p0.d)):dLab(day,true);}else{day=Math.min(Math.floor(b),st.dmax);const lp=s0&&s0.pts.filter(q=>DN(q.d)<=Math.floor(b)).slice(-1)[0];lab=wk?(lp&&DN(lp.d)+6>=DN(td())?'This week':lp?'Week of '+dLab(DN(lp.d)):''):lp?(lp.d===td()?'Today':dLab(DN(lp.d),true)):'';}
   const cells=cfg.series.map((s,i)=>{
     const p=st.hover!=null?chNear(s,day):s.pts.filter(q=>DN(q.d)<=Math.floor(b)).slice(-1)[0];
     const z=p&&cfg.zones&&i===(cfg.zs||0)?chZone(cfg,p.v):null;
     return`<div class="vc-v"><span class="vc-dot" style="background:${cssv(String(s.color).split('/')[0])}"></span><span class="vc-n">${esc(s.name)}</span><span class="vc-x">${p?chFmt(cfg,s)(p.v):'—'}${z&&z.label?' · '+esc(z.label):''}</span></div>`;}).join('');
   host.querySelector('.vc-ro').innerHTML=`<div class="vc-date">${lab}</div><div class="vc-vals">${cells}</div>`;
   const ex=st.hover!=null&&cfg.extra?cfg.extra(p0?p0.d:ND(st.hover)):'';
-  const sub=host.querySelector('.vc-sub'),first=(host.closest('.page')||document).querySelector('.vc-sub')===sub;
-  sub.textContent=ex||(st.hover==null&&first?'Drag to move, pinch to zoom, tap to inspect a day.':'');
+  const sub=host.querySelector('.vc-sub');sub.textContent=ex||'';sub.style.display=ex?'':'none';
   chMeaning(id);
 }
-// the "In view" line and the plain-English sentence for the dates on screen; both follow every pan and zoom
+// the one plain line for the dates on screen; it follows every pan and zoom
 function chMeaning(id){
-  const st=_ch[id],{cfg,host}=st;if(!cfg.stats&&!cfg.means)return;
+  const st=_ch[id],{cfg,host}=st;if(!cfg.means)return;
   const info=chStats(id);
-  const se=host.querySelector('.vc-stat');
-  if(se){
-    const o=cfg.stats,f=info.fmt;
-    if(!info.n)se.textContent='Nothing recorded in view. Move back with ‹.';
-    else if(info.n===1)se.textContent=`In view: one ${o.one||'value'}, ${f(info.last.v)} (${fmtD(info.last.d)}).`;
-    else if(info.hi.v===info.lo.v)se.textContent=`In view: ${info.n} ${o.unit||'days'}, all ${f(info.hi.v)}.`;
-    else{const w=(o.words||['high','low']).map(x=>x.toLowerCase());se.textContent=`In view: ${o.avg||'average'} ${f(info.avg)} · ${w[0]} ${f(info.hi.v)} (${fmtD(info.hi.d)}) · ${w[1]} ${f(info.lo.v)} (${fmtD(info.lo.d)})`+(info.good!=null?` · ${info.good} of ${info.n} ${o.unit||'days'} ${o.label||'in range'}`:'')+'.';}
-  }
   const me=host.querySelector('.vc-mean');
   if(me){let t='';try{t=info.n?cfg.means(info)||'':'';}catch(e){t='';console.warn('chart note',id,e);}me.textContent=t;me.style.display=t?'':'none';}
 }

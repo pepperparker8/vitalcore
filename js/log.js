@@ -137,7 +137,7 @@ function loadSleepFor(date){
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
   $('slDel').style.display=x?'':'none';
-  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?'Recorded automatically. Add your bedtime or wake-up time to complete it.':slIcu(x)?'Recorded automatically. Anything you change here is kept.':'Editing the saved night. Change anything and save.';
+  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?'Recorded automatically. Add your bedtime or wake-up time to complete it.':slIcu(x)?'Recorded automatically. Anything you change here is kept.':'';
 }
 // soft guardrail: unusual but possible values get a friendly confirm instead of a block
 const sane=m=>confirm(m+'\n\nSave it anyway?');
@@ -248,7 +248,7 @@ function saveWorkout(){
   ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';painSet(null);_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';wkPreClear();renderDurChips();
   // pain during a comeback run moves the return plan back a step (injRet reads it)
   const ir=pn!=null&&pn>=TH.PAIN_BACK&&rec.type==='Run'&&typeof injRet==='function'?injRet():null;
-  showToast(prs.length?`New best: ${prs[0]}`:pn!=null&&pn>=TH.PAIN_STOP?`Pain ${pn} of 10: stop training on it and get it checked.`:ir&&rec.date>=ir.healed?`Pain ${pn} of 10: your next run steps back.`:wasEdit?'Workout updated':rec.rpe?'Workout recorded':'Workout recorded, effort not set');refreshAll();
+  showToast(prs.length?`New best: ${prs[0]}`:pn!=null&&pn>=TH.PAIN_STOP?`Pain ${pn} of 10: stop training on it and get it checked.`:ir&&rec.date>=ir.healed?`Pain ${pn} of 10: your next run steps back.`:wasEdit?'Workout updated':'Workout recorded');refreshAll();
 }
 let _editId=null;
 function editWorkout(id){
@@ -287,13 +287,14 @@ const isIcu=w=>String(w.id).startsWith('icu-');
 const fmtDay=dt=>dt===td()?'Today':daysAgo(dt)===1?'Yesterday':new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
 function wkRow(w,today){
   const meta=[fmtDay(w.date)];
-  if(!w.sets&&w.durMin)meta.push(fmtDur(w.durMin));
+  const st=w.sets&&w.sets.length;
+  if(!st&&w.durMin)meta.push(fmtDur(w.durMin));
   if(w.distKm)meta.push(fmtDist(w));
-  if(w.sets){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
-  meta.push(w.rpe?'effort '+w.rpe+'/5':'effort not set');
+  if(st){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
+  if(w.rpe)meta.push('effort '+w.rpe+'/5');
   if(painOf(w)!=null)meta.push('pain '+painOf(w)+' of 10');
   // v122: the row opens the workout sheet; Edit and Delete do only their own job
-  return `<div class="act-item tap" role="button" tabindex="0" aria-label="${esc(wkLabel(w))}, ${esc(fmtD(w.date))}: details" onclick="openDetail('wk:${esc(w.id)}')"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(wkLabel(w))}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="event.stopPropagation();editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="event.stopPropagation();delWorkout('${esc(w.id)}')">Delete</button></div></div><span class="act-go" aria-hidden="true">›</span></div>`;
+  return `<div class="act-item tap" role="button" tabindex="0" aria-label="${esc(wkLabel(w))}, ${esc(fmtD(w.date))}: details" onclick="openDetail('wk:${esc(w.id)}')"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(wkLabel(w))}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${st?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="event.stopPropagation();editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="event.stopPropagation();delWorkout('${esc(w.id)}')">Delete</button></div></div><span class="act-go" aria-hidden="true">›</span></div>`;
 }
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
 function findDups(){
@@ -370,7 +371,7 @@ function renderWkLog(){
 // ── MEASUREMENTS ─────────────────────────────────────────────────────────────
 function saveMeas(){
   const sys=$('bpSys').value,dia=$('bpDia').value;
-  if((sys&&!dia)||(dia&&!sys)){showToast('Enter both systolic and diastolic');return;}
+  if((sys&&!dia)||(dia&&!sys)){showToast('Enter both blood pressure numbers, top and bottom');return;}
   const sN=+sys,dN=+dia;
   if(sys&&dia){if(sN<60||sN>250){showToast('Systolic: 60–250');return;}if(dN<40||dN>180){showToast('Diastolic: 40–180');return;}if(sN<=dN){showToast('Systolic must be higher than diastolic');return;}}
   const wt=+$('wtKg').value||null,hr=+$('hrVal').value||null;

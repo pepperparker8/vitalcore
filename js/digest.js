@@ -54,15 +54,7 @@ function renderDigest(){
   h+=row('Mindfulness',t.mindful?fmtDur(t.mindful):'—',dl(t.mindful,p.mindful,m=>fmtDur(Math.round(m)),true));
   if(t.weight!=null)h+=row('Weight',t.weight+' kg');
   const notes=[];
-  const stood=[];
-  if(t.sleepMin!=null&&p.sleepMin&&t.sleepMin<p.sleepMin-20)stood.push(`You slept ${fmtDur(Math.round(p.sleepMin-t.sleepMin))} less per night than the week before.`);
-  if(t.hrv!=null&&p.hrv&&t.hrv<p.hrv*0.93)stood.push('HRV dipped, a sign your body was under more strain.');
-  if(t.min>p.min*1.3&&p.min>0)stood.push('Training time rose by more than 30%. Watch recovery next week.');
-  if(t.mood!=null&&p.mood&&t.mood<p.mood-0.4)stood.push('Mood fell noticeably. Compare it with sleep and training above.');
-  const dr=(typeof recoveryDrivers==='function'?recoveryDrivers():[]).find(x=>x.k==='debt'&&x.st!=='ok');
-  if(dr)stood.push(dr.txt);
-  if(stood.length)h+=`<div class="dg-out"><b>What stood out</b><br>${stood.map(esc).join('<br>')}</div>`;
-  if(t.nCi<4)notes.push(`Only ${t.nCi} full check-in${t.nCi===1?'':'s'} this week, so mood averages are rough.`);
+  if(t.nCi<4)notes.push(`Only ${t.nCi} full check-in${t.nCi===1?'':'s'} this week.`);
   if(t.nSleep<4)notes.push(`Only ${t.nSleep} night${t.nSleep===1?'':'s'} of sleep logged.`);
   if(notes.length)h+=`<div class="set-note" style="margin-top:8px">${notes.join(' ')}</div>`;
   el.innerHTML=h;

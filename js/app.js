@@ -30,7 +30,7 @@ function recalc(){
   // v118 parallel run: the old readiness and Body are both recorded; the hero shows Body once TH.PARALLEL_DAYS of it exist (heroScore)
   recordReadiness(calcReadiness());recordBody(calcBody().score);stSnap();
   const s=heroScore();renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
-  renderWhy();renderRecovery();renderPlan();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
+  renderWhy();renderPlan();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID)||S().polarKey)syncAll(false);updSyncStatus();});

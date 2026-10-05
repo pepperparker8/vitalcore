@@ -3,13 +3,14 @@ function coachFlags(){
   const d=S(),fl=[];
   const inj=d.injuries.filter(i=>i.active);
   inj.forEach(i=>fl.push({hard:i.sev>=3,st:i.sev>=3?'bad':'warn',t:`${i.part} injury (${['','mild','moderate','severe'][i.sev]})`,a:'Adjust sessions that load it.'}));
-  recoveryDrivers().forEach(r=>{if(r.st!=='ok')fl.push({st:r.st,t:`${r.label}: ${r.val} (${r.base})`,a:r.txt});});
-  const wk=loadWeeks();const cur=wk[wk.length-2];if(cur&&cur.jump)fl.push({st:'warn',t:`Last week's load was ${cur.jump}% above your recent average`,a:'Keep this week similar or easier.'});
+  // v123: the fact once in the title, what to do once in the note
+  recoveryDrivers().forEach(r=>{if(r.st!=='ok')fl.push({st:r.st,t:r.ft,a:r.txt});});
+  const wk=loadWeeks();const cur=wk[wk.length-2];if(cur&&cur.jump)fl.push({st:'warn',t:`Last week: ${cur.jump}% more than usual`,a:'Keep this week similar or easier.'});
   // v118 (A3 ledger): form and burnout explain, they no longer set today's verdict. Form is read under Load, burnout under Mind (the weekly hard-day budget).
-  const tsb=d.intervalsData&&d.intervalsData.tsb;if(tsb!=null&&tsb<TH.FORM_TIRED)fl.push({st:tsb<TH.FORM_DEEP?'bad':'warn',t:`Form is ${tsb<TH.FORM_DEEP?'very low':'low'} (${Math.round(tsb)})`,a:'You are carrying fatigue. It counts under Load, which shapes the week.'});
-  const b=calcBurnout();if(b.score>=TH.BURNOUT_HIGH)fl.push({st:'warn',t:'Energy, mood or calm have been low for a week',a:b.sub});
+  const tsb=d.intervalsData&&d.intervalsData.tsb;if(tsb!=null&&tsb<TH.FORM_TIRED)fl.push({st:tsb<TH.FORM_DEEP?'bad':'warn',t:tsb<TH.FORM_DEEP?'Carrying a lot of fatigue':'Carrying fatigue',a:tsb<TH.FORM_DEEP?'Keep the next few days easy.':'An easy day or two will freshen you up.'});
+  const b=calcBurnout();if(b.score>=TH.BURNOUT_HIGH)fl.push({st:'warn',t:'Energy, mood or calm low for a week',a:'Keep hard days few and protect sleep.'});
   const ill=illness();if(ill)fl.unshift({st:ill.lvl==='systemic'?'bad':'warn',t:ill.lvl==='systemic'?'Possible illness: rest today':'Symptoms above the neck',a:ill.why+(ill.lvl==='systemic'?' Train again once it has cleared.':' Keep today easy and controlled.')});
-  const ci=d.checkins.find(c=>c.date===td()&&ciFull(c));if(!ci)fl.push({st:'info',t:'No check-in today',a:'A 20-second check-in makes readiness more accurate.'});
+  const ci=d.checkins.find(c=>c.date===td()&&ciFull(c));if(!ci)fl.push({st:'info',t:'No check-in today',a:'Twenty seconds makes today\'s score more accurate.'});
   return fl;
 }
 function coachVerdict(){
@@ -29,7 +30,7 @@ function renderCoach(){
   const d=S(),sc=heroScore();
   if(sc===null){el.innerHTML='<div class="sec">Things to watch</div><div class="empty-state" style="padding:8px 0"><div class="empty-title">Not enough to coach you yet</div><div class="empty-sub">'+(bodyLive()?'Sync your watch so heart rate variability or resting heart rate comes in':'Log last night\'s sleep or do a check-in')+' and anything that needs your attention shows up here.</div><button class="empty-btn" onclick="switchTab(\'today\')">Go to Today</button></div>';return;}
   const fl=coachFlags(),n=daysLogged(14),pw=planWeek();
-  const basis=`<div class="set-note" style="margin-top:10px">${n<4?`Early estimate: only ${n} of the last 14 days have data.`:`Based on ${n} of the last 14 days with data.`}</div>`;
+  const basis=n<4?`<div class="set-note" style="margin-top:10px">Early read: only ${n} of the last 14 days have data.</div>`:'';
   const dot=s=>`<span class="cc-d cc-${s}"></span>`;
   const row=(s,k,v)=>`<div class="cc-r">${dot(s)}<div class="cc-k">${k}</div><div class="cc-v">${v}</div></div>`;
   const wk=loadWeeks(),cw=wk[wk.length-1],pv=wk[wk.length-2];
@@ -38,7 +39,7 @@ function renderCoach(){
     row(pw.planned?(pw.due&&pw.done<pw.due?'warn':'ok'):'info','Plan this week',pw.planned?`${pw.done} of ${pw.planned} done`:'No plan set'),
     row(cw&&pv&&pv.total&&cw.total>pv.total*TH.RAMP_CAUTION?'warn':'ok','Load this week',cw?`${lv(cw.total)}${pv&&pv.total?` · last week ${lv(pv.total)}`:''}`:'—')
   ].join('');
-  el.innerHTML=`<div class="sec">Things to watch</div>${fl.length?fl.map(f=>`<div class="cc-f">${dot(f.st)}<div><b>${esc(f.t)}</b><div class="set-note" style="margin:2px 0 0">${esc(f.a)}</div></div></div>`).join(''):'<div class="set-note">Nothing flagged. Your recovery numbers, load and injuries all look fine.</div>'}
+  el.innerHTML=`<div class="sec">Things to watch</div>${fl.length?fl.map(f=>`<div class="cc-f">${dot(f.st)}<div><b>${esc(f.t)}</b><div class="set-note" style="margin:2px 0 0">${esc(f.a)}</div></div></div>`).join(''):'<div class="set-note">Nothing to watch today.</div>'}
    <div style="margin-top:12px">${rows}</div>${basis}`;
 }
 
