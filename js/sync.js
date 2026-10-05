@@ -193,7 +193,7 @@ function updSyncStatus(){
 }
 
 // ── INTERVALS.ICU ────────────────────────────────────────────────────────────
-const ICU_TYPE={Run:'Run',TrailRun:'Run',VirtualRun:'Run',Ride:'Cycle',VirtualRide:'Cycle',GravelRide:'Cycle',MountainBikeRide:'Cycle',EBikeRide:'Cycle',WeightTraining:'Weights',Swim:'Swim',OpenWaterSwim:'Swim',Hike:'Hike',Walk:'Walk',Yoga:'Yoga',Workout:'Calisthenics'};
+const ICU_TYPE={Run:'Run',TrailRun:'Run',VirtualRun:'Run',Ride:'Cycle',VirtualRide:'Cycle',GravelRide:'Cycle',MountainBikeRide:'Cycle',EBikeRide:'Cycle',EMountainBikeRide:'Cycle',WeightTraining:'Weights',Swim:'Swim',OpenWaterSwim:'Swim',Hike:'Hike',Walk:'Walk',Yoga:'Yoga',Workout:'Calisthenics'};
 const icuHdr=key=>({Authorization:'Basic '+btoa('API_KEY:'+key.trim())});
 const icuBase=id=>`https://intervals.icu/api/v1/athlete/${encodeURIComponent(id.trim())}`;
 function icuErr(status){
@@ -244,12 +244,14 @@ async function pullIntervals(){
       const num=(v,lo,hi)=>typeof v==='number'&&v>=lo&&v<=hi?Math.round(v):null;
       // pw/np: average and weighted average watts; dw: 1 when the watts came from a power meter (v121, picks power targets)
       const icu={hr:num(a.average_heartrate,30,230),hrMax:num(a.max_heartrate,30,250),kcal:num(a.calories,1,20000),elev:num(a.total_elevation_gain,1,15000),load:num(a.icu_training_load,1,2000),rpe:num(a.perceived_exertion??a.icu_rpe,1,10),
-        pw:num(a.icu_average_watts??a.average_watts,1,2500),np:num(a.icu_weighted_avg_watts,1,2500),dw:a.device_watts===true?1:null};
+        pw:num(a.icu_average_watts??a.average_watts,1,2500),np:num(a.icu_weighted_avg_watts,1,2500),dw:a.device_watts===true?1:null,...icuDet(a)};
       Object.keys(icu).forEach(k=>{if(icu[k]==null)delete icu[k];});
       const has=Object.keys(icu).length>0,old=d.workouts.find(w=>w.id===id);
       if(old){
-        // already imported: fill in or refresh the Intervals.icu details only (sub.pain and swim details stay)
-        const oi=wIcu(old),chg=has&&ICU_KEYS.some(k=>(oi[k]??null)!==(icu[k]??null)),fixDur=!old.durMin&&!old.sets&&dm>0;
+        // already imported: fill in or refresh the Intervals.icu details only (sub.pain and swim details stay).
+        // v122: zone details read by the workout sheet from the single activity stay when the list leaves them out
+        const oi=wIcu(old);ICU_DET.forEach(k=>{if(icu[k]==null&&oi[k]!=null)icu[k]=oi[k];});
+        const chg=has&&ICU_KEYS.some(k=>!icuSame(oi[k],icu[k])),fixDur=!old.durMin&&!old.sets&&dm>0;
         if(chg||fixDur){put('workouts',{...old,...(fixDur?{durMin:dm}:{}),...(chg?{sub:{...(old.sub||{}),icu}}:{})});n++;}
         continue;
       }
@@ -265,7 +267,22 @@ async function pullIntervals(){
   save(d);
   return{n};
 }
-const ICU_KEYS=['hr','hrMax','kcal','elev','load','rpe','pw','np','dw'];
+const ICU_KEYS=['hr','hrMax','kcal','elev','load','rpe','pw','np','dw','z','zb','lt','mx','dec','hrr','t','eb','cad','spd'];
+// v122: more of each activity for the workout sheet and for reading effort from heart rate (js/workout.js):
+// z seconds per heart rate zone, zb zone tops (bpm), lt threshold heart rate at the time, mx max heart rate, dec heart rate drift (%),
+// hrr heart rate recovery (bpm in a minute), t start time HH:MM, eb 1 for an e-bike ride, cad average cadence, spd average speed (km/h)
+const ICU_DET=['z','zb','lt','mx','dec','hrr'];
+function icuDet(a){
+  const r1=(v,lo,hi)=>typeof v==='number'&&v>=lo&&v<=hi?Math.round(v*10)/10:null;
+  const arr=(v,hi)=>Array.isArray(v)&&v.length>=3&&v.length<=10&&v.every(x=>typeof x==='number'&&x>=0&&x<=hi)?v.map(Math.round):null;
+  const n=(v,lo,hi)=>typeof v==='number'&&v>=lo&&v<=hi?Math.round(v):null;
+  const t=/T(\d\d:\d\d)/.exec(a.start_date_local||'');
+  const z=arr(a.icu_hr_zone_times,86400*3),zb=arr(a.icu_hr_zones,250);
+  return{z:z&&z.some(x=>x>0)?z:null,zb,lt:n(a.lthr,100,210),mx:n(a.athlete_max_hr,120,230),dec:r1(a.decoupling,-50,50),hrr:n(a.icu_hrr&&a.icu_hrr.hrr,1,120),
+    t:t?t[1]:null,eb:/^E(Mountain)?BikeRide$/.test(a.type||'')?1:null,cad:n(a.average_cadence,10,250),spd:r1(typeof a.average_speed==='number'?a.average_speed*3.6:null,1,110)};
+}
+// arrays (zones) compare by value, never by reference; everything else as before
+const icuSame=(a,b)=>Array.isArray(a)||Array.isArray(b)?String(a??'')===String(b??''):(a??null)===(b??null);
 // v121: your thresholds from the Intervals.icu sport settings, kept on this phone only (d.icuThr) and read by
 // stThr() in sessions.js. At most once a day; a failure keeps the last ones. Each value is range-checked so a
 // typo there cannot set silly targets: LTHR 100-210, max HR 120-230, FTP 50-600 W, threshold pace 2-7 m/s.

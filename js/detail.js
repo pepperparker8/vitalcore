@@ -91,6 +91,7 @@ function dtBodyPart(k){
   return`${nm} is ${w}% of Body: ${Math.round(p.pts)} of 100. Today ${Math.round(p.v)} bpm against your usual ${Math.round(p.m)} bpm; higher than usual lowers it.`;
 }
 function dtSpec(k){
+  if(/^wk:/.test(k))return wkSpec(k.slice(3));   // v122: a workout (workout.js)
   const d=S(),t=td(),fresh=x=>daysAgo(x.date)<=2;
   if(k==='sleep'){
     const sl=_dtDate?d.sleepLogs.find(x=>x.date===_dtDate&&x.durMin):dtLastNight(),goal=dtGoal(),src=(sl&&sl.src)||{};
@@ -236,11 +237,27 @@ function dtSpec(k){
   }
   return null;
 }
-function openDetail(k){
+// again: a re-render of the open sheet (refreshDetail), which never asks the network
+function openDetail(k,again){
   if(k!==_dtKey)_dtDate=null;           // a new sheet starts on last night
   _dtCh=null;chUnmount('dtChart');
+  const wk=/^wk:/.test(k);
+  if(wk&&!again)wkOpen(k.slice(3));
+  if(!wk){_wkC=null;_wkRes=null;}
   const sp=dtSpec(k),el=$('dtModal');if(!sp||!el)return;
   _dtKey=k;$('dtTitle').firstChild.textContent=sp.title+' ';
+  // v122: a sheet that builds its own body (the workout sheet); open notes and the chart's focus survive a re-render
+  if(sp.html!=null){
+    const b=$('dtBody'),op=again?[...b.querySelectorAll('details[data-k][open]')].map(x=>x.dataset.k):[];
+    const fc=again&&document.activeElement&&document.activeElement.classList.contains('wk-cv');
+    b.innerHTML=sp.html;
+    if(!again){const m=el.querySelector('.modal');if(m)m.scrollTop=0;}
+    el.classList.add('open');
+    wkMount();
+    op.forEach(x=>{const e=b.querySelector(`details[data-k="${x}"]`);if(e)e.open=true;});
+    if(fc){const c=b.querySelector('.wk-cv');if(c)c.focus({preventScroll:true});}
+    return;
+  }
   let h=sp.nav||'';
   if(sp.missing)h+=`<div class="dt-miss">${sp.missing}</div>`;
   else h+=`<div class="dt-big">${sp.val}</div><div class="dt-sub">${sp.sub||''}</div>${sp.usual?`<div class="dt-row dt-usual"><span>Usual, 30 days</span><b>${sp.usual}</b></div>`:''}`;
@@ -251,5 +268,5 @@ function openDetail(k){
   $('dtBody').innerHTML=h;el.classList.add('open');
   if(_dtCh&&$('dtChart'))mountChart('dtChart',{key:'dt'+k,..._dtCh});
 }
-function closeDetail(){_dtKey=null;_dtDate=null;_dtCh=null;chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
-function refreshDetail(){if(_dtKey)openDetail(_dtKey);}
+function closeDetail(){_dtKey=null;_dtDate=null;_dtCh=null;_wkC=null;_wkRes=null;chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
+function refreshDetail(){if(_dtKey)openDetail(_dtKey,1);}

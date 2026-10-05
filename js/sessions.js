@@ -94,10 +94,10 @@ function stThr(){
   });
   return out;
 }
-// A power meter is in use when TH.PM_RIDES rides in the last 42 days recorded power from a device
+// A power meter is in use when TH.PM_RIDES rides in the last 42 days recorded power from a device (v122: e-bike rides never count)
 function pmOn(){
   const from=dAgo(42);
-  return S().workouts.filter(w=>w.type==='Cycle'&&w.date>=from&&w.sub&&w.sub.icu&&w.sub.icu.dw&&w.sub.icu.pw).length>=TH.PM_RIDES;
+  return S().workouts.filter(w=>w.type==='Cycle'&&w.date>=from&&w.sub&&w.sub.icu&&w.sub.icu.dw&&w.sub.icu.pw&&!w.sub.icu.eb).length>=TH.PM_RIDES;
 }
 // how targets are given for a sport: 'pace' | 'hr' | 'pw' | 'eff' (effort words) | null (strength, yoga)
 function sessKind(type,thr){

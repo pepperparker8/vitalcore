@@ -57,7 +57,7 @@ function mountChart(id,cfg){
 }
 function chUnmount(id){const st=_ch[id];if(st&&st.host)st.host.innerHTML='';delete _ch[id];}
 // redraw every mounted chart (theme switch, resize): canvas colours are read from the CSS variables at draw time
-function chRedrawAll(){Object.keys(_ch).forEach(id=>{const st=_ch[id];if(st.on&&st.cv&&st.cv.isConnected)chDraw(id);});}
+function chRedrawAll(){Object.keys(_ch).forEach(id=>{const st=_ch[id];if(st.on&&st.cv&&st.cv.isConnected)chDraw(id);});if(typeof wkDraw==='function')wkDraw();}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>setTimeout(chRedrawAll,0));}catch(e){}
 function chClamp(st){
   let[a,b]=st.view,span=Math.max(6,Math.min(b-a,Math.max(st.dmax-st.dmin+2,13)));

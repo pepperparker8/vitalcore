@@ -43,6 +43,7 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <script src="../js/plan.js"></script>
 <script src="../js/coach.js"></script>
 <script src="../js/sessions.js"></script>
+<script src="../js/workout.js"></script>
 <script src="../js/strategy.js"></script>
 <script src="../js/fuel.js"></script>
 <script src="../js/health.js"></script>
@@ -245,7 +246,7 @@ run('Briefing data',()=>{
   const long='Felt fine after a steady week of training and work, slept a bit late on some nights and ate well most days. '.repeat(4);
   for(let i=0;i<30;i++){const dt=dAgo(i);
     s.checkins.push({id:'ci-'+dt,date:dt,energy:3,mood:3,stress:2,motivation:3,soreness:2,coffee:2,mindfulMin:10,gratitude:'Family and a good run',reflection:long.slice(0,300),bodyFeel:4});
-    s.workouts.push({id:'w'+i,date:dt,type:i%2?'Run':'Cycle',durMin:60,distKm:10,rpe:3,notes:'Easy aerobic, felt smooth',sub:{icu:{hr:140,hrMax:160,kcal:600,elev:100,load:60}}});
+    s.workouts.push({id:'w'+i,date:dt,type:i%2?'Run':'Cycle',durMin:60,distKm:10,rpe:3,notes:'Easy aerobic, felt smooth',sub:{icu:{hr:140,hrMax:160,kcal:600,elev:100,load:60,z:[1500,1200,600,300,0],zb:[136,152,160,170,190],lt:170,dec:3.2}}});   // v122: zones and drift, as real imports now carry
     s.measurements.push({id:'mi-'+dt,date:dt,weight:70+i/10,hr:null,bpSys:null,bpDia:null});
   }
   s.checkins.reverse();
@@ -257,10 +258,29 @@ run('Briefing data',()=>{
   const D=insightData(),J=JSON.stringify(D);window.HEAVY=D;
   // v121: 16,000 (was 15,000): v120 sent 14,928 for this month; the training plan detail adds about 600 (main sets, targets, comeback, pain, fitness estimate)
   check('Briefing data: a heavy month stays under 16,000 characters',J.length<16000,`${J.length} characters`);
+  // v122: imported sessions usually have no typed effort, so each also carries effort read from heart rate
+  const rp=s.workouts.map(w=>w.rpe);s.workouts.forEach(w=>{w.rpe=null;});const J2=JSON.stringify(insightData());s.workouts.forEach((w,i)=>{w.rpe=rp[i];});
+  check('Briefing data: the same month with no typed effort also stays under 16,000',J2.length<16000&&/"effortFrom":"hr"/.test(J2),`${J2.length} characters`);
   check("Briefing data: today's check-in and last night appear once",D.today.checkin&&!(D.week.checkins||[]).some(c=>c.date===td())&&D.today.lastNight&&!(D.week.sleep||[]).some(x=>x.date===D.today.lastNight.date||x.date===td()),`week check-ins ${(D.week.checkins||[]).length}, week nights ${(D.week.sleep||[]).length}`);
   check('Briefing data: no app or device names',!/Polar|Intervals|Garmin|Xiaomi/i.test(J),(J.match(/.{30}(Polar|Intervals|Garmin|Xiaomi).{30}/i)||['none'])[0]);
   check('Briefing data: blood keeps the latest 3 results per marker and 2 earlier briefings',(D.health.bloodMgDl||[]).length===3&&D.health.bloodMgDl[0].date===dAgo(60)&&D.previousBriefings.length===2,`${(D.health.bloodMgDl||[]).length} blood tests from ${(D.health.bloodMgDl||[]).map(x=>x.date).join(', ')}; ${D.previousBriefings.length} briefings`);
   check('Briefing data: empty fields are left out',!/:null|:""|:\{\}/.test(J),(J.match(/.{40}(:null|:""|:\{\}).{10}/)||['none'])[0]);
+});
+// v122: each session's heart rate mix, drift only where the sheet shows it, the e-bike mark, and effort read from heart rate
+run('Briefing workouts',()=>{
+  base();const zb=[144,151,160,168,173,180,190];
+  _s.workouts.push({id:'icu-b1',date:dAgo(1),type:'Cycle',durMin:75,distKm:24,rpe:null,notes:'',sub:{icu:{hr:128,hrMax:161,z:[2400,1200,500,300,100,0,0],zb,lt:170,dec:4.3,eb:1}}},
+    {id:'icu-r1',date:dAgo(2),type:'Run',durMin:45,distKm:9,rpe:4,notes:'',sub:{icu:{hr:150,z:[600,900,700,400,100,0,0],zb,lt:170,dec:6.1}}},
+    {id:'icu-r2',date:dAgo(3),type:'Run',durMin:20,distKm:4,rpe:null,notes:'',sub:{icu:{hr:140,z:[300,600,300,0,0,0,0],zb,lt:170,dec:2}}},
+    {id:'w-wk',date:dAgo(4),type:'Walk',durMin:30,distKm:2.5,rpe:null,notes:''},
+    {id:'icu-r3',date:dAgo(9),type:'Run',durMin:50,distKm:10,rpe:null,notes:'',sub:{icu:{hr:150,z:[600,900,700,400,100,0,0],zb,lt:170,dec:5}}});
+  const D=insightData(),W=Object.fromEntries((D.week.workouts||[]).map(x=>[x.date,x])),b=W[dAgo(1)]||{},r=W[dAgo(2)]||{},r2=W[dAgo(3)]||{},wk=W[dAgo(4)]||{};
+  check('Briefing workouts: an e-bike ride carries ebike, its heart rate mix and effort read from heart rate, no drift',b.ebike===true&&b.type==='Cycle'&&JSON.stringify(b.mixMin)==='[60,8,7]'&&b.effort1to5===3&&b.effortFrom==='hr'&&b.driftPct==null,JSON.stringify(b));
+  check('Briefing workouts: a run keeps your effort and gets its drift; a short run gets none; no heart rate means no mix',r.effort1to5===4&&r.effortFrom==null&&r.driftPct===6.1&&r.mixMin&&r2.driftPct==null&&r2.effortFrom==='hr'&&wk.mixMin==null&&wk.effort1to5==null&&wk.effortFrom==null&&r.ebike==null,JSON.stringify([r,r2,wk]));
+  const o=W[dAgo(9)]||{};
+  check('Briefing workouts: older than 7 days keeps effort from heart rate but no mix or drift (size)',o.effortFrom==='hr'&&o.effort1to5>=3&&o.mixMin==null&&o.driftPct==null,JSON.stringify(o));
+  check('Briefing workouts: the rules say describe a session by its mix and never compare an e-bike ride\'s speed',/week\.workouts\[\]\.mixMin/.test(INS_COMMON)&&/effortFrom/.test(INS_COMMON)&&/never compare its speed or distance/.test(INS_COMMON)&&/driftPct/.test(INS_COMMON));
+  check('Briefing workouts: no app or device names',!/Polar|Intervals|Garmin|Strava/i.test(JSON.stringify(D.week.workouts)));
 });
 // v119: the data screens never name the app or device a number came from
 run('No source names',()=>{
@@ -368,6 +388,10 @@ const noLong3=(dt,wd)=>inCal(dt,-3)&&wd===5;
 const daily=(from,to)=>{const W=[];for(let i=from;i>=to;i--)W.push(wk1(dAgo(i),0,'Run',40,i%2?4:2));return W;};
 const stOut=st=>st.days.map(x=>`${x.date.slice(5)} ${x.role} ${x.type}${x.fam?' '+x.fam+' L'+x.lvl:''}${x.lo?' '+x.lo+'-'+x.hi:''}`).join('; ');
 const r5t=n=>Math.max(5,Math.round(n/5)*5);
+// v122: a workout with heart rate zones (minutes per zone, 7 zones, threshold 170)
+const ZB7=[144,151,160,168,173,180,190];
+const zw=(dt,ty,min,zmin,o)=>({id:'icu-z'+dt+ty+min+zmin.join(''),date:dt,type:ty,durMin:min,distKm:0,rpe:null,notes:'',sub:{icu:{hr:140,z:zmin.map(m=>m*60),zb:ZB7,lt:170,...(o||{})}}});
+const Z_EASY=[50,10,0,0,0,0,0],Z_HARD=[30,10,0,12,0,0,0],Z_BIG=[20,5,0,35,0,0,0];
 // Plan caps: quality caps and hard days
 run('Plan caps',()=>{
   [['five days a week',{skip:noLong3}],['every day',{pat:PAT7,skip:noLong3}]].forEach(([lab,o])=>{
@@ -432,6 +456,55 @@ run('Plan time off',()=>{
   base();_s.workouts=[...daily(60,36),...daily(25,1)];const done=stReturn();
   _s.workouts=[...daily(60,14),...daily(3,1)];const mid=stReturn();
   check('Plan time off: a return ends after its weeks; one that started 3 days ago is still on',done===null&&mid&&mid.gap===10&&mid.week<=2,`${JSON.stringify(done)}; ${mid&&`gap ${mid.gap}, week ${mid.week} of ${mid.of}`}`);
+});
+// v122 Tests 5-7: a comeback needs a real usual week and ends early; the case after v121 (a hard e-bike ride after a long break);
+// levels and hard days read heart rate when no effort was typed
+run('Outline v122',()=>{
+  const G=W=>{base();_s.workouts=W;_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));return stReturn();};
+  const one=G([wk1(dAgo(12),0,'Calisthenics',42,3)]),wk1only=G(daily(18,12)),thin=G([wk1(dAgo(12),0,'Run',30,2),wk1(dAgo(19),0,'Run',25,2)]),two=G(daily(25,12));
+  check('Outline: a comeback needs a usual week of 60+ minutes from 2+ weeks with training before the break',one===null&&wk1only===null&&thin===null&&two&&two.base===280&&two.gap===11,`${JSON.stringify(one)} ${JSON.stringify(wk1only)} ${JSON.stringify(thin)} ${two&&`gap ${two.gap}, usual ${two.base}`}`);
+  const back=m=>G([...daily(40,15),wk1(dAgo(10),1,'Walk',30,1),wk1(dAgo(8),1,'Yoga',40,1),wk1(dAgo(5),1,'Cycle',60,2),wk1(dAgo(3),1,'Cycle',100,2),wk1(dAgo(1),1,'Cycle',m,2)]);
+  const on=back(90),off=back(100);
+  check('Outline: a comeback ends early once 7 days in a row reach the usual week; short walks and yoga do not end the break',on&&on.gap===9&&on.base===260&&off===null,`${on&&`gap ${on.gap}, usual ${on.base}`}; at the usual week: ${JSON.stringify(off)}`);
+  // the case after v121: training ended 50 days ago, one calisthenics session 9 days ago, short walks, then a hard 75-minute e-bike ride today
+  const kase=o=>{base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));
+    const W=[];for(let i=80;i>=50;i-=2)W.push(wk1(dAgo(i),0,'Run',40,2));
+    W.push(wk1(dAgo(o&&o.yday?10:9),0,'Calisthenics',42,3));
+    for(let i=1;i<=28;i++)if([1,5].includes(wdOf(dAgo(i))))W.push(wk1(dAgo(i),0,'Walk',45,null));
+    W.push(wk1(dAgo(2),1,'Walk',30,null),wk1(dAgo(1),1,'Walk',25,null));
+    const eb=zw(o&&o.yday?dAgo(1):td(),'Cycle',75,o&&o.yday?Z_BIG:[25,15,15,12,6,2,0],{eb:1,hrMax:161,load:120});eb.id='icu-eb';W.push(eb);
+    _s.workouts=W;if(o&&o.plan)_s.profile.plan=o.plan;return strategy();};
+  const st=kase(),rr=st.days.map(x=>x.role==='rest'||x.role==='recover'?'R':'T').join(''),D1=st.days[1];
+  check('Outline: after a long break, one short week does not make a comeback: the target builds from now and is not tiny',!st.ret&&st.mode!=='back'&&st.target>=90&&st.target<=120,`${st.mode}, target ${st.target}; ${stOut(st)}`);
+  check('Outline: short walks are not training days, so no three rest days in a row; the day after a hard ride is not hard',!/RRR/.test(rr)&&D1.role!=='hard',`${rr}; ${stOut(st)}`);
+  const tw=wdOf(dAgo(-1)),P=kase({plan:{[tw]:{type:'Run',note:'tempo'},[(tw+1)%7]:{type:'Run',note:'tempo'}}});
+  // the day after recovery is not held back by it (it may still stay easy for the weekly limit on hard days)
+  const why=st=>st.days.map(x=>x.why).join(' | ');
+  check('Outline: a hard day planned while you recover is kept easy and says why; the day after is no longer held back by it',P.days[1].role==='easy'&&P.days[1].why==="Plan says hard. Kept easy: still recovering from today's e-bike ride."&&!/recovering/.test(P.days[2].why),stOut(P)+' | '+why(P));
+  const Y=kase({yday:1,plan:{[wdOf(td())]:{type:'Run',note:'tempo'},[tw]:{type:'Run',note:'tempo'},[(tw+1)%7]:{type:'Run',note:'tempo'}}});
+  check('Outline: a very hard session keeps the next two days easy, then recovery no longer holds a day back',Y.mode!=='back'&&Y.days[0].role==='easy'&&Y.days[1].role==='easy'&&/still recovering from yesterday's e-bike ride/.test(Y.days[1].why)&&!/recovering/.test(Y.days[2].why),`${Y.mode}; ${stOut(Y)} | ${why(Y)}`);
+  // levels and hard days from heart rate
+  base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));const D=dAgo(2);_s.planHist={[D]:{fam:'rideEasy',type:'Cycle',role:'easy',effort:2}};
+  _s.workouts=[zw(D,'Cycle',60,Z_HARD)];const mh=stMatch(D);_s.workouts=[zw(D,'Cycle',60,Z_EASY)];const me=stMatch(D);
+  check('Outline: a ride with no effort typed is judged by heart rate: hard zones are harder than an easy plan, easy zones are done',mh.m==='harder'&&mh.eff===4&&mh.src==='hr'&&me.m==='done'&&me.eff===2,JSON.stringify([mh,me]));
+  const seedOf=Z=>{base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));_s.planHist={};_s.workouts=[20,17,14,11,8,5].map(n=>zw(dAgo(n),'Cycle',60,Z));return progAll().lv.rideTempo;};
+  const sH=seedOf(Z_HARD),sE=seedOf(Z_EASY),big=zw(td(),'Cycle',60,Z_EASY,{load:400});
+  check('Outline: hard rides read from heart rate seed the hard-ride level; an easy ride with a big load is not a hard day',sH===4&&sE===1&&!stHard(td(),[big]),`hard zones: level ${sH}, easy zones: level ${sE}, easy with a big load hard: ${stHard(td(),[big])}`);
+});
+// v122 Test 8: an e-bike ride counts as cycling by time and heart rate, but never for power, the long-ride cap or the ride bests
+run('E-bike',()=>{
+  const pr=(n,o)=>({id:'icu-p'+n,date:dAgo(n),type:'Cycle',durMin:60,distKm:30,rpe:2,notes:'',sets:[],sub:{icu:{pw:180,dw:1,...(o||{})}}});
+  base();_s.workouts=[pr(3,{eb:1}),pr(5,{eb:1})];const a=pmOn();_s.workouts=[pr(3),pr(5)];const b=pmOn();
+  check('E-bike: rides on an e-bike never turn on power targets',a===false&&b===true,`e-bike ${a}, bike ${b}`);
+  const L=eb=>{trn({pat:{1:['Cycle',50,2],3:['Cycle',50,2],5:['Cycle',50,2]},skip:noLong3});_s.workouts.push({...pr(4,eb?{eb:1}:{}),durMin:150,distKm:60,sub:{icu:{hr:120,...(eb?{eb:1}:{})}}});
+    const st=strategy();return st.days.find(x=>x.role==='long');};
+  const le=L(1),lb=L(0);
+  check('E-bike: a long e-bike ride does not raise the cap on a long ride; a long bike ride does',le&&le.hi<=Math.floor(50*TH.LONG_GROW/5)*5&&lb&&lb.hi>le.hi,`after a 150 min e-bike ride ${le&&le.lo+'-'+le.hi}; after a 150 min bike ride ${lb&&lb.lo+'-'+lb.hi}`);
+  base();_s.workouts=[{...pr(2,{eb:1}),distKm:40},{...pr(6),distKm:20,durMin:50}];_s.workouts[1].sub={icu:{}};
+  const sp=prSeries('Cycle','spd').pts.map(p=>p.txt),ds=prSeries('Cycle','dist').pts.length;
+  const pl=document.createElement('div');pl.id='prList';document.body.appendChild(pl);renderBests();const bt=pl.textContent;pl.remove();
+  const ebT={...pr(0,{eb:1}),durMin:75};_s.workouts.push(ebT);const rl=raceLoad().now,tr=stTrains(ebT);
+  check('E-bike: left out of the ride speed and distance bests; still counts its minutes as cycling',sp.join()==='24.0 km/h'&&ds===1&&!/40 km/.test(bt)&&tr&&rl>=75,`speed ${sp.join(', ')}; distance points ${ds}; bests ${bt.replace(/\s+/g,' ').slice(0,80)}; training ${tr}, minutes this week ${rl}`);
 });
 // Plan injury: back to running after a knee injury
 run('Plan injury',()=>{
@@ -526,6 +599,29 @@ run('Plan rows',()=>{
     check('Plan rows: the outline never names an app or a device',!bad,bad?bad.join(', '):`${all.length} renders`);
   }finally{box.remove();Object.keys(stub).forEach(k=>delete window[k]);_stOpen.clear();}
 });
+// v122 Tests 1-3: one reading of each workout: training or not, easy/steady/hard minutes from zones, effort, recovery days
+run('Workout reading',()=>{
+  base();_s.workouts=[];
+  const y={type:'Yoga',durMin:60},wS={type:'Walk',durMin:30},wL={type:'Walk',durMin:75},wH=zw(td(),'Walk',40,[20,8,12,0,0,0,0]),wE=zw(td(),'Walk',40,[30,10,0,0,0,0,0]),r={type:'Cycle',durMin:30};
+  check('Workout: yoga and a short easy walk are not training; a long walk, a short brisk walk and a ride are',!stTrains(y)&&!stTrains(wS)&&!stTrains(wE)&&stTrains(wL)&&stTrains(wH)&&stTrains(r),[y,wS,wE,wL,wH,r].map(w=>stTrains(w)).join());
+  const m7=wkMix(zw(td(),'Cycle',75,[20,15,10,5,2,1,0]));
+  const m5=wkMix({type:'Run',durMin:65,sub:{icu:{z:[600,1200,1200,600,300],zb:[114,133,152,171,190],mx:190}}});
+  check('Workout: time in zones becomes easy, steady and hard minutes (7 zones with a threshold; 5 zones with only max heart rate); nothing without zones',m7&&m7.easy===35&&m7.steady===10&&m7.hard===8&&m5&&m5.easy===50&&m5.steady===0&&m5.hard===15&&wkMix({type:'Run',durMin:40,sub:{icu:{hr:150}}})===null&&wkMix({type:'Run',durMin:40})===null,JSON.stringify([m7,m5]));
+  _s.icuThr=JSON.parse(JSON.stringify(THR_FULL));
+  const e=[wkEff({...zw(td(),'Cycle',60,Z_HARD,{rpe:9}),rpe:2}),wkEff(zw(td(),'Cycle',60,Z_EASY,{rpe:7})),wkEff(zw(td(),'Cycle',60,Z_HARD)),wkEff(zw(td(),'Cycle',60,Z_BIG)),wkEff(zw(td(),'Cycle',95,[70,13,0,12,0,0,0])),wkEff(zw(td(),'Cycle',60,[40,8,12,0,0,0,0])),wkEff(zw(td(),'Cycle',60,Z_EASY))];
+  const hrOnly=hr=>wkEff({type:'Run',durMin:60,sub:{icu:{hr}}}),a=[hrOnly(162),hrOnly(153),hrOnly(140)];
+  const s=wkEff(zw(td(),'Calisthenics',40,Z_BIG)),none=wkEff({type:'Run',durMin:40}),src=[wkEffOf({type:'Run',rpe:3}),wkEffOf({type:'Run',sub:{icu:{rpe:6}}}),wkEffOf(zw(td(),'Run',60,Z_EASY))].map(x=>x.src).join();
+  check('Workout: effort comes from what you typed, then the watch, then heart rate zones, then the average heart rate; never from heart rate for strength',e.join()==='2,4,4,5,5,3,2'&&a.join()==='5,4,2'&&s===null&&none===null&&src==='you,watch,hr'&&wkHard(zw(td(),'Cycle',60,Z_HARD))&&!wkHard(zw(td(),'Cycle',60,Z_EASY)),`${e.join()} | ${a.join()} | ${s} ${none} ${src}`);
+  const wd=n=>new Date(stAdd(td(),n)+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+  const rE=wkRec(zw(td(),'Cycle',60,Z_EASY)),rH=wkRec(zw(td(),'Cycle',60,Z_HARD)),rB=wkRec(zw(td(),'Cycle',60,Z_BIG)),rY=wkRec(zw(dAgo(1),'Cycle',60,Z_HARD)),rYB=wkRec(zw(dAgo(1),'Cycle',60,Z_BIG)),rO=wkRec(zw(dAgo(5),'Cycle',60,Z_HARD));
+  check('Workout: hard training fits again the next day, 2 days after a hard session, 3 after a very hard one, in everyday words',
+    rE.hardOn===stAdd(td(),1)&&rE.txt==='Easy on your body. Hard training fits again tomorrow.'
+    &&rH.hardOn===stAdd(td(),2)&&rH.txt===`A hard session. An easy day tomorrow is fine; ready for hard training from ${wd(2)}.`
+    &&rB.hardOn===stAdd(td(),3)&&rB.txt===`A very hard session. Keep the next two days easy; ready for hard training from ${wd(3)}.`
+    &&rY.txt==='A hard session. Keep today easy; ready for hard training tomorrow.'
+    &&rYB.txt===`A very hard session. Keep today and tomorrow easy; ready for hard training from ${wd(2)}.`
+    &&/^A hard session\. Recovered/.test(rO.txt),[rE,rH,rB,rY,rYB,rO].map(r=>r.txt).join(' | '));
+});
 // async tests that replace fetch run one after another, after every plain test
 const seq=(name,fn)=>{const p=Promise.all([...later]).then(fn).catch(e=>check(name,false,'Threw: '+e.message)).finally(()=>{window.fetch=realFetch;});later.push(p);};
 // Tests 14-15: thresholds once a day and range-checked, VO2max only when present, power refreshes an import and keeps the pain
@@ -549,6 +645,62 @@ seq('Sync thresholds',async()=>{
   const one=pmOn();_s.workouts.push({id:'icu-2',date:dAgo(9),type:'Cycle',durMin:60,sub:{icu:{pw:170,dw:1}}});const two=pmOn();
   _s.workouts[1].date=dAgo(50);const old=pmOn();
   check('Sync: power targets need 2 power-meter rides in the last 6 weeks',!one&&two&&!old,`${one}, ${two}, ${old}`);
+});
+// v122 Test 4: zones, threshold, drift, recovery, start time, cadence and speed come in; e-bike rides are cycling with a marker;
+// unchanged zones write nothing, changed zones refresh and keep your effort, note, sets and pain; zones read earlier stay
+seq('Workout import',async()=>{
+  base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1',wtBack:td(),icuThr:{at:Date.now()}});
+  const Z=[1200,900,600,300,120,60,0],ZB=[144,151,160,168,173,180,190],J=x=>new Response(JSON.stringify(x),{status:200});
+  _s.workouts=[{id:'icu-2',date:dAgo(2),type:'Run',durMin:40,distKm:8,rpe:3,notes:'easy',sets:[{ex:'Plank',secs:60}],sub:{pain:2,icu:{hr:150,z:[...Z],zb:[...ZB],lt:170,t:'06:30'}}},
+    {id:'icu-3',date:dAgo(3),type:'Run',durMin:30,distKm:6,rpe:null,notes:'',sub:{icu:{hr:145,z:[...Z],zb:[...ZB],t:'06:00'}}}];
+  const acts=[{id:'i9',start_date_local:td()+'T07:12:00',type:'EMountainBikeRide',moving_time:4500,distance:24100,average_heartrate:128,max_heartrate:161,total_elevation_gain:154,calories:643,icu_hr_zone_times:Z,icu_hr_zones:ZB,lthr:170,athlete_max_hr:190,decoupling:4.27,icu_hrr:{hrr:31},average_cadence:72.4,average_speed:5.36},
+    {id:2,start_date_local:dAgo(2)+'T06:30:00',type:'Run',moving_time:2400,distance:8000,average_heartrate:150,icu_hr_zone_times:[...Z],icu_hr_zones:[...ZB],lthr:170},
+    {id:3,start_date_local:dAgo(3)+'T06:00:00',type:'Run',moving_time:1800,distance:6000,average_heartrate:145}];
+  window.fetch=async u=>u.includes('/wellness')?J([]):u.includes('/activities')?J(acts):new Response('',{status:404});
+  await pullIntervals();
+  const eb=_s.workouts.find(w=>w.id==='icu-i9'),i=wIcu(eb);
+  check('Workout import: an e-bike ride comes in as cycling with zones, threshold, drift, recovery, start time, cadence and speed',eb&&eb.type==='Cycle'&&i.eb===1&&i.z.join()===Z.join()&&i.zb.join()===ZB.join()&&i.lt===170&&i.mx===190&&i.dec===4.3&&i.hrr===31&&i.t==='07:12'&&i.cad===72&&i.spd===19.3&&wkLabel(eb)==='E-bike ride'&&ICU_TYPE.EBikeRide==='Cycle',JSON.stringify(i));
+  const w3=_s.workouts.find(w=>w.id==='icu-3');
+  check('Workout import: unchanged zones write nothing; zones read from the single workout stay when the list leaves them out',!_s.pending['workouts|icu-2']&&!_s.pending['workouts|icu-3']&&wIcu(w3).z.join()===Z.join(),Object.keys(_s.pending).join());
+  acts[1].icu_hr_zone_times=[600,600,600,600,600,0,0];await pullIntervals();
+  const w2=_s.workouts.find(w=>w.id==='icu-2');
+  check('Workout import: changed zones refresh the workout and keep your effort, note, sets and pain',!!_s.pending['workouts|icu-2']&&wIcu(w2).z.join()==='600,600,600,600,600,0,0'&&w2.rpe===3&&w2.notes==='easy'&&w2.sets.length===1&&w2.sub.pain===2,JSON.stringify(w2));
+});
+// v122 Test 9: a workout's trace (canned fetch): the request, at most TH.WK_PTS points, the hardest 5 and 20 minutes, the biggest climb,
+// kept in memory (a second open asks nothing), the reasons when it fails, and zones read from the single workout when the list left them out
+seq('Workout trace',async()=>{
+  base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1'});_wkSt.clear();
+  const N=7200,tt=[...Array(N).keys()],hr=tt.map(s=>s>=1800&&s<2100?150:s>=3600&&s<4800?140:120);
+  const alt=dip=>tt.map(s=>s<2400?100:s<3000?100+(s-2400)/8:s<3040?175-(s-3000)/40*dip:s<3640?175-dip+(s-3040)/8:s<4200?250-dip:s<5400?250-dip-(s-4200)*(150-dip)/1200:100);
+  const trace=dip=>[{type:'time',data:tt},{type:'heartrate',data:hr},{type:'altitude',data:alt(dip)},{type:'velocity_smooth',data:tt.map(()=>6)},{type:'distance',data:tt.map(s=>s*6)}];
+  const Z=[1200,900,600,300,120,60,0],ZB=[144,151,160,168,173,180,190];
+  const w={id:'icu-i77',date:td(),type:'Cycle',durMin:120,distKm:43.2,rpe:null,notes:'',sub:{icu:{hr:125,z:[...Z],zb:[...ZB]}}};
+  _s.workouts=[w,{id:'icu-i78',date:dAgo(1),type:'Run',durMin:40,distKm:8,rpe:null,notes:'',sub:{icu:{hr:150}}},{id:'w-1',date:dAgo(2),type:'Run',durMin:30,rpe:2,notes:''}];
+  const calls=[],J=x=>new Response(JSON.stringify(x),{status:200});let st=200;
+  window.fetch=async(u,o={})=>{calls.push({u,h:o.headers});
+    if(st==='throw')throw new TypeError('Failed to fetch');if(st!==200)return new Response('',{status:st});
+    if(/\/activity\/i78$/.test(u))return J({id:'i78',type:'Run',icu_hr_zone_times:Z,icu_hr_zones:ZB,lthr:170,decoupling:3.14});
+    return J(trace(3));};
+  const r=await wkStreams(w),a=r.a||{},c0=calls[0]||{};
+  check('Workout trace: one request for the trace of that workout, with your key, and at most 600 points kept for the chart',r.ok&&calls.length===1&&c0.u==='https://intervals.icu/api/v1/activity/i77/streams.json?types=time&types=heartrate&types=altitude&types=velocity_smooth&types=watts&types=cadence&types=distance'&&/^Basic /.test(c0.h.Authorization)&&a.pts.length<=TH.WK_PTS&&a.pts.length>=500&&a.T===N-1&&a.has.hr&&a.has.alt&&a.has.spd&&!a.has.pw&&a.pts[0].spd===21.6,`${calls.length} requests; ${a.pts&&a.pts.length} points; ${JSON.stringify(a.has)}`);
+  const b5=a.b5||{},b20=a.b20||{};
+  check('Workout trace: the hardest 5 and 20 minutes by average heart rate, with when and the speed then',b5.hr===150&&b5.at===1800&&b5.to===2099&&b5.spd===21.6&&b20.hr===140&&b20.at===3600,JSON.stringify([b5,b20]));
+  const cl=a.climb||{},c10=(wkAnalyse(wkStParse(trace(10)))||{}).climb||{};
+  check('Workout trace: the biggest climb goes on through a 3 m dip; a 10 m dip splits it',cl.gain>=145&&cl.gain<=149&&cl.at>=2300&&cl.at<=2450&&cl.to>=3600&&cl.to<=3700&&cl.hr0===120&&cl.km>7&&cl.grade>=1.8&&cl.grade<=2.2&&c10.gain>=70&&c10.gain<=76,`${JSON.stringify(cl)}; with a 10 m dip ${c10.gain} m`);
+  let n=calls.length;const r2=await wkStreams(w),got=wkStGot(w);
+  check('Workout trace: a second open asks nothing and gets the same trace',calls.length===n&&r2===r&&got===r,`${calls.length-n} requests`);
+  const W=id=>({id:'icu-'+id,date:dAgo(3),type:'Ride',durMin:30,sub:{icu:{hr:130,z:[...Z],zb:[...ZB]}}});
+  n=calls.length;const[p1,p2]=await Promise.all([wkStreams(W('a1')),wkStreams(W('a1'))]);
+  check('Workout trace: two opens at once share one request',calls.length===n+1&&p1===p2&&p1.ok,`${calls.length-n} requests`);
+  const why=async(code,x)=>{st=code;const m=calls.length,q=await wkStreams(x);return`${q.why}:${calls.length-m}`;};
+  const e401=await why(401,W('b1')),e401b=await why(401,W('b1')),e404=await why(404,W('b2')),e404b=await why(404,W('b2')),eOff=await why('throw',W('b3')),e500=await why(500,W('b4'));
+  st=200;const man=await why(200,_s.workouts[2]);_s.intervalsKey='';const nok=await why(200,W('b5'));_s.intervalsKey='k';
+  check('Workout trace: a refused key and a failure try again next time; no trace is remembered; offline, no key and a typed workout say why',e401==='auth:1'&&e401b==='auth:1'&&e404==='none:1'&&e404b==='none:0'&&eOff==='offline:1'&&e500==='error:1'&&man==='manual:0'&&nok==='nokey:0',[e401,e401b,e404,e404b,eOff,e500,man,nok].join(', '));
+  _s.pending={};n=calls.length;const r8=await wkStreams(_s.workouts[1]),w8=_s.workouts.find(x=>x.id==='icu-i78'),i8=wIcu(w8);
+  check('Workout trace: zones the list left out are read from the single workout once and kept with it',r8.ok&&calls.length===n+2&&calls.slice(n).some(c=>/\/activity\/i78$/.test(c.u))&&i8.z.join()===Z.join()&&i8.zb.join()===ZB.join()&&i8.lt===170&&i8.dec===3.1&&i8.hr===150&&!!_s.pending['workouts|icu-i78'],JSON.stringify(i8));
+  st=404;for(let k=0;k<12;k++)await wkStreams(W('c'+k));st=200;
+  check('Workout trace: only the newest 10 are kept in memory',_wkSt.size===10&&!_wkSt.has('icu-i77')&&_wkSt.has('icu-c11'),`${_wkSt.size} kept`);
+  _wkSt.clear();
 });
 // Plan pain: the pain field on the real workout form (copied from index.html): save, edit, clear, repeat, the list row and the toasts
 seq('Plan pain',async()=>{
@@ -634,6 +786,86 @@ seq('Plan send',async()=>{
     const pk=Object.keys(_s.pending);
     check('Plan send: keys, your athlete ID and the sent list stay out of the backup; none of the plan state is synced',!leak.length&&!pk.length&&JSON.stringify(_s.profile)===P0&&!/icuSent|icuThr|planHist|stSwap/.test(JSON.stringify(_s.profile)),`backup has ${leak.join(', ')||'none'}; pending ${pk.join(', ')||'none'}`);
   }finally{box.remove();Object.keys(stub).forEach(k=>delete window[k]);_stOpen.clear();}
+});
+// v122 Tests 10-11: the workout sheet and its chart (canned trace): a row tap opens it, Edit and Delete do not; numbers, zones,
+// plain sentences, recovery, planned against done; a re-render asks nothing; manual, missing, unavailable and offline workouts;
+// the chart's readout, bands, chips, arrow keys and taps. No app or device names, no accent colour.
+seq('Workout sheet',async()=>{
+  const box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML='<div id="wkList"></div><div class="modal-ov" id="dtModal"><div class="modal"><div class="modal-title" id="dtTitle">Detail <button>×</button></div><div id="dtBody"></div></div></div>';
+  document.body.appendChild(box);
+  const orig={editWorkout,delWorkout},hit=[];editWorkout=id=>hit.push('edit:'+id);delWorkout=id=>hit.push('del:'+id);
+  const T=4500,tt=[...Array(T).keys()];
+  const hr=tt.map(s=>s<600?100+s/20:s<1800?128:s<2100?155:s<2160?132:s<3060?132+(s-2160)/50:120);
+  const alt=tt.map(s=>s<2160?100:s<3060?100+(s-2160)*154/900:254-(s-3060)/10);
+  const spd=tt.map(s=>s>=2160&&s<3060?3:5.36);let km=0;const dist=tt.map(s=>km+=spd[s]);
+  const trace=[{type:'time',data:tt},{type:'heartrate',data:hr},{type:'altitude',data:alt},{type:'velocity_smooth',data:spd},{type:'cadence',data:tt.map(()=>72)},{type:'distance',data:dist}];
+  const Z=[2400,1200,500,300,100,0,0],calls=[],J=x=>new Response(JSON.stringify(x),{status:200});let st=200;
+  window.fetch=async u=>{calls.push(u);if(st==='throw')throw new TypeError('Failed to fetch');if(st!==200)return new Response('',{status:st});return J(/streams\.json/.test(u)?trace:{});};
+  const ride=(id,dt,o)=>({id,date:dt,type:'Cycle',durMin:75,distKm:24.1,rpe:null,notes:'',sub:{icu:{hr:128,hrMax:161,kcal:643,elev:154,z:[...Z],zb:[...ZB7],lt:170,mx:190,dec:4.3,hrr:31,t:'07:12',eb:1,cad:72,spd:19.3,...(o||{})}}});
+  const wait=async id=>{const p=_wkPend.get(id);if(p)await p;await new Promise(r=>setTimeout(r,0));};
+  const body=()=>$('dtBody').innerHTML,txt=()=>$('dtBody').textContent,isOpen=()=>$('dtModal').classList.contains('open');
+  try{
+    base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1',icuThr:JSON.parse(JSON.stringify(THR_FULL))});_wkSt.clear();
+    const E=ride('icu-i90',td());
+    // three similar e-bike rides before (135 bpm on average), a plain ride, two shorter e-bike rides; heart rate recovery usually 23
+    _s.workouts=[E,ride('icu-p1',dAgo(3),{hr:135,hrr:null,dec:null}),ride('icu-p2',dAgo(6),{hr:134,hrr:22}),ride('icu-p3',dAgo(9),{hr:136,hrr:24}),ride('icu-p4',dAgo(12),{hr:150,eb:0}),
+      {id:'w-str',date:dAgo(1),type:'Weights',durMin:0,rpe:3,notes:'Felt strong',sets:[{ex:'Squat',muscle:'Legs',kg:80,reps:5},{ex:'Squat',muscle:'Legs',kg:80,reps:5}]},
+      {id:'w-run',date:dAgo(2),type:'Run',durMin:30,distKm:5,rpe:2,notes:''},{...ride('icu-i91',dAgo(1),{hrr:23}),durMin:40},{...ride('icu-i92',dAgo(2),{hrr:23}),durMin:40}];
+    _s.planHist={[td()]:{fam:'rideEasy',lvl:2,type:'Cycle',role:'easy',effort:2,lo:60,hi:75}};
+    $('wkList').innerHTML=wkRow(E);const rowEl=$('wkList').querySelector('.act-item');
+    check('Workout sheet: a workout row is a button that opens its sheet, labelled e-bike ride, with a chevron',rowEl.getAttribute('role')==='button'&&rowEl.tabIndex===0&&/openDetail\('wk:icu-i90'\)/.test(rowEl.getAttribute('onclick'))&&rowEl.querySelector('.act-name').textContent==='E-bike ride'&&!!rowEl.querySelector('.act-go'),rowEl.outerHTML.slice(0,160));
+    const[eb,db]=rowEl.querySelectorAll('.wk-acts button');eb.click();db.click();
+    check('Workout sheet: Edit and Delete on the row do only their own job',hit.join()==='edit:icu-i90,del:icu-i90'&&!isOpen()&&!_dtKey&&!calls.length,hit.join()+` · open ${isOpen()}`);
+    rowEl.click();
+    const loading=!!$('dtBody').querySelector('.wk-load'),t0=$('dtTitle').firstChild.textContent;
+    await wait('icu-i90');
+    const n1=calls.length,g=[...$('dtBody').querySelectorAll('.wk-grid>div')].map(c=>c.textContent).join('|');
+    check('Workout sheet: tapping the row opens it, loading the trace once, with the numbers in a grid',isOpen()&&_dtKey==='wk:icu-i90'&&t0==='E-bike ride '&&loading&&n1===1&&/streams\.json/.test(calls[0])&&/Average heart rate128bpm/.test(g)&&/Max heart rate161bpm/.test(g)&&/Energy643kcal/.test(g)&&/Average speed19\.3km\/h/.test(g)&&/Cadence72rpm/.test(g)&&/Effort3 of 5from heart rate/.test(g)&&!/power/i.test(g),`${n1} requests · ${g}`);
+    check('Workout sheet: the summary line has the day, start time, duration, distance and climb',$('dtBody').querySelector('.dt-sub').textContent===`${new Date(td()+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'})} ${fmtD(td())}, 07:12 · 1h 15min · 24.1 km · 154 m climb`,$('dtBody').querySelector('.dt-sub').textContent);
+    const zn=[...$('dtBody').querySelectorAll('.wk-zn')],zc=zn.map(z=>(z.querySelector('i')||{}).className).join(),zl=zn.map(z=>z.querySelector('small').textContent).join();
+    check('Workout sheet: a chart and time in each zone, grouped easy, steady and hard from your threshold',!!$('dtBody').querySelector('canvas.wk-cv')&&/Heart rate during the session/.test(txt())&&zn.length===7&&zc==='easy,easy,steady,hard,hard,hard,hard'&&zl==='up to 144 bpm,145–151 bpm,152–160 bpm,161–168 bpm,169–173 bpm,174–180 bpm,over 180 bpm'&&/1h easy\s*8min steady\s*7min hard/.test($('dtBody').querySelector('.wk-mix').textContent),`${zc} · ${zl} · ${($('dtBody').querySelector('.wk-mix')||{}).textContent}`);
+    const li=[...$('dtBody').querySelectorAll('.wk-in li')].map(x=>x.textContent),L=li.join(' | ');
+    check('Workout sheet: plain sentences on the mix, hardest stretches, the climb, recovery of heart rate and similar e-bike rides; no drift on an e-bike',
+      li[0]==='Mostly easy: 60 of 75 minutes easy, 8 steady, 7 hard.'&&/^Hardest 5 minutes: 155 bpm \(steady\), starting 30min in\. Hardest 20 minutes: \d+ bpm \(\w+\), starting \d+min in\.$/.test(li[1])&&/^Biggest climb: 1[45]\d m over 2\.\d km \([56]\.\d% on average\) in 1[45]min; your heart rate went from 13\d to 1[45]\d bpm\.$/.test(li[2])
+      &&li[3]==='Your heart rate came down 31 beats within a minute of a hard effort, more than your usual of 23: a good sign.'&&li[4]==='Average heart rate 128 bpm: 7 lower than your last 3 e-bike rides of a similar length (135 bpm).'&&!/drift|first half/i.test(L)&&li.length===5,L);
+    const pv=($('dtBody').querySelector('.wk-pv')||{}).textContent||'';
+    check('Workout sheet: recovery advice for a recent session and planned against done, without a details button inside the sheet',/Recovery\s*A moderate session\. Hard training fits again tomorrow\./.test(txt())&&/Planned/.test(pv)&&/Done\s*E-bike ride 1h 15min · effort 3 of 5 from heart rate/.test(pv)&&!$('dtBody').querySelector('.wk-pv button'),pv);
+    const bad=body().match(/polar|intervals|garmin|strava|gold|#ff6b1f/ig);
+    check('Workout sheet: names no app or device and uses no accent colour',!bad,bad?bad.join(', '):'');
+    refreshDetail();const cv0=$('dtBody').querySelector('canvas.wk-cv');closeDetail();openDetail('wk:icu-i90');await wait('icu-i90');
+    check('Workout sheet: a re-render or a second open asks nothing and draws the chart again',calls.length===n1&&!!cv0&&!!$('dtBody').querySelector('canvas.wk-cv'),`${calls.length-n1} more requests`);
+    // Test 11: the chart
+    const C=_wkC,cv=$('dtBody').querySelector('canvas.wk-cv'),ro=()=>$('dtBody').querySelector('.wk-ro').textContent;
+    const B=wkBands(E,stThr()),chips=[...$('dtBody').querySelectorAll('.wk-ch')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')).join();
+    check('Workout chart: bands come from the zones; chips for what was recorded (no power without a real meter); the whole session above it',JSON.stringify(B)==='[{"lo":0,"hi":151,"cls":"easy"},{"lo":151,"hi":160,"cls":"steady"},{"lo":160,"hi":null,"cls":"hard"}]'&&chips==='Heart rate:true,Speed:false,Cadence:false'&&ro()==='Heart rate, whole sessionAverage128 bpmMax161 bpm',`${JSON.stringify(B)} · ${chips} · ${ro()}`);
+    C.hov=wkIdx(C.a.pts,1950);wkDraw();const r1=ro();
+    check('Workout chart: an inspected moment shows the time, heart rate with its zone, speed, height and distance',/^0:3[23]:\d\dHeart rate155 bpm · steadySpeed19\.3 km\/hHeight10\d mDistance1\d\.\d km$/.test(r1)&&/^Heart rate over the session: heart rate 155 bpm · steady/.test(cv.getAttribute('aria-label')),r1);
+    C.hov=null;$('dtBody').querySelector('.wk-ch[data-m="spd"]').click();const r2=ro(),pr=[...$('dtBody').querySelectorAll('.wk-ch')].map(b=>b.getAttribute('aria-pressed')).join();
+    check('Workout chart: a chip switches the line',C.m==='spd'&&pr==='false,true,false'&&/^Speed, whole sessionAverage1\d\.\d km\/hFastest19\.3 km\/h$/.test(r2),`${pr} · ${r2}`);
+    const key=k=>{const e=new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true});cv.dispatchEvent(e);return e;};
+    const n=C.a.pts.length,s=Math.max(1,Math.round(n/60));key('ArrowRight');const k1=C.hov;key('ArrowRight');const k2=C.hov;key('ArrowLeft');const k3=C.hov;const esc1=key('Escape');
+    check('Workout chart: arrow keys step through the session and Esc clears',k1===0&&k2===s&&k3===0&&C.hov===null&&esc1.defaultPrevented,`${k1}, ${k2}, ${k3}, ${C.hov}`);
+    const rc=cv.getBoundingClientRect(),x=rc.left+C.L+(rc.width-C.L-C.R)/2,pe=(ty)=>cv.dispatchEvent(new PointerEvent(ty,{clientX:x,clientY:rc.top+50,pointerType:'touch',pointerId:7,bubbles:true}));
+    pe('pointerdown');pe('pointerup');const h1=C.hov,t1=h1!=null&&C.a.pts[h1].t;pe('pointerdown');pe('pointerup');
+    check('Workout chart: a tap reads the moment under it; a second tap on the same spot clears it',h1!=null&&Math.abs(t1-C.a.T/2)<C.a.T*0.02&&C.hov===null,`tapped ${t1} of ${C.a.T}; then ${C.hov}`);
+    let threw='';try{chRedrawAll();}catch(e){threw=e.message;}
+    check('Workout chart: a theme change redraws it',!threw,threw);
+    // manual, missing, unavailable and offline
+    openDetail('wk:w-str');const ms=txt();
+    check('Workout sheet: a typed strength session shows its sets and note, and asks nothing',/Sets\s*Squat/.test(ms)&&/Note\s*Felt strong/.test(ms)&&/Effort3 of 5/.test(ms)&&!$('dtBody').querySelector('canvas,.wk-load')&&!/heart rate detail/.test(ms)&&calls.length===n1&&_wkC===null,ms.slice(0,200));
+    openDetail('wk:w-run');
+    check('Workout sheet: a typed run says the heart rate detail comes with the watch',/The heart rate detail shows when your watch records the workout\./.test(txt())&&calls.length===n1,txt().slice(0,160));
+    openDetail('wk:nope');
+    check('Workout sheet: a deleted workout says so',/This workout is no longer in your log\./.test(txt())&&$('dtTitle').firstChild.textContent==='Workout ',txt());
+    st=404;openDetail('wk:icu-i91');await wait('icu-i91');const u=txt();
+    st='throw';openDetail('wk:icu-i92');await wait('icu-i92');const o=txt();st=200;
+    check('Workout sheet: without a trace or offline it says why, and the zones and sentences still show',/The heart rate trace is not available for this workout\./.test(u)&&/The heart rate trace needs a connection\./.test(o)&&$('dtBody').querySelectorAll('.wk-zn').length===7&&/Mostly easy/.test(o)&&!$('dtBody').querySelector('canvas'),`${u.slice(0,120)} | ${o.slice(0,120)}`);
+    $('dtBody').querySelector('.dt-link').click();
+    check('Workout sheet: Edit in Log closes the sheet and opens the form',!isOpen()&&hit[hit.length-1]==='edit:icu-i92',hit.join());
+    const sx=stRowX({date:td(),done:1,snap:_s.planHist[td()],match:stMatch(td())},null);
+    check('Workout sheet: a done day in the outline has a button to the workout',/class="st-sw" onclick="openDetail\('wk:icu-i90'\)">Workout details</.test(sx),sx.slice(-200));
+  }finally{closeDetail();editWorkout=orig.editWorkout;delWorkout=orig.delWorkout;box.remove();_wkSt.clear();}
 });
 
 Promise.all(later).then(()=>{

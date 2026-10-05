@@ -263,8 +263,8 @@ function editWorkout(id){
   const ir=wIcu(w).rpe;$('wEffNote').textContent=ir&&!w.rpe?`Your watch recorded ${ir} of 10, about ${effOf5(ir)} of 5. Pick it here if it felt like that.`:'';
   _editId=id;$('wSave').textContent='Update workout';$('wCancel').style.display='block';
   $('wMore').open=true;$('wkFormT').textContent='Edit workout';renderDurChips();
-  setTimeout(()=>$('wkFormT').scrollIntoView({behavior:'smooth',block:'start'}),120);
-  showToast('Editing '+w.type+' from '+w.date);
+  setTimeout(()=>{const t=$('wkFormT');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});},120);
+  showToast('Editing '+wkLabel(w).toLowerCase()+' from '+fmtD(w.date));
 }
 function cancelEdit(){_editId=null;wkPreClear();$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';painSet(null);$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
 function repeatLast(){
@@ -292,7 +292,8 @@ function wkRow(w,today){
   if(w.sets){const n=setsByEx(w).reduce((n,e)=>n+e[1].length,0);meta.push(n+' set'+(n===1?'':'s'));}
   meta.push(w.rpe?'effort '+w.rpe+'/5':'effort not set');
   if(painOf(w)!=null)meta.push('pain '+painOf(w)+' of 10');
-  return `<div class="act-item"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(w.type)}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="delWorkout('${esc(w.id)}')">Delete</button></div></div></div>`;
+  // v122: the row opens the workout sheet; Edit and Delete do only their own job
+  return `<div class="act-item tap" role="button" tabindex="0" aria-label="${esc(wkLabel(w))}, ${esc(fmtD(w.date))}: details" onclick="openDetail('wk:${esc(w.id)}')"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(wkLabel(w))}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${w.sets?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="event.stopPropagation();editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="event.stopPropagation();delWorkout('${esc(w.id)}')">Delete</button></div></div><span class="act-go" aria-hidden="true">›</span></div>`;
 }
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
 function findDups(){

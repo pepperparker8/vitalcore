@@ -972,3 +972,41 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .st-send:focus-visible{outline:2px solid var(--t3);outline-offset:1px}
 .st-sent{flex:1 1 100%;font-size:13px;color:var(--t2)}
 @media (max-width:380px){.st-sx{padding-left:0}}
+
+/* v122: workout rows open the workout sheet; the sheet's numbers, heart rate chart, zones and notes (no accent colour) */
+.act-item.tap{cursor:pointer}
+.act-item.tap:focus-visible{outline:2px solid var(--t3);outline-offset:2px;border-radius:8px}
+.act-go{align-self:center;color:var(--t3);font-size:22px;line-height:1;padding:0 2px}
+.wk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.wk-grid>div{background:var(--sur2);border-radius:10px;padding:8px 10px;min-width:0}
+.wk-grid span{display:block;font-size:11px;color:var(--t2);line-height:1.25}
+.wk-grid b{display:block;font-size:17px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
+.wk-grid small{display:block;font-size:11px;color:var(--t3);line-height:1.25}
+.wk-chs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.wk-ch{min-height:44px;padding:0 14px;border:1px solid var(--bdr);border-radius:10px;background:transparent;color:var(--t2);font:inherit;font-size:13px;cursor:pointer}
+.wk-ch[aria-pressed=true]{border-color:var(--text);color:var(--text);font-weight:600}
+.wk-ch:focus-visible{outline:2px solid var(--t3);outline-offset:1px}
+.wk-load{min-height:240px;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;margin-top:12px;color:var(--t3);font-size:13px;background:var(--sur2);border-radius:10px}
+.wk-mix{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--t2);margin-bottom:8px}
+.wk-mix span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--t3)}
+.wk-mix .easy::before{background:var(--green)}
+.wk-mix .steady::before{background:var(--amber)}
+.wk-mix .hard::before{background:var(--red)}
+.wk-zns{display:flex;flex-direction:column;gap:6px}
+.wk-zn{display:grid;grid-template-columns:88px 1fr 60px;align-items:center;gap:10px;font-size:13px}
+.wk-zl{color:var(--text);line-height:1.2}
+.wk-zl small{display:block;font-size:11px;color:var(--t3)}
+.wk-zb{height:8px;background:var(--sur2);border-radius:4px;overflow:hidden}
+.wk-zb i{display:block;height:100%;border-radius:4px;background:var(--t3)}
+.wk-zb i.easy{background:var(--green)}
+.wk-zb i.steady{background:var(--amber)}
+.wk-zb i.hard{background:var(--red)}
+.wk-zn b{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
+.wk-in{margin:0;padding-left:16px;font-size:14px;line-height:1.5;color:var(--text)}
+.wk-in li+li{margin-top:6px}
+.wk-pv .st-pv:first-child{margin-top:0}
+.wk-tr .fm-why{margin-top:8px}
+.day-wk{background:none;border:0;padding:0;min-height:44px;font:inherit;font-size:13px;font-weight:600;color:#fff;text-align:left;cursor:pointer}
+.day-wk span{opacity:.6;margin-left:2px}
+.day-wk small{display:block;font-family:var(--mono);font-size:12px;font-weight:400;opacity:.8;margin-top:2px}
+.day-wk:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:4px}

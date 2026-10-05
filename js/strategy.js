@@ -24,16 +24,19 @@ const stPctW=p=>p<0.4?'a third':p<0.55?'half':p<0.7?'two thirds':p<0.8?'three qu
 const stAdd=(dt,n)=>{const x=new Date(dt+'T12:00:00');x.setDate(x.getDate()+n);return ymd(x);};
 const stMon=dt=>{const x=new Date(dt+'T12:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return ymd(x);};
 const stWs=()=>{const d=S();return isExampleOnly()?d.workouts:d.workouts.filter(w=>!w.isEx);};
-// a hard day: effort 4 or 5 logged, or a watch-recorded day in the top quarter of your loads
-function stHard(dt,ws){
-  if(ws.some(w=>(w.rpe||0)>=4))return true;
-  return ws.some(w=>wIcu(w).load>0&&!w.rpe)&&strainOf(dayLoad(dt))>=12;
+// a hard day: effort 4 or 5 (v122: yours, the watch's, else from heart rate, wkHard), or a watch-recorded day with no effort, zones or
+// heart rate in the top quarter of your loads
+function stHard(dt,ws,thr){
+  if(ws.some(w=>wkHard(w,thr)))return true;
+  return ws.some(w=>wIcu(w).load>0&&wkEff(w,thr)==null)&&strainOf(dayLoad(dt))>=12;
 }
-// v121: coming back after more than TH.GAP_RESUME days without training (yoga and walks do not count). Return weeks run Monday to
-// Sunday from the week you start again (a start on Friday or later counts from the next Monday).
+// v121: coming back after more than TH.GAP_RESUME days without training (yoga and short walks do not count, stTrains). Return weeks run
+// Monday to Sunday from the week you start again (a start on Friday or later counts from the next Monday).
+// v122: only with a real usual week before the break (TH.RET_BASE_WKS weeks with training, TH.RET_BASE_MIN minutes), and over early once
+// any 7 days in a row since you started again reach it.
 // {gap (days off), from, week (1-based), of, pct, nextPct (share of the usual week), pen (levels down), base (usual minutes a week before the break)}; null once it is over
 function stReturn(){
-  const t=td(),tr=stWs().filter(w=>w.type!=='Yoga'&&w.type!=='Walk'&&w.date<=t);
+  const t=td(),tr=stWs().filter(w=>w.date<=t&&stTrains(w));
   const ds=[...new Set(tr.map(w=>w.date))].sort();if(!ds.length)return null;
   let from=null,end=null,gap=0;
   const cur=daysAgo(ds[ds.length-1])-1;
@@ -45,7 +48,10 @@ function stReturn(){
   if(k>=band[2].length)return null;
   // the usual week before the break: mean of the four 7-day blocks up to the last day trained (blocks with any training)
   const blk=[0,1,2,3].map(n=>tr.filter(w=>{const a=daysAgoBetween(w.date,end);return a>=n*7&&a<n*7+7;}).reduce((s,w)=>s+(w.durMin||0),0)).filter(x=>x>0);
-  const base=blk.length?avg(blk):0;if(!base)return null;
+  if(blk.length<TH.RET_BASE_WKS)return null;
+  const base=avg(blk);if(base<TH.RET_BASE_MIN)return null;
+  const since=tr.filter(w=>w.date>=from);
+  if(since.some(e=>since.filter(w=>w.date<=e.date&&w.date>stAdd(e.date,-7)).reduce((s,w)=>s+(w.durMin||0),0)>=base))return null;
   return{gap,from,week:k+1,of:band[2].length,pct:band[2][k],nextPct:band[2][k+1]||1,pen:band[1],base:Math.round(base)};
 }
 // v121: back to running after a lower-body injury (moderate or worse) marked healed in the last TH.RET_LOWER_D days (healed = its ts).
@@ -68,14 +74,15 @@ function injRet(){
   return{part:I.part,healed:h,stage:i<0?'ladder':ST_IRS[i],i,step,pain};
 }
 // v121: what happened on a planned day (planHist): 'done' (the planned sport at or under the planned effort), 'harder', 'missed'
-// (nothing logged, past days only) or 'other' (a different sport), with the effort (1 to 5; the watch's 1 to 10 halved when none was set) and pain
-function stMatch(dt){
+// (nothing logged, past days only) or 'other' (a different sport), with the effort (1 to 5; v122: wkEffOf, so the watch's 1 to 10 halved,
+// else from heart rate, when none was set; src 'you' | 'watch' | 'hr') and pain
+function stMatch(dt,thr){
   const p=(S().planHist||{})[dt];if(!p||!p.fam)return null;
   const ws=stWs().filter(w=>w.date===dt);
   if(!ws.length)return dt<td()?{m:'missed',eff:null,pain:null}:null;
   const w=ws.find(x=>x.type===p.type);if(!w)return{m:'other',eff:null,pain:null};
-  const r=wIcu(w).rpe,eff=w.rpe||(r?effOf5(r):null),pain=w.sub&&typeof w.sub.pain==='number'?w.sub.pain:null;
-  return{m:eff!=null&&p.effort&&eff>p.effort?'harder':'done',eff,pain};
+  const r=wkEffOf(w,thr),eff=r?r.e:null,pain=w.sub&&typeof w.sub.pain==='number'?w.sub.pain:null;
+  return{m:eff!=null&&p.effort&&eff>p.effort?'harder':'done',eff,src:r?r.src:null,pain};
 }
 // v121: remember what today's outline asks for (planHist, this phone only, newest TH.PLAN_HIST_N) until a workout is logged today, then
 // it stays as it was, so stMatch can compare. Written only when it changed; never from example data. Called from recalc().
@@ -94,10 +101,10 @@ function stSnap(){
 // Only sessions planned at your level count towards a step up (a short day fitted at a lower level does not); minus the levels of a return after time off.
 const ST_LVF={runTempo:'Run',runHard:'Run',runHills:'Run',runStrides:'Run',rideTempo:'Cycle',rideHard:'Cycle',swimHard:'Swim',wt:'Weights',cal:'Calisthenics'};
 function progAll(){
-  const d=S(),t=td(),ws=stWs(),H=d.planHist||{},ret=stReturn();
+  const d=S(),t=td(),ws=stWs(),H=d.planHist||{},ret=stReturn(),thr=stThr();
   const hd=Object.keys(H).filter(k=>k<t||(k===t&&ws.some(w=>w.date===t))).sort();
   const to=hd[0]||t,fr=stAdd(to,-42),win=ws.filter(w=>w.date>=fr&&w.date<to);
-  const hard=w=>(w.rpe||0)>=4||(!w.rpe&&(wIcu(w).rpe||0)>=7);
+  const hard=w=>wkHard(w,thr);
   const lv={},up={},dn={},upAt={};
   Object.entries(ST_LVF).forEach(([f,ty])=>{
     const n=f==='runStrides'?win.filter(w=>w.type==='Run').length/2:IS_STR(ty)?win.filter(w=>w.type===ty).length:win.filter(w=>w.type===ty&&hard(w)).length;
@@ -106,7 +113,7 @@ function progAll(){
   const cut=scoreCuts().warn,hh=heroHist();
   hd.forEach(dt=>{
     const p=H[dt],f=p&&p.fam;if(!f||!(f in lv))return;
-    const m=stMatch(dt);if(!m)return;
+    const m=stMatch(dt,thr);if(!m)return;
     if(m.m==='missed'){lv[f]--;up[f]=0;dn[f]=0;}
     else if(m.m==='harder'){up[f]=0;if(++dn[f]>=TH.LV_DN_N){lv[f]--;dn[f]=0;}}
     else if(m.m==='done'){
@@ -164,7 +171,8 @@ function strategy(){
   const cnt=ty=>rec.filter(w=>w.type===ty).length;
   const med=ty=>{const a=rec.filter(w=>w.type===ty&&w.durMin).map(w=>w.durMin).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:ST_DEF[ty]||40;};
   const mx=ty=>Math.max(0,...rec.filter(w=>w.type===ty).map(w=>w.durMin||0));
-  const mx30=ty=>Math.max(0,...rec.filter(w=>w.type===ty&&daysAgo(w.date)<=30).map(w=>w.durMin||0));
+  // v122: an e-bike ride does not raise the cap on a long ride
+  const mx30=ty=>Math.max(0,...rec.filter(w=>w.type===ty&&!wkEb(w)&&daysAgo(w.date)<=30).map(w=>w.durMin||0));
   const inj=d.injuries.filter(i=>i.active),sev=inj.length?Math.max(...inj.map(i=>i.sev)):0;
   const lowerHurt=inj.some(i=>LOWER.test(i.part)&&i.sev>=2);
   // v121: strength leaves the legs out while a leg injury is active or early in the return from one
@@ -183,8 +191,8 @@ function strategy(){
   const ranked=['Run','Cycle','Swim'].sort((a,b)=>cnt(b)-cnt(a));
   const main=ranked[0],alt=cnt(ranked[1])>=Math.max(2,cnt(main)*0.25)?ranked[1]:null;
   const strT=cnt('Calisthenics')>cnt('Weights')?'Calisthenics':'Weights';
-  // usual training days per week, from the weeks in the last four that had any training
-  const wkN=[0,1,2,3].map(k=>new Set(ws.filter(w=>daysAgo(w.date)>=1+k*7&&daysAgo(w.date)<=7+k*7).map(w=>w.date)).size).filter(x=>x>0);
+  // usual training days per week, from the weeks in the last four that had any training (v122: yoga and short walks are not training days)
+  const wkN=[0,1,2,3].map(k=>new Set(ws.filter(w=>daysAgo(w.date)>=1+k*7&&daysAgo(w.date)<=7+k*7&&stTrains(w,thr)).map(w=>w.date)).size).filter(x=>x>0);
   const N=Math.max(3,Math.min(6,wkN.length?Math.round(avg(wkN)):3)),maxRun=N<=3?1:N<=4?2:N<=5?3:6;
   const plans=PL_DAYS.map((_,i)=>planOf(i)),hasPlan=plans.some(Boolean);
   const planHas=re=>plans.some(p=>p&&re.test(p.note||''));
@@ -194,8 +202,12 @@ function strategy(){
   const wd0=(new Date(t+'T12:00:00').getDay()+6)%7;
   // what actually happened on the six days before today, then the outline is appended day by day
   const seq=[];
-  for(let i=6;i>=1;i--){const dt=dAgo(i),x=ws.filter(w=>w.date===dt);seq.push({tr:x.length>0,hard:stHard(dt,x),str:x.some(w=>IS_STR(w.type)),end:x.some(w=>!IS_STR(w.type)&&w.type!=='Yoga'&&w.type!=='Walk'),run:x.some(w=>w.type==='Run')});}
+  for(let i=6;i>=1;i--){const dt=dAgo(i),x=ws.filter(w=>w.date===dt);seq.push({tr:x.some(w=>stTrains(w,thr)),hard:stHard(dt,x,thr),str:x.some(w=>IS_STR(w.type)),run:x.some(w=>w.type==='Run')});}
   let gapStr=Math.min(99,...rec.filter(w=>IS_STR(w.type)&&daysAgo(w.date)>=1).map(w=>daysAgo(w.date)));
+  // v122: after a hard session, hard training waits (wkRec, the same rule as the workout sheet): the latest date from the last few days' workouts
+  const recW=ws.filter(w=>{const a=daysAgo(w.date);return a>=0&&a<TH.REC_BIG_D;}).map(w=>({w,on:wkRec(w,thr).hardOn})).filter(r=>r.on>t)
+    .sort((a,b)=>a.on<b.on?1:a.on>b.on?-1:0)[0]||null;
+  const recOn=dt=>!!recW&&dt<recW.on,recWhy=recW?`still recovering from ${wkWhen(recW.w.date)} ${wkNoun(recW.w)}`:'';
   let longDone=false,flip=false,hardOff=false;
   const days=[];
   for(let i=0;i<7;i++){
@@ -205,18 +217,18 @@ function strategy(){
     const o={i,date:dt,wd,planned:pl?{type:pl.type,note:pl.note||''}:null,bent:false};
     const today=ws.filter(w=>w.date===dt);
     if(i===0&&today.length){
-      seq.push({tr:true,hard:stHard(dt,today),str:today.some(w=>IS_STR(w.type)),run:today.some(w=>w.type==='Run')});
+      seq.push({tr:today.some(w=>stTrains(w,thr)),hard:stHard(dt,today,thr),str:today.some(w=>IS_STR(w.type)),run:today.some(w=>w.type==='Run')});
       if(today.some(w=>IS_STR(w.type)))gapStr=0;else gapStr++;
       const min=today.reduce((a,w)=>a+(w.durMin||0),0);
       // v121: what was planned this morning (planHist) and how it went, for the expanded row
-      days.push({...o,done:true,role:'done',type:today[0].type,effort:0,name:'Done: '+[...new Set(today.map(w=>w.type))].join(', '),dur:min?fmtDur(min):'',how:'',why:'Logged today.',snap:H[dt]||null,match:stMatch(dt),swaps:[]});
+      days.push({...o,done:true,role:'done',type:today[0].type,effort:0,name:'Done: '+[...new Set(today.map(w=>w.type))].join(', '),dur:min?fmtDur(min):'',how:'',why:'Logged today.',snap:H[dt]||null,match:stMatch(dt,thr),swaps:[]});
       continue;
     }
     let maxHard=f<=0.4||rec.length<4?0:W.mode==='easier'||W.mode==='recover'||W.mode==='start'||N<=3||f<1?1:2;
     // v121: no hard days early in a return after time off, at most one later in it or while coming back from an injury
     if(ret)maxHard=Math.min(maxHard,ret.pct<0.75?0:1);
     if(ir)maxHard=Math.min(maxHard,1);
-    const canHard=!prev.hard&&nHard<maxHard&&sev<2;
+    const canHard=!prev.hard&&nHard<maxHard&&sev<2&&!recOn(dt);
     const pick=()=>rec.length<4?'easy':canHard&&!hardOff?'hard':gapStr>=4&&sev<2&&f>0.5&&p6.filter(x=>x.str).length<2?'strength':wd>=5&&!longDone&&f>=0.9?'long':'easy';
     let role,type=main,why='';
     if(W.ph&&W.ph.n===i){role='race';why='Race day. Trust your training.';}
@@ -230,13 +242,13 @@ function strategy(){
         const want=ST_HARD.test(n)?'hard':ST_LONG.test(n)?'long':ST_EASY.test(n)?'easy':type==='Hike'?'steady':null;
         role=want||(canHard&&!planHard?'hard':wd>=5&&!longDone&&!planLong&&f>=0.9?'long':'easy');
         why='On your plan.';
-        if(role==='hard'&&!canHard){role='easy';o.bent=true;why=sev>=2?'Plan says hard. Kept easy while your injury is active.':prev.hard?'Plan says hard. Kept easy because the day before is hard too.':'Plan says hard. Kept easy to limit hard days this week.';}
+        if(role==='hard'&&!canHard){role='easy';o.bent=true;why=sev>=2?'Plan says hard. Kept easy while your injury is active.':recOn(dt)?`Plan says hard. Kept easy: ${recWhy}.`:prev.hard?'Plan says hard. Kept easy because the day before is hard too.':'Plan says hard. Kept easy to limit hard days this week.';}
       }
     }else{
       if(run>=maxRun||nTr>=N){role='rest';why=nTr>=N?`${nTr} sessions in the last 6 days. Rest lets the work sink in.`:run>1?`${run} training days in a row. Rest lets the work sink in.`:'A rest day after training. That is when you adapt.';}
       else{
         role=pick();
-        why=role==='hard'?'Fresh after an easier day. A good day to push.':role==='strength'?(gapStr>=99?'No strength work logged lately.':`No strength work for ${gapStr} days.`):role==='long'?'Your longer session of the week.':prev.hard?'Easy day after a hard one.':'Easy volume builds fitness without much fatigue.';
+        why=role==='hard'?'Fresh after an easier day. A good day to push.':role==='strength'?(gapStr>=99?'No strength work logged lately.':`No strength work for ${gapStr} days.`):role==='long'?'Your longer session of the week.':recOn(dt)?`Easy: ${recWhy}.`:prev.hard?'Easy day after a hard one.':'Easy volume builds fitness without much fatigue.';
         if(role==='strength')type=strT;
         else if(role==='easy'&&alt){type=flip?alt:main;flip=!flip;}
       }
@@ -364,12 +376,14 @@ function stRowX(x,st){
   if(x.done){
     const ws=stWs().filter(w=>w.date===x.date),m=x.match;
     const pn=ws.map(painOf).filter(v=>v!=null),eff=m&&m.eff!=null?m.eff:null;
-    const did=ws.map(w=>[w.type,w.durMin?fmtDur(w.durMin):''].filter(Boolean).join(' ')).join(', ');
+    const did=ws.map(w=>[wkLabel(w),w.durMin?fmtDur(w.durMin):''].filter(Boolean).join(' ')).join(', ');
     h+=x.snap?`<div class="st-pv"><span>Planned</span>${esc(stPlanned(x.snap))}</div>`:'';
-    h+=`<div class="st-pv"><span>Done</span>${esc([did,eff!=null?`effort ${eff} of 5`:'',pn.length?`pain ${Math.max(...pn)} of 10`:''].filter(Boolean).join(' · '))}</div>`;
+    h+=`<div class="st-pv"><span>Done</span>${esc([did,eff!=null?`effort ${eff} of 5${m.src==='hr'?' from heart rate':''}`:'',pn.length?`pain ${Math.max(...pn)} of 10`:''].filter(Boolean).join(' · '))}</div>`;
     const say=!m||!x.snap?'':m.m==='other'?'A different sport from the plan, so it does not move your level.':m.m==='harder'?'Harder than planned. Two in a row bring that kind of session down a level.':eff==null?'Effort not set. Add it in Log so the plan can tell how it went.':'Done as planned, which counts towards the next level.';
     if(say)h+=`<div class="set-note">${say}</div>`;
     if(pn.length&&Math.max(...pn)>=TH.PAIN_STOP)h+=`<div class="set-note">Pain ${Math.max(...pn)} of 10: stop training on it and get it checked.</div>`;
+    // v122: each workout of the day opens its sheet (not inside the sheet itself)
+    if(!x.sheet&&ws.length)h+=`<div class="st-sws">${ws.map(w=>`<button type="button" class="st-sw" onclick="openDetail('wk:${esc(w.id)}')">${ws.length>1?esc(wkLabel(w))+' details':'Workout details'}</button>`).join('')}</div>`;
     return h;
   }
   if(x.sess){

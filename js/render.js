@@ -391,7 +391,7 @@ function openDay(date){
   if(ci?.mindfulMin)html+=row('Mindfulness',fmtDur(ci.mindfulMin));
   if(reflOf(ci)){const r=reflOf(ci);if(r.gave)html+=row('Gave energy',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(r.gave)}</span>`);if(r.drained)html+=row('Drained me',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(r.drained)}</span>`);}
   if(ci?.gratitude)html+=row('Grateful for',`<span style="font-size:12px;font-family:var(--body);text-align:right;max-width:190px;display:inline-block">${esc(ci.gratitude)}</span>`);
-  ws.forEach(w=>{html+=row(esc(w.type),`${w.sets?'':(w.durMin?fmtDur(w.durMin):'')}${w.distKm?' · '+fmtDist(w):''}<button class="day-del" onclick="editWorkout('${w.id}')">Edit</button><button class="day-del" onclick="delWorkout('${w.id}')">Delete</button>`);if(fmtIcu(w))html+=row('<i>Details</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${fmtIcu(w)}</span>`);if(w.sets)html+=row('<i>Sets</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${esc(setsText(w))}</span>`);if(w.notes)html+=row('<i>Note</i>',`<span style="font-size:11px;opacity:.7">${esc(w.notes)}</span>`);});
+  ws.forEach(w=>{const sm=[w.sets?'':(w.durMin?fmtDur(w.durMin):''),w.distKm?fmtDist(w):''].filter(Boolean).join(' · ');html+=row(`<button type="button" class="day-wk" aria-label="${esc(wkLabel(w))}${sm?', '+sm:''}, details" onclick="closeDayPanel();openDetail('wk:${esc(w.id)}')">${esc(wkLabel(w))} <span aria-hidden="true">›</span>${sm?`<small>${sm}</small>`:''}</button>`,`<button class="day-del" onclick="editWorkout('${esc(w.id)}')">Edit</button><button class="day-del" onclick="delWorkout('${esc(w.id)}')">Delete</button>`);if(fmtIcu(w))html+=row('<i>Details</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${fmtIcu(w)}</span>`);if(w.sets)html+=row('<i>Sets</i>',`<span style="font-size:11px;opacity:.8;text-align:right;max-width:220px;display:inline-block">${esc(setsText(w))}</span>`);if(w.notes)html+=row('<i>Note</i>',`<span style="font-size:11px;opacity:.7">${esc(w.notes)}</span>`);});
   if(!html)html='<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px 0">Nothing logged for this day.</div>';
   $('dayPB').innerHTML=html;
   const p=$('dayPanel');p.classList.add('open');setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
@@ -400,7 +400,7 @@ function closeDayPanel(){$('dayPanel').classList.remove('open');}
 function renderBests(){
   const d=S(),out=[];
   ['Run','Cycle','Swim','Hike'].forEach(t=>{
-    const ws=d.workouts.filter(w=>w.type===t&&w.distKm>0);if(!ws.length)return;
+    const ws=d.workouts.filter(w=>w.type===t&&w.distKm>0&&!wkEb(w));if(!ws.length)return;
     const b=ws.reduce((a,w)=>w.distKm>a.distKm?w:a);
     out.push([ICON[t],`Longest ${t==='Cycle'?'ride':t.toLowerCase()}`,b.date,fmtDist(b)]);
   });
