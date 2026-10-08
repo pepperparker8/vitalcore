@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VitalCore tests</title>
-<!-- v118 acceptance tests (Spec v2, Phase A), v119 chart, briefing and import tests, v120 mood chart, v121 training plan, pain, threshold import and send-to-watch tests. Open over a local server: /tests/. No library, not cached by sw.js, never writes storage or calls the network. -->
+<!-- v118 acceptance tests (Spec v2, Phase A), v119 chart, briefing and import tests, v120 mood chart, v121 training plan, pain, threshold import and send-to-watch tests, v126 the outline from every weekday. Open over a local server: /tests/ (add ?day=YYYY-MM-DD to run the whole suite as that date). No library, not cached by sw.js, never writes storage or calls the network. -->
 <style>
 :root{--bg:#F3F4F6;--card:#FFFFFF;--text:#14171C;--t2:#5B6472;--ok:#0D7A6B;--bad:#C2361B}
 @media (prefers-color-scheme:dark){:root{--bg:#121316;--card:#1C1E22;--text:#ECEDEF;--t2:#9AA2AE;--ok:#3FB8A5;--bad:#FF7A5C}}
@@ -20,6 +20,9 @@ h1{font-size:18px;margin:0 0 4px}
 <script>
 // the app's scripts save on pagehide; the test fixtures must never reach the app's storage on this origin
 try{Storage.prototype.setItem=function(){};}catch(e){}
+// v126: /tests/?day=YYYY-MM-DD runs the whole suite as if today were that date (the clock still moves), to check every weekday
+(function(){const m=/[?&]day=(\d{4}-\d\d-\d\d)/.exec(location.search);if(!m)return;const R=Date,off=new R(m[1]+'T09:00:00').getTime()-R.now();
+  class SD extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=SD;})();
 </script>
 </head>
 <body>
@@ -56,6 +59,13 @@ const later=[];   // async tests (v119): each is a promise that calls check() it
 const res=[];
 function check(name,ok,info){res.push({name,ok:!!ok,info});}
 function run(name,fn){try{fn();}catch(e){check(name,false,'Threw: '+e.message);}}
+// v126: run fn as if today were dt (YYYY-MM-DD): every new Date() and Date.now() reads 09:00 that day, so td(), dAgo() and the app agree
+const RealDate=Date;
+function atDay(dt,fn){
+  const fix=new RealDate(dt+'T09:00:00').getTime();
+  class FD extends RealDate{constructor(...a){if(a.length)super(...a);else super(fix);}static now(){return fix;}}
+  window.Date=FD;try{return fn();}finally{window.Date=RealDate;}
+}
 
 // a steady athlete: 35 days of HRV (56/64 alternating, the last week at 64), resting HR 49/51, 7h30 asleep every night (goal 7h30), no training
 function base(o={}){
@@ -374,8 +384,8 @@ run('Sessions fit',()=>{
 // ── v121 strategy: a training athlete with a fixed weekly pattern (weekday 0 = Monday: [type, minutes, effort]) for 6 weeks up to yesterday ──
 const PAT5={1:['Run',50,4],2:['Run',45,2],3:['Cycle',60,2],5:['Run',100,2],6:['Run',45,2]};
 const PAT7={...PAT5,0:['Run',30,2],4:['Run',30,2]};
-const wdOf=dt=>(new Date(dt+'T12:00:00').getDay()+6)%7,WK0=stMon(td());
-const inCal=(dt,k)=>dt>=stAdd(WK0,k*7)&&dt<stAdd(WK0,k*7+7);   // calendar week k (0 = this week, -1 = last week)
+const wdOf=dt=>(new Date(dt+'T12:00:00').getDay()+6)%7;
+const inCal=(dt,k)=>{const W0=stMon(td());return dt>=stAdd(W0,k*7)&&dt<stAdd(W0,k*7+7);};   // calendar week k (0 = this week, -1 = last week), read on each call so atDay() moves it
 const wk1=(dt,i,ty,min,rpe,o)=>({id:'w'+dt+i,date:dt,type:ty,durMin:min,distKm:ty==='Run'?Math.round(min/5.5*10)/10:ty==='Cycle'?Math.round(min/2.5):0,rpe,notes:'',sets:[],...(o||{})});
 function trn(o={}){
   base();const pat=o.pat||PAT5,W=[];
@@ -413,12 +423,37 @@ run('Plan long',()=>{
   trn({pat:{1:['Run',60,2],2:['Run',60,2],3:['Run',60,2],5:['Run',60,2],6:['Run',60,2]},skip:noLong3});_s.workouts.push(wk1(dAgo(38),1,'Run',150,2));
   let st=strategy(),L=st.days.find(x=>x.role==='long');
   check('Plan long: a long run grows at most 10% over your longest in the last 30 days',L&&L.hi<=Math.floor(60*TH.LONG_GROW/5)*5&&L.lo>=55,L?`${L.lo} to ${L.hi} min (longest in 30 days 60; 150 min 38 days ago)`:stOut(st));
-  trn({pat:{1:['Run',120,2],2:['Run',120,2],3:['Run',120,2],5:['Run',170,2],6:['Run',120,2]},skip:noLong3});
+  trn({pat:{1:['Run',120,2],2:['Run',120,2],3:['Run',120,2],5:['Run',200,2],6:['Run',120,2]},skip:noLong3});
   st=strategy();L=st.days.find(x=>x.role==='long');
   check('Plan long: a long run is at most 2 h 30 min',L&&L.hi===TH.LONG_RUN_MAX&&L.lo<TH.LONG_RUN_MAX,L?`${L.lo} to ${L.hi} min, week target ${st.target}`:stOut(st));
   const lp=ty=>{trn({pat:{1:[ty,30,2],2:[ty,30,2],5:[ty,120,2]},skip:noLong3});const s=strategy();return{s,L:s.days.find(x=>x.role==='long')};};
   const a=lp('Run'),b=lp('Cycle');
   check('Plan long: a long run is at most 30% of the week; a long ride is limited by the 30-day growth only',a.L&&a.L.hi<=a.s.target*TH.LONG_SHARE&&b.L&&b.L.hi>b.s.target*TH.LONG_SHARE&&b.L.hi<=Math.floor(120*TH.LONG_GROW/5)*5,`run ${a.L&&a.L.lo}-${a.L&&a.L.hi} of ${a.s.target}; ride ${b.L&&b.L.lo}-${b.L&&b.L.hi} of ${b.s.target}`);
+});
+// v126 Plan weekdays: the outline with today set to each day of this week. Every day keeps the long session, at most two hard days and never
+// two in a row (yesterday included), the long caps, and this week's time (done plus planned) within 0.8 to 1.25 of the target
+run('Plan weekdays',()=>{
+  const W0=stMon(td()),R6={1:['Run',60,2],2:['Run',60,2],3:['Run',60,2],5:['Run',60,2],6:['Run',60,2]};
+  [['rides of 30, 30 and 120 min',{pat:{1:['Cycle',30,2],2:['Cycle',30,2],5:['Cycle',120,2]}}],['runs of an hour five days a week',{pat:R6}],
+   ['five days a week',{}],['every day',{pat:PAT7}]].forEach(([lab,o])=>{
+    const bad={long:[],hard:[],cap:[],week:[]};
+    for(let k=0;k<7;k++){const dt=stAdd(W0,k);atDay(dt,()=>{
+      trn({...o,skip:noLong3});const st=strategy(),D=st.days,wd=wdOf(dt),ws=_s.workouts,L=D.filter(x=>x.role==='long'),H=D.filter(x=>x.role==='hard');
+      const day=dt.slice(5),out=`${day}: ${stOut(st)}`;
+      const lw={};L.forEach(x=>{const m=stMon(x.date);lw[m]=(lw[m]||0)+1;});
+      if(!L.length||Object.values(lw).some(n=>n>1)||L.some(x=>wdOf(x.date)<5))bad.long.push(out);
+      const b2b=D.some((x,i)=>i&&x.role==='hard'&&D[i-1].role==='hard')||(D[0].role==='hard'&&stHard(dAgo(1),ws.filter(w=>w.date===dAgo(1))));
+      if(H.length>2||b2b)bad.hard.push(out);
+      L.forEach(x=>{const m30=Math.max(...ws.filter(w=>w.type===x.type&&daysAgo(w.date)<=30).map(w=>w.durMin||0));
+        if(x.hi>Math.floor(m30*TH.LONG_GROW/5)*5||x.type==='Run'&&(x.hi>st.target*TH.LONG_SHARE||x.hi>TH.LONG_RUN_MAX))bad.cap.push(`${day}: ${x.lo}-${x.hi} min, longest in 30 days ${m30}, target ${st.target}`);});
+      const wk=st.now+D.filter((x,i)=>i<=6-wd&&!x.done).reduce((a,x)=>a+(x.lo+x.hi)/2,0);
+      if(wk<st.target*0.8||wk>st.target*1.25)bad.week.push(`${day}: ${wk} of ${st.target} (${st.mode})`);
+    });}
+    check(`Plan weekdays (${lab}): from every weekday the outline keeps the long session, one a calendar week, on its day or later in that week`,!bad.long.length,bad.long.join(' | '));
+    check(`Plan weekdays (${lab}): from every weekday at most two hard days, never two in a row`,!bad.hard.length,bad.hard.join(' | '));
+    check(`Plan weekdays (${lab}): from every weekday the long session keeps its caps`,!bad.cap.length,bad.cap.join(' | '));
+    check(`Plan weekdays (${lab}): from every weekday this week's time lands near its target`,!bad.week.length,bad.week.join(' | '));
+  });
 });
 // Plan growth: weekly growth caps; a level up holds the time
 run('Plan growth',()=>{
@@ -496,7 +531,7 @@ run('E-bike',()=>{
   const pr=(n,o)=>({id:'icu-p'+n,date:dAgo(n),type:'Cycle',durMin:60,distKm:30,rpe:2,notes:'',sets:[],sub:{icu:{pw:180,dw:1,...(o||{})}}});
   base();_s.workouts=[pr(3,{eb:1}),pr(5,{eb:1})];const a=pmOn();_s.workouts=[pr(3),pr(5)];const b=pmOn();
   check('E-bike: rides on an e-bike never turn on power targets',a===false&&b===true,`e-bike ${a}, bike ${b}`);
-  const L=eb=>{trn({pat:{1:['Cycle',50,2],3:['Cycle',50,2],5:['Cycle',50,2]},skip:noLong3});_s.workouts.push({...pr(4,eb?{eb:1}:{}),durMin:150,distKm:60,sub:{icu:{hr:120,...(eb?{eb:1}:{})}}});
+  const L=eb=>{trn({pat:{1:['Cycle',50,2],3:['Cycle',50,2],5:['Cycle',50,2]},skip:noLong3});_s.workouts.push({...pr(wdOf(td())+3,eb?{eb:1}:{}),durMin:150,distKm:60,sub:{icu:{hr:120,...(eb?{eb:1}:{})}}});
     const st=strategy();return st.days.find(x=>x.role==='long');};
   const le=L(1),lb=L(0);
   check('E-bike: a long e-bike ride does not raise the cap on a long ride; a long bike ride does',le&&le.hi<=Math.floor(50*TH.LONG_GROW/5)*5&&lb&&lb.hi>le.hi,`after a 150 min e-bike ride ${le&&le.lo+'-'+le.hi}; after a 150 min bike ride ${lb&&lb.lo+'-'+lb.hi}`);
@@ -537,12 +572,15 @@ run('Plan swaps',()=>{
 run('Plan memory',()=>{
   const T=td(),sv=save;let n=0;save=function(d){n++;sv(d);};
   try{
-    trn({skip:noLong3});_s.planHist={};stSnap();const p=_s.planHist[T],x=strategy().days[0];
-    check('Plan memory: today\'s session is remembered with its family, level, role, effort and time',p&&p.fam===x.fam&&p.lvl===x.lvl&&p.role===x.role&&p.effort===x.effort&&p.lo===x.lo&&p.hi===x.hi&&n===1,JSON.stringify(p));
+    // today is a planned tempo run, whatever the weekday
+    trn({skip:noLong3});_s.profile.plan={[wdOf(T)]:{type:'Run',note:'tempo'}};_s.planHist={};stSnap();const p=_s.planHist[T],x=strategy().days[0];
+    check('Plan memory: today\'s session is remembered with its family, level, role, effort and time',p&&p.fam&&p.fam===x.fam&&p.lvl===x.lvl&&p.role===x.role&&p.effort===x.effort&&p.lo===x.lo&&p.hi===x.hi&&n===1,JSON.stringify(p));
     stSnap();check('Plan memory: nothing is saved again while the plan is the same',n===1,`${n} saves`);
+    _s.planHist={[T]:{...p,lo:p.lo+99}};stSnap();const upd=canon(_s.planHist[T])===canon(p);
+    // 50 remembered rest days also move the level's starting window, so today's session may change: only the rewrite is checked
     const old={};for(let i=1;i<=50;i++)old[dAgo(i)]={fam:null,role:'rest',type:'Run'};_s.planHist={...old,[T]:{...p,lo:p.lo+99}};stSnap();
     const k=Object.keys(_s.planHist).sort();
-    check('Plan memory: a change before you train updates it, and only the newest 42 days are kept',k.length===TH.PLAN_HIST_N&&k[k.length-1]===T&&k[0]===dAgo(TH.PLAN_HIST_N-1)&&canon(_s.planHist[T])===canon(p),`${k.length} days, oldest ${k[0]}`);
+    check('Plan memory: a change before you train updates it, and only the newest 42 days are kept',upd&&k.length===TH.PLAN_HIST_N&&k[k.length-1]===T&&k[0]===dAgo(TH.PLAN_HIST_N-1)&&_s.planHist[T].lo!==p.lo+99,`updated ${upd}; ${k.length} days, oldest ${k[0]}`);
     _s.planHist[T]={...p,lo:p.lo+99};const before=canon(_s.planHist[T]);_s.workouts.push(wk1(T,1,'Run',30,2));stSnap();
     check('Plan memory: once you log a workout today, the remembered plan stays as it was',canon(_s.planHist[T])===before,'');
     trn();_s.workouts=_s.workouts.map(w=>({...w,isEx:true}));_s.wellness={};_s.checkins=[];_s.sleepLogs=[];_s.measurements=[];_s.planHist={};stSnap();
@@ -753,7 +791,7 @@ seq('Plan send',async()=>{
   const sendBtn=()=>{const r=$('stratCard').querySelector(`details.st-x[data-d="${T}"]`);return r&&r.querySelector('.st-send');};
   const theirs=[{id:77,external_id:'garmin-1',start_date_local:T+'T06:00:00'},{id:78,external_id:'',start_date_local:T+'T07:00:00'},{id:79,start_date_local:T+'T08:00:00'}];
   try{
-    trn({skip:noLong3});_s.profile.plan={0:{type:'Run',note:'easy'},2:{type:'Cycle',note:'tempo'},5:{type:'Run',note:'long'}};
+    const w0=wdOf(T);trn({skip:noLong3});_s.profile.plan={[w0]:{type:'Run',note:'easy'},[(w0+2)%7]:{type:'Cycle',note:'tempo'},[(w0+5)%7]:{type:'Run',note:'long'}};
     _s.intervalsKey='';_s.intervalsID='';_s.icuSent={};_s.pending={};_stOpen.clear();renderStrategy();
     await icuSendDay(T);
     check('Plan send: without the keys nothing is sent and the row has no send button',!calls.length&&!sendBtn()&&/^Connect Intervals\.icu in Settings/.test(toasts.pop()),`${calls.length} requests`);

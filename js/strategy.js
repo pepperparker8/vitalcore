@@ -23,6 +23,7 @@ const ST_IRS=['volume','strides','tempo','hills','long'];
 const stPctW=p=>p<0.4?'a third':p<0.55?'half':p<0.7?'two thirds':p<0.8?'three quarters':'nearly all';
 const stAdd=(dt,n)=>{const x=new Date(dt+'T12:00:00');x.setDate(x.getDate()+n);return ymd(x);};
 const stMon=dt=>{const x=new Date(dt+'T12:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return ymd(x);};
+const stWd=dt=>(new Date(dt+'T12:00:00').getDay()+6)%7;
 const stWs=()=>{const d=S();return isExampleOnly()?d.workouts:d.workouts.filter(w=>!w.isEx);};
 // a hard day: effort 4 or 5 (v122: yours, the watch's, else from heart rate, wkHard), or a watch-recorded day with no effort, zones or
 // heart rate in the top quarter of your loads
@@ -131,13 +132,14 @@ function progAll(){
 function stWeek(P){
   const L=raceLoad(),ph=racePhase(),d=S(),ws=stWs(),ret=P?P.ret:stReturn();
   const m=new Date(td()+'T12:00:00');m.setDate(m.getDate()-((m.getDay()+6)%7));
-  const wk=o=>{const a=new Date(m);a.setDate(a.getDate()+o*7);const b=new Date(a);b.setDate(b.getDate()+7);const A=ymd(a),B=ymd(b);
-    return ws.filter(w=>w.date>=A&&w.date<B).reduce((t,w)=>t+(w.durMin||0),0);};
-  const base=L.base,p3=[-3,-2,-1].map(wk);
+  const wk=(o,tr)=>{const a=new Date(m);a.setDate(a.getDate()+o*7);const b=new Date(a);b.setDate(b.getDate()+7);const A=ymd(a),B=ymd(b);
+    return ws.filter(w=>w.date>=A&&w.date<B&&(!tr||stTrains(w))).reduce((t,w)=>t+(w.durMin||0),0);};
+  // v126: a full week is one of training; short walks and yoga are recovery and do not make one
+  const base=L.base,p3=[-3,-2,-1].map(o=>wk(o)),p3T=[-3,-2,-1].map(o=>wk(o,1));
   const rh=Object.entries(heroHist()).filter(([k,v])=>v!=null&&daysAgo(k)>=1&&daysAgo(k)<7).map(x=>x[1]);
   const sc=heroScore();if(sc!=null)rh.push(sc);
   const rAvg=rh.length>=3?avg(rh):sc;
-  const full=base&&p3.every(x=>x>=base*0.9);
+  const full=base&&p3T.every(x=>x>=base*0.9);
   const pm=ph&&ph.n>=0?ph.mult:1;
   let mode,f;
   if(pm<1){mode='taper';f=pm;}
@@ -152,7 +154,7 @@ function stWeek(P){
   else{mode='build';f=Math.min(1.2,1.07*pm);}
   const r5=n=>Math.max(5,Math.round(n/5)*5);
   // next week: easier if this one would be the third full week; back to normal after an easier week
-  const nextF=mode==='back'?ret.nextPct:mode==='easier'||mode==='recover'?1:mode!=='taper'&&mode!=='start'&&p3[1]>=base*0.9&&p3[2]>=base*0.9?0.75:f;
+  const nextF=mode==='back'?ret.nextPct:mode==='easier'||mode==='recover'?1:mode!=='taper'&&mode!=='start'&&p3T[1]>=base*0.9&&p3T[2]>=base*0.9?0.75:f;
   const B=mode==='back'?ret.base:base;
   let target=B?r5(B*f):null;
   // growth caps: at most TH.WK_UP over last week and TH.WK_UP2 over the week before (never below your usual week)
@@ -173,6 +175,10 @@ function strategy(){
   const mx=ty=>Math.max(0,...rec.filter(w=>w.type===ty).map(w=>w.durMin||0));
   // v122: an e-bike ride does not raise the cap on a long ride
   const mx30=ty=>Math.max(0,...rec.filter(w=>w.type===ty&&!wkEb(w)&&daysAgo(w.date)<=30).map(w=>w.durMin||0));
+  // v126: the longest session of a sport in each of the last 4 weeks (7-day blocks before today, e-bike rides left out)
+  const tops=ty=>[0,1,2,3].map(k=>rec.filter(w=>w.type===ty&&!wkEb(w)&&daysAgo(w.date)>=1+k*7&&daysAgo(w.date)<=7+k*7).sort((a,b)=>(b.durMin||0)-(a.durMin||0))[0]).filter(Boolean);
+  // your usual long session: the middle of those weekly longest
+  const lng=ty=>{const a=tops(ty).map(w=>w.durMin||0).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:0;};
   const inj=d.injuries.filter(i=>i.active),sev=inj.length?Math.max(...inj.map(i=>i.sev)):0;
   const lowerHurt=inj.some(i=>LOWER.test(i.part)&&i.sev>=2);
   // v121: strength leaves the legs out while a leg injury is active or early in the return from one
@@ -191,15 +197,23 @@ function strategy(){
   const ranked=['Run','Cycle','Swim'].sort((a,b)=>cnt(b)-cnt(a));
   const main=ranked[0],alt=cnt(ranked[1])>=Math.max(2,cnt(main)*0.25)?ranked[1]:null;
   const strT=cnt('Calisthenics')>cnt('Weights')?'Calisthenics':'Weights';
+  // v126: the weekday of your long session: where 2 or more of the last 4 weeks put the longest session of your main sport, else Saturday;
+  // the long session goes on that day or the first free day after it in the same week, whatever weekday the outline starts on
+  const lc={};tops(main).filter(w=>w.durMin>=med(main)*1.2).forEach(w=>{const k=stWd(w.date);lc[k]=(lc[k]||0)+1;});
+  const lwd=+(Object.keys(lc).filter(k=>lc[k]>=2).sort((a,b)=>lc[b]-lc[a]||a-b)[0]||5);
+  const isLong=w=>['Run','Cycle','Swim','Hike'].includes(w.type)&&(w.durMin||0)>=Math.max(med(w.type)*1.2,lng(w.type)*0.8);
   // usual training days per week, from the weeks in the last four that had any training (v122: yoga and short walks are not training days)
   const wkN=[0,1,2,3].map(k=>new Set(ws.filter(w=>daysAgo(w.date)>=1+k*7&&daysAgo(w.date)<=7+k*7&&stTrains(w,thr)).map(w=>w.date)).size).filter(x=>x>0);
-  const N=Math.max(3,Math.min(6,wkN.length?Math.round(avg(wkN)):3)),maxRun=N<=3?1:N<=4?2:N<=5?3:6;
+  // v126: days in a row follow your own habit too (a run of training days you did at least twice in the last 4 weeks)
+  const runs=[];let rn=0;for(let i=28;i>=0;i--){const tr=i>0&&ws.some(w=>w.date===dAgo(i)&&stTrains(w,thr));if(tr)rn++;else if(rn){runs.push(rn);rn=0;}}
+  const habit=runs.sort((a,b)=>b-a)[1]||0;
+  const N=Math.max(3,Math.min(6,wkN.length?Math.round(avg(wkN)):3)),maxRun=Math.max(N<=3?1:N<=4?2:N<=5?3:6,Math.min(6,habit));
   const plans=PL_DAYS.map((_,i)=>planOf(i)),hasPlan=plans.some(Boolean);
   const planHas=re=>plans.some(p=>p&&re.test(p.note||''));
   const planHard=planHas(ST_HARD),planLong=planHas(ST_LONG);
   const sore=(d.checkins.find(c=>c.date===t)||{}).soreness||0;
   const r5=n=>Math.max(10,Math.round(n/5)*5);
-  const wd0=(new Date(t+'T12:00:00').getDay()+6)%7;
+  const wd0=stWd(t);
   // what actually happened on the six days before today, then the outline is appended day by day
   const seq=[];
   for(let i=6;i>=1;i--){const dt=dAgo(i),x=ws.filter(w=>w.date===dt);seq.push({tr:x.some(w=>stTrains(w,thr)),hard:stHard(dt,x,thr),str:x.some(w=>IS_STR(w.type)),run:x.some(w=>w.type==='Run')});}
@@ -208,10 +222,12 @@ function strategy(){
   const recW=ws.filter(w=>{const a=daysAgo(w.date);return a>=0&&a<TH.REC_BIG_D;}).map(w=>({w,on:wkRec(w,thr).hardOn})).filter(r=>r.on>t)
     .sort((a,b)=>a.on<b.on?1:a.on>b.on?-1:0)[0]||null;
   const recOn=dt=>!!recW&&dt<recW.on,recWhy=recW?`still recovering from ${wkWhen(recW.w.date)} ${wkNoun(recW.w)}`:'';
-  let longDone=false,flip=false,hardOff=false;
+  // v126: one long session a calendar week; a long one you already logged this week counts
+  let longDone=ws.some(w=>w.date>=stMon(t)&&w.date<=t&&isLong(w)),flip=false,hardOff=false;
   const days=[];
   for(let i=0;i<7;i++){
     const dt=dAgo(-i),wd=(wd0+i)%7,pl=planOf(wd),inWk=i<=6-wd0,f=W.fAt(i,!inWk);
+    if(i&&!wd)longDone=false;
     const p6=seq.slice(-6),nTr=p6.filter(x=>x.tr).length,nHard=p6.filter(x=>x.hard).length,prev=last(seq);
     let run=0;for(let k=seq.length-1;k>=0&&seq[k].tr;k--)run++;
     const o={i,date:dt,wd,planned:pl?{type:pl.type,note:pl.note||''}:null,bent:false};
@@ -229,7 +245,10 @@ function strategy(){
     if(ret)maxHard=Math.min(maxHard,ret.pct<0.75?0:1);
     if(ir)maxHard=Math.min(maxHard,1);
     const canHard=!prev.hard&&nHard<maxHard&&sev<2&&!recOn(dt);
-    const pick=()=>rec.length<4?'easy':canHard&&!hardOff?'hard':gapStr>=4&&sev<2&&f>0.5&&p6.filter(x=>x.str).length<2?'strength':wd>=5&&!longDone&&f>=0.9?'long':'easy';
+    // v126: the long session comes first on its day (it was last, so from midweek a hard day took it and the week fell short)
+    // an easier week keeps a shorter long session; a comeback, a recovering week, a taper and race week do not have one
+    const longOk=wd>=lwd&&!longDone&&(f>=0.9||f>=0.75&&!ret&&W.mode!=='recover')&&!(inWk&&W.target&&W.now>=W.target);
+    const pick=()=>rec.length<4?'easy':longOk?'long':canHard&&!hardOff?'hard':gapStr>=4&&sev<2&&f>0.5&&p6.filter(x=>x.str).length<2?'strength':'easy';
     let role,type=main,why='';
     if(W.ph&&W.ph.n===i){role='race';why='Race day. Trust your training.';}
     else if(W.ph&&W.ph.n===i-1){role='rest';why='Recover after your race.';}
@@ -240,7 +259,7 @@ function strategy(){
       else{
         type=pl.type;const n=pl.note||'';
         const want=ST_HARD.test(n)?'hard':ST_LONG.test(n)?'long':ST_EASY.test(n)?'easy':type==='Hike'?'steady':null;
-        role=want||(canHard&&!planHard?'hard':wd>=5&&!longDone&&!planLong&&f>=0.9?'long':'easy');
+        role=want||(longOk&&!planLong?'long':canHard&&!planHard?'hard':'easy');
         why='On your plan.';
         if(role==='hard'&&!canHard){role='easy';o.bent=true;why=sev>=2?'Plan says hard. Kept easy while your injury is active.':recOn(dt)?`Plan says hard. Kept easy: ${recWhy}.`:prev.hard?'Plan says hard. Kept easy because the day before is hard too.':'Plan says hard. Kept easy to limit hard days this week.';}
       }
@@ -297,7 +316,7 @@ function strategy(){
       else if(role==='hard'){name='Hard '+type.toLowerCase();dur=med(type)*f;effort=4;how=f<1?'Warm up 10 min easy, then a few short hard efforts with easy breaks.':'Warm up 10 min easy, then hard efforts with easy breaks, for example 4 to 6 times 3 min.';}
       // v121: a long session is also at most TH.LONG_GROW of your longest in 30 days; a long run also at most TH.LONG_SHARE of the week and TH.LONG_RUN_MAX
       // (rides and hikes are low impact and often a big share of a few-day week, so only the 30-day growth limits them)
-      else if(role==='long'){name='Long '+type.toLowerCase();const m30=mx30(type);lim=Math.min(m30?m30*TH.LONG_GROW:1e9,type==='Run'&&W.target?W.target*TH.LONG_SHARE:1e9,type==='Run'?TH.LONG_RUN_MAX:1e9);dur=Math.min(Math.min(med(type)*1.5,Math.max(mx(type)*1.05,med(type)*1.2))*f,lim);effort=2;how='Easy pace all the way. The length is the training.';}
+      else if(role==='long'){name='Long '+type.toLowerCase();const m30=mx30(type);lim=Math.min(m30?m30*TH.LONG_GROW:1e9,type==='Run'&&W.target?W.target*TH.LONG_SHARE:1e9,type==='Run'?TH.LONG_RUN_MAX:1e9);dur=Math.min(Math.max(Math.min(med(type)*1.5,Math.max(mx(type)*1.05,med(type)*1.2)),lng(type))*f,lim);effort=2;how='Easy pace all the way. The length is the training.';}
       else if(role==='steady'){name=type;dur=med(type)*f;effort=3;how='Steady effort. Talking takes some work.';}
       else{name='Easy '+type.toLowerCase();dur=med(type)*0.8*f;effort=2;how='Easy. You can talk in full sentences.';}
       let lo=0,hi=0;
