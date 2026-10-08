@@ -989,6 +989,27 @@ seq('v124 access',async()=>{
   }finally{Object.entries(keep).forEach(([k,f])=>{window[k]=f;});Storage.prototype.removeItem=rm;_auth=null;_idKey=false;box.remove();}
 });
 
+// v125: Tabler line icons, the floating nav with a round Log button, factor rows with an icon and the comparison under the value
+seq('v125 icons',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),core=await (await realFetch('../js/core.js',{cache:'no-store'})).text(),swj=await (await realFetch('../sw.js',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),pill=doc.querySelector('nav.nav .nav-pill'),lg=doc.getElementById('nav-log');
+  check('v125 icons: the nav is a pill of four tabs with Log as a round button beside it',pill&&[...pill.querySelectorAll('.nav-item')].map(e=>e.id).join()==='nav-today,nav-trends,nav-health,nav-insights'&&lg&&!pill.contains(lg)&&lg.parentElement===doc.querySelector('nav.nav')&&lg.getAttribute('aria-label')==='Log'&&!!lg.querySelector('svg.nav-icon'),pill&&pill.outerHTML.slice(0,120));
+  const old=['m6 9 6 6 6-6','m9 18 6-6-6-6','M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8','M0 0h24v24H0z'].filter(x=>html.includes(x)||core.includes(x));
+  check('v125 icons: no old icon paths are left in the page or the icon maps',!old.length,old.join(' | '));
+  check('v125 icons: every sport and every factor row has a line icon',SPORTS.every(([n,i])=>/^<svg class="sp-ico"[^>]*viewBox="0 0 24 24"/.test(i)&&ICON[n]===i)&&Object.values(RF_IC).every(k=>/^<svg class="ui-i"/.test(UI[k]||'')),Object.values(RF_IC).filter(k=>!UI[k]).join());
+  check('v125 icons: the comparison with your usual reads as an arrow and a rounded difference',rfVs(55,58.4,0)==='▼ 3 under usual'&&rfVs(14.7,14.5,1)==='▲ 0.2 over usual'&&rfVs(50,50.2,0)==='at your usual'&&rfVs(52,50.6,0)==='▲ 1 over usual',[rfVs(55,58.4,0),rfVs(14.7,14.5,1),rfVs(50,50.2,0),rfVs(52,50.6,0)].join(' / '));
+  const had=$('rdFactors'),box=had||document.createElement('div');if(!had){box.id='rdFactors';box.hidden=true;document.body.appendChild(box);}
+  try{
+    base();_s.checkins=[ci({soreness:3})];_s.wellness[td()].hrv=58;renderFactors();
+    const rows=[...box.querySelectorAll('.rf')],hrv=rows.find(r=>r.getAttribute('onclick')==="openDetail('hrv')");
+    check('v125 icons: each factor row starts with its icon and shows the value with the comparison under it',rows.length>=4&&rows.every(r=>r.firstElementChild.matches('svg.ui-i')&&r.querySelector('.rf-r .rf-v')&&r.querySelector('.rf-r .rf-n .rf-g')),rows.map(r=>r.textContent).join(' | '));
+    check('v125 icons: HRV under its usual shows a down arrow and the difference in words',hrv&&hrv.querySelector('.rf-g').textContent==='▼'&&/^\d+ under usual$/.test(hrv.querySelector('.rf-n').textContent.replace('▼','')),hrv&&hrv.querySelector('.rf-n').textContent);
+  }finally{if(!had)box.remove();}
+  const row=document.createElement('div');row.innerHTML=wkRow({id:'w-v125',date:td(),type:'Run',durMin:30,distKm:5,rpe:3,notes:'',sets:[]});
+  check('v125 icons: a workout row ends with a line chevron and its sport icon sits in a tile',!!row.querySelector('.act-go svg.ui-i')&&!row.querySelector('.act-go').textContent.trim()&&!!row.querySelector('.act-icon svg.sp-ico'),row.innerHTML.slice(0,160));
+  check('v125 icons: the cache name follows the version',swj.includes("'vitalcore-v"+APP_VER+"'"),APP_VER);
+});
+
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;

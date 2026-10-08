@@ -441,7 +441,7 @@ function renderStrategy(){
      <div class="st-b"><div class="st-n">${esc(x.name)}</div>${stMeta(x)?`<div class="st-s">${esc(stMeta(x))}</div>`:''}${why?`<div class="st-s st-w">${esc(why)}</div>`:''}</div>${stBars(x.effort)}`;
     const body=(x.role==='rest'||x.role==='race'?'':stRowX(x,st))+stSendHTML(x,st);
     if(!body)return r+'</div>';
-    return`<details class="st-x" data-d="${x.date}" ontoggle="stTog(this)"${_stOpen.has(x.date)?' open':''}><summary>${r}<svg class="st-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></summary><div class="st-sx">${body}</div></details>`;
+    return`<details class="st-x" data-d="${x.date}" ontoggle="stTog(this)"${_stOpen.has(x.date)?' open':''}><summary>${r}<svg class="st-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></summary><div class="st-sx">${body}</div></details>`;
   }).join('');
   el.innerHTML=`<div class="sec">Next 7 days</div><div class="st-mode">${esc(st.label)}</div><div class="set-note" style="margin:2px 0 10px">${esc(st.why)}</div>${stRetHTML(st)}${head}
    <div class="st-list">${rows}</div>`;

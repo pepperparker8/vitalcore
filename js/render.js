@@ -46,26 +46,29 @@ function readinessFactors(){
   const tsb=d.intervalsData.tsb;
   if(tsb!==null&&tsb!==undefined)out.push({k:'form',l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:zL(tsb,'tsb'),st:tsb>=TH.FORM_OK?'good':tsb>=TH.FORM_DEEP?'warn':'bad'});
   const ci=todayCI();
-  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({k:'checkin',l:'Check-in',v:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Okay':'Low',n:p+'/100',st:p>=TH.MIND_GOOD?'good':p>=TH.MIND_FLAT?'warn':'bad'});}
+  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({k:'checkin',l:'Check-in',v:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Okay':'Low',n:p+' of 100',st:p>=TH.MIND_GOOD?'good':p>=TH.MIND_FLAT?'warn':'bad'});}
   else out.push({k:'checkin',l:'Check-in',v:'Not done',n:'Tap for details',st:'none'});
   const hv=latestOf('hrv'),hb=wSeries('hrv');
-  if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:'usual '+Math.round(avg(hb)),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
+  if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:rfVs(hv.v,avg(hb),0),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
   else if(hv)out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
   const rv=latestOf('rhr'),rb=rhrSeries();
-  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'usual '+Math.round(avg(rb)),st:df<=2?'good':df<=5?'warn':'bad'});}
+  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:rfVs(rv.v,avg(rb),0),st:df<=2?'good':df<=5?'warn':'bad'});}
   else if(rv)out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
   const pv=latestOf('resp'),pb=wSeries('resp');
-  if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({k:'breathing',l:'Breathing',v:pv.v.toFixed(1)+' /min',n:'usual '+avg(pb).toFixed(1),st:df<=1?'good':df<=2?'warn':'bad'});}
-  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:bodyLive()?'shapes today\'s session':'-'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
-  if(ci&&ci.coffeeLate)out.push({k:'coffee',l:'Coffee',v:'Late cup',n:'after 14:00, may cut deep sleep',st:'warn'});
+  if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({k:'breathing',l:'Breathing',v:pv.v.toFixed(1)+' /min',n:rfVs(pv.v,avg(pb),1),st:df<=1?'good':df<=2?'warn':'bad'});}
+  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:bodyLive()?'shapes today\'s session':'−'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
+  if(ci&&ci.coffeeLate)out.push({k:'coffee',l:'Coffee',v:'Late cup',n:'after 14:00',st:'warn'});
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({k:'injury',l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
   return out;
 }
+// v125: each factor row has its line icon; a number against your usual reads "▼ 3 under usual"
+const RF_IC={sleep:'moon',form:'battery',checkin:'mood',hrv:'pulse',rhr:'heart',breathing:'lungs',soreness:'sore',coffee:'coffee',injury:'bandage'};
+function rfVs(v,u,dp){const df=+(+v.toFixed(dp)-+u.toFixed(dp)).toFixed(dp);return df>0?'▲ '+df.toFixed(dp)+' over usual':df<0?'▼ '+(-df).toFixed(dp)+' under usual':'at your usual';}
 function renderFactors(){
   const el=$('rdFactors');if(!el)return;
   const f=readinessFactors();
-  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>`<div class="rf ${x.st}" onclick="openDetail('${x.k}')" role="button" tabindex="0"><span class="rf-dot"></span><span class="rf-l">${x.l}</span><span class="rf-v">${x.v}</span><span class="rf-n">${x.n}</span></div>`).join('');
+  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>{const m=/^([▲▼]) (.*)$/.exec(x.n);return`<div class="rf ${x.st}" onclick="openDetail('${x.k}')" role="button" tabindex="0">${UI[RF_IC[x.k]]||''}<span class="rf-l">${x.l}</span><span class="rf-r"><span class="rf-v">${x.v}</span><span class="rf-n"><i class="rf-g" aria-hidden="true">${m?m[1]:'●'}</i>${m?m[2]:x.n}</span></span></div>`;}).join('');
 }
 // sleep needed for the night ending on date (default tonight): goal, plus up to 45 min for the day's strain, plus half the debt of the 3 nights before
 function sleepNeed(st,date){
