@@ -4,7 +4,7 @@ This release adds the data and the logic. The new WHOOP-style Today and sheets f
 
 What changes:
 - Your band's daily steps, active time, sitting time and 24/7 heart rate are now downloaded and kept. Active time is the band's moderate and vigorous minutes. Workouts still come only from your watch through Intervals.icu.
-- A night that started hours early is cut back to the time you actually slept. This happens when the band was off in the evening and back on at bedtime.
+- A night that started hours early is cut back to the time you actually slept. This happens when the band was off in the evening and back on at bedtime, or when you lay awake in bed with the band on and your heart rate stayed up for hours.
 - A night where the battery ran out counts as missing, not as a short night.
 - Time on your feet outside workouts now counts in strain.
 - After a hard session, the outline waits as long as your body usually takes to bounce back.
@@ -16,17 +16,18 @@ What changes:
 
 ## Changed
 **The night cut**
-- A night that clearly includes time with the band off is cut automatically. There are four signs:
+- A night that clearly includes time with the band off, or time awake before sleep, is cut automatically. There are five signs:
   - no 24/7 heart rate at the start or end while there is some later that night;
   - no overnight readings in that stretch;
   - a stretch the band could not read;
-  - a night 90 minutes or more over your usual.
-- A cut needs at least 30 minutes and two of these signs. It starts when the band was back on and ends at your last sleep. Time asleep, deep sleep and dreaming sleep are counted again inside the cut.
-- **The sleep sheet** says what was left out, for example "Your band was off from 19:35 to 22:40, so the night starts at 22:40: 7h 5min asleep, not 10h 10min." It has Undo and Adjust.
-- **Weaker signs only ask.** Log > Sleep shows "May include time with your band off" with Check the night. The sleep sheet offers Adjust and "It is right".
+  - a night 90 minutes or more over your usual;
+  - the band on, but your heart rate more than 5 beats a minute over its sleeping level for 3 hours or more from the start (the sleeping level is the middle of the second half of the night).
+- A cut needs at least 30 minutes and two of these signs. It starts where your heart rate settled, or else when the band was back on, and ends at your last sleep. Time asleep, deep sleep and dreaming sleep are counted again inside the cut.
+- **The sleep sheet** says what was left out, for example "Your band was off from 19:35 to 22:40, so the night starts at 22:40: 7h 5min asleep, not 10h 10min." For a start set by the heart rate it says "Your heart rate stayed above its sleeping level until 00:50, so the night starts at 00:50", and the part left out reads "Awake in bed". It has Undo and Adjust.
+- **Weaker signs only ask.** Log > Sleep shows "May include time with your band off" with Check the night, or "May include time awake before sleep" when the heart rate is the only sign. The sleep sheet offers Adjust and "It is right".
 - **Adjust** shows the night's stages and heart rate with a handle at each end:
   - drag a handle, tap the chart, or use the arrow keys;
-  - start chips: Band back on, First sleep, As recorded;
+  - start chips: Band back on, Heart rate settled, First sleep, As recorded;
   - end chips: As recorded, Last sleep, Band off;
   - tiles show In bed, Asleep (with what it was), Deep and Dreaming.
 - What you choose is kept: a new download never undoes it. A time you type in Log > Sleep still wins over everything.
@@ -58,16 +59,18 @@ What changes:
 - **24/7 heart rate is kept as one value every 5 minutes.** Polar sends a reading every few seconds, in short bursts. The backend sends one mean a minute, because 28 days of raw readings are over Vercel's answer limit, and the phone keeps one mean per 5 minutes.
 - **Polar's "not worn" class is not used for the cut.** In real nights it shows up for 10 to 40 minutes in the middle of sleep, so it would cut good nights.
 - **Skin contact is not available.** It needs an extra Polar permission and a reconnect. Not needed for now.
-- **A long night with heart rate from the start is asked about, not cut.** When the band recorded heart rate and sleep stages from the start, the app cannot tell band-off time from time in bed. Log > Sleep asks, and Adjust sets it.
+- **A long night with heart rate from the start is cut where the heart rate settled.** When the band recorded heart rate and sleep stages from the start, the heart rate tells time awake in bed from sleep: it is cut when it stayed up for 3 hours or more and there is a second sign (most often a night 90 minutes over your usual), and asked about when it is the only sign. A normal wind-down settles well inside 3 hours.
+- **A night after alcohol, illness or a late meal can keep the heart rate up early on.** If it stays up for 3 hours and the night is long, that start is cut too. When it stays high all night, that is the night's own sleeping level, so nothing is cut. Undo and Adjust are there for a night that was cut wrongly.
 - **Strain may run high with the band's active time.** Polar counts active time generously. Each minute outside workouts counts 1.5 load points. If strain looks high on easy days, the number to lower is `ACT_K` in core.js. Worth a look after a week.
 - **Without 24/7 heart rate, the cut relies on the other signs.** The other signs are a stretch the band could not read, no overnight readings and a long night. When the heart rate download fails, more nights ask instead of being cut.
 - **The cut syncs as its own column.** Before the SQL runs, night pushes fail quietly, so a second phone would not see a cut. A cut that is later worked out again to no cut is cleared from the cloud too.
 - **Bounce-back reads only clear cases:** a hard session with no other hard one in the 4 days after. Someone who trains hard often may take a long time to reach 5 readings.
 
 ## Checked
-- 354 of 354 tests pass in `tests/index.html`. 101 are new, covering:
+- 370 of 370 tests pass in `tests/index.html`. 117 are new, covering:
   - the band's day and its heart rate runs, in Polar's real shape (steps, active and sitting time from the class changes, MET-hours, the device with the most steps, active time from METs when a day has no classes, minute means and raw samples);
   - the clear and weak night cuts;
+  - the heart rate start: cut with a second sign, asked when alone, a normal wind-down left alone, a heart rate high all night never cut, no reading without heart rate, and your decisions kept;
   - Undo, Adjust and typed times;
   - battery nights in Body, debt and Log;
   - strain with activity, with steps only and with neither;
@@ -76,8 +79,8 @@ What changes:
   - no source names in the new text.
 - The suite also passes run as a Monday, a Thursday and a Sunday through the `?day=` setting.
 - I looked at the app at 360px, in light and dark, with made-up nights and workouts held in memory only:
-  - a trimmed night with its sheet line;
-  - Adjust with handles and chips;
+  - a trimmed night with its sheet line, including a start set by the heart rate ("Awake in bed");
+  - Adjust with handles and chips, including "Heart rate settled";
   - a battery night;
   - Log > Sleep statuses;
   - the workout page with your own bounce-back days.
@@ -85,5 +88,5 @@ What changes:
   There was no sideways scroll, and nothing was saved.
 - Settings shows Version 127, and the new cache replaces the old one on update.
 - The `polar-day` route is deployed and was called against Polar. The answer for 28 days is about 0.4 MB.
-- The app's reading was tried on the real days and nights on this computer only (nothing saved, printed or committed). Every day gave steps, active time, sitting and heart rate, with active plus sitting under 24 hours. The cut was tried on every stored night: nothing was cut wrongly, and the one long night with the full baseline behind it is asked about.
+- The app's reading was tried on the real days and nights on this computer only (nothing saved, printed or committed). Every day gave steps, active time, sitting and heart rate, with active plus sitting under 24 hours. The cut was tried on every stored night: the two long nights are now cut where the heart rate settled, which leaves a normal night's length, and the normal nights are untouched.
 - Not tested on the phone itself.

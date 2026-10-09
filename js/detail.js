@@ -63,14 +63,18 @@ function dtCutHTML(n){
   const c=plCut(n),tot=plTot(x),raw=x.asleep||x.span,acts=b=>`<div class="wk-acts">${b}</div>`;
   if(c){
     const w=plWin(n,c.s,c.e),a=plHmAdd(hs,c.s),z=plHmAdd(hs,c.e),st=c.s>0,en=c.e<tot;
-    const why=c.by==='you'?`You set the night to ${a} to ${z}`:st&&en?`Your band was off before ${a} and after ${z}`:st?`Your band was off from ${hs} to ${a}, so the night starts at ${a}`:`Your band was off after ${z}, so the night ends at ${z}`;
+    const hr=c.why==='hr',why=c.by==='you'?`You set the night to ${a} to ${z}`
+      :st&&en?(hr?`Your heart rate stayed high until ${a} and your band was off after ${z}`:`Your band was off before ${a} and after ${z}`)
+      :st?(hr?`Your heart rate stayed above its sleeping level until ${a}, so the night starts at ${a}`:`Your band was off from ${hs} to ${a}, so the night starts at ${a}`)
+      :`Your band was off after ${z}, so the night ends at ${z}`;
     return`<div class="wk-dup dt-cut"><div class="wk-dup-t">${UI.cut}${c.by==='you'?'Night adjusted':'Night trimmed'}</div><div class="wk-dup-s">${why}: ${fmtDur(w.asleep)} asleep, not ${fmtDur(raw)}.</div>${acts(`<button type="button" onclick="dtUncut('${n.date}')">Undo</button><button type="button" onclick="adjOpen('${n.date}')">Adjust</button>`)}</div>`;
   }
   if(!plAsk(n))return'';
   const t=plTrim(n),g=t.sig;
-  const why=g.s1||g.s3?`Your band may have been off until ${plHmAdd(hs,t.at.s)}.`:g.e1||g.e3?`Your band may have been off after ${plHmAdd(hs,t.at.e)}.`
+  const why=g.s5?`Your heart rate stayed above its sleeping level until ${plHmAdd(hs,t.at.s)}, so you may have been awake.`
+    :g.s1||g.s3?`Your band may have been off until ${plHmAdd(hs,t.at.s)}.`:g.e1||g.e3?`Your band may have been off after ${plHmAdd(hs,t.at.e)}.`
     :`This night ran ${fmtDur(x.span)}, ${fmtDur(Math.round(x.span-t.us))} over your usual.`;
-  return`<div class="wk-dup dt-cut"><div class="wk-dup-t">${UI.cut}May include time with your band off</div><div class="wk-dup-s">${why}</div>${acts(`<button type="button" onclick="adjOpen('${n.date}')">Adjust</button><button type="button" onclick="dtCutOk('${n.date}')">It is right</button>`)}</div>`;
+  return`<div class="wk-dup dt-cut"><div class="wk-dup-t">${UI.cut}${plAskHead(t)}</div><div class="wk-dup-s">${why}</div>${acts(`<button type="button" onclick="adjOpen('${n.date}')">Adjust</button><button type="button" onclick="dtCutOk('${n.date}')">It is right</button>`)}</div>`;
 }
 // v127: the band ran out of battery, so the recording stops early: the night counts as missing until you add your wake-up time
 function dtBattHTML(n,sl){
@@ -96,13 +100,13 @@ function adjOpen(date){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
   const n=polarOn(date),E=n&&plEdges(n);if(!E||E.tot<=TH.TRIM_GAP*60)return;
   const x=n.data,c=plCut(n),t0=plT(x.start),hr=plHrIn(t0,t0+E.tot*1000);
-  const cand=[0,E.tot,E.bandOn,E.bandOff,E.firstSleep,E.lastSleep,...E.seg.flatMap(g=>[g[0],g[1]])].filter(v=>v!=null&&v>=0&&v<=E.tot);
+  const cand=[0,E.tot,E.bandOn,E.bandOff,E.hrSet,E.firstSleep,E.lastSleep,...E.seg.flatMap(g=>[g[0],g[1]])].filter(v=>v!=null&&v>=0&&v<=E.tot);
   const pts=[...new Set(cand)].sort((a,b)=>a-b);
   _adj={date,n,E,tot:E.tot,s:c?c.s:0,e:c?c.e:E.tot,hr,cand:pts,back:document.activeElement};
   // a chip within the snap distance of one already shown is left out; As recorded always stays, it is the way back
   const hs=plHm(x.start),opt=(l,v,fix)=>v==null?null:{l,v,fix,t:plHmAdd(hs,v)},near=(o,p)=>Math.abs(o.v-p.v)<=TH.ADJ_SNAP*60;
   const uniq=a=>{a=a.filter(Boolean);const k=a.filter(o=>o.fix);a.forEach(o=>{if(!o.fix&&!k.some(p=>near(o,p)))k.push(o);});return a.filter(o=>k.includes(o));};
-  _adj.sc=uniq([E.hrOk&&E.bandOn>0?opt('Band back on',E.bandOn):null,E.firstSleep>0?opt('First sleep',E.firstSleep):null,opt('As recorded',0,1)]);
+  _adj.sc=uniq([E.hrOk&&E.bandOn>0?opt('Band back on',E.bandOn):null,E.hrSet>E.bandOn?opt('Heart rate settled',E.hrSet):null,E.firstSleep>0?opt('First sleep',E.firstSleep):null,opt('As recorded',0,1)]);
   _adj.ec=uniq([opt('As recorded',E.tot,1),E.lastSleep!=null&&E.lastSleep<E.tot?opt('Last sleep',E.lastSleep):null,E.hrOk&&E.bandOff<E.tot?opt('Band off',E.bandOff):null]);
   const chip=(k,o)=>`<button type="button" class="adj-cp" data-v="${o.v}" onclick="adjSet('${k}',${o.v})">${o.l} <em>${o.t}</em></button>`;
   $('adjSc').innerHTML=_adj.sc.map(o=>chip('s',o)).join('');$('adjEc').innerHTML=_adj.ec.map(o=>chip('e',o)).join('');
@@ -198,8 +202,8 @@ function dtPolar(n){
   const pc=m=>inBed&&m?` · ${Math.round(m/inBed*100)}%`:'',pct=v=>(v/T*100).toFixed(2);
   const ROW={0:0,3:1,1:2,2:3};
   let hy='';plSegs(x).forEach(([s,e,k])=>{s=Math.max(s,c0);e=Math.min(e,c1);if(e<=s||ROW[k]==null)return;hy+=`<i${k===0?' class="w"':''} style="left:${pct(s)}%;width:${Math.max(0.3,(e-s)/T*100).toFixed(2)}%;top:${ROW[k]*25+3.5}%"></i>`;});
-  // the part left out: hatched, "Band off" for an automatic cut, "Left out" for yours
-  const off=(a,b,e)=>b-a>0?`<b class="dt-off ${e}" style="left:${pct(a)}%;width:${pct(b-a)}%">${(b-a)/T>=0.2?`<span>${c.by==='you'?'Left out':'Band off'}</span>`:''}</b>`:'';
+  // the part left out: hatched, "Band off" for an automatic cut ("Awake in bed" at a start set by the heart rate), "Left out" for yours
+  const off=(a,b,e)=>b-a>0?`<b class="dt-off ${e}" style="left:${pct(a)}%;width:${pct(b-a)}%">${(b-a)/T>=0.2?`<span>${c.by==='you'?'Left out':e==='s'&&c.why==='hr'?'Awake in bed':'Band off'}</span>`:''}</b>`:'';
   if(c)hy+=off(0,c0,'s')+off(c1,T,'e');
   const [sh,sm]=hm(x.start).split(':').map(Number),mid=isNaN(sh)?'':hhmm(sh*60+sm+Math.round(T/120));
   const chart=hy?`<div class="dt-hy"><div class="dt-hyl"><span>Awake</span><span>REM</span><span>Light</span><span>Deep</span></div><div class="dt-hyp" role="img" aria-label="Sleep stages through the night">${hy}</div><div class="dt-ax"><span>${hm(x.start)}</span><span>${mid}</span><span>${hm(x.end)}</span></div></div>`:'';

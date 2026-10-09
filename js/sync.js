@@ -512,7 +512,19 @@ function plUsual(date){
   const v=(S().polarNights||[]).filter(x=>x.date<date&&daysAgo(x.date)-daysAgo(date)<=14&&x.data.span).map(plKept).sort((a,b)=>a-b);
   return v.length>=TH.TRIM_N?v[Math.floor(v.length/2)]:null;
 }
-// the edges of a night, in seconds from its start: band back on / off (24/7 heart rate), first / last sleep, unknown runs, first overnight sample
+// when the heart rate settles, in seconds from the night's start: the start of the first TRIM_HR_WIN minutes whose mean is within
+// TRIM_HR_UP of the night's sleeping level (median of its second half); null without enough heart rate in the second half
+function plHrSet(hs,hv,tot){
+  const lv=hv.filter((v,i)=>hs[i]>=tot/2).sort((a,b)=>a-b);if(!hs.length||lv.length*TH.DAY_HR_DT<TH.TRIM_GAP*60)return null;
+  const lvl=lv[Math.floor(lv.length/2)],W=TH.TRIM_HR_WIN*60;
+  for(let m=hs[0];m+W<=tot;m+=TH.DAY_HR_DT){
+    const v=hv.filter((x,i)=>hs[i]>=m&&hs[i]<m+W);
+    if(v.length&&v.reduce((a,b)=>a+b,0)/v.length<=lvl+TH.TRIM_HR_UP)return m;
+  }
+  return null;
+}
+// the edges of a night, in seconds from its start: band back on / off (24/7 heart rate), first / last sleep, unknown runs, first overnight sample,
+// and when the heart rate settled to its sleeping level (hrSet)
 function plEdges(n){
   const x=n.data,t0=plT(x.start),tot=plTot(x);if(t0==null||!tot)return null;
   const seg=plSegs(x),sl=seg.filter(g=>g[2]>=1&&g[2]<=3),hr=plHrIn(t0,t0+tot*1000);
@@ -522,28 +534,32 @@ function plEdges(n){
     firstSleep:sl.length?sl[0][0]:null,lastSleep:sl.length?last(sl)[1]:null,
     bandOn:hs&&hs.length?hs[0]:null,bandOff:hs&&hs.length?last(hs):null,hrOk:!!(hs&&hs.length),
     u0:seg.length&&seg[0][2]===4?seg[0][1]:0,uN:seg.length&&last(seg)[2]===4?tot-last(seg)[0]:0,
-    firstSample:sm.length?Math.min(...sm):null};
+    firstSample:sm.length?Math.min(...sm):null,hrSet:hs&&hs.length?plHrSet(hs,hr.map(p=>p[1]),tot):null};
 }
 // the end of the last sleep at or before a moment (a band taken off after waking ends the night at the last sleep)
 const plSleepEnd=(E,e)=>{const g=E.seg.filter(s=>s[2]>=1&&s[2]<=3&&s[0]<e);if(!g.length)return e;const l=last(g);return l[1]>=e?e:l[1];};
 // clear signs give a cut, weak signs ask. Signals: S1 no 24/7 heart rate at the edge while it is there later that night;
-// S2 no overnight sample (heart rate variability, breathing) in the start gap; S3 an edge run of unknown; S4 a night 90+ min over your usual
+// S2 no overnight sample (heart rate variability, breathing) in the start gap; S3 an edge run of unknown; S4 a night 90+ min over your usual;
+// S5 the band was on but the heart rate stayed over its sleeping level for TRIM_HR_MIN+ from its first reading (awake in bed); the night then
+// starts where it settled. why 'hr' = the start comes from the heart rate
 function plTrim(n){
   const E=plEdges(n);if(!E)return null;
   const G=TH.TRIM_GAP*60,us=plUsual(n.date),s4=us!=null&&n.data.span>us+TH.TRIM_LONG;
-  const s1=E.hrOk&&E.bandOn>=G,s3=E.u0>=G;
-  const s=s1||s3?Math.max(s1?E.bandOn:0,s3?E.u0:0):0;
+  const s1=E.hrOk&&E.bandOn>=G,s3=E.u0>=G,s5=E.hrSet!=null&&E.hrSet-E.bandOn>=TH.TRIM_HR_MIN*60;
+  const s=s5?E.hrSet:s1||s3?Math.max(s1?E.bandOn:0,s3?E.u0:0):0;
   const s2=s>0&&(E.firstSample==null||E.firstSample>=s-TH.DAY_HR_DT);
   const e1=E.hrOk&&E.tot-E.bandOff>=G,e3=E.uN>=G;
   let e=E.tot;if(e1||e3)e=plSleepEnd(E,Math.min(e1?E.bandOff:E.tot,e3?E.tot-E.uN:E.tot));
-  const cs=s>=G&&(s1||s3)&&[s1,s2,s3,s4].filter(Boolean).length>=2,ce=E.tot-e>=G&&(e1||e3)&&[e1,e3,s4].filter(Boolean).length>=2;
+  const cs=s>=G&&(s1||s3||s5)&&[s1,s2,s3,s4,s5].filter(Boolean).length>=2,ce=E.tot-e>=G&&(e1||e3)&&[e1,e3,s4].filter(Boolean).length>=2;
   const cut=cs||ce?{s:cs?s:0,e:ce?e:E.tot}:null;
   // a cut has to leave a night: at least TRIM_GAP minutes asleep inside it
   const ok=cut&&cut.e>cut.s&&plWin(n,cut.s,cut.e).asleep>=TH.TRIM_GAP;
-  return{cut:ok?cut:null,ask:!ok&&(s4||s1||s3||e1||e3),E,sig:{s1,s2,s3,s4,e1,e3},at:{s,e},us};
+  return{cut:ok?cut:null,ask:!ok&&(s4||s1||s3||s5||e1||e3),E,sig:{s1,s2,s3,s4,s5,e1,e3},at:{s,e},us,why:s5?'hr':null};
 }
 // a night that may hold time with the band off and has no decision yet: Log and the sheet ask
 const plAsk=n=>!!(n&&!n.trim&&(plTrim(n)||{}).ask);
+// the question's heading: awake in bed when the heart rate is the only edge sign, else the band
+const plAskHead=t=>t&&t.sig.s5&&!t.sig.s1&&!t.sig.s3&&!t.sig.e1&&!t.sig.e3?'May include time awake before sleep':'May include time with your band off';
 // what a night gives the sleep log: Polar's times (local HH:MM), time asleep (span minus time awake), deep, REM and score;
 // inside the cut when there is one (v127), with time asleep and stages counted from the stages inside it
 function polarSleepVals(n){
@@ -569,7 +585,7 @@ function plRetrim(from){
   let n=0;
   for(const r of(S().polarNights||[]).filter(x=>x.date>=from)){
     if(!(r.trim&&r.trim.by!=='auto')){
-      const t=plTrim(r),nt=t&&t.cut?{s:t.cut.s,e:t.cut.e,by:'auto'}:null;
+      const t=plTrim(r),nt=t&&t.cut?{s:t.cut.s,e:t.cut.e,by:'auto',...(t.why&&t.cut.s?{why:t.why}:{})}:null;
       if(canon(nt)!==canon(r.trim||null)){put('polar',{...r,trim:nt});n++;}
     }
     plFillLog(polarOn(r.date));

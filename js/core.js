@@ -131,6 +131,7 @@ const TH={
   // v127 the band's day, the night cut, daily activity in strain, your own bounce-back days
   DAY_HR_DT:300,                         // 24/7 heart rate kept at one value per 5 minutes (seconds)
   TRIM_GAP:30,TRIM_LONG:90,TRIM_N:7,     // a band-off stretch at the edge of a night of 30+ min; a night 90+ min over your usual span (median of the 14 before, from 7) is long
+  TRIM_HR_UP:5,TRIM_HR_WIN:60,TRIM_HR_MIN:180, // awake in bed with the band on: the 60-min mean heart rate stays more than 5 bpm over the night's sleeping level (median of its second half) for 180+ min from its first reading
   ADJ_STEP:5,ADJ_PAGE:30,ADJ_SNAP:10,   // Adjust a night: arrow keys move 5 min, Page Up / Down 30 min; a drag snaps to a stage change or the band within 10 min
   ACT_K:1.5,STEP_BASE:5000,STEP_RATE:100, // strain load per active minute outside workouts; without active time: minutes = steps over 5000 / 100
   ACT_MET:3,                             // the band's active minutes: moderate and vigorous activity; read from 3+ MET when a day has no activity classes

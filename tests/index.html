@@ -1143,6 +1143,44 @@ run('v127 ask',()=>{
   n.trim={s:0,e:37800,by:'off'};
   check('v127 ask: once answered, it is not asked again',!plAsk(n));
 });
+// v127: awake in bed with the band on. In bed 21:00 to 07:30; the band read it all as sleep (10h 20min asleep). Heart rate 72 in the day,
+// 66 from 21:00 for `up` minutes, then 52, the sleeping level. With up 250 the hour from 00:50 averages 56.7, within 5 of 52, so it settled at 00:50
+const HR_HYP=[[0,1],[5400,2],[9000,1],[14400,3],[18000,2],[23400,1],[28800,3],[32400,1],[37200,0]];
+const hrNight=(o={})=>{const y=dAgo(1),dt=td();return rawNight(dt,y+'T21:00:00',dt+'T07:30:00',HR_HYP,{hrvT:y+'T21:05:00',...o});};
+const hrDays=(up,hi=66)=>{const y=dAgo(1),dt=td(),v=m=>m<0?72:m<up?hi:52;
+  return[{id:'pd-'+y,date:y,data:{hr:[{t:y+'T06:00:00',dt:300,v:Array.from({length:216},(_,i)=>v(5*i-900))}]}},{id:'pd-'+dt,date:dt,data:{hr:[{t:dt+'T00:00:00',dt:300,v:Array.from({length:120},(_,i)=>v(180+5*i))}]}}];};
+// eight usual nights of 7h 30min before today, so a 10h 30min night is far over your usual
+const hrUsual=()=>{const a=[];for(let i=8;i>=1;i--){const d0=dAgo(i),d1=dAgo(i+1);a.push({id:'pn-'+d0,date:d0,data:{start:d1+'T23:00:00',end:d0+'T06:30:00',span:450,asleep:420,stages:{deep:90,rem:90},hyp:[[0,1]]}});}return a;};
+const hrFresh=(up,usual,o)=>{const dt=td();base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=up==null?[]:hrDays(up);_s.polarNights=[...(usual?hrUsual():[]),{id:'pn-'+dt,...polarNight(hrNight(o))}];};
+run('v127 heart rate',()=>{
+  const dt=td();
+  hrFresh(250,true);const T=plTrim(polarOn(dt));
+  check('v127 heart rate: the band on but the heart rate high for 3h 50min, on a night far over your usual, is a clear sign',T&&T.cut&&T.cut.s===13800&&T.cut.e===37800&&T.sig.s5&&T.sig.s4&&!T.sig.s1&&!T.sig.s2&&!T.sig.s3&&T.E.bandOn===0&&T.E.hrSet===13800&&T.why==='hr',JSON.stringify(T&&{cut:T.cut,sig:T.sig,hrSet:T.E.hrSet}));
+  plRetrim(dAgo(2));const n=polarOn(dt),L=slOf(dt);
+  check('v127 heart rate: the night is cut by itself where the heart rate settled, and says why',n.trim&&n.trim.by==='auto'&&n.trim.s===13800&&n.trim.e===37800&&n.trim.why==='hr'&&!plAsk(n),JSON.stringify(n.trim));
+  check('v127 heart rate: the sleep log starts at 00:50 and time asleep is counted inside the cut (10h 20min becomes 6h 30min)',L.bed==='00:50'&&L.wake==='07:30'&&L.durMin===390&&L.deepH===1&&L.deepM===30&&L.remH===2&&L.remM===0,`${L.bed} to ${L.wake}, ${L.durMin} min`);
+  // no other night signs and no usual yet: the heart rate alone asks, with its own words
+  hrFresh(250,false);const A=plTrim(polarOn(dt));plRetrim(dAgo(2));
+  check('v127 heart rate: on its own it is not cut, it asks whether you were awake',A&&!A.cut&&A.ask&&A.sig.s5&&!A.sig.s4&&polarOn(dt).trim==null&&plAsk(polarOn(dt))&&plAskHead(A)==='May include time awake before sleep'&&slWhy(slOf(dt)).st==='May include time awake before sleep'&&slOf(dt).bed==='21:00',JSON.stringify(A&&A.sig));
+  // no overnight readings until the heart rate settled is a second sign
+  hrFresh(250,false,{hrvT:null});const B=plTrim(polarOn(dt));
+  check('v127 heart rate: with no overnight readings either, it is cut',B&&B.cut&&B.cut.s===13800&&B.sig.s2&&B.sig.s5&&B.why==='hr',JSON.stringify(B&&B.sig));
+  // a usual wind-down: the heart rate settles 70 minutes in, under the 3 hours it takes to count
+  hrFresh(90,true);const C=plTrim(polarOn(dt));
+  check('v127 heart rate: a heart rate that settles within 3 hours is not a sign',C&&C.E.hrSet===4200&&!C.sig.s5&&!C.cut&&C.ask&&C.why==null&&plAskHead(C)==='May include time with your band off',JSON.stringify(C&&{hrSet:C.E.hrSet,sig:C.sig}));
+  // high all night (a cold, a late meal): the sleeping level is the night's own, so nothing is read as awake
+  hrFresh(9999,false);const D=plTrim(polarOn(dt));
+  check('v127 heart rate: a heart rate high the whole night is never read as awake',D&&D.E.hrSet===0&&!D.sig.s5&&!D.cut&&!D.ask,JSON.stringify(D&&D.sig));
+  hrFresh(null,false);const E=plTrim(polarOn(dt));
+  check('v127 heart rate: without the heart rate downloaded there is no reading at all',E&&E.E.hrSet===null&&!E.sig.s5&&!E.cut&&!E.ask);
+  // the band cut keeps its own words: no why, and its heart rate settles as the band goes on
+  base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=cutDays();_s.polarNights=[{id:'pn-'+dt,...polarNight(cutNight())}];plRetrim(dAgo(2));
+  check('v127 heart rate: a cut from the band being off does not say heart rate',polarOn(dt).trim&&polarOn(dt).trim.s===11100&&!('why' in polarOn(dt).trim)&&!plTrim(polarOn(dt)).sig.s5,JSON.stringify(polarOn(dt).trim));
+  // your decision stays
+  hrFresh(250,true);plRetrim(dAgo(2));polarOn(dt).trim={s:0,e:37800,by:'off'};plRetrim(dAgo(2));const off=polarOn(dt).trim;
+  polarOn(dt).trim={s:7200,e:37800,by:'you'};plRetrim(dAgo(2));const you=polarOn(dt).trim;
+  check('v127 heart rate: Undo and your own times stay when the night is worked out again',off.by==='off'&&off.s===0&&you.by==='you'&&you.s===7200&&!('why' in you),JSON.stringify([off,you]));
+});
 seq('v127 decisions',async()=>{
   const dt=td(),keep={},had={};
   ['recalc','refreshActive','showToast'].forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=()=>{};});
@@ -1267,6 +1305,30 @@ seq('v127 sheet',async()=>{
     // a bedtime you typed ends the question too
     polarOn(dt).trim=null;const L={...slOf(dt),bed:'22:50',wake:'07:00'};L.src={};put('sleep',L);
     check('v127 sheet: once you type your own times the night no longer asks',plAsk(polarOn(dt))&&!slAsk(slOf(dt))&&!slWhy(slOf(dt)));
+  }finally{closeDetail();if(_adj)adjClose();box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// v127: a night cut where the heart rate settled, on screen: the sheet line, the hatched part, Adjust's start chip, and a night that asks
+seq('v127 heart rate sheet',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML=['dtModal','adjModal','lSleep'].map(id=>doc.getElementById(id).outerHTML).join('');document.body.appendChild(box);
+  const dt=td(),keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const strip=()=>$('dtBody').querySelector('.dt-cut'),txt=el=>el?el.textContent:'',noNames=t=>!/Polar|Intervals|Garmin|Strava/i.test(t);
+  const chips=id=>[...$(id).querySelectorAll('.adj-cp')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' | ');
+  try{
+    hrFresh(250,true);plRetrim(dAgo(2));openDetail('sleep');const s=strip(),off=$('dtBody').querySelector('.dt-hyp b.dt-off.s');
+    check('v127 heart rate sheet: the cut says the heart rate stayed high and what was left out',s&&/^Night trimmed/.test(txt(s))&&txt(s).includes(`Your heart rate stayed above its sleeping level until 00:50, so the night starts at 00:50: ${fmtDur(390)} asleep, not ${fmtDur(620)}.`),txt(s));
+    check('v127 heart rate sheet: the part left out reads Awake in bed, not Band off',off&&txt(off)==='Awake in bed'&&!/Band off/.test(txt($('dtBody').querySelector('.dt-hyp'))),off&&off.outerHTML);
+    adjOpen(dt);
+    check('v127 heart rate sheet: Adjust offers where the heart rate settled as a start, chosen',chips('adjSc')==='Heart rate settled 00:50* | As recorded 21:00',chips('adjSc'));
+    check('v127 heart rate sheet: no app or device names',noNames($('dtBody').textContent)&&noNames($('adjModal').textContent));
+    adjClose();closeDetail();
+    hrFresh(250,false);plRetrim(dAgo(2));openDetail('sleep');const a=strip();
+    check('v127 heart rate sheet: on its own it asks whether you were awake, with Adjust and It is right',a&&/^May include time awake before sleep/.test(txt(a))&&txt(a).includes('Your heart rate stayed above its sleeping level until 00:50, so you may have been awake.')&&[...a.querySelectorAll('button')].map(b=>b.textContent).join()==='Adjust,It is right',txt(a));
+    loadSleepFor(dt);
+    check('v127 heart rate sheet: Log > Sleep asks the same',$('slNote').textContent==='May include time awake before sleep.Check the night'&&noNames($('slNote').textContent),$('slNote').textContent);
   }finally{closeDetail();if(_adj)adjClose();box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
 

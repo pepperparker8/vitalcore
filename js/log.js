@@ -108,7 +108,7 @@ function slWhy(x){
   if(!x)return null;
   if(slNeedsTime(x))return{st:'Needs bedtime or wake-up',hd:'sleep needs one detail',nt:'Recorded automatically. Add your bedtime or wake-up time to complete it.'};
   if(!slCounts(x))return{st:'Battery ran out: add your wake-up time',hd:'sleep needs your wake-up time',nt:'Your band ran out of battery during the night. Add your wake-up time and the night counts.'};
-  if(slAsk(x))return{st:'May include time with your band off',hd:'check last night\'s sleep',nt:'May include time with your band off.',ask:1};
+  if(slAsk(x)){const h=plAskHead(plTrim(polarOn(x.date)));return{st:h,hd:'check last night\'s sleep',nt:h+'.',ask:1};}
   return null;
 }
 const slHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
