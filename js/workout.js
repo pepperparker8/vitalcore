@@ -60,22 +60,55 @@ const wkEb=w=>!!wIcu(w).eb;
 // for sentences: "e-bike ride", "ride", "run" ...; "today's", "yesterday's", "Saturday's"
 const wkNoun=w=>wkEb(w)?'e-bike ride':({Run:'run',Cycle:'ride',Swim:'swim',Hike:'hike',Walk:'walk',Yoga:'yoga'})[w.type]||'session';
 const wkWhen=dt=>dt===td()?"today's":dt===dAgo(1)?"yesterday's":new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'})+"'s";
-// when hard training fits again after a workout: the next day, TH.REC_HARD_D days after a hard one, TH.REC_BIG_D after a very hard one.
-// {hardOn (date), n (days), e (effort), txt (everyday words, relative to today)}. The outline (strategy) uses the same dates.
+// v127: your own bounce-back days. For each hard session (effort 4+) of the last TH.BB_DAYS with no other hard one in the
+// TH.BB_FREE_D days after it: the first morning, 1 to TH.BB_MAX days later, with HRV at least its usual less TH.BB_HRV_SD SD and
+// resting heart rate at most its usual plus TH.BB_RHR_SD SD (each against the 28 days before the session, resting heart rate from one
+// source; a morning with neither is skipped). Not back by then reads TH.BB_MAX. {4 (hard), 5 (very hard): days or null, n readings}:
+// the median of a class once it has TH.BB_MIN_N readings, else of both together, else null (the TH.REC_* defaults); 1 to TH.BB_CAP,
+// very hard never shorter than hard. Worked out on every call, never stored.
+function bounceDays(thr){
+  const t=td(),hard=S().workouts.filter(w=>!w.isEx&&w.date<t&&daysAgo(w.date)<=TH.BB_DAYS).map(w=>({w,e:wkEff(w,thr)||0})).filter(x=>x.e>=4);
+  const by={4:[],5:[]},before=(d0,dt)=>{const a=daysAgoBetween(dt,d0);return a>=1&&a<=28;};
+  hard.forEach(({w,e})=>{
+    if(stAdd(w.date,TH.BB_MAX)>t||hard.some(x=>x.w.date>w.date&&daysAgoBetween(w.date,x.w.date)<=TH.BB_FREE_D))return;
+    const hb=bandOf(dt=>wellOn('hrv',dt),w.date),rb={};
+    let n=null,seen=false;
+    for(let k=1;k<=TH.BB_MAX&&n==null;k++){
+      const dt=stAdd(w.date,k),h=wellOn('hrv',dt),r=rhrOn(dt);
+      if(r&&!rb[r.src])rb[r.src]=toBand(rhrIn(x=>before(w.date,x),r.src));
+      const b=r&&rb[r.src];
+      const hOk=h!=null&&hb.m!=null?h>=hb.m-TH.BB_HRV_SD*Math.max(hb.sd,TH.HRV_FLOOR):null;
+      const rOk=b&&b.m!=null?r.v<=b.m+TH.BB_RHR_SD*Math.max(b.sd,TH.RHR_FLOOR):null;
+      if(hOk==null&&rOk==null)continue;
+      seen=true;if(hOk!==false&&rOk!==false)n=k;
+    }
+    if(n==null&&seen)n=TH.BB_MAX;
+    if(n!=null)by[e>=5?5:4].push(n);
+  });
+  const med=a=>{const x=[...a].sort((p,q)=>p-q),m=Math.floor(x.length/2);return x.length%2?x[m]:(x[m-1]+x[m])/2;};
+  const all=[...by[4],...by[5]],pool=all.length>=TH.BB_MIN_N?med(all):null;
+  const cl=v=>v==null?null:Math.max(1,Math.min(TH.BB_CAP,Math.round(v)));
+  const h4=cl(by[4].length>=TH.BB_MIN_N?med(by[4]):pool),h5=cl(by[5].length>=TH.BB_MIN_N?med(by[5]):pool);
+  return{4:h4,5:h5!=null&&h4!=null?Math.max(h4,h5):h5,n:all.length};
+}
+// when hard training fits again after a workout: the next day, TH.REC_HARD_D days after a hard one, TH.REC_BIG_D after a very hard one,
+// or your own bounce-back days once they are known (v127). {hardOn (date), n (days), e (effort), own (true when yours), txt (everyday
+// words, relative to today)}. The outline (strategy) uses the same dates.
 const WK_NUM=['','one','two','three','four'];
 function wkRec(w,thr){
-  const e=wkEff(w,thr),n=e>=5?TH.REC_BIG_D:e>=4?TH.REC_HARD_D:1,t=td();
+  const e=wkEff(w,thr),own=e>=4?bounceDays(thr)[e>=5?5:4]:null,n=own||(e>=5?TH.REC_BIG_D:e>=4?TH.REC_HARD_D:1),t=td();
   const on=stAdd(w.date,n),from=w.date>=t?stAdd(t,1):t,k=Math.max(0,daysAgoBetween(from,on));
   const day=dt=>dt===stAdd(t,1)?'tomorrow':'from '+new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'});
   const lead=e>=5?'A very hard session.':e>=4?'A hard session.':e===3?'A moderate session.':e?'Easy on your body.':'';
+  const yours=own?` (you usually need ${WK_NUM[own]||own} day${own>1?'s':''})`:'';
   let txt;
   if(on<=t)txt='Recovered from this one: hard training fits again.';
-  else if(!k)txt=`Hard training fits again ${day(on)}.`;
+  else if(!k)txt=`Hard training fits again ${day(on)}${yours}.`;
   else{
     const keep=from===t?(k===1?'today':k===2?'today and tomorrow':`the next ${WK_NUM[k]||k} days`):(k===1?'tomorrow':`the next ${WK_NUM[k]||k} days`);
-    txt=(k===1&&from!==t?'An easy day tomorrow is fine; ready':`Keep ${keep} easy; ready`)+` for hard training ${day(on)}.`;
+    txt=(k===1&&from!==t?'An easy day tomorrow is fine; ready':`Keep ${keep} easy; ready`)+` for hard training ${day(on)}${yours}.`;
   }
-  return{hardOn:on,n,e,txt:(lead?lead+' ':'')+txt};
+  return{hardOn:on,n,e,own:!!own,txt:(lead?lead+' ':'')+txt};
 }
 
 // ── the trace: second by second heart rate, altitude, speed, power, cadence and distance of an imported workout. Fetched only
@@ -332,7 +365,7 @@ function wkSpec(id){
   }
   const ins=wkIns(w,a,thr,B,pm);
   if(ins.length)h+=`<div class="dt-sec">What it shows</div><ul class="wk-in">${ins.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
-  if(daysAgo(w.date)<=2&&stTrains(w,thr)){const r=wkRec(w,thr);if(r.e)h+=`<div class="dt-sec">Recovery</div><div class="dt-eff">${esc(r.txt)}</div>`;}
+  if(daysAgo(w.date)<Math.max(TH.REC_BIG_D,TH.BB_CAP)&&stTrains(w,thr)){const r=wkRec(w,thr);if(r.e&&(daysAgo(w.date)<=2||r.hardOn>td()))h+=`<div class="dt-sec">Recovery</div><div class="dt-eff">${esc(r.txt)}</div>`;}
   const ph=(S().planHist||{})[w.date];
   if(ph&&ph.fam)h+=`<div class="dt-sec">Planned against done</div><div class="wk-pv">${stRowX({date:w.date,done:1,snap:ph,match:stMatch(w.date,thr),sheet:1},null)}</div>`;
   if(w.sets&&w.sets.length)h+=`<div class="dt-sec">Sets</div><div class="dt-eff">${esc(setsText(w))}</div>`;

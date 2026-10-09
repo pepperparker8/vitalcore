@@ -15,7 +15,7 @@ function renderRing(score){
 const GC=213.6;
 function strainOf(load){const ref=strainRef();return Math.round(21*(1-Math.exp(-load/(1.2*ref)))*10)/10;}
 function strainRef(){
-  const ls=[];for(let i=1;i<=60;i++){const l=dayLoad(dAgo(i));if(l>0)ls.push(l);}
+  const ls=[];for(let i=1;i<=60;i++){const l=strainLoad(dAgo(i));if(l>0)ls.push(l);}
   if(ls.length<3)return 200;
   ls.sort((a,b)=>a-b);return ls[Math.floor(ls.length*0.75)];
 }
@@ -28,11 +28,12 @@ function setGauge(id,numId,frac,txt){
   f.style.strokeDashoffset=GC*(1-Math.max(0,Math.min(1,frac)));n.textContent=txt;
 }
 function renderGauges(){
-  const d=S(),load=dayLoad(td()),st=strainOf(load),tg=strainTarget();
+  const d=S(),load=strainLoad(td()),st=strainOf(load),tg=strainTarget();
   setGauge('strFill','strNum',st/21,load?st.toFixed(1):'0');
-  $('gStrSub').textContent=!load&&restToday()?'Rest day':tg?`Aim ${tg[0]}–${tg[1]}`:'\u00a0';
+  $('gStrSub').textContent=!dayLoad(td())&&restToday()?'Rest day':tg?`Aim ${tg[0]}–${tg[1]}`:'\u00a0';
   const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
-  if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
+  if(sl&&!slCounts(sl)){setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Battery ran out';}
+  else if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
   renderFactors();if(typeof refreshDetail==='function')refreshDetail();const sc=heroScore();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<TH.MIN_BASE_DAYS;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of ${TH.MIN_BASE_DAYS} days logged. Scores and usual ranges get more personal after two weeks of data.`:'';}
@@ -41,7 +42,8 @@ function renderGauges(){
 function readinessFactors(){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60,out=[];
   const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
-  if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({k:'sleep',l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
+  if(sl&&!slCounts(sl))out.push({k:'sleep',l:'Sleep',v:'Not counted',n:'battery ran out',st:'none'});
+  else if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({k:'sleep',l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
   else out.push({k:'sleep',l:'Sleep',v:'Not logged',n:'Tap for details',st:'none'});
   const tsb=d.intervalsData.tsb;
   if(tsb!==null&&tsb!==undefined)out.push({k:'form',l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:zL(tsb,'tsb'),st:tsb>=TH.FORM_OK?'good':tsb>=TH.FORM_DEEP?'warn':'bad'});
@@ -73,7 +75,7 @@ function renderFactors(){
 // sleep needed for the night ending on date (default tonight): goal, plus up to 45 min for the day's strain, plus half the debt of the 3 nights before
 function sleepNeed(st,date){
   const d=S(),goal=(d.profile.sleepGoal||7.5)*60,ref=date?daysAgo(date):0;
-  const debt=[1,2,3].reduce((a,i)=>{const l=d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)===ref+i);return l.length?a+Math.max(0,goal-l[l.length-1].durMin):a;},0);
+  const debt=[1,2,3].reduce((a,i)=>{const l=d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)===ref+i&&slCounts(x));return l.length?a+Math.max(0,goal-l[l.length-1].durMin):a;},0);
   return Math.round((goal+st/21*45+Math.min(45,debt/2))/5)*5;
 }
 const hhmm=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
@@ -188,7 +190,7 @@ const bedMin=t=>{const[h,m]=t.split(':').map(Number);return(h<12?h+24:h)*60+m-72
 function sleepMeaning(info,goal){
   const gH=goal/60,P=info.pts,l=last(P),r5=m=>Math.max(5,Math.round(m/5)*5);let k=0;for(let i=P.length-1;i>=0&&P[i].v<gH-1;i--)k++;
   if(k>=2&&daysAgo(l.d)<=1)return`Short ${k} nights in a row. An early night helps.`;
-  const wk=S().sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<7),debt=wk.reduce((a,x)=>a+(goal-x.durMin),0),diff=Math.round(info.avg*60-goal);
+  const wk=S().sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<7&&slCounts(x)),debt=wk.reduce((a,x)=>a+(goal-x.durMin),0),diff=Math.round(info.avg*60-goal);
   let t=info.to>=dAgo(1)&&wk.length>=3&&debt>=60?`${fmtDur(r5(debt))} short of your goal this week.`:Math.abs(diff)<10?'On your goal on average.':`About ${fmtDur(r5(Math.abs(diff)))} ${diff<0?'under':'over'} your goal on average.`;
   const beds=S().sleepLogs.filter(x=>x.bed&&x.date>=info.from&&x.date<=info.to).map(x=>bedMin(x.bed));
   if(beds.length>=5){const m=avg(beds),sd=Math.sqrt(avg(beds.map(x=>(x-m)**2)));if(sd>=45)t+=` Bedtime varies by about ${fmtDur(r5(sd))}.`;}
@@ -196,7 +198,7 @@ function sleepMeaning(info,goal){
 }
 function renderSleepBars(){
   const d=S(),goal=Math.round((d.profile.sleepGoal||7.5)*60),gH=goal/60;
-  const nights=d.sleepLogs.filter(s=>s.durMin).sort((a,b)=>a.date<b.date?-1:1);
+  const nights=d.sleepLogs.filter(s=>s.durMin&&slCounts(s)).sort((a,b)=>a.date<b.date?-1:1);   // a battery night is a gap, not a short bar
   const host=$('sleepCanvas');
   if(host){
     if(nights.length<2)host.innerHTML=`<div class="vc-empty">${nights.length?'One night saved. Log another and your sleep chart appears.':'Log your sleep in the Log tab (bedtime and wake-up) to see it here.'}</div>`;
@@ -210,7 +212,7 @@ function renderSleepBars(){
   const l=last(nights.filter(s=>s.deepH||s.deepM||s.remH||s.remM));
   $('stNight').textContent=l?'Sleep stages, night ending '+fmtD(l.date):'';$('stBox').style.display=l?'':'none';
   if(l)setStages(l.deepH||0,l.deepM||0,l.remH||0,l.remM||0,l.durMin);
-  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=!t?'Not logged today':slNeedsTime(t)?'Needs bedtime or wake-up':slIcu(t)?'Recorded':'Logged today';
+  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=!t?'Not logged today':slWhy(t)?slWhy(t).st:slIcu(t)?'Recorded':'Logged today';
   // keep the form in step with imports, but never while the user is in it
   const f=$('lSleep');if(f&&!f.classList.contains('open')&&!f.contains(document.activeElement))loadSleepFor($('slDate').value||td());
 }

@@ -101,6 +101,16 @@ let _slEst=null;
 const slSrc=x=>{const s=x&&x.src||{};return[s.durMin,s.score,s.bed,s.wake].includes('polar')?'Polar':s.durMin==='icu'||s.score==='icu'?'Intervals.icu':null;};
 const slIcu=x=>!!slSrc(x);
 const slNeedsTime=x=>!!(x&&x.durMin&&!x.bed&&!x.wake&&slIcu(x));
+// a night that may hold time with the band off (v127): the signs were too weak to cut it, so it asks until you check it
+const slAsk=x=>{const s=x&&x.src||{},n=(s.bed==='polar'||s.wake==='polar')&&polarOn(x.date);return!!(n&&plAsk(n));};
+// what a night still needs, or null: st the Log status, hd the progress line, nt the form note, ask 1 = offer Check the night
+function slWhy(x){
+  if(!x)return null;
+  if(slNeedsTime(x))return{st:'Needs bedtime or wake-up',hd:'sleep needs one detail',nt:'Recorded automatically. Add your bedtime or wake-up time to complete it.'};
+  if(!slCounts(x))return{st:'Battery ran out: add your wake-up time',hd:'sleep needs your wake-up time',nt:'Your band ran out of battery during the night. Add your wake-up time and the night counts.'};
+  if(slAsk(x))return{st:'May include time with your band off',hd:'check last night\'s sleep',nt:'May include time with your band off.',ask:1};
+  return null;
+}
 const slHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function slCalc(typed){
   const bI=$('slBed'),wI=$('slWake'),el=$('slDur'),I=k=>k==='bed'?bI:wI;if(!el)return;
@@ -137,7 +147,8 @@ function loadSleepFor(date){
   _ci.rested=x?.rested??null;
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
   $('slDel').style.display=x?'':'none';
-  $('slNote').textContent=!x?'Nothing saved for this night yet.':slNeedsTime(x)?'Recorded automatically. Add your bedtime or wake-up time to complete it.':slIcu(x)?'Recorded automatically. Anything you change here is kept.':'';
+  const w=slWhy(x);
+  $('slNote').innerHTML=!x?'Nothing saved for this night yet.':w?esc(w.nt)+(w.ask?'<button type="button" class="sl-chk" onclick="adjOpen($(\'slDate\').value)">Check the night</button>':''):slIcu(x)?'Recorded automatically. Anything you change here is kept.':'';
 }
 // soft guardrail: unusual but possible values get a friendly confirm instead of a block
 const sane=m=>confirm(m+'\n\nSave it anyway?');
@@ -464,13 +475,14 @@ function renderBloodDisplay(){
 function logStatus(){
   const d=S(),t=td(),ci=todayCI();
   const sl=d.sleepLogs.find(s=>s.date===t);
-  return[['lCheckin',ciFull(ci)],['lSleep',!!(sl&&(sl.durMin||sl.score)&&!slNeedsTime(sl)),slNeedsTime(sl)?'part':''],['lWorkout',d.workouts.some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
+  const w=slWhy(sl);
+  return[['lCheckin',ciFull(ci)],['lSleep',!!(sl&&(sl.durMin||sl.score)&&!w),w?'part':'',w?w.hd:''],['lWorkout',d.workouts.some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
 }
 function renderLogHead(){
   const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
   st.forEach(([id,ok,part])=>{if($(id)){$(id).classList.toggle('done',ok);$(id).classList.toggle('part',part==='part');}});
-  const part=st.some(x=>x[2]==='part');
-  const h=n+'|'+part;if(el&&el._h!==h){el._h=h;el.innerHTML=`<b>${n} of 4</b> daily entries done${part?', sleep needs one detail':''}<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
+  const pt=st.find(x=>x[2]==='part'),part=pt?', '+pt[3]:'';
+  const h=n+'|'+part;if(el&&el._h!==h){el._h=h;el.innerHTML=`<b>${n} of 4</b> daily entries done${part}<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
 }
 function logAuto(){
   renderLogHead();

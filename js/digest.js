@@ -13,7 +13,7 @@ function digestWeek(from,to){
     sleep:A(sl.map(s=>s.score)),nSleep:d.sleepLogs.filter(In).filter(s=>s.score||s.durMin).length,
     mood:A(ci.map(c=>c.mood)),energy:A(ci.map(c=>c.energy)),calm:A(ci.map(c=>5-c.stress)),nCi:ci.length,
     mindful:d.checkins.filter(In).reduce((a,c)=>a+(c.mindfulMin||0),0),
-    sleepMin:A(d.sleepLogs.filter(In).filter(s=>s.durMin).map(s=>s.durMin)),
+    sleepMin:A(d.sleepLogs.filter(In).filter(s=>s.durMin&&slCounts(s)).map(s=>s.durMin)),
     hrv:A(Object.entries(d.wellness||{}).filter(([dt,w])=>w.hrv&&In({date:dt})).map(([,w])=>w.hrv)),
     rhr:A(rhrIn(dt=>In({date:dt}))),
     weight:wt.length?last(wt).weight:null,

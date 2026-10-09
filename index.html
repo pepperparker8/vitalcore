@@ -429,6 +429,19 @@
     <div id="dtBody"></div>
   </div>
 </div>
+<div class="modal-ov z2" id="adjModal" onclick="if(event.target===this)adjClose()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adjTitle">
+    <div class="modal-title" id="adjTitle">Adjust last night <button class="modal-close" onclick="adjClose()" aria-label="Close">×</button></div>
+    <p class="adj-sub" id="adjSub"></p>
+    <div class="adj-card"><div class="adj-ch" id="adjCh"><svg id="adjSvg" viewBox="0 0 320 176" role="img" aria-label="Sleep stages and heart rate through the night"></svg><div class="adj-h" id="adjS" role="slider" tabindex="0" aria-label="Start of the night"></div><div class="adj-h" id="adjE" role="slider" tabindex="0" aria-label="End of the night"></div></div></div>
+    <div class="adj-sec">Start</div><div class="adj-chips" id="adjSc"></div>
+    <div class="adj-sec">End</div><div class="adj-chips" id="adjEc"></div>
+    <div class="adj-tiles" id="adjT"></div>
+    <p class="adj-note">Your change is kept. A new download never undoes it.</p>
+    <button type="button" class="btn-gold adj-btn" onclick="adjSave()">Save</button>
+    <button type="button" class="btn-out adj-btn" onclick="adjClose()">Cancel</button>
+  </div>
+</div>
 <div class="modal-ov z2" id="authModal">
   <div class="modal">
     <div class="auth-gate"><img src="assets/mark.svg" alt="" width="48" height="48"><div class="auth-gate-t">VitalCore</div><div class="set-note">Invite only. Sign in with the email address you were invited with.</div></div>

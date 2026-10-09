@@ -105,7 +105,7 @@ function corrNote(name,p,unit){
 }
 function insightCorrelations(){
   const d=S(),out=[];
-  const sleepBy={};d.sleepLogs.forEach(s=>{if(s.durMin)sleepBy[s.date]=s.durMin/60;});
+  const sleepBy={};d.sleepLogs.forEach(s=>{if(s.durMin&&slCounts(s))sleepBy[s.date]=s.durMin/60;});
   const ciBy={};d.checkins.filter(ciFull).forEach(c=>ciBy[c.date]=c);
   const mood=[],en=[];
   Object.keys(sleepBy).forEach(dt=>{const c=ciBy[dt];if(c){/* check-in on the morning after the night logged */ mood.push([sleepBy[dt],c.mood]);en.push([sleepBy[dt],c.energy]);}});
@@ -123,7 +123,7 @@ function insightCorrelations(){
     if(!w.hrv)return;
     const prev=dayLoad(dAgo(daysAgo(dt)+1));
     hrv.push([prev,w.hrv]);
-    const sn=d.sleepLogs.find(s=>s.date===dt),sm=sn&&sn.durMin||w.sleepMin;   // the sleep record first (Polar or your own), the Intervals.icu copy only without one
+    const sn=d.sleepLogs.find(s=>s.date===dt);if(sn&&!slCounts(sn))return;const sm=sn&&sn.durMin||w.sleepMin;   // the sleep record first (Polar or your own), the Intervals.icu copy only without one
     if(sm&&prev>=0)hard.push([prev,sm/60]);
   });
   out.push(corrNote("previous day's training load vs HRV (negative = hard days lower HRV)",hrv));
@@ -140,7 +140,7 @@ function insightTrends(){
     const wl=Object.entries(d.wellness||{}).filter(([dt])=>{const a=daysAgo(dt);return a>=from&&a<to;}).map(x=>x[1]);
     const r1=x=>x==null?null:+x.toFixed(1);
     wk.push({weeksAgo:w,checkins:ci.length,mood:r1(avg(ci.map(c=>c.mood))),energy:r1(avg(ci.map(c=>c.energy))),stress:r1(avg(ci.map(c=>c.stress))),
-      sleepHoursAvg:r1(avg(sl.filter(s=>s.durMin).map(s=>s.durMin/60))),sleepScoreAvg:r1(avg(sl.filter(s=>s.score).map(s=>s.score))),
+      sleepHoursAvg:r1(avg(sl.filter(s=>s.durMin&&slCounts(s)).map(s=>s.durMin/60))),sleepScoreAvg:r1(avg(sl.filter(s=>s.score).map(s=>s.score))),
       sessions:ws.length,trainingMin:ws.reduce((a,x)=>a+(x.durMin||0),0),hrv:r1(avg(wl.filter(x=>x.hrv).map(x=>x.hrv))),rhr:r1(avg(rhrIn(dt=>{const a=daysAgo(dt);return a>=from&&a<to;}))),
       breathing:r1(avg(wl.filter(x=>x.resp).map(x=>x.resp))),
       readiness:r1(avg(Object.entries(d.readHist||{}).filter(([dt,v])=>v!=null&&inR({date:dt})).map(x=>x[1]))),
@@ -207,6 +207,11 @@ function insPolar(date,short){
     scoreParts:x.parts?{amountOfSleep:x.parts.duration??null,solidity:x.parts.solidity??null,regeneration:x.parts.refresh??null}:null,yourRating1to5:x.rating||null,
     overnight:{heartRateBpm:bpm(rc.rri),heartRateUsualBpm:bpm(rc.baseRri),hrvUsualMs:rc.baseRmssd??null,breathingPerMin:br(rc.resp)??(mb?Math.round(mb*10)/10:null),breathingUsualPerMin:br(rc.baseResp)}};
 }
+// v127: the day's steps and active minutes (null without them); strain already counts the active time outside workouts
+function insAct(date){
+  const p=dayOn(date),a=p&&p.data||{},st=a.steps??((S().wellness||{})[date]||{}).steps;
+  return st==null&&a.act==null?null:{steps:st??null,activeMin:a.act??null};
+}
 // drop empty fields so the snapshot stays short (null, '', empty objects; a missing field means not measured). false, 0 and [] stay.
 function insPrune(v){
   if(Array.isArray(v))return v.map(insPrune);
@@ -218,7 +223,7 @@ function insightData(){return insPrune(insightRaw());}
 function insightRaw(){
   const d=S(),p=d.profile,r1=x=>x==null||isNaN(x)?null:+(+x).toFixed(1),t=td();
   const v=coachVerdict(),sl=last(d.sleepLogs.filter(x=>daysAgo(x.date)<=1)),ci=d.checkins.find(c=>c.date===t);
-  const wT=d.workouts.filter(w=>w.date===t),load=dayLoad(t),ph=racePhase(),sg=suggestWorkout(),dw=(new Date(t+'T12:00:00').getDay()+6)%7,pl=(p.plan||{})[dw];
+  const wT=d.workouts.filter(w=>w.date===t),load=strainLoad(t),ph=racePhase(),sg=suggestWorkout(),dw=(new Date(t+'T12:00:00').getDay()+6)%7,pl=(p.plan||{})[dw];
   const wl=(d.wellness||{})[t]||{};
   // v122: e-bike, effort read from heart rate when none was given, and for the last 7 days (as notes) the heart rate mix
   // [easy, steady, hard] minutes (which replaces the load number) and the drift where the sheet shows it; compact to keep
@@ -231,13 +236,13 @@ function insightRaw(){
   // v118: Body, Load and Mind, each from its own signals (A3 ledger); bodyHist mirrors readHist
   const B=calcBody(),Ld=calcLoad(),M=calcMind(),il=illness(),bh=Object.entries(d.bodyHist||{}),bAvg=(a,b)=>r1(avg(bh.filter(([dt,x])=>x!=null&&daysAgo(dt)>=a&&daysAgo(dt)<b).map(x=>x[1])));
   return{
-    today:{date:t,weekday:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][dw],readiness:calcReadiness(),verdict:v?v.head[0]:null,strain0to21:load?strainOf(load):0,
+    today:{date:t,weekday:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][dw],readiness:calcReadiness(),verdict:v?v.head[0]:null,strain0to21:load?strainOf(load):0,activity:insAct(t),
       scoreInUse:bodyLive()?'body':'readiness',
       body:{score:B.score,confidence:B.conf,missing:B.missing.map(m=>m.k),hrv7NightPoints:B.parts.hrv?Math.round(B.parts.hrv.pts):null,restingHrPoints:B.parts.rhr?Math.round(B.parts.rhr.pts):null,sleepPoints:B.parts.sleep?Math.round(B.parts.sleep.pts):null},
       load:{state:Ld.state,rampFlag:Ld.rampFlag,hardSessionsLast4Days:Ld.hard4},
       mind:{state:M.state,burnoutHigh:M.burnoutHigh},
       illness:il?il.lvl:null,
-      lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null,lateCoffeeEveningBefore:!!(ciOn(dAgo(daysAgo(sl.date)+1))||{}).coffeeLate,night:insPolar(sl.date)}:null,
+      lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),batteryRanOut:slCounts(sl)?undefined:true,bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null,lateCoffeeEveningBefore:!!(ciOn(dAgo(daysAgo(sl.date)+1))||{}).coffeeLate,night:insPolar(sl.date)}:null,
       sorenessStreak:(typeof soreStreak==='function'&&soreStreak())?{days:3,since:soreStreak().from}:null,
       checkin:ci?{energy:ci.energy??null,mood:ci.mood??null,stress:ci.stress??null,motivation:ci.motivation??null,soreness:ci.soreness??null,soreArea:ci.soreArea||null,bodyFeel1to5:ci.bodyFeel??null,symptoms:ci.symptoms!=null?EM.symptoms[ci.symptoms]:null,coffeeCups:ci.coffee??null,coffeeLate:ci.coffeeLate??null,mindfulMin:ci.mindfulMin||0,grateful:insClip(ci.gratitude,200),reflection:insRefl(ci)}:null,
       hrv:wl.hrv??null,restingHr:rhrOn(t)?.v??null,restingHrSource:rhrOn(t)?(rhrOn(t).src==="icu"?"watch":"manual"):null,breathingPerMin:wl.resp??null,
@@ -249,7 +254,7 @@ function insightRaw(){
     week:{last7days:dg(0,7),previous7days:dg(7,14),readinessAvg:rAvg(0,7),readinessAvgPrev:rAvg(7,14),bodyAvg:bAvg(0,7),bodyAvgPrev:bAvg(7,14),thisCalendarWeekMin:Math.round(L.now),usualWeekMin:L.base?Math.round(L.base):null,
       workouts:d.workouts.filter(w=>daysAgo(w.date)<14).map(wo),hardSetsPerMuscle:weeklySets(),
       checkins:d.checkins.filter(c=>daysAgo(c.date)<14&&c!==ci).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,soreness:c.soreness??null,coffeeCups:c.coffee??null,mindfulMin:c.mindfulMin||0,...(daysAgo(c.date)<7?{grateful:insClip(c.gratitude,200),reflection:insRefl(c)}:{})})),
-      sleep:d.sleepLogs.filter(s=>daysAgo(s.date)<14&&s!==sl).map(s=>({date:s.date,hours:r1(s.durMin?s.durMin/60:null),bed:s.bed||null,wake:s.wake||null,score:s.score??null,night:daysAgo(s.date)<7?insPolar(s.date,true):null}))},
+      sleep:d.sleepLogs.filter(s=>daysAgo(s.date)<14&&s!==sl).map(s=>({date:s.date,hours:r1(s.durMin?s.durMin/60:null),batteryRanOut:slCounts(s)?undefined:true,bed:s.bed||null,wake:s.wake||null,score:s.score??null,night:daysAgo(s.date)<7?insPolar(s.date,true):null}))},
     month:{last30days:dg(0,30),previous30days:dg(30,60),readinessAvg:rAvg(0,30),readinessAvgPrev:rAvg(30,60)},
     trend:{weekly12:insightTrends(),fitnessCTL:d.intervalsData.ctl??null,fatigueATL:d.intervalsData.atl??null,formTSB:d.intervalsData.tsb??null,correlations:insightCorrelations()},
     health:{bloodMgDl:insightBlood(),measurements:d.measurements.filter(m=>!m.isEx).slice(-6).map(m=>({date:m.date,weightKg:m.weight??null,bpSys:m.bpSys??null,bpDia:m.bpDia??null,restingHrManual:m.hr??null})),
@@ -260,7 +265,7 @@ function insightRaw(){
   };
 }
 const INS_COMMON=`Scales: check-in values are 1-4. Stress: 1 = calm, 4 = very stressed. "calm" is inverted stress, higher is better. Soreness: 1 = none, 4 = very sore. Readiness 20-100. Strain 0-21. Blood is mg/dL. A missing field or null means not measured. Today's check-in is in today.checkin and last night in today.lastNight; week.checkins and week.sleep hold the 13 days before (written notes and the detailed night for the last 7 days only).
-today.body is the objective recovery score 0-100 (green ${TH.BODY_GREEN}+, yellow ${TH.BODY_YELLOW}-${TH.BODY_GREEN-1}, red below), from heart rate variability (7-night average), resting heart rate and sleep against this person's own usual range only; check-ins, form, soreness and injuries are not in it. today.scoreInUse says whether the app shows Body or the older readiness: Body runs alongside readiness for two weeks, then replaces it. today.load is training fatigue (form, weekly ramp, recent hard sessions), today.mind is how the person feels (check-in and a week of mood). today.illness "systemic" means rest; "mild" means keep the day easy; never diagnose an illness.
+today.body is the objective recovery score 0-100 (green ${TH.BODY_GREEN}+, yellow ${TH.BODY_YELLOW}-${TH.BODY_GREEN-1}, red below), from heart rate variability (7-night average), resting heart rate and sleep against this person's own usual range only; check-ins, form, soreness and injuries are not in it. today.scoreInUse says whether the app shows Body or the older readiness: Body runs alongside readiness for two weeks, then replaces it. today.load is training fatigue (form, weekly ramp, recent hard sessions), today.mind is how the person feels (check-in and a week of mood). today.illness "systemic" means rest; "mild" means keep the day easy; never diagnose an illness. batteryRanOut on a night: the band stopped recording early, so its hours are not the real night; never call it short.
 Rules:
 - Interpret, do not recite. Say what a result means before giving the number. At most one number per sentence, rounded, with the comparison that makes it meaningful (your usual, last week, the month before). Leave out any number the person can already see on screen unless it carries the point.
 - Be brief. No greetings, filler or hedging ("it seems", "it might be worth"), no praise for its own sake, no recap of an earlier field, no closing encouragement.
@@ -273,6 +278,7 @@ Rules:
 - week.workouts[].mixMin is [easy, steady, hard] minutes by heart rate (the last 7 days). Describe a session by this mix (mostly easy, a steady middle, a few hard minutes), not by its average heart rate. effortFrom "hr" means the person did not rate the effort and the app read effort1to5 from the heart rate. driftPct is how much the heart rate rose from the first half to the second at the same pace or speed: under ${TH.DRIFT_OK} well paced, ${TH.DRIFT_OK} to ${TH.DRIFT_HIGH} some drift (heat, a long day), over ${TH.DRIFT_HIGH} a lot.
 - week.workouts[].ebike marks an e-bike ride: the motor helps, so its speed and distance say little about fitness. Judge it by time and heart rate only and never compare its speed or distance with other rides.
 - training.fitnessMarker is the watch's own aerobic fitness estimate now and daysApart earlier (four weeks or more). It is a progress marker, not a target: mention it only when it changed, in one sentence.
+- today.strain0to21 counts training plus the time on your feet outside it; today.activity holds the day's steps and active minutes so far. Mention them only when they explain the strain or tonight's sleep, never as a daily target.
 - nutrition holds the app's protein, carbs and fat targets for today in grams, computed from body weight, today's training and the person's food goal. Use these numbers for food questions and turn them into everyday foods and portions (rice, chicken, eggs, tempeh, tofu, fish, fruit). nutrition.eatenToday and lastWeekLogged are what the person logged, often a rough guess and often incomplete for today; estimatedUseKcal is an estimate without all-day activity data, so speak of both as approximate. nutrition.nextSession holds the app's advice for eating before and during the next session; repeat it rather than inventing other amounts. Never prescribe a diet to treat a blood result; for that, advise a doctor or dietitian.
 - today.lastNight.night and week.sleep[].night hold the detailed night from the sleep tracker when there is one: sleep stages in minutes, awake breaks, efficiency, the tracker's own sleep score with its three parts (amount of sleep, solidity, regeneration), and overnight heart rate, heart rate variability and breathing against the tracker's usual (its 28-night baseline). Use them to say how the night went in everyday words (deep sleep, dreaming sleep for REM, time awake, how broken the night was). The tracker's sleep score is its own scale, not the app's recovery score. One pattern across several nights matters more than one night. Never diagnose a sleep disorder from them.
 - Never name an app, a device brand or a data source. Say "your watch" or "your scale" only when where a number came from matters.

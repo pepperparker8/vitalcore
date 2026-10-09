@@ -219,7 +219,7 @@ function strategy(){
   for(let i=6;i>=1;i--){const dt=dAgo(i),x=ws.filter(w=>w.date===dt);seq.push({tr:x.some(w=>stTrains(w,thr)),hard:stHard(dt,x,thr),str:x.some(w=>IS_STR(w.type)),run:x.some(w=>w.type==='Run')});}
   let gapStr=Math.min(99,...rec.filter(w=>IS_STR(w.type)&&daysAgo(w.date)>=1).map(w=>daysAgo(w.date)));
   // v122: after a hard session, hard training waits (wkRec, the same rule as the workout sheet): the latest date from the last few days' workouts
-  const recW=ws.filter(w=>{const a=daysAgo(w.date);return a>=0&&a<TH.REC_BIG_D;}).map(w=>({w,on:wkRec(w,thr).hardOn})).filter(r=>r.on>t)
+  const recW=ws.filter(w=>{const a=daysAgo(w.date);return a>=0&&a<Math.max(TH.REC_BIG_D,TH.BB_CAP);}).map(w=>({w,on:wkRec(w,thr).hardOn})).filter(r=>r.on>t)
     .sort((a,b)=>a.on<b.on?1:a.on>b.on?-1:0)[0]||null;
   const recOn=dt=>!!recW&&dt<recW.on,recWhy=recW?`still recovering from ${wkWhen(recW.w.date)} ${wkNoun(recW.w)}`:'';
   // v126: one long session a calendar week; a long one you already logged this week counts

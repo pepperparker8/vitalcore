@@ -141,7 +141,7 @@ async function pushAll(){
   }finally{_pushing=false;updSyncStatus();}
 }
 // optional tables (added after the first database setup): sync carries on without them and notes it here
-const OPT_FLAG={food:'noFoodTbl',polar:'noPolarTbl'};
+const OPT_FLAG={food:'noFoodTbl',polar:'noPolarTbl',pday:'noDayTbl'};
 async function pullAll(){
   const d=S();
   for(const [n,T] of Object.entries(TBL)){
@@ -191,6 +191,8 @@ async function syncAll(manual){
     if(pol){
       try{const r=await pullPolar();msgs.push(r.n?`${r.n} night${r.n>1?'s':''} from Polar`:'Polar up to date');}
       catch(e){msgs.push(e.message);}
+      // the band's day (v127): steps, active time and 24/7 heart rate; silent, the nights above are what the toast reports
+      try{await pullPolarDay();}catch(e){}
     }
     if(icu){
       try{const r=await pullIntervals();msgs.push(r.n?`${r.n} new from Intervals.icu`:'Intervals.icu up to date');}
@@ -463,14 +465,122 @@ function polarNight(day){
     br:(rc&&rc.breathingRateSamples||[]).map(x=>({t:x.startTime,dt:plSec(x.sampleInterval),v:(x.breathingRateValues||[]).map(v=>Math.round(v*10)/10)})),
     rc:rc?{rri:plNum(rc.meanNightlyRecoveryRri),rmssd:plNum(rc.meanNightlyRecoveryRmssd),resp:plNum(rc.meanNightlyRecoveryRespirationInterval),baseRri:plNum(rc.meanBaselineRri),baseRmssd:plNum(rc.meanBaselineRmssd),baseResp:plNum(rc.meanBaselineRespirationInterval),sdRri:plNum(rc.sdBaselineRri),sdRmssd:plNum(rc.sdBaselineRmssd),sdResp:plNum(rc.sdBaselineRespirationInterval)}:null
   };
+  if(h.batteryRanOut)data.batt=1;   // v127: the band ran out of battery during the night, so the recording stops early
   return{date,data};
 }
-// what a night gives the sleep log: Polar's times (local HH:MM), time asleep (span minus time awake), deep, REM and score
+// ── THE NIGHT CUT (v127) ─────────────────────────────────────────────────────
+// A band taken off in the evening and put back on at bedtime can make a night start hours early. The part with the band off is
+// cut from the night: trim = {s, e (seconds from the night's start), by}; by 'auto' (clear signs, worked out again on each download),
+// 'you' (Adjust) or 'off' (Undo or "It is right": no cut). A change you make is never undone by a download.
+const plT=iso=>{const v=Date.parse(iso||'');return isFinite(v)?v:null;};
+const plHm=s=>/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(s||'')?s.slice(11,16):null;
+// HH:MM plus seconds, on the night's own clock
+const plHmAdd=(hm,sec)=>{const[h,m]=hm.split(':').map(Number),t=((h*60+m+Math.round(sec/60))%1440+1440)%1440;return`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;};
+// the night's length in seconds
+const plTot=x=>{const a=plT(x.start),b=plT(x.end);return a!=null&&b!=null&&b>a?Math.round((b-a)/1000):(x.span||0)*60;};
+// stages as segments [from, to, state] in seconds; time before the first change counts as unknown
+function plSegs(x){
+  const tot=plTot(x),h=(x.hyp||[]).filter(c=>c[0]>=0&&c[0]<tot),out=[];
+  if(!h.length||h[0][0]>0)out.push([0,h.length?h[0][0]:tot,4]);
+  h.forEach((c,i)=>{const to=i+1<h.length?h[i+1][0]:tot;if(to>c[0])out.push([c[0],to,c[1]]);});
+  return out;
+}
+// minutes of each stage between s and e (seconds); asleep = light, deep and dreaming
+function plWin(n,s,e){
+  const m={0:0,1:0,2:0,3:0,4:0};
+  for(const[a,b,st]of plSegs(n.data)){const x=Math.max(a,s),y=Math.min(b,e);if(y>x)m[st]=(m[st]||0)+(y-x);}
+  const r=v=>Math.round(v/60);
+  return{inBed:r(Math.max(0,e-s)),asleep:r(m[1]+m[2]+m[3]),light:r(m[1]),deep:r(m[2]),rem:r(m[3]),wake:r(m[0]),unknown:r(m[4])};
+}
+// the cut in force, or null
+const plCut=n=>{const t=n&&n.trim;return t&&(t.by==='auto'||t.by==='you')&&t.e>t.s?t:null;};
+// the band's day record, and its 24/7 heart rate as [ms, bpm] between two moments; null when a day in the range has no heart rate,
+// so a day that was never downloaded never reads as "band off"
+const dayOn=date=>(S().polarDays||[]).find(x=>x.date===date)||null;
+function plHrIn(a,b){
+  const out=[],d0=new Date(a),d1=new Date(b);d0.setHours(12,0,0,0);
+  for(const dt=new Date(d0);dt<=d1||ymd(dt)===ymd(d1);dt.setDate(dt.getDate()+1)){
+    const day=dayOn(ymd(dt));if(!day||!(day.data.hr||[]).length)return null;
+    for(const r of day.data.hr){const t0=plT(r.t);if(t0==null)continue;(r.v||[]).forEach((v,i)=>{const ms=t0+i*r.dt*1000;if(v>0&&ms>=a&&ms<=b)out.push([ms,v]);});}
+    if(ymd(dt)===ymd(d1))break;
+  }
+  return out.sort((x,y)=>x[0]-y[0]);
+}
+// minutes a night kept (its cut, else its span); the usual = median of the TRIM_N to 14 nights before
+const plKept=n=>{const c=plCut(n);return c?(c.e-c.s)/60:n.data.span||0;};
+function plUsual(date){
+  const v=(S().polarNights||[]).filter(x=>x.date<date&&daysAgo(x.date)-daysAgo(date)<=14&&x.data.span).map(plKept).sort((a,b)=>a-b);
+  return v.length>=TH.TRIM_N?v[Math.floor(v.length/2)]:null;
+}
+// the edges of a night, in seconds from its start: band back on / off (24/7 heart rate), first / last sleep, unknown runs, first overnight sample
+function plEdges(n){
+  const x=n.data,t0=plT(x.start),tot=plTot(x);if(t0==null||!tot)return null;
+  const seg=plSegs(x),sl=seg.filter(g=>g[2]>=1&&g[2]<=3),hr=plHrIn(t0,t0+tot*1000);
+  const hs=hr?hr.map(p=>Math.round((p[0]-t0)/1000)):null;
+  const sm=[...(x.hrv||[]),...(x.br||[])].filter(r=>(r.v||[]).some(v=>v>0)).map(r=>(plT(r.t)-t0)/1000).filter(v=>isFinite(v));
+  return{tot,seg,
+    firstSleep:sl.length?sl[0][0]:null,lastSleep:sl.length?last(sl)[1]:null,
+    bandOn:hs&&hs.length?hs[0]:null,bandOff:hs&&hs.length?last(hs):null,hrOk:!!(hs&&hs.length),
+    u0:seg.length&&seg[0][2]===4?seg[0][1]:0,uN:seg.length&&last(seg)[2]===4?tot-last(seg)[0]:0,
+    firstSample:sm.length?Math.min(...sm):null};
+}
+// the end of the last sleep at or before a moment (a band taken off after waking ends the night at the last sleep)
+const plSleepEnd=(E,e)=>{const g=E.seg.filter(s=>s[2]>=1&&s[2]<=3&&s[0]<e);if(!g.length)return e;const l=last(g);return l[1]>=e?e:l[1];};
+// clear signs give a cut, weak signs ask. Signals: S1 no 24/7 heart rate at the edge while it is there later that night;
+// S2 no overnight sample (heart rate variability, breathing) in the start gap; S3 an edge run of unknown; S4 a night 90+ min over your usual
+function plTrim(n){
+  const E=plEdges(n);if(!E)return null;
+  const G=TH.TRIM_GAP*60,us=plUsual(n.date),s4=us!=null&&n.data.span>us+TH.TRIM_LONG;
+  const s1=E.hrOk&&E.bandOn>=G,s3=E.u0>=G;
+  const s=s1||s3?Math.max(s1?E.bandOn:0,s3?E.u0:0):0;
+  const s2=s>0&&(E.firstSample==null||E.firstSample>=s-TH.DAY_HR_DT);
+  const e1=E.hrOk&&E.tot-E.bandOff>=G,e3=E.uN>=G;
+  let e=E.tot;if(e1||e3)e=plSleepEnd(E,Math.min(e1?E.bandOff:E.tot,e3?E.tot-E.uN:E.tot));
+  const cs=s>=G&&(s1||s3)&&[s1,s2,s3,s4].filter(Boolean).length>=2,ce=E.tot-e>=G&&(e1||e3)&&[e1,e3,s4].filter(Boolean).length>=2;
+  const cut=cs||ce?{s:cs?s:0,e:ce?e:E.tot}:null;
+  // a cut has to leave a night: at least TRIM_GAP minutes asleep inside it
+  const ok=cut&&cut.e>cut.s&&plWin(n,cut.s,cut.e).asleep>=TH.TRIM_GAP;
+  return{cut:ok?cut:null,ask:!ok&&(s4||s1||s3||e1||e3),E,sig:{s1,s2,s3,s4,e1,e3},at:{s,e},us};
+}
+// a night that may hold time with the band off and has no decision yet: Log and the sheet ask
+const plAsk=n=>!!(n&&!n.trim&&(plTrim(n)||{}).ask);
+// what a night gives the sleep log: Polar's times (local HH:MM), time asleep (span minus time awake), deep, REM and score;
+// inside the cut when there is one (v127), with time asleep and stages counted from the stages inside it
 function polarSleepVals(n){
-  const x=n.data,hm=s=>/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(s||'')?s.slice(11,16):null;
-  if(!x.span||x.span>16*60||!hm(x.start)||!hm(x.end))return null;   // a joined or broken recording: kept as a night, not put in the log
-  const hmOf=m=>m?[Math.floor(m/60),m%60]:[null,null],[dH,dM]=hmOf(x.stages.deep),[rH,rM]=hmOf(x.stages.rem);
-  return{bed:hm(x.start),wake:hm(x.end),durMin:x.asleep||x.span,score:x.score,deepH:dH,deepM:dM,remH:rH,remM:rM};
+  const x=n.data,c=plCut(n),hm=plHm;
+  if(!x.span||!hm(x.start)||!hm(x.end))return null;
+  if(c?c.e-c.s>16*3600:x.span>16*60)return null;   // a joined or broken recording: kept as a night, not put in the log
+  const hmOf=m=>m?[Math.floor(m/60),m%60]:[null,null];
+  if(!c){const[dH,dM]=hmOf(x.stages.deep),[rH,rM]=hmOf(x.stages.rem);
+    return{bed:hm(x.start),wake:hm(x.end),durMin:x.asleep||x.span,score:x.score,deepH:dH,deepM:dM,remH:rH,remM:rM};}
+  const w=plWin(n,c.s,c.e),[dH,dM]=hmOf(w.deep),[rH,rM]=hmOf(w.rem);
+  return{bed:plHmAdd(hm(x.start),c.s),wake:plHmAdd(hm(x.start),c.e),durMin:w.asleep,score:x.score,deepH:dH,deepM:dM,remH:rH,remM:rM};
+}
+// the night in the sleep log: only empty fields and earlier imports are touched (icuFill, who = 'polar')
+function plFillLog(n){
+  const d=S(),sv=n&&polarSleepVals(n);if(!sv||isGone('sl-'+n.date))return false;
+  const ex=d.sleepLogs.find(s=>s.date===n.date);
+  if(!ex){const r={id:'sl-'+n.date,date:n.date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null,bed:null,wake:null};icuFill(r,sv,'polar');put('sleep',r);return true;}
+  const r={...ex};if(icuFill(r,sv,'polar')){put('sleep',r);return true;}
+  return false;
+}
+// work out the automatic cut again for the nights from a date (a decision you made stays), then refill their sleep log
+function plRetrim(from){
+  let n=0;
+  for(const r of(S().polarNights||[]).filter(x=>x.date>=from)){
+    if(!(r.trim&&r.trim.by!=='auto')){
+      const t=plTrim(r),nt=t&&t.cut?{s:t.cut.s,e:t.cut.e,by:'auto'}:null;
+      if(canon(nt)!==canon(r.trim||null)){put('polar',{...r,trim:nt});n++;}
+    }
+    plFillLog(polarOn(r.date));
+  }
+  return n;
+}
+// Undo, "It is right" and Adjust: your decision for a night, kept over every later download
+function plSetTrim(date,trim){
+  const r=polarOn(date);if(!r)return;
+  put('polar',{...r,trim});plFillLog(polarOn(date));recalc();refreshActive();
+  if(typeof loadSleepFor==='function'&&$('slDate')&&$('slDate').value===date)loadSleepFor(date);   // the Log form shows the night as now kept
 }
 // the stored Polar night that ended on this date (Polar's sleep date = the wake-up date, the same date Intervals.icu uses)
 const polarOn=date=>(S().polarNights||[]).find(x=>x.date===date)||null;
@@ -488,22 +598,100 @@ async function pullPolar(){
   for(const day of j.days||[]){
     const night=polarNight(day);if(!night)continue;
     const id='pn-'+night.date,old=d.polarNights.find(x=>x.id===id);
-    if(!old||canon(old.data)!==canon(night.data)){put('polar',{id,date:night.date,data:night.data});n++;}
-    // the night in the sleep log: only empty fields and earlier imports are touched (icuFill, who = 'polar')
-    const sv=polarSleepVals(night);if(!sv||isGone('sl-'+night.date))continue;
-    const ex=d.sleepLogs.find(s=>s.date===night.date);
-    if(!ex){const r={id:'sl-'+night.date,date:night.date,score:null,durMin:null,deepH:0,deepM:0,remH:0,remM:0,rested:null,bed:null,wake:null};icuFill(r,sv,'polar');put('sleep',r);}
-    else{const r={...ex};if(icuFill(r,sv,'polar'))put('sleep',r);}
+    // a changed night keeps its cut (put replaces the whole record); an automatic one is worked out again below
+    if(!old||canon(old.data)!==canon(night.data)){put('polar',{id,date:night.date,data:night.data,trim:old&&old.trim||null});n++;}
   }
   if(d.polarNights.length>TBL.polar.lim)d.polarNights=d.polarNights.slice(-TBL.polar.lim);
+  // the cut, then the sleep log (only empty fields and earlier imports are touched)
+  plRetrim(from);
   d.polarAt=Date.now();save(d);
+  return{n};
+}
+// ── THE BAND'S DAY (v127) ────────────────────────────────────────────────────
+// steps, active time, calories, sitting and 24/7 heart rate: one compact record a day, polarDays[] {id 'pd-<date>', date, data}
+// (synced as jsonb). Field names are read loosely, the same answer can name them in more than one way.
+// seconds from a number, "123s" or "PT1H2M3S"
+const plDur=v=>{
+  if(typeof v==='number')return isFinite(v)&&v>=0?v:null;
+  if(typeof v!=='string')return null;
+  const m=v.match(/^PT?(?:([\d.]+)H)?(?:([\d.]+)M)?(?:([\d.]+)S)?$/);
+  if(m&&(m[1]||m[2]||m[3]))return(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);
+  const n=parseFloat(v);return isFinite(n)&&n>=0?n:null;
+};
+// the first of these keys that holds a plain value, at the top or one level down
+function plPick(o,keys,dp=0){
+  if(!o||typeof o!=='object'||Array.isArray(o))return null;
+  for(const k of keys)if(o[k]!=null&&typeof o[k]!=='object')return o[k];
+  if(dp<1)for(const v of Object.values(o)){const x=plPick(v,keys,dp+1);if(x!=null)return x;}
+  return null;
+}
+// a moment as local ISO text without an offset
+const plIso=ms=>{const x=new Date(ms);return ymd(x)+'T'+[x.getHours(),x.getMinutes(),x.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');};
+// a sample time: full ISO, or "HH:MM(:SS)" on the day's date
+const plLocal=(t,date)=>typeof t!=='string'?null:/^\d\d:\d\d/.test(t)?plT(date+'T'+(t.length===5?t+':00':t.slice(0,8))):plT(t);
+const PL_HR_K=['heartRate','heart_rate','hr','bpm','value'],PL_T_K=['sampleTime','sample_time','time','timestamp','startTime','start'];
+// 24/7 heart rate, as samples or as runs, into runs {t, dt, v[]} of one mean per DAY_HR_DT seconds (20 to 250 bpm kept)
+function plHrRuns(raw,date){
+  const pts=[];
+  const walk=(o,dp)=>{
+    if(!o||typeof o!=='object'||dp>4)return;
+    if(Array.isArray(o)){o.forEach(x=>walk(x,dp+1));return;}
+    const vals=o.values||o.hrValues||o.heartRateValues,t0=plLocal(plPick(o,['startTime','start']),date),dt=plDur(o.sampleInterval??o.interval);
+    if(Array.isArray(vals)&&t0!=null&&dt){vals.forEach((v,i)=>pts.push([t0+i*dt*1000,+v]));return;}
+    const hr=PL_HR_K.map(k=>o[k]).find(v=>typeof v==='number'),t=plLocal(PL_T_K.map(k=>o[k]).find(v=>typeof v==='string'),date);
+    if(hr!=null&&t!=null){pts.push([t,hr]);return;}
+    Object.values(o).forEach(v=>walk(v,dp+1));
+  };
+  walk(raw,0);
+  const bin=TH.DAY_HR_DT*1000,by=new Map();
+  for(const[t,v]of pts)if(isFinite(t)&&v>=20&&v<=250){const k=Math.floor(t/bin);const b=by.get(k)||[0,0];b[0]+=v;b[1]++;by.set(k,b);}
+  const runs=[];let cur=null,prev=null;
+  for(const k of[...by.keys()].sort((a,b)=>a-b)){
+    const m=Math.round(by.get(k)[0]/by.get(k)[1]);
+    if(cur&&k===prev+1)cur.v.push(m);else runs.push(cur={t:plIso(k*bin),dt:TH.DAY_HR_DT,v:[m]});
+    prev=k;
+  }
+  return runs;
+}
+// one day in compact form: steps, act (active minutes), kcal, sit (sitting minutes), hr runs, hrLo / hrHi (lowest and highest 5-minute mean)
+function polarDay(raw){
+  const date=raw&&raw.date;if(!date)return null;
+  const a=raw.activity,hr=plHrRuns(raw.hr,date),mins=v=>{const x=plDur(v);return x!=null&&x/60<=1440?Math.round(x/60):null;};
+  const data={
+    steps:plNum(Number(plPick(a,['steps','stepCount','stepsCount','activeSteps','active-steps','totalSteps']))),
+    act:mins(plPick(a,['activeDuration','activeTime','active-time','active-duration','activityTime'])),
+    kcal:plNum(Number(plPick(a,['calories','totalCalories','kcal']))),
+    sit:mins(plPick(a,['inactivityDuration','inactiveDuration','sedentaryDuration','inactiveTime','sittingTime']))
+  };
+  const hv=hr.flatMap(r=>r.v);
+  if(hv.length)Object.assign(data,{hr,hrLo:Math.min(...hv),hrHi:Math.max(...hv)});
+  Object.keys(data).forEach(k=>data[k]==null&&delete data[k]);
+  return Object.keys(data).length?{date,data}:null;
+}
+async function pullPolarDay(){
+  const d=S();if(!d.polarKey)return{n:0};
+  d.polarDays=d.polarDays||[];
+  // first time the last 28 days; after that from two days before the newest stored day, so today refreshes on every sync
+  const newest=last(d.polarDays),from=newest?dAgo(Math.min(28,Math.max(0,daysAgo(newest.date))+2)):dAgo(28);
+  const j=await polarFetch(`/polar-day?from=${from}&to=${dAgo(-1)}`);
+  let n=0;
+  for(const raw of j.days||[]){
+    const day=polarDay(raw);if(!day)continue;
+    const id='pd-'+day.date,old=d.polarDays.find(x=>x.id===id);
+    if(!old||canon(old.data)!==canon(day.data)){put('pday',{id,date:day.date,data:day.data});n++;}
+  }
+  d.polarDays.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  if(d.polarDays.length>TBL.pday.lim)d.polarDays=d.polarDays.slice(-TBL.pday.lim);
+  // the heart rate shows when the band was off, so the nights next to these days are cut again (from the evening before)
+  if(n)plRetrim(ymd(new Date(new Date(from+'T12:00:00').getTime()-864e5)));
+  d.polarDayAt=Date.now();save(d);
   return{n};
 }
 // Settings > Polar
 function polarNote(){
   const d=S(),a=d.polarNights||[],l=last(a);
   if(!d.polarKey)return'';
-  return(a.length?`${a.length} night${a.length>1?'s':''} stored, newest ${fmtD(l.date)}.`:'No nights pulled yet. Save, then tap Sync.')+(d.noPolarTbl&&_auth?' Cloud backup for them starts after a one-time database update (docs/supabase-v116.sql).':'');
+  return(a.length?`${a.length} night${a.length>1?'s':''} stored, newest ${fmtD(l.date)}.`:'No nights pulled yet. Save, then tap Sync.')+(d.noPolarTbl&&_auth?' Cloud backup for them starts after a one-time database update (docs/supabase-v116.sql, then docs/supabase-v127.sql).':'');
 }
 async function testPolar(){
   const res=$('polTestRes'),key=$('sPolarKey').value.trim();

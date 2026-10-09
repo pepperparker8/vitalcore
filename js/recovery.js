@@ -45,6 +45,15 @@ function loadK(){
 }
 const wLoad=w=>wIcu(w).load>0?wIcu(w).load*loadK():(w.durMin||30)*(w.rpe||3);
 const dayLoad=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+wLoad(w),0);
+// v127: minutes on your feet outside workouts count in strain. The band's active time, else from steps (over STEP_BASE,
+// one minute per STEP_RATE); null with neither. Workout minutes come off, so a session is never counted twice.
+function actMin(date){
+  const p=dayOn(date),a=p&&p.data||{},st=a.steps??((S().wellness||{})[date]||{}).steps;
+  return a.act!=null?a.act:st!=null?Math.max(0,st-TH.STEP_BASE)/TH.STEP_RATE:null;
+}
+const actLoad=date=>{const m=actMin(date);if(!m)return 0;const wm=S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);return Math.max(0,m-wm)*TH.ACT_K;};
+// strain, sleep need and the strain sheet read this; training rules (hard days, drivers, briefing pairs) stay on dayLoad
+const strainLoad=date=>dayLoad(date)+actLoad(date);
 function recoveryDrivers(){
   const d=S(),out=[];
   const hv=latestOf('hrv'),hb=wSeries('hrv');
@@ -66,12 +75,12 @@ function recoveryDrivers(){
       ft:`Breathing ${df.toFixed(1)} a minute above usual`,txt:'Can be an early sign of illness. Watch how you feel.'});
   }
   const goal=Math.round((d.profile.sleepGoal||7.5)*60),sl=last(d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<=1));
-  if(sl){
+  if(sl&&slCounts(sl)){
     const df=sl.durMin-goal;
     out.push({k:'sleep',label:'Last night',val:fmtDur(sl.durMin),base:`goal ${fmtDur(goal)}`,delta:df,st:df>=-20?'ok':df>=-60?'warn':'bad',
       ft:`Short night: ${fmtDur(-df)} under your goal`,txt:'An earlier night tonight helps.'});
   }
-  const wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7);
+  const wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7&&slCounts(s));
   if(wk.length>=3){
     const debt=wk.reduce((a,s)=>a+(goal-s.durMin),0);
     out.push({k:'debt',label:'Sleep debt, 7 nights',val:debt>0?fmtDur(debt):'none',base:`${wk.length} nights logged`,delta:-debt,st:debt<=60?'ok':debt<=180?'warn':'bad',
@@ -135,8 +144,9 @@ function calcBody(){
   else missing.push({k:'rhr',why:!rv?'no resting heart rate for today yet':`resting heart rate baseline has ${rb.n} of ${TH.MIN_BASE_DAYS} days`});
   // sleep: the night ending today, else yesterday, against what you needed that night: 100 at the full need, 0 at TH.SLEEP_FLOOR of it; Polar's solidity (0 to 100) takes TH.SOLIDITY_W when present
   const sl=bodyNight();
-  if(sl){
-    const prev=dAgo(daysAgo(sl.date)+1),need=sleepNeed(strainOf(dayLoad(prev)),sl.date),pct=sl.durMin/need;
+  if(sl&&!slCounts(sl))missing.push({k:'sleep',why:'your band ran out of battery during the night'});   // v127: missing, not short
+  else if(sl){
+    const prev=dAgo(daysAgo(sl.date)+1),need=sleepNeed(strainOf(strainLoad(prev)),sl.date),pct=sl.durMin/need;
     const dur=clampN((pct-TH.SLEEP_FLOOR)/(1-TH.SLEEP_FLOOR)*100);
     const pn=polarOn(sl.date),sol=pn&&pn.data&&pn.data.parts&&pn.data.parts.solidity>0?pn.data.parts.solidity:null;
     parts.sleep={pts:sol!=null?dur*(1-TH.SOLIDITY_W)+sol*TH.SOLIDITY_W:dur,durMin:sl.durMin,need,pct,sol,date:sl.date};

@@ -1048,6 +1048,337 @@ seq('v125 icons',async()=>{
   check('v125 icons: the cache name follows the version',swj.includes("'vitalcore-v"+APP_VER+"'"),APP_VER);
 });
 
+// v127: the band's day (steps, active time, 24/7 heart rate), the battery flag and the night cut, all with synthetic data
+const PST=['SLEEP_STATE_WAKE','SLEEP_STATE_NON_REM2','SLEEP_STATE_NON_REM3','SLEEP_STATE_REM'];
+// a night as the backend passes it on; hyp [[seconds, 0 wake | 1 light | 2 deep | 3 REM | 4 unknown]]
+function rawNight(date,start,end,hyp,o={}){
+  const tot=(new Date(end)-new Date(start))/1000,seg=hyp.map((c,i)=>[c[0],i+1<hyp.length?hyp[i+1][0]:tot,c[1]]);
+  const sum=st=>seg.filter(g=>st.includes(g[2])).reduce((a,g)=>a+g[1]-g[0],0);
+  return{date,sleep:{sleepResult:{hypnogram:{sleepStart:start,sleepEnd:end,sleepStateChanges:hyp.map(([t,s])=>({offsetFromStart:t+'s',newState:PST[s]||'SLEEP_STATE_UNKNOWN'})),...(o.batt?{batteryRanOut:true}:{})},sleepCycles:[]},
+    sleepScore:{sleepScore:o.score||70,groupSolidityScore:60},
+    sleepEvaluation:{sleepSpan:tot+'s',asleepDuration:sum([1,2,3])+'s',phaseDurations:{wake:sum([0])+'s',light:sum([1])+'s',deep:sum([2])+'s',rem:sum([3])+'s',unknown:sum([4])+'s'}}},
+    recharge:o.hrvT?{hrvSamples:[{startTime:o.hrvT,sampleInterval:'300s',hrvValues:Array.from({length:80},()=>50)}]}:null};
+}
+// band off 19:00, back on 22:40, asleep by 22:50; the band read the evening as light and deep sleep, so it recorded 10h 10min asleep
+const CUT_HYP=[[0,1],[5400,2],[7200,1],[11100,0],[11700,1],[14400,2],[18000,3],[21600,1],[25200,2],[28800,3],[32400,1],[37200,0]];
+const cutNight=(o={})=>{const y=dAgo(1),dt=td();return rawNight(dt,y+'T19:35:00',dt+'T06:13:00',CUT_HYP,{hrvT:y+'T22:45:00',...o});};
+// 24/7 heart rate: on all day until 19:00, back on at 22:40, on through the night
+const cutDays=()=>{const y=dAgo(1),dt=td(),run=(d,t,n,v)=>({t:d+'T'+t+':00',dt:300,v:Array.from({length:n},()=>v)});
+  return[{id:'pd-'+y,date:y,data:{hr:[run(y,'06:00',156,72),run(y,'22:40',16,56)],hrLo:56,hrHi:72}},{id:'pd-'+dt,date:dt,data:{hr:[run(dt,'00:00',96,52)],hrLo:52,hrHi:52}}];};
+const slOf=dt=>_s.sleepLogs.find(x=>x.date===dt)||{};
+run('v127 band',()=>{
+  const n=polarNight(cutNight()),b=polarNight(cutNight({batt:true}));
+  check('v127 band: a night that ran out of battery is marked, one that did not is not',b.data.batt===1&&!('batt' in n.data)&&n.data.asleep===610&&n.data.span===638,`battery ${b.data.batt}, other ${n.data.batt}, asleep ${n.data.asleep}, span ${n.data.span}`);
+  const y=dAgo(1),D=polarDay({date:y,activity:{steps:8000,activeDuration:'PT1H30M',calories:2400,inactivityDuration:'PT9H'},hr:{samples:[{startTime:'06:00',sampleInterval:'60s',values:[60,62,64,66,68,70,70,70,70,70,300]}]}});
+  const r=D&&D.data.hr||[];
+  check('v127 band: a day keeps steps, active time, calories and sitting in minutes',D&&D.date===y&&D.data.steps===8000&&D.data.act===90&&D.data.kcal===2400&&D.data.sit===540,JSON.stringify(D&&{...D.data,hr:undefined}));
+  check('v127 band: heart rate given as runs is kept as one mean per 5 minutes, impossible values left out',r.length===1&&r[0].t===y+'T06:00:00'&&r[0].dt===TH.DAY_HR_DT&&JSON.stringify(r[0].v)==='[64,70]'&&D.data.hrLo===64&&D.data.hrHi===70,JSON.stringify(r));
+  const P=polarDay({date:y,hr:{heartRateSamples:[{sampleTime:'22:40:00',heartRate:55},{sampleTime:'22:42:00',heartRate:57},{sampleTime:'22:47:00',heartRate:60},{sampleTime:'23:10:00',heartRate:50},{sampleTime:'23:11:00',heartRate:10}]}});
+  const pr=P&&P.data.hr||[];
+  check('v127 band: heart rate given as single samples makes the same runs, a gap starts a new run',pr.length===2&&pr[0].t===y+'T22:40:00'&&JSON.stringify(pr[0].v)==='[56,60]'&&pr[1].t===y+'T23:10:00'&&JSON.stringify(pr[1].v)==='[50]'&&P.data.hrLo===50&&!('steps' in P.data),JSON.stringify(pr));
+  check('v127 band: an empty day is not stored',polarDay({date:y,activity:{},hr:null})===null&&polarDay({})===null);
+  check('v127 band: durations read as numbers, seconds and ISO',plDur(90)===90&&plDur('300s')===300&&plDur('PT1H2M3S')===3723&&plDur('PT45M')===2700&&plDur('x')===null);
+});
+run('v127 cut',()=>{
+  const dt=td();
+  base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=cutDays();
+  _s.polarNights=[{id:'pn-'+dt,...polarNight(cutNight())}];
+  const T=plTrim(polarOn(dt));
+  check('v127 cut: no heart rate and no overnight readings before 22:40 are clear signs',T&&T.cut&&T.cut.s===11100&&T.cut.e===38280&&T.sig.s1&&T.sig.s2&&!T.sig.s3&&!T.sig.e1,JSON.stringify(T&&{cut:T.cut,sig:T.sig}));
+  plRetrim(dAgo(2));
+  const n=polarOn(dt),L=slOf(dt);
+  check('v127 cut: the night is cut by itself and marked as automatic',n.trim&&n.trim.s===11100&&n.trim.e===38280&&n.trim.by==='auto'&&!plAsk(n),JSON.stringify(n.trim));
+  check('v127 cut: the sleep log starts at 22:40 and time asleep is counted inside the cut (10h 10min becomes 7h 5min)',L.bed==='22:40'&&L.wake==='06:13'&&L.durMin===425&&L.src&&L.src.bed==='polar',`${L.bed} to ${L.wake}, ${L.durMin} min`);
+  const w=plWin(n,n.trim.s,n.trim.e);
+  check('v127 cut: deep and dreaming sleep come only from inside the cut',L.deepH===2&&L.deepM===0&&L.remH===2&&L.remM===0&&w.deep===120&&n.data.stages.deep===150&&w.inBed===453,`deep ${w.deep} of ${n.data.stages.deep}, dreaming ${w.rem}, in bed ${w.inBed}`);
+  // without the 24/7 heart rate the same night has one sign only (no overnight readings), so nothing is cut and nothing is asked
+  _s.polarDays=[];_s.polarNights[0].trim=null;const T2=plTrim(polarOn(dt));
+  check('v127 cut: a night with no heart rate downloaded for its days is never read as band off',T2&&!T2.cut&&!T2.sig.s1&&!T2.ask,JSON.stringify(T2&&T2.sig));
+  // an unknown stretch at the start with no heart rate is clear too, and the end is cut at the last sleep when the band came off after waking
+  _s.polarDays=cutDays();_s.polarDays[1].data.hr=[{t:dt+'T00:00:00',dt:300,v:Array.from({length:60},()=>52)}];
+  _s.polarNights=[{id:'pn-'+dt,...polarNight(rawNight(dt,dAgo(1)+'T21:00:00',dt+'T07:30:00',[[0,4],[6000,1],[9000,2],[12000,3],[15000,1],[17400,0],[17700,1],[18000,4]],{hrvT:dAgo(1)+'T22:45:00'}))}];
+  const T3=plTrim(polarOn(dt));
+  check('v127 cut: an unknown start and a band taken off after waking cut both ends, at band on and at the last sleep',T3&&T3.cut&&T3.cut.s===6000&&T3.cut.e===18000&&T3.sig.s3&&T3.sig.e1&&T3.sig.e3,JSON.stringify(T3&&{cut:T3.cut,sig:T3.sig}));
+  _s.polarNights[0].data.hyp=_s.polarNights[0].data.hyp.map((c,i,h)=>i===h.length-1?[c[0],0]:c);const T4=plTrim(polarOn(dt));
+  check('v127 cut: heart rate stopping alone at the end is one sign, so the end is kept',T4&&T4.cut&&T4.cut.s===6000&&T4.cut.e===37800&&T4.sig.e1&&!T4.sig.e3,JSON.stringify(T4&&T4.cut));
+});
+run('v127 ask',()=>{
+  const dt=td(),y=dAgo(1);
+  base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=[];
+  _s.polarNights=[];for(let i=1;i<=8;i++){const d0=dAgo(i),d1=dAgo(i+1);_s.polarNights.push({id:'pn-'+d0,date:d0,data:{start:d1+'T23:00:00',end:d0+'T06:30:00',span:450,asleep:420,stages:{deep:90,rem:90},hyp:[[0,1]]}});}
+  _s.polarNights.reverse();
+  _s.polarNights.push({id:'pn-'+dt,...polarNight(rawNight(dt,y+'T20:30:00',dt+'T07:00:00',[[0,1],[3600,2],[7200,1],[14400,3],[21600,1],[36000,0]],{hrvT:y+'T20:35:00'}))});
+  const T=plTrim(polarOn(dt));
+  check('v127 ask: a night far longer than usual with nothing else is not cut, it is asked about',T&&!T.cut&&T.ask&&T.sig.s4&&plUsual(dt)===450,JSON.stringify(T&&T.sig)+' usual '+plUsual(dt));
+  plRetrim(dAgo(2));
+  const n=polarOn(dt),L=slOf(dt);
+  check('v127 ask: nothing is cut, the log keeps the whole night and the night is marked to ask',n.trim==null&&plAsk(n)&&L.bed==='20:30'&&L.durMin===n.data.asleep&&!plAsk(polarOn(dAgo(1))),`trim ${JSON.stringify(n.trim)}, log ${L.bed} ${L.durMin} min`);
+  n.trim={s:0,e:37800,by:'off'};
+  check('v127 ask: once answered, it is not asked again',!plAsk(n));
+});
+seq('v127 decisions',async()=>{
+  const dt=td(),keep={},had={};
+  ['recalc','refreshActive','showToast'].forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=()=>{};});
+  try{
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=cutDays();_s.polarKey='pk-test';
+    _s.polarNights=[{id:'pn-'+dt,...polarNight(cutNight())}];plRetrim(dAgo(2));
+    let ans=cutNight();const urls=[];window.fetch=async u=>{urls.push(u);return new Response(JSON.stringify({days:[ans]}),{status:200});};
+    // Undo: the whole night comes back and stays
+    plSetTrim(dt,{s:0,e:38280,by:'off'});
+    check('v127 decisions: Undo puts the whole night back in the log',polarOn(dt).trim.by==='off'&&slOf(dt).bed==='19:35'&&slOf(dt).durMin===610,`${slOf(dt).bed}, ${slOf(dt).durMin} min`);
+    await pullPolar();ans=cutNight({score:72});await pullPolar();
+    check('v127 decisions: after Undo, a new download (the same night, then a changed one) does not cut it again',polarOn(dt).trim.by==='off'&&polarOn(dt).data.score===72&&slOf(dt).bed==='19:35'&&/\/polar-sleep\?from=/.test(urls[0]),`trim ${JSON.stringify(polarOn(dt).trim)}, score ${polarOn(dt).data.score}, bed ${slOf(dt).bed}`);
+    // Adjust: your own cut wins over a changed download
+    plSetTrim(dt,{s:10800,e:37200,by:'you'});
+    check('v127 decisions: Adjust sets the times and recounts time asleep',slOf(dt).bed==='22:35'&&slOf(dt).wake==='05:55'&&slOf(dt).durMin===plWin(polarOn(dt),10800,37200).asleep,`${slOf(dt).bed} to ${slOf(dt).wake}, ${slOf(dt).durMin} min`);
+    ans=cutNight({score:74});await pullPolar();
+    check('v127 decisions: your own cut survives a changed download',polarOn(dt).trim.by==='you'&&polarOn(dt).trim.s===10800&&polarOn(dt).data.score===74&&slOf(dt).bed==='22:35',JSON.stringify(polarOn(dt).trim));
+    // a bedtime you typed beats the band and your cut
+    const L={...slOf(dt),bed:'23:15'};L.src={...L.src};delete L.src.bed;put('sleep',L);
+    plSetTrim(dt,{s:0,e:38280,by:'off'});
+    check('v127 decisions: a bedtime you typed is never replaced',slOf(dt).bed==='23:15'&&slOf(dt).wake==='06:13',`${slOf(dt).bed} to ${slOf(dt).wake}`);
+    // an automatic cut is worked out again on a download: with no heart rate stored for those days it is lifted
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=cutDays();_s.polarKey='pk-test';
+    _s.polarNights=[{id:'pn-'+dt,...polarNight(cutNight())}];plRetrim(dAgo(2));const was=polarOn(dt).trim.by;
+    _s.polarDays=[];ans=cutNight({score:73});await pullPolar();
+    check('v127 decisions: an automatic cut is worked out again on each download',was==='auto'&&polarOn(dt).trim==null&&slOf(dt).bed==='19:35',`before ${was}, after ${JSON.stringify(polarOn(dt).trim)}`);
+  }finally{Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+seq('v127 day sync',async()=>{
+  const dt=td(),y=dAgo(1),A={access_token:'x',refresh_token:'x',expires_at:9e9,user:{id:'uid-a',email:'a@example.com'}};
+  try{
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarKey='pk-test';_s.pending={};
+    _s.polarNights=[{id:'pn-'+dt,...polarNight(cutNight())}];
+    const hr=(t,n,v)=>({startTime:t,sampleInterval:'300s',values:Array.from({length:n},()=>v)});
+    let days=[{date:y,activity:{steps:9000,activeDuration:'PT1H'},hr:{samples:[hr('06:00',156,72),hr('22:40',16,56)]}},{date:dt,activity:{steps:1200},hr:{samples:[hr('00:00',96,52)]}}];
+    const urls=[];window.fetch=async u=>{urls.push(u);return new Response(JSON.stringify({from:'x',to:'y',days,errors:[]}),{status:200});};
+    const a=await pullPolarDay();
+    check('v127 day sync: the first download asks for 28 days up to tomorrow and stores one record a day',a.n===2&&urls[0].includes('/polar-day?from='+dAgo(28)+'&to='+dAgo(-1))&&dayOn(y).id==='pd-'+y&&dayOn(dt).data.steps===1200&&_s.pending['pday|pd-'+dt],urls[0].replace(POLAR_API,''));
+    check('v127 day sync: the heart rate it brings cuts the night next to it',polarOn(dt).trim&&polarOn(dt).trim.by==='auto'&&slOf(dt).bed==='22:40',JSON.stringify(polarOn(dt).trim));
+    const b=await pullPolarDay();
+    check('v127 day sync: the next download starts two days before the newest day and skips unchanged days',b.n===0&&urls[1].includes('from='+dAgo(2)),urls[1].replace(POLAR_API,''));
+    days=[{...days[1],activity:{steps:4300}}];const c=await pullPolarDay();
+    check('v127 day sync: today is refreshed on every sync',c.n===1&&dayOn(dt).data.steps===4300);
+    // the cloud: a missing table is noted and sync carries on; a night's cut travels with it, an empty one as null so the cloud clears too
+    _auth=A;_idKey=false;_s.pending={['pday|pd-'+dt]:5,['polar|pn-'+dt]:5};polarOn(dt).trim=null;const sent={};
+    window.fetch=async(u,o={})=>{if(o.method==='POST'){const t=u.replace(SB_URL+'/rest/v1/','').split('?')[0];sent[t]=JSON.parse(o.body);if(t==='polar_days')return new Response(JSON.stringify({code:'PGRST205',message:'Could not find the table'}),{status:404});}return new Response('[]',{status:200});};
+    await pushAll();
+    const pn=(sent.polar_nights||[])[0]||{},pd=(sent.polar_days||[])[0]||{};
+    check('v127 day sync: without the new table the days wait and the rest uploads',_s.noDayTbl===true&&!!_s.pending['pday|pd-'+dt]&&!_s.pending['polar|pn-'+dt]&&pd.id==='pd-'+dt&&pd.data&&pd.data.steps===4300,Object.keys(sent).join(', '));
+    check('v127 day sync: an empty cut is sent as null so the cloud copy clears',('trim' in pn)&&pn.trim===null&&pn.data&&pn.user_id==='uid-a',Object.keys(pn).join(', '));
+    window.fetch=async u=>/polar_days/.test(u)?new Response(JSON.stringify({code:'PGRST205'}),{status:404}):new Response('[]',{status:200});
+    _s.noDayTbl=false;await pullAll();
+    check('v127 day sync: a download without the new table carries on and notes it',_s.noDayTbl===true&&dayOn(dt));
+    const sql=await (await realFetch('../docs/supabase-v127.sql',{cache:'no-store'})).text();
+    check('v127 day sync: the database script keeps days per person, own rows only, nothing for anyone signed out, and adds the cut',/create table if not exists polar_days/.test(sql)&&/primary key \(user_id, id\)/.test(sql)&&/create policy "own rows" on polar_days for all to authenticated using \(user_id = auth\.uid\(\)\) with check \(user_id = auth\.uid\(\)\)/.test(sql)&&/revoke all on polar_days from anon/.test(sql)&&/alter table polar_nights add column if not exists trim jsonb/.test(sql)&&!/using \(true\)|grant /i.test(sql));
+  }finally{_auth=null;_idKey=false;}
+});
+
+// v127: the night cut on screen: the strip in the sleep sheet, Undo, It is right, the Adjust sheet (chips, keys, clamps, snapping,
+// Save and its Undo) and Log > Sleep for a night that asks. Synthetic nights only; no app or device names on screen.
+seq('v127 sheet',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML=['dtModal','adjModal','lSleep'].map(id=>doc.getElementById(id).outerHTML).join('');document.body.appendChild(box);
+  const dt=td(),toasts=[],keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:(m,a)=>toasts.push({m,a})};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const body=()=>$('dtBody'),strip=()=>body().querySelector('.dt-cut'),txt=el=>el?el.textContent:'',btns=el=>el?[...el.querySelectorAll('button')].map(b=>b.textContent).join():'';
+  const rowOf=l=>{const r=[...body().querySelectorAll('.dt-row')].find(r=>r.firstElementChild&&r.firstElementChild.textContent===l);return r?r.lastElementChild.textContent:'';};
+  const chips=id=>[...$(id).querySelectorAll('.adj-cp')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' | ');
+  const key=(id,k)=>$(id).dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true}));
+  const noNames=t=>!/Polar|Intervals|Garmin|Strava/i.test(t);
+  const night=()=>{base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=cutDays();_s.polarNights=[{id:'pn-'+dt,...polarNight(cutNight())}];plRetrim(dAgo(2));};
+  try{
+    night();openDetail('sleep');let s=strip();
+    check('v127 sheet: an automatic cut shows above the night with what was left out, Undo and Adjust',s&&/^Night trimmed/.test(txt(s))&&txt(s).includes(`Your band was off from 19:35 to 22:40, so the night starts at 22:40: ${fmtDur(425)} asleep, not ${fmtDur(610)}.`)&&btns(s)==='Undo,Adjust'&&!!(s.compareDocumentPosition(body().querySelector('.dt-hy'))&Node.DOCUMENT_POSITION_FOLLOWING)&&!!s.querySelector('svg.ui-i'),txt(s));
+    const off=body().querySelector('.dt-hyp b.dt-off.s'),cut=11100/38280*100,ins=[...body().querySelectorAll('.dt-hyp i')];
+    check('v127 sheet: the part left out is hatched and labelled, and the stages start where the night starts',off&&Math.abs(parseFloat(off.style.width)-cut)<0.05&&txt(off)==='Band off'&&!body().querySelector('.dt-off.e')&&ins.length>0&&ins.every(i=>parseFloat(i.style.left)>=cut-0.01),off&&off.outerHTML);
+    const w=plWin(polarOn(dt),11100,38280);
+    check('v127 sheet: the night and its stages are counted inside the cut',rowOf('Asleep from 22:40 to 06:13')===fmtDur(w.inBed)&&rowOf('Deep sleep')===`${fmtDur(w.deep)} · ${Math.round(w.deep/w.inBed*100)}%`&&rowOf('REM (dreaming)')===`${fmtDur(w.rem)} · ${Math.round(w.rem/w.inBed*100)}%`,[rowOf('Asleep from 22:40 to 06:13'),rowOf('Deep sleep'),rowOf('REM (dreaming)')].join(' / '));
+    check('v127 sheet: no app or device names in the sheet',noNames(body().textContent));
+    s.querySelector('button').click();let t1=toasts.pop();
+    check('v127 sheet: Undo counts the whole night again, says so and offers the cut back',polarOn(dt).trim.by==='off'&&slOf(dt).bed==='19:35'&&slOf(dt).durMin===610&&t1&&t1.m==='The whole night counts again'&&t1.a&&t1.a.label==='Undo',JSON.stringify(polarOn(dt).trim)+' '+(t1&&t1.m));
+    t1.a.fn();refreshDetail();
+    check('v127 sheet: the toast Undo puts the cut back',polarOn(dt).trim.by==='auto'&&slOf(dt).bed==='22:40'&&/^Night trimmed/.test(txt(strip())),JSON.stringify(polarOn(dt).trim));
+    // Adjust: opens on the cut, chips for the usual points, handles as sliders with the time
+    strip().querySelectorAll('button')[1].click();
+    const A=_adj;
+    check('v127 sheet: Adjust opens on the cut night with its chips',$('adjModal').classList.contains('open')&&A&&A.s===11100&&A.e===38280&&chips('adjSc')==='Band back on 22:40* | As recorded 19:35'&&chips('adjEc')==='As recorded 06:13* | Last sleep 05:55'&&$('adjTitle').textContent.startsWith('Adjust last night'),chips('adjSc')+' / '+chips('adjEc'));
+    const hS=$('adjS'),hE=$('adjE');
+    check('v127 sheet: each end is a slider that reads its time',hS.getAttribute('role')==='slider'&&hE.getAttribute('role')==='slider'&&hS.getAttribute('aria-valuetext')==='22:40'&&hS.getAttribute('aria-valuenow')==='185'&&hE.getAttribute('aria-valuetext')==='06:13'&&hS.tabIndex===0,hS.outerHTML);
+    const tl=[...$('adjT').querySelectorAll('.adj-t')].map(e=>e.textContent);
+    check('v127 sheet: the tiles count inside the window and show what time asleep was',tl.length===4&&tl[1]===`Asleep${fmtDur(425)}was ${fmtDur(610)}`&&tl[0]===`In bed${fmtDur(453)}`,tl.join(' | '));
+    check('v127 sheet: the chart draws the stages, the part left out and the heart rate',$('adjSvg').querySelectorAll('rect.adj-s').length>0&&$('adjSvg').querySelectorAll('rect.adj-o').length>0&&$('adjSvg').querySelectorAll('polyline.adj-hr').length>0&&$('adjSvg').querySelectorAll('rect.adj-ov').length===2,$('adjSvg').innerHTML.length);
+    key('adjS','ArrowRight');const k1=A.s;key('adjS','ArrowLeft');key('adjS','PageDown');const k2=A.s;key('adjS','Home');const k3=A.s;key('adjS','End');const k4=A.s;
+    check('v127 sheet: the keys move an end by 5 minutes, 30 with Page keys, Home and End to the limits',k1===11400&&k2===9300&&k3===0&&k4===38280-TH.TRIM_GAP*60&&hS.getAttribute('aria-valuetext')===plHmAdd('19:35',k4),[k1,k2,k3,k4].join());
+    adjSet('s',0);adjSet('e',100);const c1=A.e;adjSet('s',99999);const c2=A.s;adjSet('e',99999);const c3=A.e;
+    check('v127 sheet: the window never gets shorter than the smallest gap and never leaves the night',c1===TH.TRIM_GAP*60&&c2===0&&c3===38280,[c1,c2,c3].join());
+    check('v127 sheet: a drag snaps to the nearest stage change or band edge within 10 minutes, else to the minute',adjSnap(11250)===11100&&adjSnap(11500)===11700&&adjSnap(3030)===3060,[adjSnap(11250),adjSnap(11500),adjSnap(3030)].join());
+    [...$('adjSc').querySelectorAll('.adj-cp')][0].click();[...$('adjEc').querySelectorAll('.adj-cp')][1].click();
+    check('v127 sheet: a chip moves its end there and shows it chosen',A.s===11100&&A.e===37200&&chips('adjEc')==='As recorded 06:13 | Last sleep 05:55*'&&[...$('adjEc').querySelectorAll('.adj-cp')][1].getAttribute('aria-pressed')==='true',chips('adjEc'));
+    check('v127 sheet: no app or device names in Adjust',noNames($('adjModal').textContent));
+    adjSave();let t2=toasts.pop();
+    check('v127 sheet: Save keeps your times as yours, closes the sheet and offers Undo',polarOn(dt).trim.by==='you'&&polarOn(dt).trim.s===11100&&polarOn(dt).trim.e===37200&&slOf(dt).wake==='05:55'&&!$('adjModal').classList.contains('open')&&!_adj&&t2&&t2.m==='Night saved'&&t2.a.label==='Undo',JSON.stringify(polarOn(dt).trim));
+    refreshDetail();
+    check('v127 sheet: your own cut says so and the part left out says Left out',/^Night adjusted/.test(txt(strip()))&&txt(strip()).includes('You set the night to 22:40 to 05:55')&&!/Band off/.test(txt(body().querySelector('.dt-hyp'))),txt(strip()));
+    t2.a.fn();
+    check('v127 sheet: Undo after Save puts the earlier cut back',polarOn(dt).trim.by==='auto'&&polarOn(dt).trim.e===38280&&slOf(dt).wake==='06:13',JSON.stringify(polarOn(dt).trim));
+    adjOpen(dt);[...$('adjSc').querySelectorAll('.adj-cp')][1].click();adjSave();let t3=toasts.pop();
+    check('v127 sheet: choosing the whole night keeps it as recorded',polarOn(dt).trim.by==='off'&&polarOn(dt).trim.s===0&&polarOn(dt).trim.e===38280&&slOf(dt).bed==='19:35'&&t3&&t3.m==='Kept as recorded',JSON.stringify(polarOn(dt).trim));
+    closeDetail();
+    // a night that asks: the strip, the Log status and note, then It is right
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=[];
+    _s.polarNights=[];for(let i=8;i>=1;i--){const d0=dAgo(i),d1=dAgo(i+1);_s.polarNights.push({id:'pn-'+d0,date:d0,data:{start:d1+'T23:00:00',end:d0+'T06:30:00',span:450,asleep:420,stages:{deep:90,rem:90},hyp:[[0,1]]}});}
+    _s.polarNights.push({id:'pn-'+dt,...polarNight(rawNight(dt,dAgo(1)+'T20:30:00',dt+'T07:00:00',[[0,1],[3600,2],[7200,1],[14400,3],[21600,1],[36000,0]],{hrvT:dAgo(1)+'T20:35:00'}))});
+    plRetrim(dAgo(2));openDetail('sleep');s=strip();
+    check('v127 sheet: a night far over your usual asks, with Adjust and It is right',s&&/^May include time with your band off/.test(txt(s))&&txt(s).includes(`This night ran ${fmtDur(630)}, ${fmtDur(180)} over your usual.`)&&btns(s)==='Adjust,It is right'&&!body().querySelector('.dt-off'),txt(s));
+    loadSleepFor(dt);const st=logStatus().find(x=>x[0]==='lSleep');
+    check('v127 sheet: Log > Sleep says the night may include time with the band off and offers a check',st[1]===false&&st[2]==='part'&&st[3]==="check last night's sleep"&&slWhy(slOf(dt)).st==='May include time with your band off'&&$('slNote').textContent==='May include time with your band off.Check the night'&&/adjOpen\(/.test($('slNote').querySelector('button.sl-chk').getAttribute('onclick')),JSON.stringify(st)+' '+$('slNote').textContent);
+    check('v127 sheet: no app or device names in the asking night',noNames(txt(s))&&noNames($('slNote').textContent));
+    s.querySelectorAll('button')[1].click();const t4=toasts.pop();
+    check('v127 sheet: It is right keeps the night as recorded and stops asking',polarOn(dt).trim&&polarOn(dt).trim.by==='off'&&polarOn(dt).trim.e===37800&&!plAsk(polarOn(dt))&&!slWhy(slOf(dt))&&logStatus().find(x=>x[0]==='lSleep')[1]===true&&t4&&t4.m==='Kept as recorded'&&$('slNote').textContent==='Recorded automatically. Anything you change here is kept.',JSON.stringify(polarOn(dt).trim)+' '+$('slNote').textContent);
+    // a bedtime you typed ends the question too
+    polarOn(dt).trim=null;const L={...slOf(dt),bed:'22:50',wake:'07:00'};L.src={};put('sleep',L);
+    check('v127 sheet: once you type your own times the night no longer asks',plAsk(polarOn(dt))&&!slAsk(slOf(dt))&&!slWhy(slOf(dt)));
+  }finally{closeDetail();if(_adj)adjClose();box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// v127: a night the band's battery cut short (asleep 22:50, recording stops 03:12) counts as missing, not as a 4h 22min night,
+// in Body, sleep debt, the charts, Today, the sheet, Log and the briefing, until you add your own wake-up time
+seq('v127 battery',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML=doc.querySelector('.hero-card').outerHTML+['dtModal','lSleep'].map(id=>doc.getElementById(id).outerHTML).join('');document.body.appendChild(box);
+  const dt=td(),y=dAgo(1),keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const noNames=t=>!/Polar|Intervals|Garmin|Strava/i.test(t),fac=()=>readinessFactors().find(x=>x.k==='sleep')||{};
+  const BH=[[0,1],[3600,2],[7200,1],[10800,3],[13200,1]];
+  try{
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=[];
+    _s.polarNights=[{id:'pn-'+dt,...polarNight(rawNight(dt,y+'T22:50:00',dt+'T03:12:00',BH,{batt:true,hrvT:y+'T22:55:00'}))}];plRetrim(dAgo(2));
+    const L=slOf(dt),n=polarOn(dt);
+    check('v127 battery: the night goes in the log as recorded, uncut, and does not count',n.data.batt===1&&n.trim==null&&L.bed==='22:50'&&L.wake==='03:12'&&L.durMin===262&&L.src.wake==='polar'&&!slCounts(L)&&slCounts(slOf(y)),`${L.bed} to ${L.wake}, ${L.durMin} min, counts ${slCounts(L)}`);
+    const B=calcBody(),ms=B.missing.find(m=>m.k==='sleep');
+    check('v127 battery: Body lists sleep as missing with the reason, still scores from HRV and resting heart rate, confidence low',B.score!=null&&B.parts.sleep===null&&B.parts.hrv&&B.parts.rhr&&B.conf==='low'&&ms&&ms.why==='your band ran out of battery during the night',JSON.stringify(B.missing));
+    const R=recoveryDrivers(),db=R.find(x=>x.k==='debt');
+    check('v127 battery: no short-night driver and no sleep debt from it',!R.some(x=>x.k==='sleep')&&db&&db.val==='none'&&db.base==='6 nights logged',JSON.stringify(db));
+    check('v127 battery: tonight\'s need ignores it (no extra 45 min for a short night)',sleepNeed(0,dAgo(-1))===450,sleepNeed(0,dAgo(-1)));
+    const pts=Array.from({length:13},(_,i)=>({d:dAgo(13-i),v:7.5})),ml=sleepMeaning({pts,avg:7.5,from:dAgo(13),to:y},450);
+    check('v127 battery: the sleep chart line reads no debt from it',ml==='On your goal on average.',ml);
+    renderGauges();const f=fac();
+    check('v127 battery: Today shows the sleep gauge empty with the reason, and the factor row says not counted',$('slpNum').textContent==='—'&&$('gSlpSub').textContent==='Battery ran out'&&f.v==='Not counted'&&f.n==='battery ran out'&&f.st==='none',`${$('slpNum').textContent} ${$('gSlpSub').textContent} / ${f.v} ${f.n}`);
+    openDetail('sleep');const s=$('dtBody').querySelector('.dt-cut'),bt=s?[...s.querySelectorAll('button')]:[];
+    check('v127 battery: the sheet says the night was cut short, when, that it counts as missing, and offers to add the wake-up time',s&&/^Night cut short/.test(s.textContent)&&s.textContent.includes('Battery ran out at 03:12. Counted as missing, not short.')&&bt.length===1&&bt[0].textContent==='Add wake-up time'&&!!s.querySelector('svg.ui-i')&&!$('dtBody').querySelector('.dt-off'),s&&s.textContent);
+    check('v127 battery: the sheet says until when it was recorded, and the 30-day chart leaves the night out',$('dtBody').textContent.includes('Recorded until 03:12')&&_dtCh&&!_dtCh.series[0].pts.some(p=>p.d===dt)&&_dtCh.series[0].pts.some(p=>p.d===y),_dtCh&&_dtCh.series[0].pts.length);
+    check('v127 battery: no app or device names in the sheet',noNames($('dtBody').textContent));
+    const e1=dtSpec('sleep').effect,bh=S().bodyHist;S().bodyHist={};const e0=dtSpec('sleep').effect;S().bodyHist=bh;
+    check('v127 battery: the effect line says not counted for Body, and before Body is live says the old score reads the part recorded, not that the night was short',e1==='Not counted: the battery ran out.'&&/^Starts the score at \d+ of 100, from the part your band recorded\.$/.test(e0)&&!/short/.test(e0),e1+' / '+e0);
+    closeDetail();
+    loadSleepFor(dt);const st=logStatus().find(x=>x[0]==='lSleep'),w=slWhy(L);
+    check('v127 battery: Log > Sleep asks for the wake-up time',st[1]===false&&st[2]==='part'&&st[3]==='sleep needs your wake-up time'&&w&&w.st==='Battery ran out: add your wake-up time'&&!w.ask&&$('slNote').textContent===w.nt&&!$('slNote').querySelector('button')&&noNames(w.nt+w.st),JSON.stringify(st)+' '+$('slNote').textContent);
+    const I=insightData(),J=JSON.stringify(I);
+    check('v127 battery: the briefing marks the night and says not to call it short',I.today.lastNight&&I.today.lastNight.batteryRanOut===true&&!(I.week.sleep||[]).some(x=>x.batteryRanOut)&&/batteryRanOut on a night/.test(INS_COMMON)&&noNames(J),JSON.stringify(I.today.lastNight));
+    // a cloud copy (no source marks) with the band's wake-up still does not count; one with another wake-up does
+    const C={...L};delete C.src;
+    check('v127 battery: a cloud copy with the band\'s wake-up does not count, one with your own does',!slCounts(C)&&slCounts({...C,wake:'06:40'})&&slCounts({...L,date:y}));
+    // your wake-up time: saved the way Log > Sleep saves it
+    const rec={...L,wake:'06:40',durMin:slSpan('22:50','06:40')};rec.src=manSrc(L,rec,['score','durMin','bed','wake','deepH','deepM','remH','remM','rested']);put('sleep',rec);
+    const L2=slOf(dt),B2=calcBody(),f2=fac();renderGauges();
+    check('v127 battery: once you add your wake-up time the night counts everywhere',L2.src.wake==='man'&&slCounts(L2)&&B2.parts.sleep&&B2.parts.sleep.durMin===470&&!B2.missing.some(m=>m.k==='sleep')&&f2.v===fmtDur(470)&&$('gSlpSub').textContent===fmtDur(470)&&!slWhy(L2)&&recoveryDrivers().some(x=>x.k==='sleep')&&!insightData().today.lastNight.batteryRanOut,`${L2.wake} ${L2.durMin} min, src ${L2.src.wake}`);
+    openDetail('sleep');
+    check('v127 battery: the sheet no longer shows the strip',!$('dtBody').querySelector('.dt-cut')&&!$('dtBody').textContent.includes('Recorded until'));
+    closeDetail();
+    // a night that did not run out of battery is untouched
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=[];
+    _s.polarNights=[{id:'pn-'+dt,...polarNight(rawNight(dt,y+'T22:50:00',dt+'T03:12:00',BH,{hrvT:y+'T22:55:00'}))}];plRetrim(dAgo(2));
+    check('v127 battery: the same short night with no battery flag counts as short',slCounts(slOf(dt))&&calcBody().parts.sleep&&fac().v===fmtDur(262)&&recoveryDrivers().some(x=>x.k==='sleep'),fac().v);
+  }finally{closeDetail();box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// v127: time on your feet outside workouts counts in strain (the band's active minutes, else steps over 5000 at one minute per 100),
+// minus that day's workout minutes; training rules (hard days, drivers, briefing pairs) stay on workouts only
+seq('v127 strain',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML=doc.querySelector('.hero-card').outerHTML;document.body.appendChild(box);
+  const t=td(),y=dAgo(1),keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:()=>{},refreshDetail:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const noNames=x=>!/Polar|Intervals|Garmin|Strava/i.test(x),run40={id:'w-st1',date:t,type:'Run',durMin:40,rpe:3,sets:[],sub:{}};
+  try{
+    base();_s.polarDays=[];
+    const same=[...Array(60)].every((_,i)=>strainLoad(dAgo(i))===dayLoad(dAgo(i)));_s.workouts=[run40];
+    check('v127 strain: with no steps or active time, strain is exactly the training load as before',same&&actMin(t)===null&&actLoad(t)===0&&strainLoad(t)===dayLoad(t)&&dayLoad(t)===120,`${strainLoad(t)} vs ${dayLoad(t)}`);
+    _s.workouts=[];_s.wellness[t].steps=13000;
+    check('v127 strain: steps alone count as minutes on your feet over 5000, one a minute per 100',actMin(t)===80&&actLoad(t)===80*TH.ACT_K&&strainLoad(t)===120,`${actMin(t)} min, load ${strainLoad(t)}`);
+    _s.wellness[t].steps=4200;
+    check('v127 strain: an ordinary 4200 steps adds nothing',actMin(t)===0&&actLoad(t)===0&&strainLoad(t)===0);
+    _s.wellness[t].steps=13000;_s.workouts=[run40];
+    check('v127 strain: workout minutes come off the active time, so a session is not counted twice',actLoad(t)===40*TH.ACT_K&&strainLoad(t)===120+60,`${strainLoad(t)}`);
+    _s.polarDays=[{id:'pd-'+t,date:t,data:{steps:9000,act:50}}];
+    check('v127 strain: the band\'s active minutes win over steps when the band gives them',actMin(t)===50&&actLoad(t)===10*TH.ACT_K,`${actMin(t)} min`);
+    _s.polarDays=[{id:'pd-'+t,date:t,data:{steps:9000}}];
+    check('v127 strain: the band\'s steps win over the other copy when it has no active minutes',actMin(t)===40&&actLoad(t)===0);
+    _s.polarDays=[{id:'pd-'+t,date:t,data:{act:30}}];
+    check('v127 strain: a short session longer than the active time adds nothing more',actLoad(t)===0&&strainLoad(t)===dayLoad(t));
+    // the rules that judge training stay on workouts only
+    _s.polarDays=[];base();_s.workouts=[];for(let i=0;i<30;i++)_s.wellness[dAgo(i)].steps=15000;
+    const D=JSON.stringify(recoveryDrivers().filter(x=>x.k==='load')),C=JSON.stringify(insightCorrelations());
+    for(let i=0;i<30;i++)delete _s.wellness[dAgo(i)].steps;
+    check('v127 strain: training load drivers, briefing pairs and hard days do not read daily activity',D===JSON.stringify(recoveryDrivers().filter(x=>x.k==='load'))&&C===JSON.stringify(insightCorrelations())&&!/strainLoad|actLoad/.test(stHard.toString()+insightCorrelations.toString()+recoveryDrivers.toString()),D);
+    // last night's need counts yesterday's activity
+    base();_s.workouts=[];const n0=calcBody().parts.sleep.need;_s.wellness[y].steps=25000;const n1=calcBody().parts.sleep.need;
+    check('v127 strain: a busy day on your feet yesterday raises last night\'s sleep need',n1>n0&&n1===sleepNeed(strainOf(strainLoad(y)),t),`${n0} → ${n1} min`);
+    // the briefing
+    base();_s.workouts=[];const I0=insightData();_s.wellness[t].steps=13000;const I1=insightData();
+    check('v127 strain: the briefing gets today\'s steps and the strain with them, nothing when there are none',I0.today.activity===undefined&&I1.today.activity&&I1.today.activity.steps===13000&&I1.today.strain0to21===strainOf(120)&&/today\.activity holds/.test(INS_COMMON),JSON.stringify(I1.today.activity));
+    // Today and the sheet
+    const rt=window.restToday;window.restToday=()=>true;renderGauges();
+    check('v127 strain: the gauge shows the strain from activity and still says Rest day on a planned rest day',$('strNum').textContent===strainOf(120).toFixed(1)&&$('gStrSub').textContent==='Rest day',$('strNum').textContent+' '+$('gStrSub').textContent);
+    const r1=dtSpec('strain');window.restToday=rt;
+    const r2=dtSpec('strain');_s.workouts=[run40,{...run40,id:'w-st2',date:dAgo(3)}];_s.wellness[y].steps=13000;const r3=dtSpec('strain');delete _s.wellness[t].steps;delete _s.wellness[y].steps;const r4=dtSpec('strain');
+    check('v127 strain: the sheet says where the strain came from',r1.sub==='Planned rest day, daily activity only'&&r2.sub==='Daily activity only'&&r3.sub==='Run '+fmtDur(40)+', plus daily activity'&&r4.sub==='Run '+fmtDur(40)&&r3.val===strainOf(180).toFixed(1),[r1.sub,r2.sub,r3.sub,r4.sub].join(' / '));
+    check('v127 strain: the usual is per day once activity counts, per training day without it',/^\d+\.\d a day, hard day about /.test(r3.usual)&&/^\d+\.\d on training days, hard day about /.test(r4.usual),r3.usual+' / '+r4.usual);
+    check('v127 strain: no app or device names on the sheet',noNames(r1.sub+r2.sub+r3.sub+r3.usual));
+  }finally{box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// v127: your own bounce-back days. Hard rides `a` days ago; HRV stays low until the morning `back` days after, then is usual again
+run('v127 bounce-back',()=>{
+  const wd=n=>new Date(stAdd(td(),n)+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'}),noNames=x=>!/Polar|Intervals|Garmin|Strava/i.test(x);
+  const fix=(L,o={})=>{base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));
+    for(let i=0;i<150;i++){const dt=dAgo(i);if(!_s.wellness[dt])_s.wellness[dt]={hrv:i%2?56:64,rhr:i%2?49:51};}
+    const W=[];L.forEach(([a,Z,back])=>{W.push(zw(dAgo(a),'Cycle',60,Z));for(let k=1;k<=Math.min(back,TH.BB_MAX);k++)_s.wellness[dAgo(a-k)].hrv=k<back?40:62;});
+    for(let i=2;i<=100;i+=3)if(!L.some(x=>x[0]===i))W.push(zw(dAgo(i),'Cycle',60,Z_EASY));
+    if(o.yday)W.push(zw(dAgo(1),'Cycle',60,Z_HARD));
+    _s.workouts=W;if(o.plan)_s.profile.plan=Object.fromEntries([0,1,2,3,4,5,6].map(d=>[d,{type:'Cycle',note:'tempo'}]));return W;};
+  const six=back=>[12,26,40,54,68,82].map(a=>[a,Z_HARD,back]),yr=()=>_s.workouts.find(w=>w.date===dAgo(1)&&w.sub.icu.z[3]);
+  // six clear readings, back on the third morning
+  fix(six(3),{yday:1,plan:1});let B=bounceDays(),r=wkRec(yr()),rT=wkRec(zw(td(),'Cycle',60,Z_HARD));
+  check('v127 bounce-back: six hard rides with HRV back on the third morning give three days for hard and very hard',B[4]===3&&B[5]===3&&B.n===6,JSON.stringify(B));
+  check('v127 bounce-back: after yesterday\'s hard ride, hard training waits three days and says it is yours',r.own&&r.n===3&&r.hardOn===stAdd(td(),2)&&r.txt===`A hard session. Keep today and tomorrow easy; ready for hard training from ${wd(2)} (you usually need three days).`
+    &&rT.hardOn===stAdd(td(),3)&&rT.txt===`A hard session. Keep the next two days easy; ready for hard training from ${wd(3)} (you usually need three days).`,r.txt+' | '+rT.txt);
+  const h=wkSpec(yr().id).html,st=strategy(),why=x=>x.days.map(d=>d.why).join(' | ');
+  check('v127 bounce-back: the workout page says the same',h.includes('(you usually need three days)')&&noNames(r.txt+h),h.slice(h.indexOf('Recovery'),h.indexOf('Recovery')+200));
+  check('v127 bounce-back: the outline keeps hard days off until then and frees the day after',st.days[0].role!=='hard'&&st.days[1].role!=='hard'&&/still recovering from yesterday's ride/.test(st.days[1].why)&&!/recovering/.test(st.days[2].why),stOut(st)+' | '+why(st));
+  const T0=performance.now();for(let i=0;i<10;i++)strategy();const ms=(performance.now()-T0)/10;
+  check('v127 bounce-back: the outline stays quick with it',ms<150,ms.toFixed(1)+' ms a call');
+  fix([],{yday:1,plan:1});const D=strategy();
+  const rD=wkRec(yr());
+  check('v127 bounce-back: without your own days the usual two days hold, and tomorrow is not held back',!rD.own&&rD.hardOn===stAdd(td(),1)&&!/recovering/.test(D.days[1].why),rD.txt+' | '+why(D));
+  // too few readings: the usual days
+  fix([12,26,40,54].map(a=>[a,Z_HARD,3]),{yday:1});B=bounceDays();r=wkRec(yr());
+  check('v127 bounce-back: four readings are not enough: the usual days, no "you usually"',B[4]===null&&B[5]===null&&B.n===4&&!r.own&&r.hardOn===stAdd(dAgo(1),TH.REC_HARD_D)&&!/usually/.test(r.txt),JSON.stringify(B)+' '+r.txt);
+  // another hard session within four days hides the first one's recovery
+  fix([...[12,26,40,54,68].map(a=>[a,Z_HARD,3]),[10,Z_HARD,1]]);B=bounceDays();
+  check('v127 bounce-back: a hard session followed by another within four days is left out',B.n===5&&B[4]===3,JSON.stringify(B));
+  // never back within five days: read as five, capped at four
+  fix(six(6),{yday:1,plan:1});B=bounceDays();r=wkRec(yr());const S4=strategy();
+  check('v127 bounce-back: not back within five days counts as five and is capped at four',B[4]===TH.BB_CAP&&r.hardOn===stAdd(dAgo(1),TH.BB_CAP)&&/\(you usually need four days\)\.$/.test(r.txt)&&/still recovering/.test(S4.days[2].why)&&!/recovering/.test(S4.days[3].why),JSON.stringify(B)+' '+r.txt+' | '+why(S4));
+  // very hard never shorter than hard
+  fix([...[12,32,52,72,92,112].map(a=>[a,Z_HARD,3]),...[22,42,62,82,102].map(a=>[a,Z_BIG,2])]);B=bounceDays();
+  check('v127 bounce-back: a very hard session never gets fewer days than a hard one',B[4]===3&&B[5]===3&&B.n===11,JSON.stringify(B));
+});
+
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;
