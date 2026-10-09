@@ -608,8 +608,8 @@ async function pullPolar(){
   return{n};
 }
 // ── THE BAND'S DAY (v127) ────────────────────────────────────────────────────
-// steps, active time, calories, sitting and 24/7 heart rate: one compact record a day, polarDays[] {id 'pd-<date>', date, data}
-// (synced as jsonb). Field names are read loosely, the same answer can name them in more than one way.
+// steps, active time, sitting, MET-hours and 24/7 heart rate: one compact record a day, polarDays[] {id 'pd-<date>', date, data}
+// (synced as jsonb). Polar's V4 day (activitySamples per device) is read by plAct; other names are read loosely as a fallback.
 // seconds from a number, "123s" or "PT1H2M3S"
 const plDur=v=>{
   if(typeof v==='number')return isFinite(v)&&v>=0?v:null;
@@ -630,19 +630,23 @@ const plIso=ms=>{const x=new Date(ms);return ymd(x)+'T'+[x.getHours(),x.getMinut
 // a sample time: full ISO, or "HH:MM(:SS)" on the day's date
 const plLocal=(t,date)=>typeof t!=='string'?null:/^\d\d:\d\d/.test(t)?plT(date+'T'+(t.length===5?t+':00':t.slice(0,8))):plT(t);
 const PL_HR_K=['heartRate','heart_rate','hr','bpm','value'],PL_T_K=['sampleTime','sample_time','time','timestamp','startTime','start'];
-// 24/7 heart rate, as samples or as runs, into runs {t, dt, v[]} of one mean per DAY_HR_DT seconds (20 to 250 bpm kept)
+// 24/7 heart rate, as samples or as runs, into runs {t, dt, v[]} of one mean per DAY_HR_DT seconds (20 to 250 bpm kept).
+// The backend sends one mean a minute {date, startTime '00:00:00', sampleInterval '60s', values[]}; a raw Polar sample
+// {heartRate, offsetMillis} is milliseconds from the start of its entry's date
 function plHrRuns(raw,date){
   const pts=[];
-  const walk=(o,dp)=>{
+  const walk=(o,dp,dd)=>{
     if(!o||typeof o!=='object'||dp>4)return;
-    if(Array.isArray(o)){o.forEach(x=>walk(x,dp+1));return;}
-    const vals=o.values||o.hrValues||o.heartRateValues,t0=plLocal(plPick(o,['startTime','start']),date),dt=plDur(o.sampleInterval??o.interval);
+    if(Array.isArray(o)){o.forEach(x=>walk(x,dp+1,dd));return;}
+    if(typeof o.date==='string'&&/^\d{4}-\d\d-\d\d/.test(o.date))dd=o.date.slice(0,10);
+    const vals=o.values||o.hrValues||o.heartRateValues,t0=plLocal(plPick(o,['startTime','start']),dd),dt=plDur(o.sampleInterval??o.interval);
     if(Array.isArray(vals)&&t0!=null&&dt){vals.forEach((v,i)=>pts.push([t0+i*dt*1000,+v]));return;}
-    const hr=PL_HR_K.map(k=>o[k]).find(v=>typeof v==='number'),t=plLocal(PL_T_K.map(k=>o[k]).find(v=>typeof v==='string'),date);
+    const hr=PL_HR_K.map(k=>o[k]).find(v=>typeof v==='number');
+    const t=typeof o.offsetMillis==='number'?plT(dd+'T00:00:00')+o.offsetMillis:plLocal(PL_T_K.map(k=>o[k]).find(v=>typeof v==='string'),dd);
     if(hr!=null&&t!=null){pts.push([t,hr]);return;}
-    Object.values(o).forEach(v=>walk(v,dp+1));
+    Object.values(o).forEach(v=>walk(v,dp+1,dd));
   };
-  walk(raw,0);
+  walk(raw,0,date);
   const bin=TH.DAY_HR_DT*1000,by=new Map();
   for(const[t,v]of pts)if(isFinite(t)&&v>=20&&v<=250){const k=Math.floor(t/bin);const b=by.get(k)||[0,0];b[0]+=v;b[1]++;by.set(k,b);}
   const runs=[];let cur=null,prev=null;
@@ -653,11 +657,50 @@ function plHrRuns(raw,date){
   }
   return runs;
 }
-// one day in compact form: steps, act (active minutes), kcal, sit (sitting minutes), hr runs, hrLo / hrHi (lowest and highest 5-minute mean)
+// seconds after midnight from "HH:MM(:SS)"
+const plClock=t=>typeof t==='string'&&/^\d\d:\d\d/.test(t)?+t.slice(0,2)*3600+ +t.slice(3,5)*60+(+t.slice(6,8)||0):null;
+// Polar's V4 day: per device activitySamples [{stepSamples {startTime, interval ms, steps[]}, metSamples {startTime, interval ms, mets[]},
+// activityInfos [{activityClass, time}] (the moments the class changes)}]. The device with the most steps counts.
+// act = minutes in a moderate or vigorous class (from METs at ACT_MET+ when the day has no classes), sit = sedentary minutes,
+// met = MET-hours (about kcal per kg of body weight). Null when the answer holds no samples.
+function plAct(a){
+  const devs=[];
+  const walk=(o,dp)=>{
+    if(!o||typeof o!=='object'||dp>4)return;
+    if(Array.isArray(o)){o.forEach(x=>walk(x,dp+1));return;}
+    if(Array.isArray(o.activitySamples)){devs.push(o.activitySamples);return;}
+    Object.values(o).forEach(v=>walk(v,dp+1));
+  };
+  walk(a,0);
+  let best=null;
+  for(const list of devs){
+    const r={steps:0,act:0,sit:0,met:0,n:0};let cls=0,hiMet=0;
+    for(const x of list){
+      const st=x&&x.stepSamples||{},me=x&&x.metSamples||{};
+      const sv=Array.isArray(st.steps)?st.steps:[],mv=Array.isArray(me.mets)?me.mets:[];
+      const si=+st.interval>0?+st.interval:60000,mi=+me.interval>0?+me.interval:30000;
+      const s0=plClock(st.startTime)??0,m0=plClock(me.startTime)??0;
+      sv.forEach(v=>{if(typeof v==='number'&&v>=0){r.steps+=v;r.n++;}});
+      mv.forEach(v=>{if(typeof v==='number'&&v>=0){r.met+=v*mi/3.6e6;r.n++;if(v>=TH.ACT_MET)hiMet+=mi;}});
+      // a class lasts until the next change, the last one until the samples end (at most midnight)
+      const end=Math.min(86400,Math.max(sv.length?s0+sv.length*si/1000:0,mv.length?m0+mv.length*mi/1000:0));
+      const ch=(x&&x.activityInfos||[]).map(c=>[plClock(c&&c.time),String(c&&c.activityClass||'')]).filter(c=>c[0]!=null).sort((p,q)=>p[0]-q[0]);
+      ch.forEach((c,i)=>{const to=i+1<ch.length?ch[i+1][0]:end,d=to-c[0];if(d<=0)return;cls++;
+        if(/MODERATE|VIGOROUS/.test(c[1]))r.act+=d;else if(/SEDENTARY/.test(c[1]))r.sit+=d;});
+    }
+    if(!r.n&&!cls)continue;
+    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,met:r.met?Math.round(r.met*10)/10:null};
+    if(!best||(out.steps||0)>(best.steps||0))best=out;
+  }
+  return best;
+}
+// one day in compact form: steps, act (active minutes), sit (sitting minutes), met (MET-hours), kcal (only when Polar gives it),
+// hr runs, hrLo / hrHi (lowest and highest 5-minute mean)
 function polarDay(raw){
   const date=raw&&raw.date;if(!date)return null;
   const a=raw.activity,hr=plHrRuns(raw.hr,date),mins=v=>{const x=plDur(v);return x!=null&&x/60<=1440?Math.round(x/60):null;};
-  const data={
+  const v4=plAct(a);
+  const data=v4?{...v4,kcal:plNum(Number(plPick(a,['calories','totalCalories','kcal'])))}:{
     steps:plNum(Number(plPick(a,['steps','stepCount','stepsCount','activeSteps','active-steps','totalSteps']))),
     act:mins(plPick(a,['activeDuration','activeTime','active-time','active-duration','activityTime'])),
     kcal:plNum(Number(plPick(a,['calories','totalCalories','kcal']))),

@@ -1079,6 +1079,33 @@ run('v127 band',()=>{
   check('v127 band: an empty day is not stored',polarDay({date:y,activity:{},hr:null})===null&&polarDay({})===null);
   check('v127 band: durations read as numbers, seconds and ISO',plDur(90)===90&&plDur('300s')===300&&plDur('PT1H2M3S')===3723&&plDur('PT45M')===2700&&plDur('x')===null);
 });
+// the band's day as the V4 answer sends it: per device activitySamples with steps a minute, METs every 30 s and class changes
+const v4Dev=(steps,mets,infos)=>({deviceReference:{deviceId:'dev'},activitySamples:[{
+  stepSamples:{startTime:'00:00:00',interval:60000,steps},metSamples:{startTime:'00:00:00',interval:30000,mets},
+  ...(infos?{activityInfos:infos}:{}),sportInfos:[],inactivityInfos:[]}]});
+const v4Cls=(time,c,factor=1)=>({activityClass:'ACTIVITY_CLASS_'+c,time,factor});
+run('v127 band v4',()=>{
+  const y=dAgo(1),dt=td();
+  const steps=Array.from({length:1440},(_,i)=>i<600?10:0),mets=Array.from({length:2880},(_,i)=>i>=1080&&i<1200?4:1);
+  // listed out of order on purpose; the first change is not at midnight, the last runs to the end of the samples
+  const infos=[v4Cls('09:00:00','CONTINUOUS_MODERATE'),v4Cls('00:05:00','SLEEP'),v4Cls('07:00:00','SEDENTARY'),v4Cls('22:00:00','SEDENTARY'),v4Cls('09:45:00','CONTINUOUS_VIGOROUS'),v4Cls('10:00:00','LIGHT'),v4Cls('15:00:00','NON_WEAR'),v4Cls('15:20:00','LIGHT')];
+  const small=v4Dev([40,60],[1,1],[v4Cls('00:00:00','CONTINUOUS_VIGOROUS')]);
+  const D=polarDay({date:y,activity:{date:y,activitiesPerDevice:[small,v4Dev(steps,mets,infos)]},hr:null}),a=D&&D.data||{};
+  check('v4 day: steps add up, active time is moderate plus vigorous, sitting is sedentary, the device with the most steps counts',a.steps===6000&&a.act===60&&a.sit===240,JSON.stringify(a));
+  check('v4 day: MET-hours from METs every 30 seconds, rounded to 0.1; no calories when the day gives none',a.met===27&&!('kcal' in a)&&!('hr' in a),JSON.stringify(a));
+  const M=polarDay({date:y,activity:[{date:y,activitiesPerDevice:[v4Dev([5],Array.from({length:40},(_,i)=>i<20?3.5:1.2),null)]}]}),m=M&&M.data||{};
+  check('v4 day: without class changes, active time comes from METs at ACT_MET or more and sitting is left out',m.act===10&&!('sit' in m)&&m.steps===5,JSON.stringify(m));
+  check('v4 day: a device with no samples is not a day',polarDay({date:y,activity:{date:y,activitiesPerDevice:[{deviceReference:{},activitySamples:[]}]}})===null);
+  // heart rate as the backend sends it: one mean a minute from midnight, null where there was no reading
+  const vals=Array.from({length:365},(_,i)=>i<10?50:i>=360?60+2*(i-360):null);
+  const H=polarDay({date:y,hr:[{date:y,deviceRef:'dev',state:'X',startTime:'00:00:00',sampleInterval:'60s',values:vals}]}),hr=H&&H.data.hr||[];
+  check('v4 heart rate: minute means become 5-minute runs, a gap without readings starts a new run',hr.length===2&&hr[0].t===y+'T00:00:00'&&JSON.stringify(hr[0].v)==='[50,50]'&&hr[1].t===y+'T06:00:00'&&JSON.stringify(hr[1].v)==='[64]'&&H.data.hrLo===50&&H.data.hrHi===64,JSON.stringify(hr));
+  // raw samples: offsetMillis counts from the start of each entry's own date
+  const at=(h,mi)=>(h*60+mi)*60000;
+  const R=plHrRuns([{date:y,samples:[{heartRate:55,offsetMillis:at(22,40),triggerType:'X'},{heartRate:57,offsetMillis:at(22,42)},{heartRate:60,offsetMillis:at(22,47)}]},{date:dt,samples:[{heartRate:52,offsetMillis:at(0,1)}]}],y);
+  check('v4 heart rate: raw samples are placed by their offset from midnight of their own date',R.length===2&&R[0].t===y+'T22:40:00'&&JSON.stringify(R[0].v)==='[56,60]'&&R[1].t===dt+'T00:00:00'&&JSON.stringify(R[1].v)==='[52]',JSON.stringify(R));
+  check('v4 clock: "HH:MM:SS" and "HH:MM" read as seconds after midnight',plClock('09:45:30')===35130&&plClock('22:00')===79200&&plClock('x')===null&&plClock(5)===null);
+});
 run('v127 cut',()=>{
   const dt=td();
   base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==dt);_s.polarDays=cutDays();

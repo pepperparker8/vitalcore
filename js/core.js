@@ -133,6 +133,7 @@ const TH={
   TRIM_GAP:30,TRIM_LONG:90,TRIM_N:7,     // a band-off stretch at the edge of a night of 30+ min; a night 90+ min over your usual span (median of the 14 before, from 7) is long
   ADJ_STEP:5,ADJ_PAGE:30,ADJ_SNAP:10,   // Adjust a night: arrow keys move 5 min, Page Up / Down 30 min; a drag snaps to a stage change or the band within 10 min
   ACT_K:1.5,STEP_BASE:5000,STEP_RATE:100, // strain load per active minute outside workouts; without active time: minutes = steps over 5000 / 100
+  ACT_MET:3,                             // the band's active minutes: moderate and vigorous activity; read from 3+ MET when a day has no activity classes
   BB_MAX:5,BB_MIN_N:5,BB_FREE_D:4,       // bounce-back: back within 5 days counts; a class needs 5 readings; no other hard session in the 4 days after
   BB_DAYS:120,BB_HRV_SD:0.5,BB_RHR_SD:1,BB_CAP:4 // read from the last 120 days; back = HRV at least usual less 0.5 SD, resting HR at most usual plus 1 SD; never more than 4 days
 };

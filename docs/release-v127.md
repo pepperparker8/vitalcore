@@ -3,17 +3,16 @@
 This release adds the data and the logic. The new WHOOP-style Today and sheets from the approved mockups come in v128, and the athlete insights come in v129.
 
 What changes:
-- Your band's daily steps, active time and 24/7 heart rate are now downloaded and kept.
+- Your band's daily steps, active time, sitting time and 24/7 heart rate are now downloaded and kept. Active time is the band's moderate and vigorous minutes. Workouts still come only from your watch through Intervals.icu.
 - A night that started hours early is cut back to the time you actually slept. This happens when the band was off in the evening and back on at bedtime.
 - A night where the battery ran out counts as missing, not as a short night.
 - Time on your feet outside workouts now counts in strain.
 - After a hard session, the outline waits as long as your body usually takes to bounce back.
 
 ## Before you use it
-1. **Run `docs/supabase-v127.sql` once** in Supabase > SQL Editor. It adds the table for the band's day and the night cut column, and it changes no data. Until it runs, nights still download and show on the phone, but their cloud backup pauses. Settings says so under Polar.
-2. **Deploy the backend:** run `vercel --prod` in `vitalcore-backend`. This adds the new `polar-day` route. Until then the app falls back to the step count from Intervals.icu for strain, and the night cut works without 24/7 heart rate (see Risks).
-3. **Tell Claude once it is deployed.** Claude runs one check that reads only the field names (never values), fixes the names if Polar's differ from the expected ones, and you deploy once more.
-4. **Push from GitHub Desktop, then open the app online on your phone.** Settings should show Version 127.
+1. **`docs/supabase-v127.sql`** adds the table for the band's day and the night cut column, and changes no data. Done: it has run and was checked. On another Supabase project, run it once in SQL Editor; until then nights still download and show on the phone, but their cloud backup pauses, and Settings says so under Polar.
+2. **The backend** (`vitalcore-backend`, route `polar-day`) is deployed and was checked against Polar: the field check read only names and types, and the route now uses Polar's real paths and fields.
+3. **Push both repos from GitHub Desktop, then open the app online on your phone.** Settings should show Version 127.
 
 ## Changed
 **The night cut**
@@ -55,15 +54,19 @@ What changes:
 - Polar's recovery verdicts are still not imported.
 
 ## Risks
-- **The `polar-day` field names are not confirmed.** The route asks Polar for daily activity and 24/7 heart rate, but Polar's newer API paths and field names were not documented where I could check them. The app reads the names loosely and ignores what it cannot read. The check after the deploy settles it.
+- **Polar keeps about 14 days** of the band's day. The first download gets what Polar still has; after that each sync adds the new days.
+- **24/7 heart rate is kept as one value every 5 minutes.** Polar sends a reading every few seconds, in short bursts. The backend sends one mean a minute, because 28 days of raw readings are over Vercel's answer limit, and the phone keeps one mean per 5 minutes.
+- **Polar's "not worn" class is not used for the cut.** In real nights it shows up for 10 to 40 minutes in the middle of sleep, so it would cut good nights.
+- **Skin contact is not available.** It needs an extra Polar permission and a reconnect. Not needed for now.
+- **A long night with heart rate from the start is asked about, not cut.** When the band recorded heart rate and sleep stages from the start, the app cannot tell band-off time from time in bed. Log > Sleep asks, and Adjust sets it.
 - **Strain may run high with the band's active time.** Polar counts active time generously. Each minute outside workouts counts 1.5 load points. If strain looks high on easy days, the number to lower is `ACT_K` in core.js. Worth a look after a week.
-- **Without 24/7 heart rate, the cut relies on the other signs.** The other signs are a stretch the band could not read, no overnight readings and a long night. Without heart rate, more nights will ask instead of being cut.
+- **Without 24/7 heart rate, the cut relies on the other signs.** The other signs are a stretch the band could not read, no overnight readings and a long night. When the heart rate download fails, more nights ask instead of being cut.
 - **The cut syncs as its own column.** Before the SQL runs, night pushes fail quietly, so a second phone would not see a cut. A cut that is later worked out again to no cut is cleared from the cloud too.
 - **Bounce-back reads only clear cases:** a hard session with no other hard one in the 4 days after. Someone who trains hard often may take a long time to reach 5 readings.
 
 ## Checked
-- 347 of 347 tests pass in `tests/index.html`. 94 are new, covering:
-  - the band's day and its heart rate runs;
+- 354 of 354 tests pass in `tests/index.html`. 101 are new, covering:
+  - the band's day and its heart rate runs, in Polar's real shape (steps, active and sitting time from the class changes, MET-hours, the device with the most steps, active time from METs when a day has no classes, minute means and raw samples);
   - the clear and weak night cuts;
   - Undo, Adjust and typed times;
   - battery nights in Body, debt and Log;
@@ -81,5 +84,6 @@ What changes:
 
   There was no sideways scroll, and nothing was saved.
 - Settings shows Version 127, and the new cache replaces the old one on update.
-- The `polar-day` route is written in the backend but not deployed yet, so it has not been called against Polar.
+- The `polar-day` route is deployed and was called against Polar. The answer for 28 days is about 0.4 MB.
+- The app's reading was tried on the real days and nights on this computer only (nothing saved, printed or committed). Every day gave steps, active time, sitting and heart rate, with active plus sitting under 24 hours. The cut was tried on every stored night: nothing was cut wrongly, and the one long night with the full baseline behind it is asked about.
 - Not tested on the phone itself.
