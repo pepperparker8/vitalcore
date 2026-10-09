@@ -1,31 +1,40 @@
-// ── TODAY: reason for the score, guided next step, evening reflection ────────
-function readinessReasons(){
-  const d=S(),out=[],sl=last(d.sleepLogs.filter(s=>s.score)),ci=last(d.checkins.filter(ciFull)),tsb=d.intervalsData.tsb;
-  if(sl)out.push([`Sleep ${sl.score}`,sl.score>=75?1:sl.score>=55?0:-1]);
-  if(tsb!==null&&tsb!==undefined)out.push([`Freshness ${tsb>0?'+':''}${tsb}`,tsb>=TH.FORM_FRESH?1:tsb>=TH.FORM_OK?0:-1]);
-  if(ci){
-    const m=ci.mood,e=ci.energy,s=ci.stress;
-    out.push([m>=3?'Mood good':m===2?'Mood so-so':'Mood low',m>=3?1:m===2?0:-1]);
-    out.push([e>=3?'Energy good':e===2?'Energy so-so':'Energy low',e>=3?1:e===2?0:-1]);
-    out.push([s<=1?'Calm':s===2?'Some stress':'Stressed',s<=1?1:s===2?0:-1]);
+// ── TODAY: the day browser (v129), evening reflection ────────
+// Today can show a past day: the gauges, the factor rows, Your day and the sheets opened from them follow it
+let _tdView=null;   // null = today; else a date within TH.DAY_BACK days
+const tdDay=()=>_tdView&&daysAgo(_tdView)>0&&daysAgo(_tdView)<=TH.DAY_BACK?_tdView:td();
+function dayGo(step){
+  const n=Math.min(TH.DAY_BACK,Math.max(0,daysAgo(tdDay())-step));
+  _tdView=n?dAgo(n):null;
+  renderDayBar();renderRing(dayScore(tdDay()));renderGauges();renderYourDay();
+}
+const dayWd=dt=>new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'});
+// the day bar's two lines: "Today", "Yesterday" or the weekday, and "Fri 9 Oct" (Today and the sheets opened from it)
+const dayWords=dt=>{const n=daysAgo(dt);return[n===0?'Today':n===1?'Yesterday':new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'}),`${dayWd(dt)} ${fmtD(dt)}`];};
+function renderDayBar(){
+  const dt=tdDay(),n=daysAgo(dt),[a,b]=dayWords(dt);
+  $('dayLbl').textContent=a;
+  $('dayDate').textContent=b;
+  $('dayNext').classList.toggle('off',n===0);$('dayNext').disabled=n===0;
+  $('dayPrev').classList.toggle('off',n>=TH.DAY_BACK);$('dayPrev').disabled=n>=TH.DAY_BACK;
+}
+// the recovery score of a day: today as the hero; a past day worked out again once Body is live (a stored snapshot that differs is corrected, none is added), else the old snapshot
+function dayScore(dt){
+  if(dt===td())return heroScore();
+  if(bodyLive()){
+    const sc=calcBody(dt).score,h=S().bodyHist||{};
+    if(h[dt]!=null&&sc!=null&&h[dt]!==sc){h[dt]=sc;save(S());}
+    return sc;
   }
-  d.injuries.filter(i=>i.active).forEach(i=>out.push([bodyLive()?`${i.part} injury`:`${i.part} −${i.sev*8}`,-1]));
-  return out;
+  const r=(S().readHist||{})[dt];return r==null?null:r;
 }
-function renderWhy(){
-  const r=readinessReasons(),el=$('heroWhy');
-  el.innerHTML=r.length?r.map(([t,g])=>`<span class="why ${g>0?'up':g<0?'down':''}">${g>0?'▲':g<0?'▼':'●'} ${esc(t)}</span>`).join(''):'';
-  const missing=[];
-  if(!last(S().sleepLogs.filter(s=>s.score)))missing.push('sleep');
-  if(!ciFull(todayCI()))missing.push('a check-in');
-  $('heroMissing').textContent=r.length&&missing.length?`More accurate with ${missing.join(' and ')}.`:'';
-}
+// a gauge, factor row or Your day opens its sheet for the day in view
+function tdOpen(k){_dtDay=tdDay()===td()?null:tdDay();openDetail(k);}
 
-// evening reflection: shown from 5pm, or once written
+// evening reflection: opens at TH.REFL_FROM, or once written
 const reflOf=c=>{if(!c?.reflection)return null;try{const o=JSON.parse(c.reflection);return{gave:o.g||'',drained:o.d||''};}catch(e){return{gave:c.reflection,drained:''};}};
 function renderReflect(){
-  const c=todayCI(),r=reflOf(c),show=!!r||new Date().getHours()>=17;
-  $('reflCard').style.display='block';
+  const c=todayCI(),r=reflOf(c),w=$('reflWhen');
+  if(w)w.textContent=r?'Saved':new Date().getHours()<TH.REFL_FROM?'From '+String(TH.REFL_FROM).padStart(2,'0')+':00':'Optional';
   if(document.activeElement!==$('reflGave'))$('reflGave').value=r?.gave||'';
   if(document.activeElement!==$('reflDrain'))$('reflDrain').value=r?.drained||'';
   $('reflBtn').textContent=r?'Update reflection':'Save reflection';

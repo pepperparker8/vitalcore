@@ -63,7 +63,6 @@
 
 <header class="hdr">
   <div class="hdr-brand" onclick="openSettings()"><img src="assets/mark.svg" class="hdr-mark" alt=""><div><div class="hdr-logo">VitalCore</div><div class="hdr-sub" id="hdrStatus">Loading…</div></div></div>
-  <div class="hdr-mid"><div class="hdr-date" id="hdrDate"></div></div>
   <button class="hdr-sync" id="syncBtn" onclick="syncBtn()">Sync</button>
 </header>
 
@@ -77,22 +76,19 @@
     <div style="color:var(--t3);font-size:18px">›</div>
   </div>
 
+  <div class="dbar" id="dayBar"><button type="button" class="db" id="dayPrev" onclick="dayGo(-1)" aria-label="Day before"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg></button><div class="dt"><b id="dayLbl">Today</b><small id="dayDate"></small></div><button type="button" class="db off" id="dayNext" onclick="dayGo(1)" aria-label="Day after" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></button></div>
+
   <div class="hero-card">
-    <div class="hero-greeting" id="heroGreeting">Good morning</div>
     <div class="g3">
-      <div class="g" role="button" tabindex="0" onclick="openDetail('recovery')"><div class="g-ring"><svg viewBox="0 0 80 80"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF8A1F"/><stop offset="100%" stop-color="#FF3B2E"/></linearGradient></defs><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="ring-fill g-fill" id="ringFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="ringNum" style="color:var(--gold-dk)">—</div></div><div class="g-lbl">Recovery</div><div class="g-sub" id="gRecSub">&nbsp;</div></div>
-      <div class="g" role="button" tabindex="0" onclick="openDetail('strain')"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-strain" id="strFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="strNum">—</div></div><div class="g-lbl">Strain</div><div class="g-sub" id="gStrSub">&nbsp;</div></div>
-      <div class="g" role="button" tabindex="0" onclick="openDetail('sleep')"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-sleep" id="slpFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="slpNum">—</div></div><div class="g-lbl">Sleep</div><div class="g-sub" id="gSlpSub">&nbsp;</div></div>
+      <div class="g" role="button" tabindex="0" onclick="tdOpen('recovery')"><div class="g-ring"><svg viewBox="0 0 80 80"><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF8A1F"/><stop offset="100%" stop-color="#FF3B2E"/></linearGradient></defs><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="ring-fill g-fill" id="ringFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="ringNum" style="color:var(--gold-dk)">—</div></div><div class="g-lbl">Recovery</div><div class="g-sub" id="gRecSub">&nbsp;</div></div>
+      <div class="g" role="button" tabindex="0" onclick="tdOpen('strain')"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-strain" id="strFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="strNum">—</div></div><div class="g-lbl">Strain</div><div class="g-sub" id="gStrSub">&nbsp;</div></div>
+      <div class="g" role="button" tabindex="0" onclick="tdOpen('sleep')"><div class="g-ring"><svg viewBox="0 0 80 80"><circle class="g-bg" cx="40" cy="40" r="34"/><circle class="g-fill g-sleep" id="slpFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg><div class="g-num" id="slpNum">—</div></div><div class="g-lbl">Sleep</div><div class="g-sub" id="gSlpSub">&nbsp;</div></div>
     </div>
     <div class="rf-list" id="rdFactors"></div>
-    <div class="hero-txt"><div class="hero-zone" id="heroZone">Loading…</div><div class="hero-ins" id="heroIns">Calculating…</div></div>
     <div class="g-base" id="baseNote" style="display:none"></div>
-    <details class="g-why"><summary>What do these mean?</summary><div><b>Recovery</b> is how ready you are to train. <b>Strain</b> is how much you have trained today (0 to 21), with a target range based on your recovery. <b>Sleep</b> is last night's sleep against your sleep goal. Tap a gauge or a row for the detail and its effect on the score.</div></details>
-    <div class="hero-why" id="heroWhy"></div><div class="hero-miss" id="heroMissing"></div>
   </div>
 
-  <div class="habits-h"><div class="sec">Today</div><div class="habits-n" id="habitsN"></div></div>
-  <div class="habits" id="habits"></div>
+  <div class="card dy-card" id="yourDay" role="button" tabindex="0" aria-label="Your day, opens strain" onclick="tdOpen('strain')" style="display:none"></div>
 
   <details class="more-today" id="moreToday"><summary>Plan and training</summary>
 
@@ -100,10 +96,10 @@
   <div class="card sug-card" id="planCard"></div>
 
 
-  <div class="ins-nudge" id="insNudge" onclick="switchTab('insights')"><div><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z"/></svg></div><div style="flex:1"><div style="font-size:13px;font-weight:600">Today's briefing not generated</div><div style="font-size:12px;color:var(--t2)">Tap to analyse your data →</div></div></div>
+  <div class="ins-nudge" id="insNudge" role="button" tabindex="0" onclick="switchTab('insights')" onkeydown="if(event.key==='Enter')switchTab('insights')"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z"/></svg><div class="in-t"><b>Today's briefing</b><small>Not written yet. Tap to write it.</small></div><svg class="ui-i in-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div>
 
-  <div class="card"><div class="sec">Training, last 7 days</div><div id="actList"></div></div>
-  <div class="card"><div class="sec">Training load</div><div id="tloadContent"></div></div>
+  <div class="card"><div class="dy-h"><b>Training, last 7 days</b><span id="actTot"></span></div><div id="actList"></div></div>
+  <div class="card"><div class="dy-h"><b>Training load</b></div><div id="tloadContent"></div></div>
   </details>
 </div>
 
@@ -154,60 +150,60 @@
 
 <!-- HEALTH -->
 <div class="page page-fade" id="pg-health">
-  <div class="card"><div class="sec">Your baselines</div><div class="hist-box" id="hBase"></div></div>
-  <div class="sec">Blood markers</div>
-  <div id="hBlood"></div>
-  <div class="card" style="margin-top:12px"><div class="sec">Active injuries</div><div id="hInj"></div></div>
-  <div class="card"><div class="sec">Report for your doctor or coach</div>
-    <div class="set-note" style="margin-bottom:12px">A clean one-page summary of sleep, body, training, mood, blood results and injuries. Save it as a PDF and share it.</div>
-    <button class="btn-gold" onclick="openReport(30)">Last 30 days</button>
-    <button class="btn-muted" onclick="openReport(90)">Last 90 days</button></div>
+  <div class="card"><div class="kh"><b>Your baselines</b><button class="ib" id="hib_base" aria-label="About your baselines" aria-expanded="false" aria-controls="hinf_base" onclick="hlInfo('base')"></button></div>
+    <div class="inf" id="hinf_base" hidden></div><div id="hBase"></div></div>
+  <div class="card"><div class="kh"><b>Blood markers</b><button class="ib" id="hib_blood" aria-label="About blood markers" aria-expanded="false" aria-controls="hinf_blood" onclick="hlInfo('blood')"></button></div>
+    <div class="inf" id="hinf_blood" hidden>Ranges are general adult guides, in mg/dL. Your doctor decides what is right for you.</div><div id="hBlood"></div></div>
+  <div class="card"><div class="kh"><b>Active injuries</b></div><div id="hInj"></div></div>
+  <div class="card"><div class="kh"><b>Report for your doctor or coach</b></div>
+    <p class="ptx">One page with sleep, body, training, mood, blood results and injuries, ready to save as a PDF.</p>
+    <div class="two"><button class="btn-gold" onclick="openReport(30)">Last 30 days</button><button class="btn-out" onclick="openReport(90)">Last 90 days</button></div></div>
 </div>
 
 <!-- LOG -->
 <div class="page page-fade" id="pg-log">
-  <div class="lg-top"><div class="lg-h">Log</div><div class="lg-prog" id="lgProg"></div></div>
+  <div class="lg-prog" id="lgProg"></div>
   <div class="lg-grp">Every day</div>
-  <div class="log-sec" id="lCheckin"><div class="log-hdr" onclick="tlog('lCheckin')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 10l.01 0"/><path d="M15 10l.01 0"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/></svg></div><div><div class="log-title">Check-in</div><div class="log-stat" id="ciStat">Not done today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="lg-card">
+  <div class="log-sec" id="lCheckin"><div class="log-hdr" onclick="tlog('lCheckin')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 10l.01 0"/><path d="M15 10l.01 0"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/></svg></div><div><div class="log-title">Check-in</div><div class="log-stat" id="ciStat">Not done today</div></div><span class="log-st" id="lCheckinSt"></span><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
   <div class="ci-card" id="ciCard">
     <div class="sec">How are you today?</div>
-    <div class="ci-row ci-wide"><div class="ci-metric">BODY FEEL</div><div class="ci-btns" data-k="bodyFeel"><button class="ci-btn" onclick="selCI('bodyFeel',1,this)" aria-label="Wrecked" title="Wrecked"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',2,this)" aria-label="Tired" title="Tired"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',3,this)" aria-label="Okay" title="Okay"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',4,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',5,this)" aria-label="Strong" title="Strong"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div><div class="ci-ends"><span>Wrecked</span><span>Strong ▸</span></div></div>
-    <div class="ci-row"><div class="ci-metric">ENERGY</div><div class="ci-btns" data-k="energy"><button class="ci-btn" onclick="selCI('energy',1,this)" aria-label="Exhausted" title="Exhausted"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('energy',2,this)" aria-label="Low" title="Low"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('energy',3,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('energy',4,this)" aria-label="Full of energy" title="Full of energy"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div><div class="ci-ends"><span>Drained</span><span>Charged ▸</span></div></div>
-    <div class="ci-row"><div class="ci-metric">MOOD</div><div class="ci-btns" data-k="mood"><button class="ci-btn" onclick="selCI('mood',1,this)" aria-label="Low" title="Low"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('mood',2,this)" aria-label="Flat" title="Flat"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('mood',3,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('mood',4,this)" aria-label="Great" title="Great"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div><div class="ci-ends"><span>Low</span><span>High ▸</span></div></div>
-    <div class="ci-row"><div class="ci-metric">STRESS</div><div class="ci-btns" data-k="stress"><button class="ci-btn" onclick="selCI('stress',4,this)" aria-label="Very stressed" title="Very stressed"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 8.5l1.5 1M15.5 8.5l-1.5 1M8.5 15.5c1-1 2-1 3 0s2 1 3 0"/></svg></button><button class="ci-btn" onclick="selCI('stress',3,this)" aria-label="Stressed" title="Stressed"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('stress',2,this)" aria-label="Some stress" title="Some stress"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('stress',1,this)" aria-label="Calm" title="Calm"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 14.5c1 1 2 1.5 3 1.5s2-.5 3-1.5"/></svg></button></div><div class="ci-ends"><span>Stressed</span><span>Calm ▸</span></div></div>
-    <div class="ci-row"><div class="ci-metric">MOTIVATION</div><div class="ci-btns" data-k="motivation"><button class="ci-btn" onclick="selCI('motivation',1,this)" aria-label="None" title="None"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('motivation',2,this)" aria-label="Low" title="Low"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('motivation',3,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('motivation',4,this)" aria-label="Fired up" title="Fired up"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div><div class="ci-ends"><span>None</span><span>Fired up ▸</span></div></div>
-    <div class="ci-row"><div class="ci-metric">SORENESS</div><div class="ci-btns ci-txt" data-k="soreness"><button class="ci-btn" onclick="selCI('soreness',1,this)">None</button><button class="ci-btn" onclick="selCI('soreness',2,this)">Mild</button><button class="ci-btn" onclick="selCI('soreness',3,this)">Moderate</button><button class="ci-btn" onclick="selCI('soreness',4,this)">Severe</button></div></div>
-    <div class="ci-row ci-wide" id="ciAreaRow" style="display:none"><div class="ci-metric">WHERE · tap all that apply</div><div class="ci-btns ci-txt ci-area" data-k="soreArea"><button class="ci-btn" data-a="legs" onclick="selArea('legs',this)">Legs</button><button class="ci-btn" data-a="hips" onclick="selArea('hips',this)">Hips</button><button class="ci-btn" data-a="back" onclick="selArea('back',this)">Back</button><button class="ci-btn" data-a="upper" onclick="selArea('upper',this)">Shoulders and arms</button><button class="ci-btn" data-a="core" onclick="selArea('core',this)">Core</button></div></div>
-    <div class="ci-row ci-wide"><div class="ci-metric">SYMPTOMS · cold or illness</div><div class="ci-btns ci-txt" data-k="symptoms"><button class="ci-btn" onclick="selCI('symptoms',0,this)">None</button><button class="ci-btn" onclick="selCI('symptoms',1,this)">Above the neck</button><button class="ci-btn" onclick="selCI('symptoms',2,this)">Below the neck</button></div></div>
-    <div class="set-note" style="margin:-4px 0 10px">Above the neck: runny nose, sore throat. Below: fever, aches, chest, stomach.</div>
-    <div class="ci-row"><div class="ci-metric">COFFEE</div><div class="ci-btns ci-txt" data-k="coffee"><button class="ci-btn" onclick="selCI('coffee',0,this)">0</button><button class="ci-btn" onclick="selCI('coffee',1,this)">1</button><button class="ci-btn" onclick="selCI('coffee',2,this)">2</button><button class="ci-btn" onclick="selCI('coffee',3,this)">3</button><button class="ci-btn" onclick="selCI('coffee',4,this)">4+</button></div></div>
-    <label class="ci-late"><input type="checkbox" id="ciLate"> Last cup after 14:00</label>
-    <div class="fl" style="margin-top:6px">ONE THING I'M GRATEFUL FOR (optional)</div>
-    <input type="text" class="ci-note" id="ciGrat" placeholder="A good coffee, a quiet run…" maxlength="200">
+    <div class="ci-row ci-wide"><div class="ci-q"><b>Body feel</b><span class="ci-w" data-k="bodyFeel" data-e="Wrecked to Strong">Wrecked to Strong</span></div><div class="ci-btns" data-k="bodyFeel"><button class="ci-btn" onclick="selCI('bodyFeel',1,this)" aria-label="Wrecked" title="Wrecked"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',2,this)" aria-label="Tired" title="Tired"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',3,this)" aria-label="Okay" title="Okay"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',4,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('bodyFeel',5,this)" aria-label="Strong" title="Strong"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
+    <div class="ci-row"><div class="ci-q"><b>Energy</b><span class="ci-w" data-k="energy" data-e="Drained to Charged">Drained to Charged</span></div><div class="ci-btns" data-k="energy"><button class="ci-btn" onclick="selCI('energy',1,this)" aria-label="Exhausted" title="Exhausted"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('energy',2,this)" aria-label="Low" title="Low"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('energy',3,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('energy',4,this)" aria-label="Full of energy" title="Full of energy"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
+    <div class="ci-row"><div class="ci-q"><b>Mood</b><span class="ci-w" data-k="mood" data-e="Low to Great">Low to Great</span></div><div class="ci-btns" data-k="mood"><button class="ci-btn" onclick="selCI('mood',1,this)" aria-label="Low" title="Low"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('mood',2,this)" aria-label="Flat" title="Flat"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('mood',3,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('mood',4,this)" aria-label="Great" title="Great"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
+    <div class="ci-row"><div class="ci-q"><b>Stress</b><span class="ci-w" data-k="stress" data-e="Stressed to Calm">Stressed to Calm</span></div><div class="ci-btns" data-k="stress"><button class="ci-btn" onclick="selCI('stress',4,this)" aria-label="Very stressed" title="Very stressed"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 8.5l1.5 1M15.5 8.5l-1.5 1M8.5 15.5c1-1 2-1 3 0s2 1 3 0"/></svg></button><button class="ci-btn" onclick="selCI('stress',3,this)" aria-label="Stressed" title="Stressed"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('stress',2,this)" aria-label="Some stress" title="Some stress"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('stress',1,this)" aria-label="Calm" title="Calm"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 14.5c1 1 2 1.5 3 1.5s2-.5 3-1.5"/></svg></button></div></div>
+    <div class="ci-row"><div class="ci-q"><b>Motivation</b><span class="ci-w" data-k="motivation" data-e="None to Fired up">None to Fired up</span></div><div class="ci-btns" data-k="motivation"><button class="ci-btn" onclick="selCI('motivation',1,this)" aria-label="None" title="None"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 16c1-1.5 2.2-2 3-2s2 .5 3 2"/></svg></button><button class="ci-btn" onclick="selCI('motivation',2,this)" aria-label="Low" title="Low"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('motivation',3,this)" aria-label="Good" title="Good"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('motivation',4,this)" aria-label="Fired up" title="Fired up"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
+    <div class="ci-row"><div class="ci-q"><b>Soreness</b><span class="ci-w" data-k="soreness" data-e="None to Severe">None to Severe</span></div><div class="ci-btns ci-txt" data-k="soreness"><button class="ci-btn" onclick="selCI('soreness',1,this)">None</button><button class="ci-btn" onclick="selCI('soreness',2,this)">Mild</button><button class="ci-btn" onclick="selCI('soreness',3,this)">Moderate</button><button class="ci-btn" onclick="selCI('soreness',4,this)">Severe</button></div></div>
+    <div class="ci-row ci-wide" id="ciAreaRow" style="display:none"><div class="ci-q"><b>Where</b><span class="ci-w" data-k="soreArea" data-e="Tap all that apply">Tap all that apply</span></div><div class="ci-btns ci-txt ci-area" data-k="soreArea"><button class="ci-btn" data-a="legs" onclick="selArea('legs',this)">Legs</button><button class="ci-btn" data-a="hips" onclick="selArea('hips',this)">Hips</button><button class="ci-btn" data-a="back" onclick="selArea('back',this)">Back</button><button class="ci-btn" data-a="upper" onclick="selArea('upper',this)">Shoulders and arms</button><button class="ci-btn" data-a="core" onclick="selArea('core',this)">Core</button></div></div>
+    <div class="ci-row ci-wide"><div class="ci-q"><b>Symptoms</b><span class="ci-w" data-k="symptoms" data-e="Cold or illness">Cold or illness</span></div><div class="ci-btns ci-txt" data-k="symptoms"><button class="ci-btn" onclick="selCI('symptoms',0,this)">None</button><button class="ci-btn" onclick="selCI('symptoms',1,this)">Above the neck</button><button class="ci-btn" onclick="selCI('symptoms',2,this)">Below the neck</button></div></div>
+    <div class="ci-qn">Above the neck: runny nose, sore throat. Below: fever, aches, chest, stomach.</div>
+    <div class="ci-row"><div class="ci-q"><b>Coffee</b><span class="ci-w" data-k="coffee" data-e="Cups today">Cups today</span></div><div class="ci-btns ci-txt" data-k="coffee"><button class="ci-btn" onclick="selCI('coffee',0,this)">0</button><button class="ci-btn" onclick="selCI('coffee',1,this)">1</button><button class="ci-btn" onclick="selCI('coffee',2,this)">2</button><button class="ci-btn" onclick="selCI('coffee',3,this)">3</button><button class="ci-btn" onclick="selCI('coffee',4,this)">4+</button></div></div>
+    <label class="ci-sw"><span>Last cup after 14:00</span><input type="checkbox" id="ciLate" role="switch"><i class="tgl" aria-hidden="true"></i></label>
+    <label class="ci-fl" for="ciGrat">Grateful for<span>Optional</span></label>
+    <input type="text" class="ci-note" id="ciGrat" placeholder="A good coffee, a quiet run" maxlength="200">
     <div class="ci-sum" id="ciSum"></div>
     <button class="ci-cta" id="ciCta" onclick="submitCI()">Save check-in</button>
   </div>
 
-  <div class="card" id="reflCard" style="display:none">
-    <div class="sec">Evening reflection</div>
-    <div class="fl">WHAT GAVE ME ENERGY TODAY</div><input type="text" class="inp" id="reflGave" maxlength="200" placeholder="A long walk, a good talk…" style="margin-bottom:12px">
-    <div class="fl">WHAT DRAINED ME</div><input type="text" class="inp" id="reflDrain" maxlength="200" placeholder="Back-to-back meetings…" style="margin-bottom:12px">
+  <details class="lg-fold" id="reflCard"><summary>Evening reflection<small id="reflWhen"></small></summary>
+    <div class="fg"><label class="fl" for="reflGave">WHAT GAVE ME ENERGY TODAY</label><input type="text" class="inp" id="reflGave" maxlength="200" placeholder="A long walk, a good talk"></div>
+    <div class="fg"><label class="fl" for="reflDrain">WHAT DRAINED ME</label><input type="text" class="inp" id="reflDrain" maxlength="200" placeholder="Back-to-back meetings"></div>
     <button class="btn-gold" id="reflBtn" onclick="saveReflect()">Save reflection</button>
-  </div>
+  </details>
 
 
     </div>
   </div>
 
-  <div class="log-sec" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg></div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="log-sec" id="lSleep"><div class="log-hdr" onclick="tlog('lSleep')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg></div><div><div class="log-title">Sleep</div><div class="log-stat" id="sleepStat">Not logged today</div></div><span class="log-st" id="lSleepSt"></span><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="fg"><div class="fl">NIGHT ENDING ON</div><input type="date" class="inp" id="slDate" onchange="loadSleepFor(this.value)"><div class="set-note" id="slNote"></div></div>
       <div class="fg"><div class="fl">BEDTIME AND WAKE-UP</div><div class="fr"><input type="time" class="inp" id="slBed" oninput="slCalc('bed')" aria-label="Fell asleep at"><span class="inp-unit">to</span><input type="time" class="inp" id="slWake" oninput="slCalc('wake')" aria-label="Woke up at"></div><div class="set-note" id="slDur">Enter when you fell asleep and woke up.</div></div>
-      <details class="sl-more" id="slMore"><summary>Sleep details (optional)</summary>
+      <details class="sl-more" id="slMore"><summary>Sleep details<small>Optional</small></summary>
       <div class="fg"><div class="fl">SLEEP SCORE</div><div class="fr"><input type="number" class="inp inp-sm" id="slScore" placeholder="74" min="0" max="100"><span class="inp-unit">/ 100</span></div></div>
       <div class="fg"><div class="fl">DEEP SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slDH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slDM" placeholder="32" min="0" max="59"><span class="inp-unit">min</span></div></div>
-      <div class="fg"><div class="fl">REM SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slRH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slRM" placeholder="18" min="0" max="59"><span class="inp-unit">min</span></div></div>
+      <div class="fg"><div class="fl">DREAMING SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slRH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slRM" placeholder="18" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">HOW RESTED?</div><div class="ci-btns"><button class="ci-btn" onclick="selCI('rested',1,this)" aria-label="Not rested" title="Not rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h2M13.5 10.5h2M9 15.5h6"/></svg></button><button class="ci-btn" onclick="selCI('rested',2,this)" aria-label="So-so" title="So-so"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M9 15h6"/></svg></button><button class="ci-btn" onclick="selCI('rested',3,this)" aria-label="Rested" title="Rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14c1 1.5 2.3 2 3.5 2s2.5-.5 3.5-2"/></svg></button><button class="ci-btn" onclick="selCI('rested',4,this)" aria-label="Fully rested" title="Fully rested"><svg class="face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c0 2.5 1.8 4 4 4s4-1.5 4-4z"/></svg></button></div></div>
       </details>
       <button class="btn-gold" onclick="saveSleep()">Save sleep</button>
@@ -215,12 +211,12 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg></div><div><div class="log-title">Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg></div><div><div class="log-title">Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><span class="log-st" id="lWorkoutSt"></span><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="set-note" id="wkIcuNote" style="display:none"></div>
       <div id="wkDup"></div>
       <div id="wkRecent"></div>
-      <div class="sec" id="wkFormT" style="margin-top:16px">Add a workout</div>
+      <div class="lg-sh" id="wkFormT">Add a workout</div>
       <div class="set-note" id="wPre" style="display:none"></div>
       <div class="fg"><div class="fl">TYPE</div><div class="ex-grid" id="exGrid"></div></div>
       <div class="fg" id="wDurFg"><div class="fl">DURATION</div><div class="chip-row sp" id="wDurChips"></div><div class="fr"><input type="number" class="inp inp-sm" id="wDH" oninput="swimPace();renderDurChips()" placeholder="0" min="0" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="wDM" oninput="swimPace();renderDurChips()" placeholder="45" min="0" max="59"><span class="inp-unit">min</span></div></div>
@@ -231,7 +227,7 @@
       <div id="wStr" style="display:none"><div class="gym-top"><div class="fl" id="strLbl">EXERCISES</div><button type="button" class="gym-tgl" id="gymTgl" onclick="toggleGym()">Gym mode</button></div>
         <input type="text" class="inp" id="strSearch" placeholder="Search or type a new exercise" oninput="strPick()" style="margin-bottom:8px">
         <div class="str-picks" id="strPick"></div><div id="strList"></div></div>
-      <details class="sl-more" id="wMore"><summary>Date, effort, pain and note (optional)</summary>
+      <details class="sl-more" id="wMore"><summary>Date, effort, pain and note<small>Optional</small></summary>
       <div class="fg"><div class="fl">DATE</div><input type="date" class="inp" id="wDate"></div>
       <div class="fg"><div class="fl">EFFORT</div><select class="sel-inp" id="wRPE"><option value="">—</option><option value="1">1 — Very easy</option><option value="2">2 — Easy</option><option value="3">3 — Moderate</option><option value="4">4 — Hard</option><option value="5">5 — Max</option></select><div class="set-note" id="wEffNote"></div></div>
       <div class="fg" id="wPainFg"><div class="fl">PAIN</div><div class="pn-row" id="wPainRow" role="group" aria-label="Pain, 0 to 10"></div><input type="hidden" id="wPain"><div class="set-note" id="wPainNote">0 is none, 10 is the worst. Used when you come back from an injury.</div></div>
@@ -239,11 +235,11 @@
       </details>
       <button class="btn-gold" id="wSave" onclick="saveWorkout()">Save workout</button>
       <button class="btn-out" id="wCancel" style="display:none" onclick="cancelEdit()">Cancel editing</button>
-      <button class="btn-muted" onclick="repeatLast()">↺ Repeat last workout</button>
+      <button class="btn-out" onclick="repeatLast()">Repeat last workout</button>
     </div>
   </div>
 
-  <div class="log-sec" id="lMind"><div class="log-hdr" onclick="tlog('lMind')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h8.5a2.5 2.5 0 1 0 -2.34 -3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1 -2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 1 -2.34 3.24"/></svg></div><div><div class="log-title">Mindfulness</div><div class="log-stat" id="mindStat">0 min today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="log-sec" id="lMind"><div class="log-hdr" onclick="tlog('lMind')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h8.5a2.5 2.5 0 1 0 -2.34 -3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1 -2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 1 -2.34 3.24"/></svg></div><div><div class="log-title">Mindfulness</div><div class="log-stat" id="mindStat">0 min today</div></div><span class="log-st" id="lMindSt"></span><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
   <div class="card" id="mindCard">
     <div class="sec">Mindfulness</div>
@@ -251,7 +247,7 @@
     <div class="mini-lbl">ALREADY MEDITATED? ADD MINUTES</div>
     <div class="chip-row"><button class="chip" onclick="addMind(5)">+5</button><button class="chip" onclick="addMind(10)">+10</button><button class="chip" onclick="addMind(15)">+15</button><button class="chip" onclick="addMind(20)">+20</button></div>
     <div class="mini-lbl">OR BREATHE WITH A GUIDED TIMER</div>
-    <div class="chip-row"><button class="chip dark" onclick="startMind(3)">▶ 3 min</button><button class="chip dark" onclick="startMind(5)">▶ 5 min</button><button class="chip dark" onclick="startMind(10)">▶ 10 min</button></div>
+    <div class="chip-row"><button class="chip dark" onclick="startMind(3)"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13 -8z"/></svg>3 min</button><button class="chip dark" onclick="startMind(5)"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13 -8z"/></svg>5 min</button><button class="chip dark" onclick="startMind(10)"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13 -8z"/></svg>10 min</button></div>
     <div style="text-align:right"><button class="api-test-btn" onclick="undoMind()">Reset today's minutes</button></div>
   </div>
 
@@ -259,7 +255,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lFood"><div class="log-hdr" onclick="tlog('lFood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12zm0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3"/></svg></div><div><div class="log-title">Food</div><div class="log-stat" id="foodStat">Optional. Nothing logged today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="log-sec" id="lFood"><div class="log-hdr c3" onclick="tlog('lFood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12zm0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3"/></svg></div><div><div class="log-title">Food</div><div class="log-stat" id="foodStat">Optional. Nothing logged today</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="mind-big"><span id="fdToday">0</span><small>KCAL TODAY</small></div>
       <div class="set-note" id="fdNote"></div>
@@ -276,8 +272,11 @@
     </div>
   </div>
 
+  </div>
+
   <div class="lg-grp">Now and then</div>
-  <div class="log-sec" id="lMeas"><div class="log-hdr" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l10 0"/><path d="M6 6l6 -1l6 1"/><path d="M12 3l0 17"/><path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/></svg></div><div><div class="log-title">Body</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="lg-card">
+  <div class="log-sec" id="lMeas"><div class="log-hdr c3" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l10 0"/><path d="M6 6l6 -1l6 1"/><path d="M12 3l0 17"/><path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/></svg></div><div><div class="log-title">Body</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="hist-box"><div class="hist-ttl">RECENT</div>
         <div class="hist-row"><span>Blood Pressure</span><span class="hist-val" id="bpRec">—</span></div>
@@ -291,7 +290,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lBlood"><div class="log-hdr" onclick="tlog('lBlood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z"/></svg></div><div><div class="log-title">Blood</div><div class="log-stat" id="bloodStat">Last tested: —</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="log-sec" id="lBlood"><div class="log-hdr c3" onclick="tlog('lBlood')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z"/></svg></div><div><div class="log-title">Blood</div><div class="log-stat" id="bloodStat">Last tested: —</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="hist-box" id="bmDisplay"></div>
       <div class="fg"><div class="fl">TEST DATE</div><input type="date" class="inp" id="bmDate"></div>
@@ -302,7 +301,7 @@
     </div>
   </div>
 
-  <div class="log-sec" id="lInjury"><div class="log-hdr" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 12l0 .01"/><path d="M10 12l0 .01"/><path d="M12 10l0 .01"/><path d="M12 14l0 .01"/><path d="M4.5 12.5l8 -8a4.94 4.94 0 0 1 7 7l-8 8a4.94 4.94 0 0 1 -7 -7"/></svg></div><div><div class="log-title">Injury</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></div></div>
+  <div class="log-sec" id="lInjury"><div class="log-hdr c3" onclick="tlog('lInjury')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 12l0 .01"/><path d="M10 12l0 .01"/><path d="M12 10l0 .01"/><path d="M12 14l0 .01"/><path d="M4.5 12.5l8 -8a4.94 4.94 0 0 1 7 7l-8 8a4.94 4.94 0 0 1 -7 -7"/></svg></div><div><div class="log-title">Injury</div><div class="log-stat" id="injStat">No active injuries</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div id="injSug"></div>
       <div class="hist-box" id="injDisplay"><div class="hist-ttl">ACTIVE / RECENT</div><div style="font-size:12px;color:var(--t3);padding:4px 0">No injuries logged</div></div>
@@ -313,6 +312,7 @@
       <button class="btn-gold" onclick="saveInjury()">Log Injury</button>
     </div>
   </div>
+</div>
 </div>
 
 <!-- INSIGHTS -->
@@ -469,6 +469,7 @@
 <script src="js/coach.js"></script>
 <script src="js/sessions.js"></script>
 <script src="js/workout.js"></script>
+<script src="js/day.js"></script>
 <script src="js/strategy.js"></script>
 <script src="js/fuel.js"></script>
 <script src="js/health.js"></script>

@@ -1,8 +1,8 @@
 // Recovery: HRV, resting HR, sleep and load against your own baseline
 const RB_MIN=TH.MIN_BASE_DAYS; // days of data needed before a baseline is trusted (one knob, TH.MIN_BASE_DAYS)
-function wSeries(key,days=30,skipToday=true){
-  const d=S(),out=[];
-  for(let i=skipToday?1:0;i<=days;i++){const w=d.wellness[dAgo(i)];if(w&&w[key]!=null)out.push(w[key]);}
+function wSeries(key,days=30,skipToday=true,date=td()){
+  const d=S(),o=daysAgo(date),out=[];
+  for(let i=skipToday?1:0;i<=days;i++){const w=d.wellness[dAgo(o+i)];if(w&&w[key]!=null)out.push(w[key]);}
   return out;
 }
 // Resting HR for one day: the imported value (Intervals.icu) first, a manual measurement only when there is none
@@ -21,15 +21,16 @@ function rhrIn(pred,src){
   return icu.length>=man.length?icu:man;
 }
 // 30-day baseline from the same source as the latest value, never mixed
-function rhrSeries(days=30){
-  const l=latestOf('rhr');
-  return rhrIn(dt=>{const a=daysAgo(dt);return a>=1&&a<=days;},l?l.src:null);
+// v129: date (default today) moves the window back for a past day on Today
+function rhrSeries(days=30,date=td()){
+  const l=latestOf('rhr',date),o=daysAgo(date);
+  return rhrIn(dt=>{const a=daysAgo(dt);return a>=o+1&&a<=o+days;},l?l.src:null);
 }
-function latestOf(key){
-  const d=S();
+function latestOf(key,date=td()){
+  const d=S(),o=daysAgo(date);
   for(let i=0;i<=2;i++){
-    if(key==='rhr'){const r=rhrOn(dAgo(i));if(r)return{...r,age:i};continue;}
-    const w=d.wellness[dAgo(i)];if(w&&w[key]!=null)return{v:w[key],age:i,src:'icu'};
+    if(key==='rhr'){const r=rhrOn(dAgo(o+i));if(r)return{...r,age:i};continue;}
+    const w=d.wellness[dAgo(o+i)];if(w&&w[key]!=null)return{v:w[key],age:i,src:'icu'};
   }
   return null;
 }
@@ -129,28 +130,33 @@ function bodyRhrOn(date){
   if(date===td()){const pn=polarOn(date),rc=pn&&pn.data&&pn.data.rc;if(rc&&rc.rri>0)return{v:Math.round(60000/rc.rri),src:'polar'};}
   return null;
 }
-// the night Body uses: the record dated today, else yesterday (A5: never an older night)
-function bodyNight(){const d=S();for(let i=0;i<=1;i++){const s=last(d.sleepLogs.filter(x=>x.date===dAgo(i)&&x.durMin>0));if(s)return s;}return null;}
-function calcBody(){
-  const d=S(),t=td(),parts={hrv:null,rhr:null,sleep:null},missing=[];
-  // HRV: the mean of the last 7 nights (today and the 6 before) against the 28 days before today; z is for a 7-night mean, so the band SD is divided by TH.HRV_SE
-  const h7=[];for(let i=0;i<7;i++){const h=bodyHrvOn(dAgo(i));if(h)h7.push(h.v);}
+// form (fitness minus fatigue) on a day: today's from the last sync, an earlier day's from that day's wellness
+function tsbOn(date){const d=S();if(date===td())return d.intervalsData&&d.intervalsData.tsb!=null?d.intervalsData.tsb:null;const w=d.wellness[date];return w&&w.ctl!=null&&w.atl!=null?Math.round((w.ctl-w.atl)*10)/10:null;}
+// what you needed for one night: the goal, plus the strain of the day before, plus recent debt (sleepNeed); shared by Body, the factor row and the sleep sheet
+const needOf=sl=>sleepNeed(strainOf(strainLoad(dAgo(daysAgo(sl.date)+1))),sl.date);
+// the night Body uses: the record dated that day, else the day before (A5: never an older night)
+function bodyNight(date=td()){const d=S(),o=daysAgo(date);for(let i=0;i<=1;i++){const s=last(d.sleepLogs.filter(x=>x.date===dAgo(o+i)&&x.durMin>0));if(s)return s;}return null;}
+// v129: any day (Today's day browser, the Recovery sheet); no date = today, exactly as before
+function calcBody(date=td()){
+  const d=S(),t=date,o=daysAgo(t),parts={hrv:null,rhr:null,sleep:null},missing=[];
+  // HRV: the mean of the last 7 nights (that day and the 6 before) against the 28 days before it; z is for a 7-night mean, so the band SD is divided by TH.HRV_SE
+  const h7=[];for(let i=0;i<7;i++){const h=bodyHrvOn(dAgo(o+i));if(h)h7.push(h.v);}
   const hb=bandOf(dt=>wellOn('hrv',dt),t);
   if(h7.length>=TH.HRV_MIN_7&&hb.m!=null){const v7=avg(h7),s=Math.max(hb.sd,TH.HRV_FLOOR),z=(v7-hb.m)/(s/TH.HRV_SE);parts.hrv={pts:clampN(50+TH.Z_GAIN*z),v7,m:hb.m,sd:s,z,n7:h7.length,nBase:hb.n,today:bodyHrvOn(t)};}
   else missing.push({k:'hrv',why:h7.length<TH.HRV_MIN_7?`HRV on ${h7.length} of the last 7 nights, needs ${TH.HRV_MIN_7}`:`HRV baseline has ${hb.n} of ${TH.MIN_BASE_DAYS} days`});
-  // resting HR: today against the 28 days before, from one source (all Intervals.icu values, or all manual readings), inverted
-  const rv=bodyRhrOn(t),rb=rv?toBand(rhrIn(dt=>{const a=daysAgo(dt);return a>=1&&a<=28;},rv.src==='man'?'man':'icu')):{m:null,sd:null,n:0};
+  // resting HR: that day against the 28 days before, from one source (all Intervals.icu values, or all manual readings), inverted
+  const rv=bodyRhrOn(t),rb=rv?toBand(rhrIn(dt=>{const a=daysAgo(dt);return a>=o+1&&a<=o+28;},rv.src==='man'?'man':'icu')):{m:null,sd:null,n:0};
   if(rv&&rb.m!=null){const s=Math.max(rb.sd,TH.RHR_FLOOR),z=(rv.v-rb.m)/s;parts.rhr={pts:clampN(50-TH.Z_GAIN*z),v:rv.v,m:rb.m,sd:s,z,nBase:rb.n,src:rv.src};}
-  else missing.push({k:'rhr',why:!rv?'no resting heart rate for today yet':`resting heart rate baseline has ${rb.n} of ${TH.MIN_BASE_DAYS} days`});
-  // sleep: the night ending today, else yesterday, against what you needed that night: 100 at the full need, 0 at TH.SLEEP_FLOOR of it; Polar's solidity (0 to 100) takes TH.SOLIDITY_W when present
-  const sl=bodyNight();
+  else missing.push({k:'rhr',why:!rv?(o?'no resting heart rate for that day':'no resting heart rate for today yet'):`resting heart rate baseline has ${rb.n} of ${TH.MIN_BASE_DAYS} days`});
+  // sleep: the night ending that day, else the day before, against what you needed that night: 100 at the full need, 0 at TH.SLEEP_FLOOR of it; Polar's solidity (0 to 100) takes TH.SOLIDITY_W when present
+  const sl=bodyNight(t);
   if(sl&&!slCounts(sl))missing.push({k:'sleep',why:'your band ran out of battery during the night'});   // v127: missing, not short
   else if(sl){
-    const prev=dAgo(daysAgo(sl.date)+1),need=sleepNeed(strainOf(strainLoad(prev)),sl.date),pct=sl.durMin/need;
+    const need=needOf(sl),pct=sl.durMin/need;
     const dur=clampN((pct-TH.SLEEP_FLOOR)/(1-TH.SLEEP_FLOOR)*100);
     const pn=polarOn(sl.date),sol=pn&&pn.data&&pn.data.parts&&pn.data.parts.solidity>0?pn.data.parts.solidity:null;
     parts.sleep={pts:sol!=null?dur*(1-TH.SOLIDITY_W)+sol*TH.SOLIDITY_W:dur,durMin:sl.durMin,need,pct,sol,date:sl.date};
-  }else missing.push({k:'sleep',why:'no sleep record for the night ending today or yesterday'});
+  }else missing.push({k:'sleep',why:o?'no sleep record for the night ending that day or the day before':'no sleep record for the night ending today or yesterday'});
   if(!parts.hrv&&!parts.rhr)return{score:null,conf:'none',parts,missing,why:'Need HRV or resting heart rate'};
   // weighted mean of the parts that are present, re-weighted when one is missing
   const c=[[parts.hrv,TH.W_HRV],[parts.rhr,TH.W_RHR],[parts.sleep,TH.W_SLEEP]].filter(x=>x[0]);

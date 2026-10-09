@@ -1,12 +1,12 @@
 // ── DETAIL SHEETS (v97): tap a gauge or a factor row on Today ───────────────
 // One sheet (#dtModal) shows today's value, the 30-day usual, an interactive chart of
 // the last 30 days (v119) and the effect on the recovery score in plain words, plus an Edit link.
-let _dtKey=null,_dtCh=null;
+let _dtKey=null,_dtCh=null,_dtDay=null;   // _dtDay (v129): the day Today showed when the sheet opened; null = today
 const dtGoal=()=>Math.round((S().profile.sleepGoal||7.5)*60);
 const dtPsy=c=>mindOf(c);
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const dtPts=n=>{n=Math.round(n);return n===0?'no change':(n>0?'+':'−')+Math.abs(n)+(Math.abs(n)===1?' point':' points');};
-const dtAvg=(fn,days=30)=>{const a=[];for(let i=1;i<=days;i++){const v=fn(dAgo(i));if(v!=null)a.push(v);}return a;};
+const dtAvg=(fn,days=30)=>{const o=daysAgo(_dtDay||td()),a=[];for(let i=1;i<=days;i++){const v=fn(dAgo(o+i));if(v!=null)a.push(v);}return a;};
 const ciOn=date=>S().checkins.find(c=>c.date===date);
 // v119: the last 30 days as an interactive chart (14 in view, drag or ‹ for the rest), with the same zones, usual
 // range and lines as the matching Trends chart. The spec is kept in _dtCh and mounted once the sheet is in the page.
@@ -19,7 +19,7 @@ function dtTrend(fn,fmt,o={}){
   _dtCh={H:140,span:14,label:o.label,yfmt:o.yfmt||fmt,min:o.min,max:o.max,zones:o.zones,lines:o.lines,band,hi:true,
     series:[{name:o.label||'Value',type:o.bar?'bar':undefined,color:o.color||'--text',barColor:o.barColor,fmt,pts}],
     stats:{one:'day',...(o.stats||{})},means:o.means||(info=>dtMeaning(info,band,fmt,o))};
-  return`<div class="dt-sec">Last 30 days</div><div id="dtChart"></div>`;
+  return`<div class="dt-sec">Last 30 days</div><div class="dt-card"><div id="dtChart"></div></div>`;
 }
 // a 'good' test for a band chart: in or above (side 1) or in or below (side -1) the usual range of that day; set by dtTrend
 let _dtBand=null;
@@ -32,30 +32,28 @@ function dtMeaning(info,band,fmt,o){
   const off=A.length>=5&&sd&&Math.abs(l.v-a)>sd?(l.v>a?', higher than usual':', lower than usual'):'';
   return`${z?z.label:fmt(l.v)}${l.d===td()?' today':' on '+fmtD(l.d)}${off}.`;
 }
-// ── v117: the sleep sheet browses stored nights (‹ ›) and shows the detailed night from Polar ──
-let _dtDate=null;                       // the night on show in the sleep sheet; null = last night
-const dtNights=()=>S().sleepLogs.filter(x=>x.durMin).map(x=>x.date).sort();
+// ── v129: the sleep sheet browses stored nights (‹ ›) with the same bar as Today's day browser ──
+let _dtDate=null,_dtShown=null;         // the night picked with ‹ › (null = the day's own night); the night on show
+const dtNights=()=>[...new Set(S().sleepLogs.filter(x=>x.durMin).map(x=>x.date))].sort();
 const dtLastNight=()=>last(S().sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
 function dtNight(dir){
   const l=dtNights();if(!l.length)return;
-  const cur=_dtDate||(dtLastNight()||{}).date;
-  let i=cur?l.indexOf(cur):l.length;     // with no night to show, ‹ goes to the newest stored one
-  i+=dir;if(i<0||i>=l.length)return;
-  _dtDate=l[i];openDetail('sleep');
+  const cur=_dtDate||_dtShown;let j;
+  if(cur&&l.includes(cur))j=l.indexOf(cur)+dir;
+  else{const p=l.filter(x=>x<=(_dtDay||td())).length;j=dir<0?p-1:p;}   // with no night on show, ‹ goes to the newest one before
+  if(j<0||j>=l.length)return;
+  _dtDate=l[j];openDetail('sleep');
 }
 function dtNav(cur){
-  const l=dtNights(),i=cur?l.indexOf(cur):l.length;if(!l.length||(l.length<2&&cur))return'';
-  const lab=cur?(cur===td()?'Last night':'Night ending '+fmtD(cur)):'Last night';
-  return`<div class="dt-nav"><button type="button" aria-label="Earlier night" onclick="dtNight(-1)"${i<=0?' disabled':''}>‹</button><span>${lab}</span><button type="button" aria-label="Later night" onclick="dtNight(1)"${i>=l.length-1?' disabled':''}>›</button></div>`;
+  const l=dtNights(),t=_dtDay||td();if(!l.length)return'';
+  const i=cur?l.indexOf(cur):-1,p=l.filter(x=>x<=t).length,bk=cur?i<=0:p<=0,fw=cur?i>=l.length-1:p>=l.length;
+  const d=cur||t,n=daysAgo(d),pv=dAgo(n+1);
+  const a=n===0?'Last night':'Night ending '+(n===1?'yesterday':n<7?dayWords(d)[0]:fmtD(d));
+  const b=`${dayWd(pv)} ${pv.slice(0,7)===d.slice(0,7)?+pv.slice(8):fmtD(pv)} to ${dayWd(d)} ${fmtD(d)}`;
+  const btn=(st,off,lbl,path)=>`<button type="button" class="db${off?' off':''}" onclick="dtNight(${st})" aria-label="${lbl}"${off?' disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg></button>`;
+  return`<div class="dbar dt-dbar">${btn(-1,bk,'Earlier night','M15 6l-6 6l6 6')}<div class="dt"><b>${a}</b><small>${b}</small></div>${btn(1,fw,'Later night','M9 6l6 6l-6 6')}</div>`;
 }
 const PL_WORDS=['','very badly','badly','neither well nor badly','well','very well'];
-// a small line over the night from Polar's sample runs ({t, dt seconds, v[]}), placed by time; one line per run
-function dtSpark(runs,start,T){
-  const pts=[];(runs||[]).forEach(r=>{const t0=(Date.parse(r.t)-start)/1000;if(isNaN(t0))return;const p=[];(r.v||[]).forEach((v,i)=>{if(v>0)p.push([t0+i*(r.dt||300),v]);});if(p.length>1)pts.push(p);});
-  const all=pts.flat().map(p=>p[1]);if(!all.length)return'';
-  const lo=Math.min(...all),hi=Math.max(...all),sp=hi-lo||1;
-  return`<svg class="dt-sp" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">${pts.map(p=>`<polyline points="${p.map(([s,v])=>(Math.max(0,Math.min(100,s/T*100))).toFixed(1)+','+(22-(v-lo)/sp*20).toFixed(1)).join(' ')}"/>`).join('')}</svg>`;
-}
 // v127: the night cut on the sleep sheet. A cut night says what was left out and why, with Undo and Adjust; a night that may hold
 // time with the band off and has no decision yet asks, with Adjust and "It is right". No app or device names.
 function dtCutHTML(n){
@@ -192,77 +190,407 @@ function adjSave(){
   adjClose();plSetTrim(date,nt);
   showToast(whole?'Kept as recorded':'Night saved',{label:'Undo',fn:()=>plSetTrim(date,prev)});
 }
-// the detailed night from Polar: a four-row stage chart from the hypnogram, the stage minutes, Polar's score parts and
-// what the body did during the night. Shown only; the recovery score keeps using the sleep record and the daily wellness.
-// v119: no app or device names on screen. v127: the part outside a cut is hatched and the stage rows count only inside it.
-function dtPolar(n){
-  const x=n.data,span=x.span||0,start=Date.parse(x.start),T=Math.max(60,Math.round((Date.parse(x.end)-start)/1000)||span*60);
-  const hm=s=>plHm(s)||'',row=(l,v)=>v?`<div class="dt-row"><span>${l}</span><b>${v}</b></div>`:'';
-  const c=plCut(n),c0=c?c.s:0,c1=c?c.e:T,w=c?plWin(n,c.s,c.e):null,st=w?{deep:w.deep,rem:w.rem,light:w.light,wake:w.wake}:x.stages||{},inBed=w?w.inBed:span;
-  const pc=m=>inBed&&m?` · ${Math.round(m/inBed*100)}%`:'',pct=v=>(v/T*100).toFixed(2);
-  const ROW={0:0,3:1,1:2,2:3};
-  let hy='';plSegs(x).forEach(([s,e,k])=>{s=Math.max(s,c0);e=Math.min(e,c1);if(e<=s||ROW[k]==null)return;hy+=`<i${k===0?' class="w"':''} style="left:${pct(s)}%;width:${Math.max(0.3,(e-s)/T*100).toFixed(2)}%;top:${ROW[k]*25+3.5}%"></i>`;});
-  // the part left out: hatched, "Band off" for an automatic cut ("Awake in bed" at a start set by the heart rate), "Left out" for yours
-  const off=(a,b,e)=>b-a>0?`<b class="dt-off ${e}" style="left:${pct(a)}%;width:${pct(b-a)}%">${(b-a)/T>=0.2?`<span>${c.by==='you'?'Left out':e==='s'&&c.why==='hr'?'Awake in bed':'Band off'}</span>`:''}</b>`:'';
-  if(c)hy+=off(0,c0,'s')+off(c1,T,'e');
-  const [sh,sm]=hm(x.start).split(':').map(Number),mid=isNaN(sh)?'':hhmm(sh*60+sm+Math.round(T/120));
-  const chart=hy?`<div class="dt-hy"><div class="dt-hyl"><span>Awake</span><span>REM</span><span>Light</span><span>Deep</span></div><div class="dt-hyp" role="img" aria-label="Sleep stages through the night">${hy}</div><div class="dt-ax"><span>${hm(x.start)}</span><span>${mid}</span><span>${hm(x.end)}</span></div></div>`:'';
-  const it=x.inter||{},breaks=!c&&it.n?`${it.n} break${it.n>1?'s':''}${it.nLong?`, ${it.nLong} long`:''}`:'';
-  const from=c?plHmAdd(hm(x.start),c0):hm(x.start),to=c?plHmAdd(hm(x.start),c1):hm(x.end);
-  let h=`<div class="dt-sec">The night</div>${row(`Asleep from ${from} to ${to}`,fmtDur(inBed))}${chart}`;
-  h+=row('Deep sleep',st.deep?fmtDur(st.deep)+pc(st.deep):'')+row('REM (dreaming)',st.rem?fmtDur(st.rem)+pc(st.rem):'')+row('Light sleep',st.light?fmtDur(st.light)+pc(st.light):'')+row('Awake',st.wake?fmtDur(st.wake)+(breaks?' · '+breaks:''):'');
+// ── v129: the Sleep sheet in the approved order: the headline with the need bar, the stages ring, the night with the band's
+// heart rate, details against your usual, the sleep score, the sleep window of TH.DAY_USUAL_N nights. Shown only: Body keeps
+// using the sleep record and the daily wellness. No app or device names; the part outside a cut is hatched.
+// clock minutes counted from noon, so bedtimes either side of midnight sort and take a median correctly
+const slNoon=hm=>{const[h,m]=hm.split(':').map(Number);return(h*60+m+720)%1440;};
+const slHmOk=x=>/^\d\d:\d\d$/.test(x||'');
+const slRow=(l,v,sm)=>v?`<div class="dt-row"><span>${l}</span><b>${v}${sm||''}</b></div>`:'';
+// your usual bedtime and wake-up (noon minutes): the medians of the counted nights among the TH.DAY_USUAL_N before, from TH.DAY_USUAL_MIN
+function slUsualBW(date){
+  const o=daysAgo(date),b=[],w=[];
+  for(let i=1;i<=TH.DAY_USUAL_N;i++){const r=S().sleepLogs.find(x=>x.date===dAgo(o+i)&&x.durMin);if(r&&slCounts(r)&&slHmOk(r.bed)&&slHmOk(r.wake)){b.push(slNoon(r.bed));w.push(slNoon(r.wake));}}
+  return b.length>=TH.DAY_USUAL_MIN?{bed:Math.round(dyMed(b)),wake:Math.round(dyMed(w))}:null;
+}
+// the comparison under a Details value: ▲ ▼ ● in words; green when better, amber when worse, grey within near
+function slVs(v,u,dp,better,near){
+  const s=rfVs(v,u,dp),m=/^([▲▼]) (.*)$/.exec(s),df=+v.toFixed(dp)-+u.toFixed(dp);
+  const col=!m||Math.abs(df)<=(near||0)?'--t3':df*better>0?'--green':'--amber';
+  return`<small><i style="color:var(${col})" aria-hidden="true">${m?m[1]:'●'}</i>${m?m[2]:s}</small>`;
+}
+// stage minutes: the detailed night inside its kept window, else its own totals, else deep and dreaming typed in the log
+function slStages(sl,pn){
+  let st=null;const x=pn&&pn.data;
+  if(x&&(x.hyp||[]).length){const c=plCut(pn),w=plWin(pn,c?c.s:0,c?c.e:plTot(x));st={deep:w.deep,rem:w.rem,light:w.light,wake:w.wake};}
+  else if(x&&x.stages)st={deep:x.stages.deep||0,rem:x.stages.rem||0,light:x.stages.light||0,wake:x.stages.wake||0};
+  if(!st&&sl){const dp=(sl.deepH||0)*60+(sl.deepM||0),rm=(sl.remH||0)*60+(sl.remM||0);if(dp+rm)st={deep:dp,rem:rm,light:Math.max(0,sl.durMin-dp-rm),wake:0};}
+  return st&&st.deep+st.rem>0?st:null;
+}
+const SL_ST=[['deep','Deep','--deep'],['rem','Dreaming','--rem'],['light','Light','--light'],['wake','Awake','--amber']];
+function slRing(st){
+  if(!st)return'';
+  const on=SL_ST.filter(([k])=>st[k]>0),tot=on.reduce((a,[k])=>a+st[k],0),C=2*Math.PI*52,gap=on.length>1?1.5:0,pc=snPct(SL_ST.slice(0,3).map(([k])=>st[k]));
+  let off=0,arc='';
+  on.forEach(([k,,c])=>{const L=st[k]/tot*C;arc+=`<circle cx="60" cy="60" r="52" style="fill:none;stroke:var(${c});stroke-width:14;stroke-dasharray:${Math.max(0.5,L-gap).toFixed(1)} ${C.toFixed(1)};stroke-dashoffset:${(-off).toFixed(1)}"/>`;off+=L;});
+  const rows=SL_ST.filter(([k])=>k!=='wake'||st.wake>0),sum=st.deep+st.rem+st.light;
+  const lbl=rows.map(([k,n])=>`${n} ${fmtDur(st[k])}`).join(', ');
+  return`<div class="dt-sec">Stages</div><div class="dt-card"><div class="sn-dn sl-ring"><svg viewBox="0 0 120 120" role="img" aria-label="${lbl}"><g transform="rotate(-90 60 60)">${arc}</g>`+
+    `<text x="60" y="58" text-anchor="middle" class="sn-dc">${fmtDur(sum)}</text><text x="60" y="75" text-anchor="middle" class="sn-ds">asleep</text></svg>`+
+    `<div class="sn-lg">${rows.map(([k,n,c],i)=>`<div class="sn-lr"><i style="background:var(${c})"></i><span>${n}</span><b>${st[k]?fmtDur(st[k]):'0min'}</b><em>${k==='wake'?'':pc[i]+'%'}</em></div>`).join('')}</div></div></div>`;
+}
+// the night: four stage rows and the band's heart rate on one time axis (every TH.SL_TICK hours). The part outside a cut is
+// hatched ("Band off", "Awake in bed" at a start set by the heart rate, "Left out" for yours); a battery night runs on to your
+// usual wake-up as "Not recorded".
+function slNightSvg(pn,sl,uWake){
+  const x=pn.data,s0=plT(x.start),T=plTot(x);if(s0==null||!T)return'';
+  const c=plCut(pn),c0=c?c.s:0,c1=c?c.e:T,batt=!slCounts(sl);
+  let D=T;
+  if(batt&&uWake!=null){const q=new Date(s0),add=(uWake-(q.getHours()*60+q.getMinutes()+720)%1440)*60;if(add>T)D=add;}
+  const pts=[...dyPts(dAgo(daysAgo(pn.date)+1)),...dyPts(pn.date)].filter(p=>p[0]>=s0&&p[0]<=s0+D*1000).sort((p,q)=>p[0]-q[0]);
+  const hasHr=pts.length>1,yE=hasHr?124:76,H=yE+22,L=44,R=320,f=v=>(+v).toFixed(1),X=sec=>L+Math.max(0,Math.min(D,sec))/D*(R-L),XT=t=>X((t-s0)/1000);
+  const ROW={0:0,3:1,1:2,2:3},COL={0:'--amber',3:'--rem',1:'--light',2:'--deep'};
+  const vline=(sec,css)=>`<line x1="${f(Math.min(R-0.8,X(sec)))}" x2="${f(Math.min(R-0.8,X(sec)))}" y1="0" y2="${yE+4}" style="${css}"/>`;
+  const pill=(a,b,t)=>{if((b-a)/D<0.2)return'';const w=t.length*5.6+14,m=(X(a)+X(b))/2;return`<rect x="${f(m-w/2)}" y="58" width="${f(w)}" height="16" rx="8" style="fill:var(--bg)"/><text x="${f(m)}" y="70" text-anchor="middle" style="fill:var(--t2);font-weight:600">${t}</text>`;};
+  const hatch=(a,b)=>`<rect x="${f(X(a))}" y="4" width="${f(X(b)-X(a))}" height="${yE-4}" style="fill:url(#slhx)"/>`;
+  let g='';
+  [4,22,40,58,76].concat(hasHr?[yE]:[]).forEach(y=>g+=`<line x1="${L}" x2="${R}" y1="${y}" y2="${y}" style="stroke:var(--bdr)"/>`);
+  plSegs(x).forEach(([a,b,k])=>{a=Math.max(a,c0);b=Math.min(b,c1);if(b<=a||ROW[k]==null)return;const w=X(b)-X(a);
+    g+=`<rect class="st" data-s="${a}" data-e="${b}" x="${f(X(a))}" y="${6+ROW[k]*18}" width="${f(Math.max(0.6,w))}" height="14" rx="${w<3?0.5:1}" style="fill:var(${COL[k]})"/>`;});
+  if(c){
+    const off=(a,b,e)=>b>a?`<g class="dt-off ${e}" data-s="${a}" data-e="${b}">${hatch(a,b)}${pill(a,b,c.by==='you'?'Left out':e==='s'&&c.why==='hr'?'Awake in bed':'Band off')}</g>`:'';
+    g+=off(0,c0,'s')+off(c1,T,'e');
+    if(c0>0)g+=vline(c0,'stroke:var(--text);stroke-width:1.5');
+    if(c1<T)g+=vline(c1,'stroke:var(--text);stroke-width:1.5');
+  }
+  if(batt){
+    if(D>T)g+=`<g class="dt-nr" data-s="${T}" data-e="${D}">${hatch(T,D)}${pill(T,D,'Not recorded')}</g>`+vline(D,'stroke:var(--t3);stroke-dasharray:3 3');
+    g+=vline(T,'stroke:var(--text);stroke-width:1.5');
+  }
+  if(hasHr){
+    const vs=pts.map(p=>p[1]),lo=Math.min(...vs),hi=Math.max(...vs),Y=v=>115-(v-lo)/((hi-lo)||1)*22;
+    const segs=[];let q=[];pts.forEach((p,i)=>{if(i&&p[0]-pts[i-1][0]>=TH.DAY_GAP*DY_MIN){segs.push(q);q=[];}q.push(p);});if(q.length)segs.push(q);
+    segs.forEach(z=>{if(z.length>1)g+=`<polyline points="${z.map(p=>f(XT(p[0]))+','+f(Y(p[1]))).join(' ')}" style="fill:none;stroke:var(--text);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round"/>`;});
+    const kept=pts.filter(p=>p[0]>=s0+c0*1000&&p[0]<=s0+c1*1000);
+    if(kept.length){const m=kept.reduce((a,p)=>p[1]<a[1]?p:a),cx=XT(m[0]),cy=Y(m[1]);
+      g+=`<circle class="dt-lo" cx="${f(cx)}" cy="${f(cy)}" r="3.2" style="fill:var(--text);stroke:var(--bg);stroke-width:1.5"/><text x="${f(Math.min(R-8,Math.max(L+8,cx)))}" y="${f(cy-9.4)}" text-anchor="middle" style="fill:var(--t2);font-weight:600">${m[1]}</text>`;}
+  }
+  // the time axis: the ends first, then whole hours that fit
+  const ay=yE+16,put=[];let ax='';
+  const place=(sec,an,t)=>{const w=t.length*5.6,xx=an==='end'?R:X(sec),x0=an==='start'?xx:an==='end'?xx-w:xx-w/2;if(put.some(([p,q])=>x0<q+6&&x0+w>p-6))return;put.push([x0,x0+w]);ax+=`<text x="${f(xx)}" y="${ay}" text-anchor="${an}" style="fill:var(--t3)">${t}</text>`;};
+  place(0,'start',dyHm(s0));
+  if(batt&&D>T){place(D,'end','usual wake '+hhmm(uWake+720));place(T,'middle',dyHm(s0+T*1000));}
+  else place(T,'end',dyHm(s0+T*1000));
+  const q0=new Date(s0);q0.setMinutes(0,0,0);let tk=q0.getTime();if(tk<=s0)tk+=DY_HR;
+  for(;tk<s0+D*1000;tk+=DY_HR)if(!(new Date(tk).getHours()%TH.SL_TICK))place((tk-s0)/1000,'middle',dyHm(tk));
+  const lb=[['Awake',16],['REM',34],['Light',52],['Deep',70]].concat(hasHr?[['Heart',100],['rate',112]]:[]).map(([t,y])=>`<text x="0" y="${y}" style="fill:var(--t2)">${t}</text>`).join('');
+  return`<div class="dt-sec">The night</div><div class="dt-hy"><svg viewBox="0 0 320 ${H}" role="img" aria-label="Sleep stages${hasHr?' and heart rate':''} through the night">`+
+    `<defs><pattern id="slhx" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.2" height="5" style="fill:var(--t3);opacity:.5"/></pattern></defs>${lb}<g class="dt-hyp">${g}</g>${ax}</svg></div>`;
+}
+// the lowest heart rate while asleep and when, from the band's 24/7 heart rate; usual = the median lowest of the nights before
+function slLowest(date){
+  const D=dyDay(date);if(!D.sleep)return null;
+  let m=null;for(const p of D.pts)if(p[0]>=D.sleep.a&&p[0]<=D.sleep.b&&(!m||p[1]<m[1]))m=p;
+  return m?{v:m[1],t:m[0],u:dyUsual(date).nightLo}:null;
+}
+function slDetails(sl,pn,U){
+  const x=pn&&pn.data,c=pn&&plCut(pn),us=v=>v!=null?`<small>usual ${hhmm(v+720)}</small>`:'';
+  let bed=slHmOk(sl.bed)?sl.bed:null,wake=slHmOk(sl.wake)?sl.wake:null;
+  if(x&&(!bed||!wake)){const h=plHm(x.start);if(h){bed=bed||plHmAdd(h,c?c.s:0);wake=wake||plHmAdd(h,c?c.e:plTot(x));}}
+  let h=slRow('Bedtime',bed,us(U&&U.bed))+slRow('Wake-up',wake,us(U&&U.wake)),eff=null;
+  if(x&&(x.hyp||[]).length){const w=plWin(pn,c?c.s:0,c?c.e:plTot(x));eff=w.inBed?Math.round(w.asleep/w.inBed*100):null;}
+  else if(bed&&wake){const sp=slSpan(bed,wake);eff=sp?Math.round(sl.durMin/sp*100):null;}
+  if(eff!=null&&eff<=100)h+=slRow('Time asleep in bed',eff+'%');
+  const it=(x&&x.inter)||{};
+  if(!c&&it.n)h+=slRow('Breaks',String(it.n),it.nLong?`<small>${it.nLong} long</small>`:'');
+  const rc=(x&&x.rc)||{},bpm=ms=>ms?Math.round(60000/ms):null,mh=x?plMean(x.hrv):null,mb=x?plMean(x.br):null;   // intervals in ms
+  const lw=slLowest(sl.date),hr=bpm(rc.rri),hrB=bpm(rc.baseRri);
+  if(lw)h+=slRow('Lowest heart rate',`${lw.v} bpm at ${dyHm(lw.t)}`,lw.u!=null?slVs(lw.v,Math.round(lw.u),0,-1,TH.HR_NEAR):'');
+  else if(hr)h+=slRow('Heart rate overnight',`${hr} bpm`,hrB?slVs(hr,hrB,0,-1,TH.HR_NEAR):'');
+  const hv=rc.rmssd||(mh&&Math.round(mh)),hvB=rc.baseRmssd;
+  if(hv)h+=slRow('Heart rate variability',`${hv} ms`,hvB?slVs(hv,hvB,0,1,rc.sdRmssd||0):'');
+  const bq=rc.resp?60000/rc.resp:mb,bqB=rc.baseResp?60000/rc.baseResp:null;
+  if(bq)h+=slRow('Breathing',`${bq.toFixed(1)} /min`,bqB?slVs(bq,bqB,1,-1,TH.ILL_RESP):'');
+  if(x&&x.rating)h+=slRow('You rated it',`Slept ${PL_WORDS[x.rating]}`);
+  return h?`<div class="dt-sec">Details</div>`+h:'';
+}
+function slScoreSec(x){
   const p=x.parts||{};
-  if(x.score||p.duration||p.solidity||p.refresh){
-    h+=`<div class="dt-sec">Sleep score${x.score?` · ${x.score} of 100`:''}</div>`+row('Amount of sleep',p.duration)+row('Solidity',p.solidity)+row('Regeneration',p.refresh)+row('Efficiency',x.eff?x.eff+'%':'')+row('Sleep cycles',(x.cycles||[]).length||'');
-  }
-  const rc=x.rc||{},bpm=ms=>ms?Math.round(60000/ms):null,br=ms=>ms?(60000/ms).toFixed(1):null;   // Polar gives intervals in ms
-  const mh=plMean(x.hrv),mb=plMean(x.br);   // the night's own samples when Polar gives no mean
-  const hr=bpm(rc.rri),hrB=bpm(rc.baseRri),hv=rc.rmssd||(mh&&Math.round(mh)),hvB=rc.baseRmssd,bq=br(rc.resp)||(mb&&mb.toFixed(1)),bqB=br(rc.baseResp);
-  const vs=(v,b,u)=>v?`${v}${u}${b?` <small>usual ${b}</small>`:''}`:'';
-  if(hr||hv||bq){
-    h+=`<div class="dt-sec">Your body during the night</div>`+row('Heart rate',vs(hr,hrB,' bpm'))+row('Heart rate variability',vs(hv,hvB,' ms'))+(hv?dtSpark(x.hrv,start,T):'')+row('Breathing',vs(bq,bqB,' /min'))+(bq?dtSpark(x.br,start,T):'');
-  }
-  if(x.rating)h+=row('You rated it',`Slept ${PL_WORDS[x.rating]}`);
-  return h;
+  if(!(x.score||p.duration||p.solidity||p.refresh))return'';
+  return`<div class="dt-sec">Sleep score${x.score?` · ${x.score} of 100`:''}</div>`+slRow('Amount of sleep',p.duration)+slRow('Solidity',p.solidity)+slRow('Regeneration',p.refresh)+slRow('Sleep cycles',(x.cycles||[]).length||'');
+}
+// one line (v123) under the sleep window: last night against your usual bedtime, else how steady your bedtime is
+function winMeaning(ok,lastV,U,now){
+  if(!U||ok.length<TH.DAY_USUAL_MIN)return`Your usual window builds after ${TH.DAY_USUAL_MIN} nights.`;
+  const ww=TH.WIN_OK===30?'half an hour':TH.WIN_OK===60?'an hour':TH.WIN_OK+' minutes';
+  if(lastV&&Math.abs(lastV.b-U.bed)>TH.WIN_OK)return`${lastV.b>U.bed?'Later':'Earlier'} to bed than usual ${now?'last night':'that night'}: ${hhmm(lastV.b+720)} against ${hhmm(U.bed+720)}.`;
+  const n=ok.filter(z=>Math.abs(z.v.b-U.bed)<=TH.WIN_OK).length;
+  return n*2>ok.length?`Steady: you go to bed within ${ww} of your usual most nights.`:`Your bedtime varies by more than ${ww} most nights. A steadier one helps.`;
+}
+// the sleep window: bed to wake-up as floating bars over the TH.DAY_USUAL_N nights ending on the night shown, your usual dashed
+function slWinSvg(date,U){
+  const o=daysAgo(date),N=TH.DAY_USUAL_N,sl=[];
+  for(let i=N-1;i>=0;i--){const dt=dAgo(o+i),r=S().sleepLogs.find(x=>x.date===dt&&x.durMin);let v=null;
+    if(r&&slCounts(r)&&slHmOk(r.bed)&&slHmOk(r.wake)){const b=slNoon(r.bed);v={b,w:b+slSpan(r.bed,r.wake)};}
+    sl.push({dt,v});}
+  const ok=sl.filter(z=>z.v);if(!ok.length)return'';
+  const uw=U?(U.wake<U.bed?U.wake+1440:U.wake):null,stp=TH.WIN_TICK*60,f=v=>(+v).toFixed(1);
+  const lo=Math.floor(Math.min(...ok.map(z=>z.v.b),U?U.bed:Infinity)/stp)*stp;
+  let hi=Math.ceil(Math.max(...ok.map(z=>z.v.w),uw!=null?uw:-Infinity)/stp)*stp;if(hi<=lo)hi=lo+stp;
+  const Y=m=>8+(m-lo)/(hi-lo)*122,sw=(320-36)/N;
+  let g='';
+  for(let m=lo;m<=hi;m+=stp)g+=`<line x1="36" x2="320" y1="${f(Y(m))}" y2="${f(Y(m))}" style="stroke:var(--bdr)"/><text x="0" y="${f(Y(m)+3)}" style="fill:var(--t3)">${hhmm(m+720)}</text>`;
+  sl.forEach((z,i)=>{if(!z.v)return;g+=`<rect class="wn" data-d="${z.dt}" x="${f(36+i*sw+(sw-10)/2)}" y="${f(Y(z.v.b))}" width="10" height="${f(Math.max(2,Y(z.v.w)-Y(z.v.b)))}" rx="3" style="fill:var(--teal);opacity:${i===N-1?1:.32}"/>`;});
+  if(U)[U.bed,uw].forEach(m=>g+=`<line x1="36" x2="320" y1="${f(Y(m))}" y2="${f(Y(m))}" style="stroke:var(--text);stroke-dasharray:3 3;opacity:.55"/>`);
+  g+=`<text x="${f(36+sw/2)}" y="146" text-anchor="middle" style="fill:var(--t3)">${fmtD(sl[0].dt)}</text><text x="320" y="146" text-anchor="end" style="fill:var(--t3)">${fmtD(date)}</text>`;
+  const line=winMeaning(ok,sl[N-1].v,U,date===td());
+  return`<div class="dt-sec">Sleep window, ${N} nights</div><div class="sl-win"><svg viewBox="0 0 320 150" role="img" aria-label="Bedtime to wake-up over ${N} nights">${g}</svg><p class="dy-m">${line}</p></div>`;
 }
 // v118: what one Body part (hrv, rhr) adds today, in plain words with its points and weight
 function dtBodyPart(k){
-  const B=calcBody(),p=B.parts[k],w=k==='hrv'?TH.W_HRV:TH.W_RHR,nm=k==='hrv'?'Heart rate variability':'Resting heart rate';
-  if(!p){const m=B.missing.find(x=>x.k===k);return`Missing from Body today${m?': '+m.why:''}.`;}
+  const B=calcBody(_dtDay||td()),p=B.parts[k],w=k==='hrv'?TH.W_HRV:TH.W_RHR,nm=k==='hrv'?'Heart rate variability':'Resting heart rate';
+  if(!p){const m=B.missing.find(x=>x.k===k);return`Missing from Body ${_dtDay?'that day':'today'}${m?': '+m.why:''}.`;}
   if(k==='hrv')return`${Math.round(p.pts)} of 100 for Body (${w}%): your 7-night average is ${Math.round(p.v7)} ms, usual ${Math.round(p.m)}.`;
   return`${Math.round(p.pts)} of 100 for Body (${w}%): ${Math.round(p.v)} bpm, usual ${Math.round(p.m)}.`;
 }
+// ── v129: the Recovery sheet: the day bar, a waterfall from your usual day, each part against its usual range ──
+// a sheet opened from Today moves through the same days as Today's bar (‹ ›, up to TH.DAY_BACK back)
+function dtDayNav(){
+  const t=_dtDay||td(),n=daysAgo(t),[a,b]=dayWords(t),bk=n>=TH.DAY_BACK,fw=n===0;
+  const btn=(st,off,lbl,path)=>`<button type="button" class="db${off?' off':''}" onclick="dtDayGo(${st})" aria-label="${lbl}"${off?' disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg></button>`;
+  return`<div class="dbar dt-dbar">${btn(-1,bk,'Day before','M15 6l-6 6l6 6')}<div class="dt"><b>${a}</b><small>${b}</small></div>${btn(1,fw,'Day after','M9 6l6 6l-6 6')}</div>`;
+}
+function dtDayGo(step){
+  if(!_dtKey)return;
+  const n=Math.min(TH.DAY_BACK,Math.max(0,daysAgo(_dtDay||td())-step));
+  _dtDay=n?dAgo(n):null;openDetail(_dtKey,1);
+}
+// the usual day has every part at its usual (HRV and resting heart rate at 50 points, sleep at 100, as in calcBody),
+// weighted over the parts present; each part then moves it by (points − usual) × its share. The steps are rounded so
+// that they add up to the score shown, and listed largest first.
+function recSteps(B){
+  const P=B.parts,c=[['hrv',P.hrv,TH.W_HRV,50],['rhr',P.rhr,TH.W_RHR,50],['sleep',P.sleep,TH.W_SLEEP,100]].filter(x=>x[1]);
+  const W=c.reduce((a,x)=>a+x[2],0),start=c.reduce((a,x)=>a+x[3]*x[2],0)/W,s0=Math.round(start);
+  const st=c.map(([k,p,w,u])=>({k,s:(p.pts-u)*w/W,r:Math.round((p.pts-u)*w/W),sh:Math.round(w/W*100)}));
+  let diff=B.score-s0-st.reduce((a,x)=>a+x.r,0);
+  while(diff){
+    const x=st.reduce((a,b)=>diff>0?(b.s-b.r>a.s-a.r?b:a):(b.s-b.r<a.s-a.r?b:a));
+    x.r+=Math.sign(diff);diff-=Math.sign(diff);
+  }
+  st.sort((a,b)=>Math.abs(b.s)-Math.abs(a.s));
+  return{start,s0,steps:st,score:B.score,W};
+}
+const REC_NM={hrv:['HRV'],rhr:['Resting','heart rate'],sleep:['Sleep']};
+// the waterfall: the usual day, each part's step (green up, amber down), the score
+function recWfSvg(R,lastLbl){
+  const lv=[R.s0];R.steps.forEach(x=>lv.push(lv[lv.length-1]+x.r));
+  const lo=Math.max(0,Math.floor((Math.min(...lv)-10)/10)*10),hi=Math.max(...lv)+4,y=v=>140-(v-lo)/(hi-lo)*110;
+  const n=R.steps.length+2,X=i=>12+i*248/(n-1),bw=36,txt=(x,yy,t,st)=>`<text x="${x}" y="${yy}" style="${st}">${t}</text>`;
+  const val='fill:var(--text);text-anchor:middle;font-weight:600;font-size:12px',lab='fill:var(--t2);text-anchor:middle';
+  let g=`<line x1="0" y1="140" x2="320" y2="140" style="stroke:var(--bdr)"/>`;
+  const bar=(i,a,b,col,op)=>{const t=Math.min(y(a),y(b)),h=Math.max(1.5,Math.abs(y(a)-y(b)));return`<rect x="${X(i)}" y="${(a===b?y(a)-0.75:t).toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="3" style="fill:var(${col})${op?';opacity:'+op:''}"/>`;};
+  const names=[['Usual','day'],...R.steps.map(x=>REC_NM[x.k]),[lastLbl]];
+  g+=bar(0,lo,R.s0,'--t3',.45)+txt(X(0)+bw/2,(y(R.s0)-7).toFixed(1),R.s0,val);
+  R.steps.forEach((x,i)=>{
+    const a=lv[i],b=lv[i+1],up=x.r>=0;
+    g+=bar(i+1,a,b,x.r>0?'--green':x.r<0?'--amber':'--t3');
+    g+=txt(X(i+1)+bw/2,(up?Math.min(y(a),y(b))-7:Math.max(y(a),y(b))+15).toFixed(1),x.r>0?'+'+x.r:x.r<0?'−'+Math.abs(x.r):'0',val);
+  });
+  g+=bar(n-1,lo,R.score,'--gold')+txt(X(n-1)+bw/2,(y(R.score)-7).toFixed(1),R.score,val);
+  for(let i=0;i<n-1;i++)g+=`<line x1="${X(i)+bw}" y1="${y(lv[i]).toFixed(1)}" x2="${X(i+1)}" y2="${y(lv[i]).toFixed(1)}" style="stroke:var(--t3);stroke-dasharray:3 3"/>`;
+  names.forEach((nm,i)=>nm.forEach((w,j)=>g+=txt(X(i)+bw/2,156+12*j,w,lab)));
+  return`<svg class="rc-wf" viewBox="0 0 320 176" role="img" aria-label="From your usual day ${R.s0} to ${R.score}">${g}</svg>`;
+}
+// one part against its usual range: value, share of the score, a word with ▲ ▼ ●, and a bar with the range shaded.
+// HRV's range is the band mean ± SD/√7, the same test as its z in calcBody, so the word and the bar agree.
+function recRows(B,R){
+  const P=B.parts,sh=k=>{const x=R.steps.find(s=>s.k===k);return x?`${x.sh}% of the score`:'Not counted';};
+  const pos=(v,a0,a1)=>Math.max(0,Math.min(100,(v-a0)/(a1-a0)*100)).toFixed(1);
+  const rng=(v,lo,hi,good,mk)=>{
+    const sp=hi-lo||1,a0=Math.min(lo,v)-0.75*sp,a1=Math.max(hi,v)+0.75*sp,over=v>hi,under=v<lo;
+    const d=Math.max(1,Math.round(over?v-hi:lo-v)),ok=over?good>0:under?good<0:null;
+    const col=ok==null?'--green':ok?'--green':'--amber',sym=over?'▲':under?'▼':'●';
+    const word=over?`${d} over usual`:under?`${d} under usual`:'inside your usual';
+    return{word:`<i style="color:var(${col})">${sym}</i>${word}`,
+      bar:`<div class="rc-bl"><div class="u" style="left:${pos(lo,a0,a1)}%;width:${(pos(hi,a0,a1)-pos(lo,a0,a1)).toFixed(1)}%"></div><div class="m" style="left:${pos(v,a0,a1)}%;background:var(${ok===false?'--amber':ok?'--green':mk})"></div></div><div class="rc-bll"><span style="left:${pos(lo,a0,a1)}%">${Math.round(lo)}</span><span style="left:${pos(hi,a0,a1)}%">${Math.round(hi)}</span></div>`};
+  };
+  const out=[];
+  const one=(k,l,body)=>{const m=B.missing.find(x=>x.k===k);
+    if(!body)return out.push(`<div class="rc-rg"><div class="rc-h"><div class="l">${l}<small>Not counted</small></div><div class="v"><b>Missing</b><small>${m?esc(cap(m.why)):''}</small></div></div></div>`);
+    out.push(`<div class="rc-rg"><div class="rc-h"><div class="l">${l}<small>${sh(k)}</small></div><div class="v"><b>${body.v}</b><small>${body.word}</small></div></div>${body.bar}</div>`);};
+  if(P.hrv){const h=P.hrv,se=h.sd/TH.HRV_SE,r=rng(h.v7,h.m-se,h.m+se,1,'--teal');one('hrv','HRV, 7 nights',{v:`${Math.round(h.v7)} ms`,...r});}else one('hrv','HRV, 7 nights');
+  if(P.rhr){const h=P.rhr,r=rng(h.v,h.m-h.sd,h.m+h.sd,-1,'--text');one('rhr','Resting heart rate',{v:`${Math.round(h.v)} bpm`,...r});}else one('rhr','Resting heart rate');
+  if(P.sleep){const p=P.sleep,ax=Math.max(p.need,p.durMin)*1.25;
+    one('sleep','Sleep',{v:fmtDur(p.durMin),word:`${Math.round(p.pct*100)}% of your ${fmtDur(p.need)} need`,
+      bar:`<div class="rc-bl"><div class="n" style="left:${pos(p.need,0,ax)}%"></div><div class="m" style="left:${pos(p.durMin,0,ax)}%;background:var(--teal)"></div></div><div class="rc-bll"><span style="left:${pos(p.need,0,ax)}%">need</span></div>`});}
+  else one('sleep','Sleep');
+  return out.join('');
+}
+// one line: what lifted or lowered the score most against your usual day (v123 rule), and on today what to do when under green
+const REC_UP={hrv:'strong HRV',rhr:'low resting heart rate'};
+function recLine(B,R,now){
+  const d=R.score-R.s0,sl=B.parts.sleep,stp=k=>R.steps.find(x=>x.k===k);
+  const dn=x=>x.k==='hrv'?'low HRV':x.k==='rhr'?'raised resting heart rate':sl&&sl.pct>=1?'restless sleep':'short sleep';
+  let t;
+  if(d>=TH.REC_STEP){
+    const w=R.steps.filter(x=>x.r>0).slice(0,2).map(x=>REC_UP[x.k]),s=stp('sleep');
+    if(w.length<2&&s&&s.r>=-1)w.push('enough sleep');
+    t=`Above your usual day: ${w.join(' and ')}.`;
+  }else if(d<=-TH.REC_STEP){
+    t=`Below your usual day: ${R.steps.filter(x=>x.r<0).sort((a,b)=>a.r-b.r).slice(0,2).map(dn).join(' and ')}.`;
+  }else t='Close to your usual day.';
+  const a=now?renderZone(R.score).act:null;
+  return a?`${t} ${a}`:t;
+}
+const recCol=sc=>{const c=scoreCuts();return sc>=c.warn?'--green':sc>=c.mod?'--amber':'--red';};
+// the top of a score sheet: the score, its word in the state colour, and one line
+const dtHead=(sc,line)=>`<div class="dt-big">${sc}<small style="color:var(${recCol(sc)})">${scoreWord(sc)}</small></div>${line?`<div class="dt-ln">${line}</div>`:''}`;
+// ── v129: the Strain sheet: today's aim, where the strain came from, heart rate zones all day, your day, this week ──
+const STR_EW=['','very easy','easy','moderate','hard','very hard'];
+// whole percentages that add up to 100 (largest remainder)
+function snPct(vs){
+  const s=vs.reduce((a,v)=>a+v,0);if(!s)return vs.map(()=>0);
+  const r=vs.map(v=>v/s*100),o=r.map(Math.floor);let left=100-o.reduce((a,v)=>a+v,0);
+  r.map((v,i)=>[v-o[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{if(left>0){o[i]++;left--;}});
+  return o;
+}
+// the line under today's aim: room left, inside it, over it, or a rest day
+function snAimLine(st,tg,rest){
+  if(rest)return'Rest day: keep it to everyday moving.';
+  if(st>tg[1])return"Over today's aim. Keep the rest of the day easy.";
+  if(st>=tg[0])return"Inside today's aim. An easy session still fits; nothing hard.";
+  const v=coachVerdict();
+  return`Room for about ${Math.round(tg[1]-st)} more. ${v&&v.lvl!=='ok'?'Keep it easy today.':'A full session fits.'}`;
+}
+function snAim(st,tg,rest){
+  const P=v=>(Math.min(21,Math.max(0,v))/21*100).toFixed(1)+'%',lb=[[0,'left:0;transform:none']];
+  if(tg[0]>0)lb.push([tg[0],`left:${P(tg[0])}`]);
+  lb.push([tg[1],`left:${P(tg[1])}`],[21,'left:100%;transform:translateX(-100%)']);
+  return`<div class="sn-sb" role="img" aria-label="Strain ${st.toFixed(1)}, aim ${tg[0]} to ${tg[1]}"><span class="sn-aim" style="left:${P(tg[0])};width:${P(tg[1]-tg[0])}"></span><span class="sn-fill" style="width:${P(st)}"></span></div>`+
+    `<div class="sn-sbl" aria-hidden="true">${lb.map(([v,s])=>`<span style="${s}">${v}</span>`).join('')}</div><div class="dt-ln">${snAimLine(st,tg,rest)}</div>`;
+}
+// the steps of a day: the band's, else the watch's
+const snSteps=t=>{const p=dayOn(t),a=p&&p.data||{};return a.steps??((S().wellness||{})[t]||{}).steps??null;};
+// each workout and the time on your feet, with its share of the day's strain
+function snSrc(t){
+  const tot=strainLoad(t);if(!tot)return'';
+  const thr=stThr(),ac=actLoad(t),it=S().workouts.filter(w=>w.date===t).map(w=>{
+    const e=wkEffOf(w,thr);
+    return{ic:ICON[w.type]||ICON.Other,l:esc(wkLabel(w)),m:[wIcu(w).t,w.durMin?fmtDur(w.durMin):'',e?STR_EW[e.e]:''].filter(Boolean).join(' · '),v:wLoad(w),c:'--text'};
+  });
+  if(ac){const st=snSteps(t);it.push({ic:ICON.Walk,l:'On your feet',m:st!=null?fuN(st)+' steps':fmtDur(Math.round(actMin(t)))+' active',v:ac,c:'--t3'});}
+  const pc=snPct(it.map(x=>x.v));
+  return`<div class="dt-sec">Where it came from</div><div class="dt-card"><div class="sn-split" aria-hidden="true">${it.map((x,i)=>pc[i]?`<i style="width:${pc[i]}%;background:var(${x.c})"></i>`:'').join('')}</div>`+
+    it.map((x,i)=>`<div class="sn-src"><span class="sn-ri">${x.ic}</span><span class="sn-l">${x.l}${x.m?`<small>${x.m}</small>`:''}</span><b><span class="sn-dot" style="background:var(${x.c})"></span>${pc[i]}%</b></div>`).join('')+'</div>';
+}
+// minutes easy, steady and hard while awake, from the band's heart rate against your threshold (a measured one first)
+function snZoneMin(t){
+  const D=dyDay(t,1),th=stThr(),m=k=>th[k]&&th[k].lthr&&!th[k].est?th[k].lthr:null;
+  const lt=m('run')||m('ride')||(th.run||{}).lthr||(th.ride||{}).lthr;if(!lt||!D.pts.length)return null;
+  const asl=x=>[D.sleep,D.sleep2].some(z=>z&&x>=z.a&&x<=z.b),per=TH.DAY_HR_DT/60,o={easy:0,steady:0,hard:0};
+  D.pts.forEach(([x,v])=>{if(asl(x))return;const k=v>=lt*TH.ZN_HARD?'hard':v>=lt*TH.ZN_STEADY?'steady':v>=lt*TH.ZN_EASY_LO?'easy':null;if(k)o[k]+=per;});
+  return o.easy+o.steady+o.hard?o:null;
+}
+const SN_ZN=[['easy','Easy','--green'],['steady','Steady','--amber'],['hard','Hard','--red']];
+function snZones(t){
+  const o=snZoneMin(t);if(!o)return'';
+  const tot=o.easy+o.steady+o.hard,C=2*Math.PI*44,on=SN_ZN.filter(([k])=>o[k]),gap=on.length>1?2:0,pc=snPct(SN_ZN.map(([k])=>o[k]));
+  let off=0,arc='';
+  on.forEach(([k,,c])=>{const L=o[k]/tot*C;arc+=`<circle cx="56" cy="56" r="44" style="fill:none;stroke:var(${c});stroke-width:13;stroke-dasharray:${Math.max(0.5,L-gap).toFixed(1)} ${C.toFixed(1)};stroke-dashoffset:${(-off).toFixed(1)}"/>`;off+=L;});
+  const lbl=SN_ZN.map(([k,n])=>`${n} ${fmtDur(o[k])}`).join(', ');
+  return`<div class="dt-sec">Heart rate zones, all day</div><div class="dt-card"><div class="sn-dn"><svg viewBox="0 0 112 112" role="img" aria-label="${lbl}"><g transform="rotate(-90 56 56)">${arc}</g>`+
+    `<text x="56" y="55" text-anchor="middle" class="sn-dc">${fmtDur(tot)}</text><text x="56" y="71" text-anchor="middle" class="sn-ds">in zones</text></svg>`+
+    `<div class="sn-lg">${SN_ZN.map(([k,n,c],i)=>`<div class="sn-lr"><i style="background:var(${c})"></i><span>${n}</span><b>${o[k]?fmtDur(o[k]):'0min'}</b><em>${pc[i]}%</em></div>`).join('')}</div></div></div>`;
+}
+// your usual of one band field: the median of the TH.DAY_USUAL_N days before, from TH.DAY_USUAL_MIN days
+function snUsual(t,f){
+  const n0=daysAgo(t),v=[];
+  for(let i=1;i<=TH.DAY_USUAL_N;i++){const r=dayOn(dAgo(n0+i)),x=r&&r.data?f(r.data,dAgo(n0+i)):null;if(x!=null)v.push(x);}
+  return v.length>=TH.DAY_USUAL_MIN?dyMed(v):null;
+}
+// steps, active time, calories and sitting; today against "usual N a day", a past day ▲ ▼ against usual
+function snTiles(t){
+  const p=dayOn(t),a=p&&p.data||{},now=t===td(),tl=[];
+  const vs=(v,u,fmt)=>{
+    if(u==null)return'';if(now)return`usual ${fmt(u)} a day`;
+    const df=Math.round(v)-Math.round(u);
+    return df?`<i class="${df>0?'good':''}" aria-hidden="true">${df>0?'▲':'▼'}</i>${fmt(Math.abs(df))} ${df>0?'over':'under'} usual`:'<i aria-hidden="true">●</i>at your usual';
+  };
+  const st=snSteps(t);
+  if(st!=null)tl.push(['Steps',fuN(st),vs(st,snUsual(t,(x,dt)=>x.steps??null),fuN)]);
+  if(a.act!=null)tl.push(['Active',fmtDur(Math.round(a.act))||'0min',vs(a.act,snUsual(t,x=>x.act??null),m=>fmtDur(Math.round(m)))]);
+  const ex=isExampleOnly(),wt=last(S().measurements.filter(x=>x.date<=t&&x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort((x,y)=>x.date<y.date?-1:1));
+  const kc=a.kcal!=null?a.kcal:a.met&&wt?a.met*wt.weight:null;
+  if(kc)tl.push(['Calories burned',`${fuN(kc)}<em>kcal</em>`,(a.kcal!=null?'':'about, ')+(now?'so far today':'whole day')]);
+  if(a.sit!=null)tl.push(['Sitting',fmtDur(Math.round(a.sit))||'0min',a.sitMax!=null?`longest ${fmtDur(a.sitMax)||'0min'}`:'']);
+  return tl.length?`<div class="dt-sec">Your day</div><div class="sn-tiles">${tl.map(([l,v,n])=>`<div class="sn-tl"><small>${l}</small><b>${v}</b>${n?`<span>${n}</span>`:''}</div>`).join('')}</div>`:'';
+}
+// the band's heart rate over the calendar day, and how fast it came down after the main workout
+function snSettleLine(st){
+  if(!st)return'';const nm=wkNoun(st.w);
+  if(st.min==null)return`Stayed above ${st.lvl} after your ${nm}.`;
+  if(st.min<=TH.DAY_SETTLE_MIN)return st.min?`Back under ${st.lvl} within ${st.min} minutes of your ${nm}: a quick settle.`:`Back under ${st.lvl} right after your ${nm}: a quick settle.`;
+  return`Took ${st.min<60?st.min+' minutes':fmtDur(st.min)} to get back under ${st.lvl} after your ${nm}.`;
+}
+function snHr(t){
+  const D=dyDay(t,1);if(!D.pts.length)return'';
+  const n=daysAgo(t),ln=snSettleLine(daySettle(D,dyUsual(t)));
+  return`<div class="dt-sec">${!n?'Heart rate today':n===1?'Heart rate yesterday':'Heart rate on '+dayWords(t)[0]}</div><div class="dt-card">${dyHrSvg(D,'st')}${dyLegend(D)}${ln?`<div class="dy-m">${ln}</div>`:''}</div>`;
+}
+// training time since Monday against the outline's target for the week, with what is still planned this week
+function snWeekInfo(){
+  const P=strategy();if(!P||!P.target)return null;
+  const end=6-stWd(td()),left=P.days.filter(x=>x.i<=end&&!x.done&&x.role!=='rest'&&x.role!=='race'),plan=left.reduce((a,x)=>a+((x.lo||0)+(x.hi||0))/2,0);
+  const now=P.now,tg=P.target,rest=tg-now,st=now>=tg?'ahead':now+plan>=TH.WK_ON*tg?'on':'behind';
+  const L=left.find(x=>x.role==='long');
+  let ln=st==='ahead'?(now>tg?'Ahead: past this week\'s target already.':'Target reached for this week.'):st==='on'?'On track.':`Behind: the rest of the plan leaves about ${fmtDur(Math.max(5,Math.round((rest-plan)/5)*5))} short.`;
+  if(L&&st!=='ahead'){
+    const who=L.i===0?"Today's":L.i===1?"Tomorrow's":cap(wkWhen(L.date)),mid=((L.lo||0)+(L.hi||0))/2;
+    ln+=` ${who} long ${wkNoun({type:L.type})} ${mid>=rest/2?'makes up most of the rest':'is still to come'}.`;
+  }
+  return{now,tg,st,ln};
+}
+function snWeek(){
+  const W=snWeekInfo();if(!W)return'';
+  return`<div class="dt-sec">This week</div><div class="sn-wkl"><b>${fmtDur(W.now)||'0min'}</b> <span>of about ${fmtDur(W.tg)}</span></div>`+
+    `<div class="sn-wk" role="img" aria-label="${fmtDur(W.now)||'0min'} of about ${fmtDur(W.tg)}"><i style="width:${Math.min(100,W.now/W.tg*100).toFixed(1)}%"></i></div><div class="dt-ln">${W.ln}</div>`;
+}
 function dtSpec(k){
   if(/^wk:/.test(k))return wkSpec(k.slice(3));   // v122: a workout (workout.js)
-  const d=S(),t=td(),fresh=x=>daysAgo(x.date)<=2;
+  // v129: t is the day Today showed (_dtDay), so every value, usual and check-in is as of that day; the aim and Tonight only on today
+  const d=S(),t=_dtDay||td(),o=daysAgo(t),now=!o,fresh=x=>x.date<=t&&daysAgo(x.date)-o<=2;
+  const ago=x=>daysAgo(x)-o===1?(now?'yesterday':'the day before'):fmtD(x),old=x=>`from ${ago(x)}${now?', until you check in today':''}`;
   if(k==='sleep'){
-    const sl=_dtDate?d.sleepLogs.find(x=>x.date===_dtDate&&x.durMin):dtLastNight(),goal=dtGoal(),src=(sl&&sl.src)||{};
-    const fn=dt=>{const s=d.sleepLogs.find(x=>x.date===dt&&x.durMin);return s&&slCounts(s)?s.durMin:null;},u=dtAvg(fn);
-    const wk=/^([01]\d|2[0-3]):[0-5]\d$/.test(d.profile.wakeTime||'')?d.profile.wakeTime:'06:30',[h,m]=wk.split(':').map(Number),need=sleepNeed(strainOf(strainLoad(t)));
-    const tonight=`<div class="dt-sec">Tonight</div><div class="dt-row"><span>Asleep by <b>${hhmm(h*60+m-need)}</b> for ${fmtDur(need)}</span><label class="dt-wake">wake at <input type="time" value="${wk}" onchange="setWake(this.value)" aria-label="Wake time"></label></div>${need>goal?`<div class="dt-note">${fmtDur(need-goal)} over your goal, for today's strain and recent short nights.</div>`:''}`;
-    const nav=dtNav(sl?sl.date:null),gH=goal/60;
-    const tr=dtTrend(dt=>{const v=fn(dt);return v==null?null:v/60;},v=>fmtDur(Math.round(v*60)),{bar:true,color:'--teal',label:'Time asleep',yfmt:v=>Math.round(v)+'h',
-      barColor:v=>v>=gH?'--teal':v>=gH-1?'--teal/.5':'--amber',lines:[{v:gH,label:'Goal',color:'--teal'}],
-      stats:{good:v=>v>=gH,label:'at or over your goal',unit:'nights',one:'night'},means:info=>sleepMeaning(info,goal)});
-    const pn0=polarOn(_dtDate||t),pre=pn0?dtBattHTML(pn0,sl)+dtCutHTML(pn0):'';
-    if(!sl)return{title:'Sleep',nav,pre,missing:`No sleep logged for last night. Enter bedtime and wake-up in Log, or tap Sync if your watch recorded it.`,link:['Log sleep',"logGo('lSleep')"],trend:tr,extra:tonight};
-    const pc=Math.round(sl.durMin/goal*100),base=Math.round(slScore(sl)*0.5+35),used=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s)));
+    // v129: the night ending the day shown (‹ › picks another); no 30-day chart here, Trends keeps time asleep
+    const sl=_dtDate?d.sleepLogs.find(x=>x.date===_dtDate&&x.durMin):now?dtLastNight():bodyNight(t),goal=dtGoal(),src=(sl&&sl.src)||{};
+    _dtShown=sl?sl.date:null;
+    const wk=/^([01]\d|2[0-3]):[0-5]\d$/.test(d.profile.wakeTime||'')?d.profile.wakeTime:'06:30',[h,m]=wk.split(':').map(Number),tn=sleepNeed(strainOf(strainLoad(t)));
+    const tonight=`<div class="dt-sec">Tonight</div><div class="dt-row"><span>Asleep by <b>${hhmm(h*60+m-tn)}</b> for ${fmtDur(tn)}</span><label class="dt-wake">wake at <input type="time" value="${wk}" onchange="setWake(this.value)" aria-label="Wake time"></label></div>${tn>goal?`<div class="dt-note">${fmtDur(tn-goal)} over your goal, for today's strain and recent short nights.</div>`:''}`;
+    const nav=dtNav(sl?sl.date:null);
+    if(!sl){const pn0=polarOn(_dtDate||t);
+      return{title:'Sleep',nav,pre:pn0?dtBattHTML(pn0,null)+dtCutHTML(pn0):'',missing:now?`No sleep logged for last night. Enter bedtime and wake-up in Log, or tap Sync if your watch recorded it.`:`No sleep logged for the night ending ${fmtD(t)}.`,link:['Log sleep',"logGo('lSleep')"],extra:now?tonight:''};}
+    const pn=polarOn(sl.date),x=pn&&pn.data,cnt=slCounts(sl),U=slUsualBW(sl.date),pre=pn?dtBattHTML(pn,sl)+dtCutHTML(pn):'';
     const ev=ciOn(dAgo(daysAgo(sl.date)+1)),late=ev&&ev.coffeeLate?`<div class="dt-note">Coffee after 14:00 the evening before.</div>`:'';
-    const est=src.bed==='est'||src.wake==='est'?' · one time estimated':'';
-    const pn=polarOn(sl.date),polar=pn?dtPolar(pn):'';
-    // v118 (A5): Body uses the night ending today, else yesterday, never an older one
-    const bs=bodyLive()?calcBody().parts.sleep:null;
-    const cnt=slCounts(sl),bodyEff=!cnt?'Not counted: the battery ran out.':bs&&bs.date===sl.date?`${Math.round(bs.pts)} of 100 for Body (${TH.W_SLEEP}%): ${fmtDur(bs.durMin)} of the ${fmtDur(bs.need)} you needed.`:'Not counted today: too old.';
-    return{title:'Sleep',nav,pre:pn?dtBattHTML(pn,sl)+dtCutHTML(pn):'',val:fmtDur(sl.durMin),sub:`${cnt?`${pc}% of your ${fmtDur(goal)} goal`:`Recorded until ${plHm(pn.data.end)}`}${sl.date!==t?' · night ending '+fmtD(sl.date):''}${sl.score?' · score '+sl.score:''}${est}`,
-      usual:u.length?`${fmtDur(Math.round(avg(u)))}`:'Needs more nights',trend:tr,
-      effect:bodyLive()?bodyEff:used&&used.date===sl.date?`Starts the score at ${base} of 100${!cnt?', from the part your band recorded.':pc>=90?': a full night.':pc>=75?': a bit short of your goal.':': well short of your goal.'}`:used?`Not counted today: the score uses the night ending ${fmtD(used.date)}.`:'Not counted today: too old.',
-      link:['Edit in Log',"logGo('lSleep')"],extra:polar+late+tonight};
+    const night=x?slNightSvg(pn,sl,U&&U.wake):'';
+    // v127: a battery night counts as missing, not short: no ring, no need bar, no score; what it means for Body and sleep debt
+    if(!cnt){
+      const us=v=>v!=null?`<small>usual ${hhmm(v+720)}</small>`:'',bed=slHmOk(sl.bed)?sl.bed:x&&plHm(x.start),end=x&&plHm(x.end),ub=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s)));
+      const onT=bodyNight(t)===sl?`<div class="dt-sec">On Today</div><div class="dt-card"><div class="rf none">${UI.moon}<span class="rf-l">Sleep</span><span class="rf-r"><span class="rf-v">Not counted</span><span class="rf-n"><i class="rf-g" aria-hidden="true">●</i>battery ran out</span></span></div></div>`:'';
+      const det=slRow('Asleep from',bed,us(U&&U.bed))+slRow('Recorded until',end,'<small>battery ran out</small>')
+        +(bodyLive()?slRow('Recovery that day','HRV and resting heart rate','<small>sleep left out</small>'):ub&&ub.date===sl.date?slRow('Recovery that day',`Starts at ${Math.round(slScore(sl)*0.5+35)} of 100`,'<small>from the part recorded</small>'):'')+slRow('Sleep debt','Nothing added');
+      return{title:'Sleep',nav,pre,head:`<div class="dt-big">${fmtDur(sl.durMin)}</div><div class="dt-sub">recorded${bed?`, from ${bed}`:''} until the battery ran out</div>`,
+        body:night+`<div class="dt-sec">Details</div>`+det+onT,link:['Edit in Log',"logGo('lSleep')"],extra:late+(now?tonight:'')};
+    }
+    const need=needOf(sl),pct=Math.round(sl.durMin/need*100),base=Math.round(slScore(sl)*0.5+35),used=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s)));
+    const est=src.bed==='est'||src.wake==='est'?' · one time estimated':'',score=x?slScoreSec(x):'';
+    const bar=`<div class="sl-need" role="img" aria-label="${pct}% of what you needed"><i style="width:${Math.min(pct,100)}%"></i><u style="left:${pct>100?(100/pct*100).toFixed(1):100}%"></u></div><div class="sl-nl"><span>0</span><span>Need ${fmtDur(need)}</span></div>`;
+    const head=`<div class="dt-big">${fmtDur(sl.durMin)}</div><div class="dt-sub">asleep, ${pct}% of the ${fmtDur(need)} you needed${!score&&sl.score?' · score '+sl.score:''}${est}</div>`+bar;
+    // v118 (A5): Body uses the night ending that day, else the day before, never an older one
+    const bs=bodyLive()?calcBody(t).parts.sleep:null;
+    // a night the shown day does not use names the one it does, or says it came later or is too old
+    const pc=Math.round(sl.durMin/goal*100),uD=bodyLive()?bs&&bs.date:used&&used.date,dw=now?'today':'that day';
+    const notUsed=uD?`Not counted ${dw}: the score uses the night ending ${fmtD(uD)}.`:`Not counted ${dw}: ${sl.date>t?'this night came later':'too old'}.`;
+    return{title:'Sleep',nav,pre,head,
+      body:slRing(slStages(sl,pn))+night+slDetails(sl,pn,U)+score+slWinSvg(sl.date,U),
+      effect:uD!==sl.date?notUsed:bodyLive()?`${Math.round(bs.pts)} of 100 for Body (${TH.W_SLEEP}%): ${fmtDur(bs.durMin)} of the ${fmtDur(bs.need)} you needed.`
+        :`Starts the score at ${base} of 100${pc>=90?': a full night.':pc>=75?': a bit short of your goal.':': well short of your goal.'}`,
+      link:['Edit in Log',"logGo('lSleep')"],extra:late+(now?tonight:'')};
   }
   if(k==='form'){
-    const tsb=d.intervalsData.tsb,fn=dt=>{if(dt===t&&tsb!=null)return tsb;const w=d.wellness[dt];return w&&w.ctl!=null&&w.atl!=null?Math.round((w.ctl-w.atl)*10)/10:null;},u=dtAvg(fn);
+    const fn=tsbOn,tsb=fn(t),ia=now?d.intervalsData:d.wellness[t]||{},u=dtAvg(fn);
     if(tsb==null)return{title:'Form',missing:'Form (how fresh your legs are) is fitness minus recent fatigue, from your training history. Connect your training account in Settings and sync.',link:['Open Settings','openSettings()']};
     const n=tsb>0?tsb*0.5:tsb*0.3,w=zL(tsb,'tsb');
-    return{title:'Form',val:(tsb>0?'+':'')+Math.round(tsb),sub:`${w} · fitness ${Math.round(d.intervalsData.ctl)} minus recent fatigue ${Math.round(d.intervalsData.atl)}`,
+    return{title:'Form',val:(tsb>0?'+':'')+Math.round(tsb),sub:`${w} · fitness ${Math.round(ia.ctl)} minus recent fatigue ${Math.round(ia.atl)}`,
       usual:u.length?`${(avg(u)>0?'+':'')+Math.round(avg(u))}`:'Needs more days',trend:dtTrend(fn,sgn,{label:'Form',color:'--teal',zones:formZones(),stats:{good:v=>v>=TH.FORM_OK,label:'balanced or fresher'}}),
       effect:bodyLive()?'Not part of Body.':`${cap(dtPts(n))}.`,
       link:['Open Settings','openSettings()']};
@@ -272,37 +600,37 @@ function dtSpec(k){
     // the same cuts and words as Mind (calcMind)
     const tr=dtTrend(fn,v=>Math.round(v)+'/100',{label:'Check-in',min:0,max:100,yfmt:v=>Math.round(v),stats:{good:v=>v>=TH.MIND_FLAT,label:'flat or better'},
       zones:mindZones()});
-    if(!ci)return{title:'Check-in',missing:'No check-in in the last three days. It takes four taps: energy, mood, stress and motivation.',link:['Check in',"logGo('lCheckin')"],trend:tr};
-    const p=dtPsy(ci),e=EM,old=ci.date!==t?`From ${daysAgo(ci.date)===1?'yesterday':fmtD(ci.date)}, until you check in today. `:'';
-    return{title:'Check-in',val:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Flat':'Strained',sub:`${old}${p}/100 · energy ${e.energy[ci.energy].toLowerCase()}, mood ${e.mood[ci.mood].toLowerCase()}, stress ${e.stress[ci.stress].toLowerCase()}, motivation ${e.motivation[ci.motivation].toLowerCase()}`,
+    if(!ci)return{title:'Check-in',missing:now?'No check-in in the last three days. It takes four taps: energy, mood, stress and motivation.':`No check-in in the three days to ${fmtD(t)}.`,link:['Check in',"logGo('lCheckin')"],trend:tr};
+    const p=dtPsy(ci),e=EM,was=ci.date!==t?cap(old(ci.date))+'. ':'';
+    return{title:'Check-in',val:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Flat':'Strained',sub:`${was}${p}/100 · energy ${e.energy[ci.energy].toLowerCase()}, mood ${e.mood[ci.mood].toLowerCase()}, stress ${e.stress[ci.stress].toLowerCase()}, motivation ${e.motivation[ci.motivation].toLowerCase()}`,
       usual:u.length?`${Math.round(avg(u))}/100`:'Needs more days',trend:tr,
       effect:bodyLive()?'Not part of Body.':`30% of the score${p>=70?': lifts it.':p>=50?': holds it steady.':': pulls it down.'}`,
       link:['Edit in Log',"logGo('lCheckin')"]};
   }
   if(k==='hrv'){
-    const hv=latestOf('hrv'),hb=wSeries('hrv'),fn=dt=>{const w=d.wellness[dt];return w&&w.hrv!=null?w.hrv:null;};
-    if(!hv)return{title:'Heart rate variability',missing:'No HRV in the last three days. Your watch records it overnight; sync to refresh.',link:['Open Settings','openSettings()']};
+    const hv=latestOf('hrv',t),hb=wSeries('hrv',30,true,t),fn=dt=>{const w=d.wellness[dt];return w&&w.hrv!=null?w.hrv:null;};
+    if(!hv)return{title:'Heart rate variability',missing:now?'No HRV in the last three days. Your watch records it overnight; sync to refresh.':`No HRV in the three days to ${fmtD(t)}.`,link:['Open Settings','openSettings()']};
     const b=hb.length>=RB_MIN?avg(hb):null,pc=b?Math.round((hv.v/b-1)*100):0,adj=b?Math.max(-10,Math.min(4,(hv.v/b-1)*30)):0;
-    return{title:'Heart rate variability',val:Math.round(hv.v)+' ms',sub:hv.age?`from ${fmtD(dAgo(hv.age))}`:'last night',
+    return{title:'Heart rate variability',val:Math.round(hv.v)+' ms',sub:hv.age?`from ${fmtD(dAgo(o+hv.age))}`:now?'last night':'that night',
       usual:b?`${Math.round(b)} ms`:`Building: ${hb.length} of ${RB_MIN} days`,trend:dtTrend(fn,v=>Math.round(v)+' ms',{label:'Heart rate variability',color:'--teal',yfmt:v=>Math.round(v),band:TH.HRV_FLOOR,txt:BAND_TXT.hrv,stats:{good:dtIn(1),label:'in or above your usual range'}}),
       effect:bodyLive()?dtBodyPart('hrv'):b?`${cap(dtPts(adj))}${pc>=-5?'.':`: ${-pc}% below usual.`}`:`Counts after ${RB_MIN} days of readings.`,
       link:['Open Settings','openSettings()']};
   }
   if(k==='rhr'){
-    const rv=latestOf('rhr'),rb=rhrSeries(),src=rv&&rv.src,fn=dt=>{const r=rhrOn(dt);return r&&r.src===src?r.v:null;};
-    if(!rv)return{title:'Resting heart rate',missing:'No resting heart rate in the last three days. Sync to refresh, or log it under Body.',link:['Log in Body',"logGo('lMeas')"]};
+    const rv=latestOf('rhr',t),rb=rhrSeries(30,t),src=rv&&rv.src,fn=dt=>{const r=rhrOn(dt);return r&&r.src===src?r.v:null;};
+    if(!rv)return{title:'Resting heart rate',missing:now?'No resting heart rate in the last three days. Sync to refresh, or log it under Body.':`No resting heart rate in the three days to ${fmtD(t)}.`,link:['Log in Body',"logGo('lMeas')"]};
     const b=rb.length>=RB_MIN?avg(rb):null,df=b?Math.round(rv.v-b):0,adj=b?Math.max(-6,Math.min(2,-(rv.v-b)*0.8)):0;
-    return{title:'Resting heart rate',val:Math.round(rv.v)+' bpm',sub:(rv.age?`from ${fmtD(dAgo(rv.age))}`:'today')+(src==='icu'?'':' · logged by you'),
+    return{title:'Resting heart rate',val:Math.round(rv.v)+' bpm',sub:(rv.age?`from ${fmtD(dAgo(o+rv.age))}`:now?'today':'that day')+(src==='icu'?'':' · logged by you'),
       usual:b?`${Math.round(b)} bpm`:`Building: ${rb.length} of ${RB_MIN} days`,trend:dtTrend(fn,v=>Math.round(v)+' bpm',{label:'Resting heart rate',yfmt:v=>Math.round(v),band:TH.RHR_FLOOR,txt:BAND_TXT.rhr,stats:{good:dtIn(-1),label:'in or below your usual range'}}),
       effect:bodyLive()?dtBodyPart('rhr'):b?`${cap(dtPts(adj))}${df<=2?'.':`: ${df} bpm above usual.`}`:`Counts after ${RB_MIN} days of readings.`,
       link:src==='icu'?['Open Settings','openSettings()']:['Edit in Body',"logGo('lMeas')"]};
   }
   if(k==='breathing'){
-    const pv=latestOf('resp'),pb=wSeries('resp'),fn=dt=>{const w=d.wellness[dt];return w&&w.resp!=null?w.resp:null;};
-    if(!pv)return{title:'Breathing rate',missing:'No breathing rate in the last three days. Your watch records it while you sleep; sync to refresh.',link:['Open Settings','openSettings()']};
+    const pv=latestOf('resp',t),pb=wSeries('resp',30,true,t),fn=dt=>{const w=d.wellness[dt];return w&&w.resp!=null?w.resp:null;};
+    if(!pv)return{title:'Breathing rate',missing:now?'No breathing rate in the last three days. Your watch records it while you sleep; sync to refresh.':`No breathing rate in the three days to ${fmtD(t)}.`,link:['Open Settings','openSettings()']};
     const b=pb.length>=RB_MIN?avg(pb):null,df=b?Math.round((pv.v-b)*10)/10:0;
-    const bd=rollBand(seriesFor(60,fn).filter(p=>p.v!=null).map(p=>({d:p.date,v:p.v})),0.5),lb=last(bd),watch=lb?(lb.lo+lb.hi)/2+TH.ILL_RESP:null;
-    return{title:'Breathing rate, asleep',val:pv.v.toFixed(1)+' /min',sub:pv.age?`from ${fmtD(dAgo(pv.age))}`:'last night',
+    const bd=rollBand(seriesFor(60,fn).filter(p=>p.v!=null).map(p=>({d:p.date,v:p.v})),0.5),lb=bd.find(b=>b.d===t)||last(bd),watch=lb?(lb.lo+lb.hi)/2+TH.ILL_RESP:null;
+    return{title:'Breathing rate, asleep',val:pv.v.toFixed(1)+' /min',sub:pv.age?`from ${fmtD(dAgo(o+pv.age))}`:now?'last night':'that night',
       usual:b?`${b.toFixed(1)} /min`:`Building: ${pb.length} of ${RB_MIN} days`,trend:dtTrend(fn,v=>v.toFixed(1)+' /min',{label:'Breathing rate',color:'--teal',yfmt:v=>v.toFixed(1),band:0.5,txt:BAND_TXT.resp,
         lines:watch!=null?[{v:watch,label:'Illness watch',color:'--amber'}]:[],stats:{good:dtIn(-1),label:'in or below your usual range'}}),
       effect:'Not in the score. Up together with resting heart rate, it can be an early sign of illness.',
@@ -313,15 +641,15 @@ function dtSpec(k){
     // bars from None (no bar) to Severe, as in the Trends soreness chart
     const tr=dtTrend(dt=>{const v=fn(dt);return v==null?null:v-1;},v=>EM.soreness[Math.round(v)+1]||'',{bar:true,color:'--red',label:'Soreness',min:0,max:3,yfmt:v=>String(Math.round(v)),
       barColor:v=>v>=3?'--red':v>=2?'--red/.65':'--red/.35',stats:{good:v=>v<2,label:'none or mild'},
-      means:info=>{const m=info.pts.filter(p=>p.v>=2);return m.length?`Moderate or worse on ${m.length} day${m.length>1?'s':''}, the latest ${fmtD(last(m).d)}.`:'None or mild.';}});
-    if(!s)return{title:'Soreness',missing:'Not rated in the last three days. Soreness is part of the check-in.',link:['Check in',"logGo('lCheckin')"],trend:tr};
-    return{title:'Soreness',val:EM.soreness[s],sub:`level ${s} of 4${ci.date!==t?` · from ${daysAgo(ci.date)===1?'yesterday':fmtD(ci.date)}, until you check in today`:''}`,
+      means:info=>{const m=info.pts.filter(p=>p.v>=2);return m.length?`Moderate or worse on ${m.length} day${m.length>1?'s':''}, the latest ${dayWord(last(m).d).replace(/^T/,'t')}.`:'None or mild.';}});
+    if(!s)return{title:'Soreness',missing:now?'Not rated in the last three days. Soreness is part of the check-in.':`Not rated in the three days to ${fmtD(t)}.`,link:['Check in',"logGo('lCheckin')"],trend:tr};
+    return{title:'Soreness',val:EM.soreness[s],sub:`level ${s} of 4${ci.date!==t?' · '+old(ci.date):''}`,
       usual:u.length?`${EM.soreness[Math.round(avg(u))]}`:'Needs more days',trend:tr,
       effect:(bodyLive()?'Not part of Body.':s>=2?`${cap(dtPts(-(s-1)*4))}.`:'No change.')+(s>=3?' Three days like this: log it as an injury.':''),
       link:['Edit in Log',"logGo('lCheckin')"]};
   }
   if(k==='coffee'){
-    const ci=todayCI(),fn=dt=>{const c=ciOn(dt);return c?c.coffee||0:null;},u=dtAvg(fn);
+    const ci=ciOn(t),fn=dt=>{const c=ciOn(dt);return c?c.coffee||0:null;},u=dtAvg(fn);
     return{title:'Coffee',val:ci?(ci.coffee||0)+(ci.coffee===4?'+ cups':ci.coffee===1?' cup':' cups'):'Not logged',sub:ci&&ci.coffeeLate?'including a cup after 14:00':'none after 14:00',
       usual:u.length?`${Math.round(avg(u)*10)/10} cups a day`:'Needs more days',trend:dtTrend(fn,v=>Math.round(v)+(Math.round(v)>=4?'+':'')+(Math.round(v)===1?' cup':' cups'),{bar:true,color:'--t2',label:'Coffee',min:0,max:4,yfmt:v=>String(Math.round(v)),
         barColor:v=>v>=3?'--amber':'--t2',lines:[{v:3,label:'3+ cups',color:'--amber'}],stats:{good:v=>v<3,label:'under 3 cups',avg:'average'},
@@ -336,35 +664,33 @@ function dtSpec(k){
       usual:'',effect:(bodyLive()?'Not part of Body.':`${cap(dtPts(-m*8))}.`)+(m>=3?' Rest until it settles.':m>=2?' No hard days for now.':''),link:['Edit in Log',"logGo('lInjury')"]};
   }
   if(k==='strain'){
-    const load=strainLoad(t),st=strainOf(load),ref=strainRef(),tg=strainTarget(),fn=dt=>{const l=strainLoad(dt);return l?strainOf(l):0;},ws=d.workouts.filter(w=>w.date===t);
-    // v127: daily activity counts, so most days have some strain; the usual is then per day, not per training day
-    const u=dtAvg(fn).filter(v=>v>0),hard=strainOf(ref),ac=actLoad(t)>0,acAny=dtAvg(actLoad).some(v=>v>0);
-    return{title:'Strain',val:load?st.toFixed(1):'0',sub:ws.length?ws.map(w=>esc(w.type)+(w.durMin?' '+fmtDur(w.durMin):'')).join(', ')+(ac?', plus daily activity':''):ac?(restToday()?'Planned rest day, daily activity only':'Daily activity only'):restToday()?'Planned rest day':'Nothing logged yet today',
-      usual:u.length?`${(avg(u)).toFixed(1)} ${acAny?'a day':'on training days'}, hard day about ${hard.toFixed(1)}`:'Needs more training days',
+    // v129: the aim, where the strain came from, heart rate zones all day, your day, the heart rate line and this week, then the 30-day chart
+    const load=strainLoad(t),st=strainOf(load),ref=strainRef(),hard=strainOf(ref),tg=now?strainTarget():null,nav=dtDayNav(),ws=d.workouts.filter(w=>w.date===t);
+    if(!now&&!load&&!dayOn(t))return{title:'Strain',nav,missing:'Nothing was recorded for this day.'};
+    const rest=now&&restToday()&&!ws.length;
+    return{title:'Strain',nav,
+      head:`<div class="dt-big">${load?st.toFixed(1):'0'}<small class="sn-of">of 21</small></div><div class="dt-sub">${now?(tg?`Aim today: ${tg[0]} to ${tg[1]}`:'So far today'):'Day total'}</div>`+(tg?snAim(st,tg,rest):''),
+      body:snSrc(t)+snZones(t)+snTiles(t)+snHr(t)+(now?snWeek():''),
       trend:dtTrend(dt=>{const l=strainLoad(dt);return l?strainOf(l):null;},v=>v.toFixed(1),{bar:true,color:'--t2',label:'Strain',yfmt:v=>Math.round(v),
         barColor:v=>v>=hard?'--text':'--t2',lines:[{v:hard,label:'Hard day',color:'--t3'}],stats:{avg:'average on training days',unit:'training days',one:'training day',good:v=>v<hard,label:'below a hard day'},
-        means:info=>{const h=info.pts.filter(p=>p.v>=hard);return h.length?`${h.length} hard day${h.length>1?'s':''}, the latest ${fmtD(last(h).d)}.`:'No hard days.';}}),
-      effect:tg?`Target today ${tg[0]} to ${tg[1]}${load?(st>tg[1]?': above it.':st<tg[0]?': room for more.':': in it.'):'.'}`:'',
-      link:['Log a workout',"logGo('lWorkout')"]};
+        means:info=>{const h=info.pts.filter(p=>p.v>=hard);return h.length?`${h.length} hard day${h.length>1?'s':''}, the latest ${dayWord(last(h).d).replace(/^T/,'t')}.`:'No hard days.';}})};
   }
   if(k==='recovery'&&bodyLive()){
     // v118: Body is the hero score after the parallel run: HRV, resting heart rate and sleep only, each against your own band
-    const B=calcBody(),sc=B.score,h=d.bodyHist||{},fn=dt=>dt===t?sc:(h[dt]??null),u=dtAvg(fn);
-    if(sc==null)return{title:'Body',missing:'No Body score yet: it needs heart rate variability or resting heart rate from your watch. Tap Sync in Settings.',link:['Open Settings','openSettings()']};
-    const tr=dtTrend(fn,v=>Math.round(v),{label:'Body',color:'--gold-dk',min:0,max:100,zones:scoreZones(),stats:{good:v=>v>=scoreCuts().warn,label:'good'},means:scoreMeaning});
-    const P=B.parts,rows=[];
-    rows.push([`Heart rate variability · ${TH.W_HRV}%`,P.hrv?`${Math.round(P.hrv.pts)} of 100`:'missing']);
-    rows.push([`Resting heart rate · ${TH.W_RHR}%`,P.rhr?`${Math.round(P.rhr.pts)} of 100`:'missing']);
-    rows.push([`Sleep · ${TH.W_SLEEP}%`,P.sleep?`${Math.round(P.sleep.pts)} of 100`:'missing']);
-    const miss=B.missing.length?`<div class="dt-note">Missing today: ${B.missing.map(m=>m.why).join('; ')}.</div>`:'';
-    return{title:'Body',val:sc,sub:scoreWord(sc)+(B.conf==='low'?' · low confidence':''),
-      usual:u.length?`${Math.round(avg(u))}`:'Needs more days',trend:tr,
-      effect:`<div class="dt-parts">${rows.map(([l,v])=>`<div class="dt-row"><span>${l}</span><b>${v}</b></div>`).join('')}</div>${miss}`,
-      link:['Open Settings','openSettings()']};
+    // v129: the score and one line on what moved it, a waterfall from your usual day, each part against its usual range
+    const B=calcBody(t),sc=B.score,h=d.bodyHist||{},T=td(),fn=dt=>dt===t?sc:dt===T?calcBody().score:(h[dt]??null),nav=dtDayNav();
+    if(sc==null)return{title:'Recovery',nav,missing:now?'No score yet: it needs heart rate variability or resting heart rate from your watch. Tap Sync in Settings.':'No score for this day: no heart rate variability or resting heart rate.',link:['Open Settings','openSettings()']};
+    const R=recSteps(B),miss=B.missing.length?`<div class="dt-ln dt-mute">Missing ${now?'today':'that day'}: ${B.missing.map(m=>m.why).join('; ')}.</div>`:'';
+    return{title:'Recovery',nav,head:dtHead(sc,recLine(B,R,now))+miss,
+      body:`<div class="dt-sec">From your usual day to ${now?'today':'that day'}</div><div class="dt-card">${recWfSvg(R,now?'Today':dayWd(t))}</div>`+
+        `<div class="dt-sec">Against your usual range</div><div class="dt-card rc-rgs">${recRows(B,R)}</div>`,
+      trend:dtTrend(fn,v=>Math.round(v),{label:'Recovery',color:'--gold-dk',min:0,max:100,zones:scoreZones(),stats:{good:v=>v>=scoreCuts().warn,label:'good'},means:scoreMeaning})};
   }
   if(k==='recovery'){
-    const sc=calcReadiness(),h=d.readHist||{},fn=dt=>dt===t?sc:(h[dt]??null),u=dtAvg(fn);
-    if(sc==null)return{title:'Recovery',missing:'No score yet. Check in or log last night\'s sleep and it appears.',link:['Check in',"logGo('lCheckin')"]};
+    const h=d.readHist||{},sc=now?calcReadiness():h[t]??null,fn=dt=>dt===t?sc:(h[dt]??null),u=dtAvg(fn),nav=dtDayNav();
+    const usual=`<div class="dt-row dt-usual"><span>Usual, 30 days</span><b>${u.length?Math.round(avg(u)):'Needs more days'}</b></div>`;
+    if(!now)return sc==null?{title:'Recovery',nav,missing:'No score was recorded for this day.'}:{title:'Recovery',nav,head:dtHead(sc,'')+usual};
+    if(sc==null)return{title:'Recovery',nav,missing:'No score yet. Check in or log last night\'s sleep and it appears.',link:['Check in',"logGo('lCheckin')"]};
     const sl=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s))),ci=last(d.checkins.filter(c=>ciFull(c)&&fresh(c))),tsb=d.intervalsData.tsb;
     const parts=[];
     parts.push(['Sleep',sl?`start ${Math.round(slScore(sl)*0.5+35)}`:'start 70, nothing logged']);
@@ -374,8 +700,8 @@ function dtSpec(k){
     const rv=latestOf('rhr'),rb=rhrSeries();if(rv&&rb.length>=RB_MIN)parts.push(['Resting HR',dtPts(Math.max(-6,Math.min(2,-(rv.v-avg(rb))*0.8)))]);
     if(ci&&ci.soreness>=2)parts.push(['Soreness'+(ci.date!==t?' (yesterday)':''),dtPts(-(ci.soreness-1)*4)]);
     const inj=d.injuries.filter(i=>i.active);if(inj.length)parts.push(['Injury',dtPts(-Math.max(...inj.map(i=>i.sev))*8)]);
-    return{title:'Recovery',val:sc,sub:scoreWord(sc),
-      usual:u.length?`${Math.round(avg(u))}`:'Needs more days',trend:dtTrend(fn,v=>Math.round(v),{label:'Readiness',color:'--gold-dk',min:20,max:100,zones:scoreZones(),stats:{good:v=>v>=scoreCuts().warn,label:'good or primed'},means:scoreMeaning}),
+    return{title:'Recovery',nav,head:dtHead(sc,renderZone(sc).ins)+usual,
+      trend:dtTrend(fn,v=>Math.round(v),{label:'Readiness',color:'--gold-dk',min:20,max:100,zones:scoreZones(),stats:{good:v=>v>=scoreCuts().warn,label:'good or primed'},means:scoreMeaning}),
       effect:`<div class="dt-parts">${parts.map(([l,v])=>`<div class="dt-row"><span>${l}</span><b>${v}</b></div>`).join('')}</div>${(()=>{const b=calcBody().score,n=Object.values(d.bodyHist||{}).filter(v=>v!=null).length,left=Math.max(0,TH.PARALLEL_DAYS-n);return b!=null?`<div class="dt-note">Body (new): ${b} today, takes over in ${left} day${left===1?'':'s'}.</div>`:'';})()}`,
       link:['Edit in Log',"logGo('lCheckin')"]};
   }
@@ -383,6 +709,7 @@ function dtSpec(k){
 }
 // again: a re-render of the open sheet (refreshDetail), which never asks the network
 function openDetail(k,again){
+  const md=document.querySelector('#dtModal .modal'),sy=again&&md?md.scrollTop:0;   // a refresh keeps the place (read before the chart comes down); a new sheet starts at its top
   if(k!==_dtKey)_dtDate=null;           // a new sheet starts on last night
   _dtCh=null;chUnmount('dtChart');
   const wk=/^wk:/.test(k);
@@ -395,22 +722,25 @@ function openDetail(k,again){
     const b=$('dtBody'),op=again?[...b.querySelectorAll('details[data-k][open]')].map(x=>x.dataset.k):[];
     const fc=again&&document.activeElement&&document.activeElement.classList.contains('wk-cv');
     b.innerHTML=sp.html;
-    if(!again){const m=el.querySelector('.modal');if(m)m.scrollTop=0;}
     el.classList.add('open');
     wkMount();
     op.forEach(x=>{const e=b.querySelector(`details[data-k="${x}"]`);if(e)e.open=true;});
     if(fc){const c=b.querySelector('.wk-cv');if(c)c.focus({preventScroll:true});}
+    if(md)md.scrollTop=sy;               // set after open and after the body is complete: a hidden or half-built sheet clamps it
     return;
   }
   let h=(sp.nav||'')+(sp.pre||'');
   if(sp.missing)h+=`<div class="dt-miss">${sp.missing}</div>`;
+  else if(sp.head!=null)h+=sp.head;      // v129: a sheet that sets its own top (score, word, one line)
   else h+=`<div class="dt-big">${sp.val}</div><div class="dt-sub">${sp.sub||''}</div>${sp.usual?`<div class="dt-row dt-usual"><span>Usual, 30 days</span><b>${sp.usual}</b></div>`:''}`;
-  h+=sp.trend||'';
+  h+=(sp.body||'')+(sp.trend||'');
   if(sp.effect)h+=`<div class="dt-sec">Effect on recovery</div><div class="dt-eff">${sp.effect}</div>`;
   h+=sp.extra||'';
   if(sp.link)h+=`<button class="btn-out dt-link" onclick="closeDetail();${sp.link[1]}">${sp.link[0]}</button>`;
-  $('dtBody').innerHTML=h;el.classList.add('open');
-  if(_dtCh&&$('dtChart'))mountChart('dtChart',{key:'dt'+k,..._dtCh});
+  $('dtBody').innerHTML=h;
+  el.classList.add('open');
+  if(_dtCh&&$('dtChart'))mountChart('dtChart',{key:'dt'+k,at:_dtDay,..._dtCh});
+  if(md)md.scrollTop=sy;
 }
-function closeDetail(){_dtKey=null;_dtDate=null;_dtCh=null;_wkC=null;_wkRes=null;chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
+function closeDetail(){_dtKey=null;_dtDate=null;_dtShown=null;_dtDay=null;_dtCh=null;_wkC=null;_wkRes=null;chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
 function refreshDetail(){if(_dtKey)openDetail(_dtKey,1);}

@@ -136,7 +136,7 @@ function renderFood(){
   if(!$('fdToday'))return;
   const d=S(),t=td(),rec=d.foodLogs.find(x=>x.date===t),fd=fuFood(t),n=fuelPlan();
   $('fdToday').textContent=fd?fuN(fd.kcal):'0';
-  $('foodStat').textContent=fd?`${fuN(fd.kcal)} kcal today`:'Optional. Nothing logged today';
+  lgStat();
   $('fdNote').textContent=fd&&n?`Today's estimate is about ${fuN(n.kcal)} kcal.${fd.protein?` Protein so far: ${fd.protein} of ${n.p} g.`:''}`:fd&&fd.protein?`Protein so far: ${fd.protein} g.`:'Pick a meal, then add what you ate. A rough guess is fine.';
   $('fdSlots').innerHTML=fdSlotsHTML(rec);
   $('fdAddTo').textContent=`Add to ${FD_NAME[fdSlot()].toLowerCase()}`;

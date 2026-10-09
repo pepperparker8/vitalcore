@@ -47,6 +47,7 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <script src="../js/coach.js"></script>
 <script src="../js/sessions.js"></script>
 <script src="../js/workout.js"></script>
+<script src="../js/day.js"></script>
 <script src="../js/strategy.js"></script>
 <script src="../js/fuel.js"></script>
 <script src="../js/health.js"></script>
@@ -852,8 +853,8 @@ seq('Workout sheet',async()=>{
       {id:'w-run',date:dAgo(2),type:'Run',durMin:30,distKm:5,rpe:2,notes:''},{...ride('icu-i91',dAgo(1),{hrr:23}),durMin:40},{...ride('icu-i92',dAgo(2),{hrr:23}),durMin:40}];
     _s.planHist={[td()]:{fam:'rideEasy',lvl:2,type:'Cycle',role:'easy',effort:2,lo:60,hi:75}};
     $('wkList').innerHTML=wkRow(E);const rowEl=$('wkList').querySelector('.act-item');
-    check('Workout sheet: a workout row is a button that opens its sheet, labelled e-bike ride, with a chevron',rowEl.getAttribute('role')==='button'&&rowEl.tabIndex===0&&/openDetail\('wk:icu-i90'\)/.test(rowEl.getAttribute('onclick'))&&rowEl.querySelector('.act-name').textContent==='E-bike ride'&&!!rowEl.querySelector('.act-go'),rowEl.outerHTML.slice(0,160));
-    const[eb,db]=rowEl.querySelectorAll('.wk-acts button');eb.click();db.click();
+    check('Workout sheet: a workout row is a button that opens its sheet, labelled e-bike ride, with a chevron',rowEl.getAttribute('role')==='button'&&rowEl.tabIndex===0&&/openDetail\('wk:icu-i90'\)/.test(rowEl.getAttribute('onclick'))&&rowEl.querySelector('.act-name').textContent==='E-bike ride'&&!!rowEl.querySelector('.wk-mo svg.ui-i'),rowEl.outerHTML.slice(0,160));
+    const[eb,db]=rowEl.querySelectorAll('.wk-menu button');eb.click();db.click();
     check('Workout sheet: Edit and Delete on the row do only their own job',hit.join()==='edit:icu-i90,del:icu-i90'&&!isOpen()&&!_dtKey&&!calls.length,hit.join()+` · open ${isOpen()}`);
     rowEl.click();
     const loading=!!$('dtBody').querySelector('.wk-load'),t0=$('dtTitle').firstChild.textContent;
@@ -1039,11 +1040,11 @@ seq('v125 icons',async()=>{
   const had=$('rdFactors'),box=had||document.createElement('div');if(!had){box.id='rdFactors';box.hidden=true;document.body.appendChild(box);}
   try{
     base();_s.checkins=[ci({soreness:3})];_s.wellness[td()].hrv=58;renderFactors();
-    const rows=[...box.querySelectorAll('.rf')],hrv=rows.find(r=>r.getAttribute('onclick')==="openDetail('hrv')");
+    const rows=[...box.querySelectorAll('.rf')],hrv=rows.find(r=>r.getAttribute('onclick')==="tdOpen('hrv')");
     check('v125 icons: each factor row starts with its icon and shows the value with the comparison under it',rows.length>=4&&rows.every(r=>r.firstElementChild.matches('svg.ui-i')&&r.querySelector('.rf-r .rf-v')&&r.querySelector('.rf-r .rf-n .rf-g')),rows.map(r=>r.textContent).join(' | '));
     check('v125 icons: HRV under its usual shows a down arrow and the difference in words',hrv&&hrv.querySelector('.rf-g').textContent==='▼'&&/^\d+ under usual$/.test(hrv.querySelector('.rf-n').textContent.replace('▼','')),hrv&&hrv.querySelector('.rf-n').textContent);
   }finally{if(!had)box.remove();}
-  const row=document.createElement('div');row.innerHTML=wkRow({id:'w-v125',date:td(),type:'Run',durMin:30,distKm:5,rpe:3,notes:'',sets:[]});
+  const row=document.createElement('div');row.innerHTML=wkRow({id:'w-v125',date:td(),type:'Run',durMin:30,distKm:5,rpe:3,notes:'',sets:[]},{plain:true});
   check('v125 icons: a workout row ends with a line chevron and its sport icon sits in a tile',!!row.querySelector('.act-go svg.ui-i')&&!row.querySelector('.act-go').textContent.trim()&&!!row.querySelector('.act-icon svg.sp-ico'),row.innerHTML.slice(0,160));
   check('v125 icons: the cache name follows the version',swj.includes("'vitalcore-v"+APP_VER+"'"),APP_VER);
 });
@@ -1256,10 +1257,10 @@ seq('v127 sheet',async()=>{
   try{
     night();openDetail('sleep');let s=strip();
     check('v127 sheet: an automatic cut shows above the night with what was left out, Undo and Adjust',s&&/^Night trimmed/.test(txt(s))&&txt(s).includes(`Your band was off from 19:35 to 22:40, so the night starts at 22:40: ${fmtDur(425)} asleep, not ${fmtDur(610)}.`)&&btns(s)==='Undo,Adjust'&&!!(s.compareDocumentPosition(body().querySelector('.dt-hy'))&Node.DOCUMENT_POSITION_FOLLOWING)&&!!s.querySelector('svg.ui-i'),txt(s));
-    const off=body().querySelector('.dt-hyp b.dt-off.s'),cut=11100/38280*100,ins=[...body().querySelectorAll('.dt-hyp i')];
-    check('v127 sheet: the part left out is hatched and labelled, and the stages start where the night starts',off&&Math.abs(parseFloat(off.style.width)-cut)<0.05&&txt(off)==='Band off'&&!body().querySelector('.dt-off.e')&&ins.length>0&&ins.every(i=>parseFloat(i.style.left)>=cut-0.01),off&&off.outerHTML);
-    const w=plWin(polarOn(dt),11100,38280);
-    check('v127 sheet: the night and its stages are counted inside the cut',rowOf('Asleep from 22:40 to 06:13')===fmtDur(w.inBed)&&rowOf('Deep sleep')===`${fmtDur(w.deep)} · ${Math.round(w.deep/w.inBed*100)}%`&&rowOf('REM (dreaming)')===`${fmtDur(w.rem)} · ${Math.round(w.rem/w.inBed*100)}%`,[rowOf('Asleep from 22:40 to 06:13'),rowOf('Deep sleep'),rowOf('REM (dreaming)')].join(' / '));
+    const off=body().querySelector('.dt-hyp g.dt-off.s'),sts=[...body().querySelectorAll('.dt-hyp rect.st')];
+    check('v127 sheet: the part left out is hatched and labelled, and the stages start where the night starts',off&&off.getAttribute('data-s')==='0'&&off.getAttribute('data-e')==='11100'&&txt(off)==='Band off'&&!body().querySelector('.dt-off.e')&&sts.length>0&&sts.every(r=>+r.getAttribute('data-s')>=11100),off&&off.outerHTML);
+    const w=plWin(polarOn(dt),11100,38280),lg=n=>{const r=[...body().querySelectorAll('.sl-ring .sn-lr')].find(r=>r.querySelector('span').textContent===n);return r?r.querySelector('b').textContent:'';};
+    check('v127 sheet: the night and its stages are counted inside the cut',rowOf('Bedtime').startsWith('22:40')&&rowOf('Wake-up').startsWith('06:13')&&lg('Deep')===fmtDur(w.deep)&&lg('Dreaming')===fmtDur(w.rem)&&lg('Light')===fmtDur(w.light)&&txt(body().querySelector('.sl-ring .sn-dc'))===fmtDur(w.deep+w.rem+w.light)&&rowOf('Time asleep in bed')===Math.round(w.asleep/w.inBed*100)+'%',[rowOf('Bedtime'),rowOf('Wake-up'),lg('Deep'),lg('Dreaming'),lg('Light'),rowOf('Time asleep in bed')].join(' / '));
     check('v127 sheet: no app or device names in the sheet',noNames(body().textContent));
     s.querySelector('button').click();let t1=toasts.pop();
     check('v127 sheet: Undo counts the whole night again, says so and offers the cut back',polarOn(dt).trim.by==='off'&&slOf(dt).bed==='19:35'&&slOf(dt).durMin===610&&t1&&t1.m==='The whole night counts again'&&t1.a&&t1.a.label==='Undo',JSON.stringify(polarOn(dt).trim)+' '+(t1&&t1.m));
@@ -1285,7 +1286,7 @@ seq('v127 sheet',async()=>{
     adjSave();let t2=toasts.pop();
     check('v127 sheet: Save keeps your times as yours, closes the sheet and offers Undo',polarOn(dt).trim.by==='you'&&polarOn(dt).trim.s===11100&&polarOn(dt).trim.e===37200&&slOf(dt).wake==='05:55'&&!$('adjModal').classList.contains('open')&&!_adj&&t2&&t2.m==='Night saved'&&t2.a.label==='Undo',JSON.stringify(polarOn(dt).trim));
     refreshDetail();
-    check('v127 sheet: your own cut says so and the part left out says Left out',/^Night adjusted/.test(txt(strip()))&&txt(strip()).includes('You set the night to 22:40 to 05:55')&&!/Band off/.test(txt(body().querySelector('.dt-hyp'))),txt(strip()));
+    check('v127 sheet: your own cut says so and the part left out says Left out',/^Night adjusted/.test(txt(strip()))&&txt(strip()).includes('You set the night to 22:40 to 05:55')&&!/Band off/.test(txt(body().querySelector('.dt-hyp')))&&txt(body().querySelector('.dt-hyp .dt-off.s'))==='Left out',txt(strip()));
     t2.a.fn();
     check('v127 sheet: Undo after Save puts the earlier cut back',polarOn(dt).trim.by==='auto'&&polarOn(dt).trim.e===38280&&slOf(dt).wake==='06:13',JSON.stringify(polarOn(dt).trim));
     adjOpen(dt);[...$('adjSc').querySelectorAll('.adj-cp')][1].click();adjSave();let t3=toasts.pop();
@@ -1318,7 +1319,7 @@ seq('v127 heart rate sheet',async()=>{
   const strip=()=>$('dtBody').querySelector('.dt-cut'),txt=el=>el?el.textContent:'',noNames=t=>!/Polar|Intervals|Garmin|Strava/i.test(t);
   const chips=id=>[...$(id).querySelectorAll('.adj-cp')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' | ');
   try{
-    hrFresh(250,true);plRetrim(dAgo(2));openDetail('sleep');const s=strip(),off=$('dtBody').querySelector('.dt-hyp b.dt-off.s');
+    hrFresh(250,true);plRetrim(dAgo(2));openDetail('sleep');const s=strip(),off=$('dtBody').querySelector('.dt-hyp .dt-off.s');
     check('v127 heart rate sheet: the cut says the heart rate stayed high and what was left out',s&&/^Night trimmed/.test(txt(s))&&txt(s).includes(`Your heart rate stayed above its sleeping level until 00:50, so the night starts at 00:50: ${fmtDur(390)} asleep, not ${fmtDur(620)}.`),txt(s));
     check('v127 heart rate sheet: the part left out reads Awake in bed, not Band off',off&&txt(off)==='Awake in bed'&&!/Band off/.test(txt($('dtBody').querySelector('.dt-hyp'))),off&&off.outerHTML);
     adjOpen(dt);
@@ -1358,10 +1359,11 @@ seq('v127 battery',async()=>{
     check('v127 battery: Today shows the sleep gauge empty with the reason, and the factor row says not counted',$('slpNum').textContent==='—'&&$('gSlpSub').textContent==='Battery ran out'&&f.v==='Not counted'&&f.n==='battery ran out'&&f.st==='none',`${$('slpNum').textContent} ${$('gSlpSub').textContent} / ${f.v} ${f.n}`);
     openDetail('sleep');const s=$('dtBody').querySelector('.dt-cut'),bt=s?[...s.querySelectorAll('button')]:[];
     check('v127 battery: the sheet says the night was cut short, when, that it counts as missing, and offers to add the wake-up time',s&&/^Night cut short/.test(s.textContent)&&s.textContent.includes('Battery ran out at 03:12. Counted as missing, not short.')&&bt.length===1&&bt[0].textContent==='Add wake-up time'&&!!s.querySelector('svg.ui-i')&&!$('dtBody').querySelector('.dt-off'),s&&s.textContent);
-    check('v127 battery: the sheet says until when it was recorded, and the 30-day chart leaves the night out',$('dtBody').textContent.includes('Recorded until 03:12')&&_dtCh&&!_dtCh.series[0].pts.some(p=>p.d===dt)&&_dtCh.series[0].pts.some(p=>p.d===y),_dtCh&&_dtCh.series[0].pts.length);
+    const brow=l=>{const r=[...$('dtBody').querySelectorAll('.dt-row')].find(r=>r.firstElementChild&&r.firstElementChild.textContent===l);return r?r.lastElementChild.textContent:'';};
+    check('v127 battery: the sheet says until when it was recorded, with no ring, no need bar and no chart',brow('Recorded until').startsWith('03:12')&&brow('Recorded until').includes('battery ran out')&&_dtCh===null&&!$('dtBody').querySelector('.sl-ring')&&!$('dtBody').querySelector('.sl-need'),brow('Recorded until'));
     check('v127 battery: no app or device names in the sheet',noNames($('dtBody').textContent));
-    const e1=dtSpec('sleep').effect,bh=S().bodyHist;S().bodyHist={};const e0=dtSpec('sleep').effect;S().bodyHist=bh;
-    check('v127 battery: the effect line says not counted for Body, and before Body is live says the old score reads the part recorded, not that the night was short',e1==='Not counted: the battery ran out.'&&/^Starts the score at \d+ of 100, from the part your band recorded\.$/.test(e0)&&!/short/.test(e0),e1+' / '+e0);
+    const e1=brow('Recovery that day'),bh=S().bodyHist;S().bodyHist={};openDetail('sleep');const e0=brow('Recovery that day'),f0=dtSpec('sleep').effect;S().bodyHist=bh;
+    check('v127 battery: Recovery that day leaves sleep out of Body, and before Body is live says the old score reads the part recorded, not that the night was short',e1==='HRV and resting heart ratesleep left out'&&/^Starts at \d+ of 100from the part recorded$/.test(e0)&&!/short/.test(e0)&&f0===undefined,e1+' / '+e0);
     closeDetail();
     loadSleepFor(dt);const st=logStatus().find(x=>x[0]==='lSleep'),w=slWhy(L);
     check('v127 battery: Log > Sleep asks for the wake-up time',st[1]===false&&st[2]==='part'&&st[3]==='sleep needs your wake-up time'&&w&&w.st==='Battery ran out: add your wake-up time'&&!w.ask&&$('slNote').textContent===w.nt&&!$('slNote').querySelector('button')&&noNames(w.nt+w.st),JSON.stringify(st)+' '+$('slNote').textContent);
@@ -1425,9 +1427,9 @@ seq('v127 strain',async()=>{
     check('v127 strain: the gauge shows the strain from activity and still says Rest day on a planned rest day',$('strNum').textContent===strainOf(120).toFixed(1)&&$('gStrSub').textContent==='Rest day',$('strNum').textContent+' '+$('gStrSub').textContent);
     const r1=dtSpec('strain');window.restToday=rt;
     const r2=dtSpec('strain');_s.workouts=[run40,{...run40,id:'w-st2',date:dAgo(3)}];_s.wellness[y].steps=13000;const r3=dtSpec('strain');delete _s.wellness[t].steps;delete _s.wellness[y].steps;const r4=dtSpec('strain');
-    check('v127 strain: the sheet says where the strain came from',r1.sub==='Planned rest day, daily activity only'&&r2.sub==='Daily activity only'&&r3.sub==='Run '+fmtDur(40)+', plus daily activity'&&r4.sub==='Run '+fmtDur(40)&&r3.val===strainOf(180).toFixed(1),[r1.sub,r2.sub,r3.sub,r4.sub].join(' / '));
-    check('v127 strain: the usual is per day once activity counts, per training day without it',/^\d+\.\d a day, hard day about /.test(r3.usual)&&/^\d+\.\d on training days, hard day about /.test(r4.usual),r3.usual+' / '+r4.usual);
-    check('v127 strain: no app or device names on the sheet',noNames(r1.sub+r2.sub+r3.sub+r3.usual));
+    const src=r=>[...new DOMParser().parseFromString(r.body,'text/html').querySelectorAll('.sn-src')].map(x=>x.querySelector('.sn-l').firstChild.textContent+' '+x.querySelector('b').textContent).join(', ');
+    check('v127 strain: the sheet says where the strain came from (v129: each source with its share)',/Rest day: keep it to everyday moving/.test(r1.head)&&src(r1)==='On your feet 100%'&&!/Rest day/.test(r2.head)&&src(r3)==='Run 67%, On your feet 33%'&&src(r4)==='Run 100%'&&r3.head.includes('>'+strainOf(180).toFixed(1)+'<'),[src(r1),src(r2),src(r3),src(r4)].join(' / '));
+    check('v127 strain: no app or device names on the sheet',noNames(r1.head+r1.body+r2.body+r3.head+r3.body));
   }finally{box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
 
@@ -1595,8 +1597,673 @@ seq('v128 page',async()=>{
     trShift(1);chZoomBy('wtCanvas',2);chFlush();
     check('v128 page: a zoom on one chart moves all of them and lights no chip',ids.every(k=>Math.abs(_ch[k].view[1]-_ch[k].view[0]-14)<1e-9&&_ch[k].view[1]===T+0.5)&&!host.querySelector('#trRange .on'),JSON.stringify(_ch.hrvCanvas.view));
     check('v128 page: nothing wider than a 360 px phone',host.scrollWidth<=360&&[...host.querySelectorAll('#trCharts .card')].every(c=>c.scrollWidth<=c.clientWidth+1),host.scrollWidth+' px');
-    check('v128 page: the detail sheet and blood charts keep their own toolbar',!/tb:false/.test(dtTrend.toString())&&!/tb:false/.test(drawBloodChart.toString())&&/span:14/.test(dtTrend.toString()),'');
+    check('v128 page: the detail sheet keeps its own toolbar (v129: blood charts are bare, no toolbar)',!/tb:false/.test(dtTrend.toString())&&!/tb:false/.test(drawBloodChart.toString())&&/bare:true/.test(drawBloodChart.toString())&&/span:14/.test(dtTrend.toString()),'');
   }finally{window.requestAnimationFrame=rAF;ids.forEach(chUnmount);delete _chG.trends;_trInf={};_trSK='';_trT=null;host.remove();css.remove();}
+});
+
+// v129: Body and the factor rows for any day (Today's day browser). No date = today, exactly as before.
+run('v129 any day',()=>{
+  const y=dAgo(1),J=x=>JSON.stringify(x);
+  base();_s.checkins=[ci(),{...ci({mood:1,energy:1,stress:4,motivation:1}),id:'ci-'+y,date:y}];
+  for(let i=0;i<35;i++)Object.assign(_s.wellness[dAgo(i)],{resp:14.2,ctl:40,atl:i===1?52:44});
+  _s.wellness[y].hrv=50;_s.wellness[y].rhr=54;_s.intervalsData={ctl:40,atl:44,tsb:-4};
+  check('v129 any day: calcBody() and calcBody(today) agree',J(calcBody())===J(calcBody(td())),'');
+  const past=calcBody(y),then=atDay(y,()=>calcBody());
+  check('v129 any day: calcBody(yesterday) gives what calcBody() gave yesterday',past.score!=null&&J(past)===J(then),`${past.score} / ${then.score}`);
+  check('v129 any day: yesterday reads its own HRV and resting heart rate',past.parts.hrv.today.v===50&&past.parts.rhr.v===54&&calcBody().parts.rhr.v===50,`${past.parts.hrv.today.v} ms, ${past.parts.rhr.v} bpm`);
+  check('v129 any day: the factor rows agree with no date and with today',J(readinessFactors())===J(readinessFactors(td())),'');
+  // yesterday, the latest pulled fitness and fatigue were yesterday's
+  const fy=readinessFactors(y),ft=atDay(y,()=>{const o=_s.intervalsData;_s.intervalsData={ctl:40,atl:52,tsb:-12};try{return readinessFactors();}finally{_s.intervalsData=o;}}),row=(f,k)=>f.find(x=>x.k===k)||{};
+  check('v129 any day: yesterday\'s rows read yesterday\'s check-in, HRV, resting heart rate and form',J(fy)===J(ft)&&row(fy,'checkin').v==='Low'&&row(fy,'hrv').v==='50 ms'&&row(fy,'rhr').v==='54 bpm'&&row(fy,'form').v==='−12',fy.map(x=>x.k+' '+x.v).join(' | '));
+  check('v129 any day: rows in the mockup order, Resting heart rate in full, sleep against need',J(readinessFactors().map(x=>x.k).slice(0,6))===J(['sleep','hrv','rhr','breathing','checkin','form'])&&row(readinessFactors(),'rhr').l==='Resting heart rate'&&/^\d+% of need$/.test(row(readinessFactors(),'sleep').n),readinessFactors().map(x=>x.l+' '+x.n).join(' | '));
+  const sl=bodyNight(),pc=Math.round(sl.durMin/calcBody().parts.sleep.need*100);
+  check('v129 any day: the sleep row\'s % of need is the Body sleep part\'s',row(readinessFactors(),'sleep').n===pc+'% of need',pc);
+  _s.injuries=[{id:'i1',date:dAgo(3),part:'Calf',sev:2,active:true}];
+  check('v129 any day: an active injury shows on today only',row(readinessFactors(),'injury').v==='Calf'&&!row(readinessFactors(y),'injury').k,'');
+  delete _s.wellness[dAgo(2)].ctl;
+  check('v129 any day: no form row on a day without fitness and fatigue',!row(readinessFactors(dAgo(2)),'form').k,'');
+  // a band night fills today's HRV and resting heart rate only while the watch has none; a past day never takes it
+  base();[td(),y].forEach(dt=>{delete _s.wellness[dt].hrv;delete _s.wellness[dt].rhr;});
+  _s.polarNights=[td(),y].map(dt=>({id:'pn-'+dt,date:dt,data:{rc:{rmssd:80,rri:1200}}}));
+  const bt=calcBody(),by=calcBody(y);
+  check('v129 any day: a band night fills today only',bt.parts.hrv.today.src==='polar'&&bt.parts.rhr.src==='polar'&&by.parts.hrv.today===null&&by.parts.rhr===null,`today ${bt.parts.rhr&&bt.parts.rhr.src}, yesterday ${J(by.missing.map(m=>m.k))}`);
+});
+
+// v129: Today's day bar: back up to TH.DAY_BACK days; the gauges, factor rows and sheets follow the day shown
+seq('v129 day bar',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),app=await (await realFetch('../js/app.js',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML=['dayBar','dtModal'].map(id=>doc.getElementById(id).outerHTML).join('')+doc.querySelector('.hero-card').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const y=dAgo(1),keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const wd=(dt,f)=>new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:f});
+  try{
+    base();_s.checkins=[ci(),{...ci({mood:1,energy:1,stress:4,motivation:1}),id:'ci-'+y,date:y}];_s.wellness[y].hrv=50;_s.wellness[y].rhr=54;
+    _s.sleepLogs.find(x=>x.date===y).durMin=360;
+    _s.workouts=[{id:'w-db1',date:y,type:'Run',durMin:60,rpe:4,sets:[],sub:{}}];
+    _tdView=null;renderDayBar();
+    check('v129 day bar: today reads Today with the weekday and date under it, › off, ‹ on',$('dayLbl').textContent==='Today'&&$('dayDate').textContent===`${wd(td(),'short')} ${fmtD(td())}`&&$('dayNext').disabled&&$('dayNext').classList.contains('off')&&!$('dayPrev').disabled,$('dayDate').textContent);
+    dayGo(-1);
+    check('v129 day bar: one back reads Yesterday, › on',tdDay()===y&&$('dayLbl').textContent==='Yesterday'&&$('dayDate').textContent===`${wd(y,'short')} ${fmtD(y)}`&&!$('dayNext').disabled&&!$('dayNext').classList.contains('off'),$('dayLbl').textContent);
+    dayGo(-1);
+    check('v129 day bar: two back reads the weekday in full',tdDay()===dAgo(2)&&$('dayLbl').textContent===wd(dAgo(2),'long'),$('dayLbl').textContent);
+    dayGo(-99);
+    check('v129 day bar: it stops at TH.DAY_BACK days, ‹ off',tdDay()===dAgo(TH.DAY_BACK)&&$('dayPrev').disabled&&$('dayPrev').classList.contains('off'),tdDay());
+    dayGo(99);
+    check('v129 day bar: forward stops at today',_tdView===null&&tdDay()===td()&&$('dayLbl').textContent==='Today',_tdView);
+    const tv=[];[dAgo(TH.DAY_BACK+1),td(),dAgo(-1),'x'].forEach(v=>{_tdView=v;tv.push(tdDay());});_tdView=null;
+    check('v129 day bar: a day out of range reads as today',tv.every(v=>v===td()),tv.join(' '));
+    check('v129 day bar: a new day opens Today on today',/function dayForms\(\)\{[^}]*_tdView=null/.test(app),'');
+    // gauges and factor rows follow the day
+    renderGauges();const t0=$('gStrSub').textContent;
+    _tdView=y;renderGauges();
+    const pc=Math.min(100,Math.round(360/needOf(bodyNight(y))*100));
+    check('v129 day bar: a past day\'s strain is that day\'s total',$('gStrSub').textContent==='Day total'&&$('strNum').textContent===strainOf(strainLoad(y)).toFixed(1)&&t0!=='Day total',`${$('strNum').textContent} ${$('gStrSub').textContent} / today ${t0}`);
+    check('v129 day bar: a past day\'s sleep is that night against its need',$('slpNum').textContent===pc+'%'&&$('gSlpSub').textContent===fmtDur(360),`${$('slpNum').textContent} ${$('gSlpSub').textContent}`);
+    const rows=[...$('rdFactors').querySelectorAll('.rf')],txt=k=>{const r=rows.find(r=>r.getAttribute('onclick')===`tdOpen('${k}')`);return r?r.textContent:'';};
+    check('v129 day bar: the factor rows show that day\'s HRV, resting heart rate and check-in',/50 ms/.test(txt('hrv'))&&/54 bpm/.test(txt('rhr'))&&/Low/.test(txt('checkin')),rows.map(r=>r.textContent).join(' | '));
+    $('gStrSub').textContent='';_s.workouts=[];_tdView=y;renderGauges();
+    check('v129 day bar: a past day with no training reads Day total, never Rest day',$('gStrSub').textContent==='Day total'&&$('strNum').textContent==='0',$('gStrSub').textContent);
+    _s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==y&&x.date!==dAgo(2));renderGauges();
+    check('v129 day bar: a past night not logged (nor the one before) says Not logged',$('slpNum').textContent==='—'&&$('gSlpSub').textContent==='Not logged',$('gSlpSub').textContent);
+    // the recovery score of a past day
+    base();const bh0=JSON.stringify(S().bodyHist),n0=Object.keys(S().bodyHist).length,cy=calcBody(y).score,c15=calcBody(dAgo(TH.DAY_BACK)).score;
+    S().bodyHist[dAgo(15)]=80;delete S().bodyHist[dAgo(3)];S().bodyHist[dAgo(2)]=calcBody(dAgo(2)).score;
+    const s1=dayScore(y),s3=dayScore(dAgo(3)),s2=dayScore(dAgo(2));
+    check('v129 day bar: with Body live a past day is worked out again; a stored day that differs is corrected, none is added',bodyLive()&&s1===cy&&S().bodyHist[y]===cy&&cy!==80&&s3===calcBody(dAgo(3)).score&&!(dAgo(3) in S().bodyHist)&&s2===S().bodyHist[dAgo(2)]&&Object.keys(S().bodyHist).length===n0,`${s1} ${s3} ${s2} / ${bh0.length}`);
+    check('v129 day bar: today is the hero score',dayScore(td())===heroScore(),'');
+    base({live:false});S().readHist[y]=71;
+    check('v129 day bar: before Body is live a past day shows the old snapshot, or nothing',!bodyLive()&&dayScore(y)===71&&dayScore(dAgo(2))===null,'');
+    _tdView=dAgo(2);renderGauges();
+    check('v129 day bar: a past day with no score says No data',$('ringNum').textContent==='—'||$('gRecSub').textContent==='No data',$('gRecSub').textContent);
+    // a sheet opened from Today follows the day; elsewhere it opens on today
+    base();_s.wellness[y].hrv=50;_s.wellness[td()].hrv=64;_tdView=y;
+    tdOpen('hrv');const hy=$('dtBody').textContent,dd=_dtDay;closeDetail();
+    check('v129 day bar: a sheet opened on a past day reads that day, and closing it forgets the day',dd===y&&/50 ms/.test(hy)&&_dtDay===null,hy.slice(0,80));
+    _tdView=null;tdOpen('hrv');const ht=$('dtBody').textContent,dt0=_dtDay;closeDetail();
+    check('v129 day bar: on today the sheet reads today',dt0===null&&/64 ms/.test(ht),ht.slice(0,80));
+    // removed from Today
+    const gone=['heroGreeting','heroZone','heroIns','heroWhy','heroMissing','habits','habitsN','hdrDate'].filter(id=>doc.getElementById(id));
+    check('v129 day bar: the greeting, the words under the gauges, What do these mean, the habits strip and the header date are gone',!gone.length&&!doc.querySelector('.g-why')&&!/What do these mean/.test(html)&&!!doc.getElementById('baseNote'),gone.join(' '));
+    check('v129 day bar: the bar sits above the gauges, its buttons 44px',doc.getElementById('dayBar').compareDocumentPosition(doc.querySelector('.hero-card'))&Node.DOCUMENT_POSITION_FOLLOWING&&['dayPrev','dayNext'].every(id=>$(id).getBoundingClientRect().width>=44&&$(id).getBoundingClientRect().height>=44),['dayPrev','dayNext'].map(id=>$(id).getBoundingClientRect().width+'x'+$(id).getBoundingClientRect().height).join(' '));
+  }finally{_tdView=null;closeDetail();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// v129: Your day: the band's heart rate from 18:00 the day before to 18:00 on the day, with sleep, band off and workouts
+run('v129 your day',()=>{
+  const y=dAgo(1),p=dAgo(2),T=(d,hm)=>plT(d+'T'+hm+':00'),J=x=>JSON.stringify(x);
+  const atT=(iso,fn)=>{const fix=new RealDate(iso).getTime();class FD extends RealDate{constructor(...a){if(a.length)super(...a);else super(fix);}static now(){return fix;}}window.Date=FD;try{return fn();}finally{window.Date=RealDate;}};
+  // a band day of 5-minute means; f(minute of the day) gives bpm or null
+  const hr5=(dt,f)=>({id:'pd-'+dt,date:dt,data:{steps:8000,act:60,hr:[{t:dt+'T00:00:00',dt:300,v:Array.from({length:288},(_,i)=>f(i*5))}]}});
+  // a usual day: 64 awake, 48 at its lowest at 03:00, asleep 23:00 to 06:30
+  const usual=m=>m>=390&&m<1380?64:m===180?48:52;
+  // yesterday: band off 20:00 to 20:40 the evening before, a gap inside the night (no band off), lowest 46 at 03:00,
+  // a run 10:00 to 11:00 peaking at 165, back under 75 at 11:20
+  const ev=(n=52)=>m=>m>=1200&&m<1240?null:m>=1380?n:usual(m);
+  const yd=(o={})=>m=>o.stop&&m>=o.stop?null:m<60?(o.lo?o.lo+4:52):m<120?null:m<390?(m===180?(o.lo||46):(o.lo?o.lo+4:52)):m<600?70:m<660?(m===630?165:150):m<(o.back||680)?100:70;
+  const fix=(o={})=>{
+    base();_s.sleepLogs.forEach(x=>{x.bed='23:00';x.wake='06:30';});
+    _s.polarDays=[hr5(y,yd(o)),hr5(p,ev(o.lo?o.lo+4:52))];for(let i=3;i<=12;i++)_s.polarDays.push(hr5(dAgo(i),usual));
+    _s.workouts=[{id:'w-yd',date:y,type:'Run',durMin:60,rpe:4,sets:[],sub:{icu:{t:'10:00'}}}];
+  };
+  fix();const D=dyDay(y),U=dyUsual(y);
+  check('v129 your day: a past day runs from 18:00 the day before to 18:00, no Now line',D.a===T(p,'18:00')&&D.b===T(y,'18:00')&&D.now===null&&!D.last&&D.prev===p,`${new Date(D.a)} → ${new Date(D.b)}`);
+  check('v129 your day: the night is bed to wake-up from the log, across midnight',D.sleep&&D.sleep.a===T(p,'23:00')&&D.sleep.b===T(y,'06:30')&&D.sleep.min===450,J(D.sleep));
+  check('v129 your day: band off is the 40-minute evening gap only; the gap inside the night is not',D.off.length===1&&D.off[0][0]===T(p,'20:00')&&D.off[0][1]===T(p,'20:40'),J(D.off.map(g=>g.map(dyHm))));
+  check('v129 your day: the lowest point and its time',D.lo.v===46&&D.lo.t===T(y,'03:00')&&D.nightLo===46,J(D.lo));
+  check('v129 your day: the highest point sits inside the run',D.hi.v===165&&D.hi.t===T(y,'10:30')&&D.hi.w&&D.hi.w.id==='w-yd',J({v:D.hi.v,w:D.hi.w&&D.hi.w.id}));
+  check('v129 your day: the run is a band from its start time and duration',D.wks.length===1&&D.wks[0].a===T(y,'10:00')&&D.wks[0].b===T(y,'11:00')&&D.wks[0].name==='Run',J(D.wks.map(k=>[dyHm(k.a),dyHm(k.b),k.name])));
+  check('v129 your day: daytime is awake after the night, outside the run',Math.round(D.dayMean)===71,D.dayMean&&D.dayMean.toFixed(2));
+  check('v129 your day: the usual is the median of the 14 days before',U.dayMean===64&&U.nightLo===48&&U.n>=TH.DAY_USUAL_MIN,J(U));
+  const st=daySettle(D,U);
+  check('v129 your day: back under the daytime usual plus 10 (rounded to 5) 20 minutes after the run',st&&st.lvl===75&&st.min===20&&st.w.id==='w-yd',J(st&&{lvl:st.lvl,min:st.min}));
+  const lines=[],m0=dayMeaning(D,U);lines.push(m0);
+  check('v129 your day: a good night and a quick settle in one line',m0==='Your heart rate settled well overnight and came down fast after the run.',m0);
+  const tl=dyTiles(D,U);
+  check('v129 your day: tiles Lowest at 03:00, Highest in your run, Daytime against usual',/Lowest.*46.*at 03:00/.test(tl)&&/Highest.*165.*in your run/.test(tl)&&/Daytime.*71.*class="warn".*▲.*7 over usual/.test(tl),tl.replace(/<[^>]+>/g,' ').replace(/\s+/g,' '));
+  // the chart
+  const sv=dyHrSvg(D,'t1'),doc=new DOMParser().parseFromString(sv,'image/svg+xml'),tx=[...doc.querySelectorAll('text')].map(t=>t.textContent);
+  check('v129 your day: the chart labels the night, the run and band off, with the hours',['Asleep '+fmtDur(450),'Run','Band off','18:00','00:00','06:00','12:00'].every(w=>tx.includes(w))&&!/NaN|undefined/.test(sv)&&!doc.querySelector('parsererror'),tx.join(' | '));
+  check('v129 your day: the line breaks at the gaps, the colours are theme variables',doc.querySelectorAll('polyline').length===3&&!/#[0-9a-f]{3,6}\b/i.test(sv),doc.querySelectorAll('polyline').length+' segments');
+  check('v129 your day: the legend names what is drawn',/Heart rate.*Asleep.*Band off/.test(dyLegend(D)),dyLegend(D).replace(/<[^>]+>/g,' '));
+  // no leading band off when the day before was never downloaded; a trailing gap counts on a past day
+  fix({stop:960});_s.polarDays=_s.polarDays.filter(r=>r.date!==p);const D2=dyDay(y);
+  check('v129 your day: no band off before a day that was not downloaded; a past day that stops at 16:00 is band off to 18:00',D2.off.length===1&&D2.off[0][0]===T(y,'16:00')&&D2.off[0][1]===T(y,'18:00'),J(D2.off.map(g=>g.map(dyHm))));
+  // today before 18:00: to now with a Now line, never a trailing band off
+  fix({stop:480});const D3=atDay(y,()=>dyDay(y));
+  check('v129 your day: today before 18:00 runs to now with a Now line and no trailing band off',D3.now===T(y,'09:00')&&D3.b===T(y,'18:00')&&!D3.last&&D3.off.every(g=>g[1]<T(y,'08:00'))&&/>Now</.test(dyHrSvg(D3,'t3')),J(D3.off.map(g=>g.map(dyHm))));
+  // today after 18:00: the 24 hours ending now
+  fix();const D4=atT(y+'T20:00:00',()=>dyDay(y));
+  check('v129 your day: today after 18:00 shows the last 24 hours',D4.last&&D4.now===null&&D4.b===T(y,'20:00')&&D4.a===T(p,'20:00'),`${dyHm(D4.a)} → ${dyHm(D4.b)}`);
+  // the other lines
+  fix({lo:58});const D5=dyDay(y),m5=dayMeaning(D5,dyUsual(y));lines.push(m5);
+  check('v129 your day: a high night says so first',m5==='Your heart rate stayed higher than usual overnight: lowest 58 against your usual 48.',m5);
+  fix({back:705});const m6=dayMeaning(dyDay(y),dyUsual(y));lines.push(m6);
+  check('v129 your day: a slow settle gives the minutes',m6==='Your heart rate settled well overnight and took 45 minutes to come down after the run.',m6);
+  fix({back:1440});const m7=dayMeaning(dyDay(y),dyUsual(y));lines.push(m7);
+  check('v129 your day: still above after the run',m7==='Your heart rate settled well overnight and stayed above 75 after the run.',m7);
+  fix();_s.polarDays=_s.polarDays.filter(r=>r.date===y||r.date===p);const U8=dyUsual(y),m8=dayMeaning(dyDay(y),U8),t8=dyTiles(dyDay(y),U8);lines.push(m8);
+  check('v129 your day: under 5 days with the band, the usual is still building',U8.dayMean===null&&m8===`Your usual builds after ${TH.DAY_USUAL_MIN} days with your band.`&&/building your usual/.test(t8),m8);
+  fix();_s.sleepLogs.forEach(x=>{delete x.bed;delete x.wake;});const D9=dyDay(y),m9=dayMeaning(D9,{dayMean:64,nightLo:48,n:10});lines.push(m9);
+  check('v129 your day: with no night there is no daytime mean, the settle still reads',D9.sleep===null&&D9.dayMean===null&&m9==='Your heart rate came down fast after the run.',m9);
+  fix();_s.polarDays=_s.polarDays.filter(r=>r.date!==y&&r.date!==p);const D10=dyDay(y),m10=dayMeaning(D10,dyUsual(y));lines.push(m10);
+  check('v129 your day: a day with no heart rate says so; the night and the run still draw',!D10.pts.length&&D10.sleep&&D10.wks.length===1&&m10==='No heart rate recorded for this day.'&&!/NaN/.test(dyHrSvg(D10,'t10')),m10);
+  const bad=lines.filter(l=>l.length>140||(l.match(/[.!?](\s|$)/g)||[]).length>2||/In view|Of |readings in a row|Nothing to act on/.test(l));
+  check('v129 your day: every line is at most 2 sentences and 140 characters',!bad.length,bad.join(' | '));
+  // the card
+  const el=document.createElement('div');el.id='yourDay';document.body.appendChild(el);
+  try{
+    fix();_s.polarDays=[];renderYourDay();
+    check('v129 your day: hidden without a band day',el.style.display==='none'&&!el.innerHTML,'');
+    fix();_s.polarDays=[hr5(dAgo(TH.DAY_BACK+1),usual)];renderYourDay();
+    check('v129 your day: hidden when the band\'s latest day is older than the day browser reaches',el.style.display==='none','');
+    fix();_tdView=y;renderYourDay();
+    check('v129 your day: a past day reads 18:00 to 18:00 with weekdays, chart, legend, line and tiles',el.style.display===''&&el.querySelector('.dy-h span').textContent===`18:00 ${dayWd(p)} to 18:00 ${dayWd(y)}`&&el.querySelector('svg.dy-svg')&&el.querySelector('.dy-lg')&&el.querySelector('.dy-m').textContent===m0&&el.querySelectorAll('.dy-tl').length===3,el.textContent.slice(0,120));
+    _tdView=null;atDay(y,()=>renderYourDay());
+    check('v129 your day: today reads Since 18:00 yesterday',el.querySelector('.dy-h span').textContent==='Since 18:00 yesterday','');
+    check('v129 your day: no source names on the card',!/Polar|Garmin|Intervals|Strava/i.test(el.innerHTML),'');
+  }finally{_tdView=null;el.remove();}
+});
+
+// v129: Plan and training: this week's plan in seven columns, the briefing row, the last 7 days with the total, three plain load tiles
+seq('v129 plan and training',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text();
+  const doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML=doc.getElementById('moreToday').outerHTML;document.body.appendChild(box);box.querySelector('#moreToday').open=true;
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep=strategy,J=JSON.stringify,txt=el=>el.textContent.replace(/\s+/g,' ').trim();
+  try{
+    // a Thursday: Mon run done, Tue rest with yoga (extra), Wed weights missed, today a run still to do
+    atDay('2026-10-08',()=>{
+      base();_s.profile.plan={0:{type:'Run'},1:{type:'Rest'},2:{type:'Weights'},3:{type:'Run'},4:{type:'Run'},5:{type:'Run',note:'long'},6:{type:'Cycle'}};
+      _s.workouts=[{id:'p1',date:'2026-10-05',type:'Run',durMin:45,sets:[]},{id:'p2',date:'2026-10-06',type:'Yoga',durMin:30,sets:[]}];
+      window.strategy=()=>({days:[{date:'2026-10-10',role:'long',name:'Long run'}]});
+      _plEdit=false;renderPlan();
+      const cs=[...box.querySelectorAll('#planCard .pl-c')],w=planWeek();
+      check('v129 plan: seven day columns, today outlined and named Today',cs.length===7&&cs.filter(c=>c.classList.contains('now')).length===1&&cs[3].classList.contains('now')&&cs[3].querySelector('small').textContent==='Today'&&cs[0].querySelector('small').textContent==='Mon',cs.map(c=>c.className).join(' | '));
+      check('v129 plan: each column follows planDayState: done, extra, missed, today, to come',J(cs.map(c=>c.className.replace('pl-c ','').replace(' now','')))===J(['done','bonus','miss','today','up','up','up'])&&cs.every((c,i)=>c.classList.contains(w.days[i].st)),cs.map(c=>c.className).join(' | '));
+      const mk=c=>c.querySelector('.pl-mk');
+      check('v129 plan: a tick on done, a cross on missed, a plus on an extra session, none to come',mk(cs[0])&&/M9 12l2 2l4 -4/.test(mk(cs[0]).innerHTML)&&mk(cs[2])&&/M10 10l4 4/.test(mk(cs[2]).innerHTML)&&mk(cs[1])&&/M9 12h6/.test(mk(cs[1]).innerHTML)&&!mk(cs[3])&&!mk(cs[4])&&cs[4].querySelector('.pl-sp'),'');
+      check('v129 plan: rest shows the moon, a day with a plan its sport',/M12 3c\.132 0/.test(cs[1].innerHTML)&&!!cs[0].querySelector('.sp-ico')&&!!cs[2].querySelector('.sp-ico'),'');
+      check('v129 plan: each column names its day and state for a screen reader',cs[0].getAttribute('aria-label')==='Mon: Run, done'&&cs[2].getAttribute('aria-label')==='Wed: Weights, missed'&&cs[1].getAttribute('aria-label')==='Tue: Rest, extra session',cs.map(c=>c.getAttribute('aria-label')).join(' | '));
+      const ln=txt(box.querySelector('#planCard .pl-ln'));
+      check('v129 plan: the line counts the days due so far and names the long day',ln==='On plan: 1 of 2 so far. Long run on Saturday.'&&w.done===1&&w.due===2,ln);
+      check('v129 plan: the heading reads This week\'s plan with an Edit link',txt(box.querySelector('#planCard .dy-h b'))==='This week\'s plan'&&/togglePlanEdit/.test(box.querySelector('#planCard .pl-ed').getAttribute('onclick')),'');
+      const r=el=>el.getBoundingClientRect();
+      check('v129 plan: columns and Edit are 44px tap targets and the week fits 360px',cs.every(c=>r(c).height>=44)&&r(box.querySelector('.pl-ed')).height>=44&&r(box.querySelector('.pl-ed')).width>=44&&box.querySelector('.pl-wk').scrollWidth<=box.querySelector('.pl-wk').clientWidth,cs.map(c=>Math.round(r(c).width)+'x'+Math.round(r(c).height)).join(' '));
+      check('v129 plan: no accent colour on the plan card',cs.every(c=>getComputedStyle(c).borderColor!==cssv('--gold')),'');
+      planDay(2);
+      check('v129 plan: tapping a day shows its detail',/Wed/.test(box.querySelector('#planDet').textContent)&&/Missed/.test(box.querySelector('#planDet').textContent),box.querySelector('#planDet').textContent);
+      window.strategy=()=>({days:[{date:'2026-10-08',role:'long',name:'Long cycle'}]});
+      check('v129 plan: a long session today reads today',planLongDay()==='Long cycle today.',planLongDay());
+      window.strategy=()=>({days:[{date:'2026-10-12',role:'long',name:'Long run'}]});
+      check('v129 plan: a long session next week is not named',planLongDay()==='',planLongDay());
+      window.strategy=()=>{throw new Error('x');};
+      check('v129 plan: the line still reads when the outline fails',planLongDay()===''&&planSoFar(planWeek())==='On plan: 1 of 2 so far.','');
+    });
+    atDay('2026-10-05',()=>{
+      base();_s.profile.plan={0:{type:'Run'},2:{type:'Weights'},4:{type:'Run'}};_s.workouts=[];window.strategy=()=>({days:[]});renderPlan();
+      check('v129 plan: on a Monday with nothing due it counts the week\'s sessions',txt(box.querySelector('#planCard .pl-ln'))==='3 sessions planned this week.',txt(box.querySelector('#planCard .pl-ln')));
+      _s.profile.plan={};renderPlan();
+      check('v129 plan: with no plan it offers to set up the week',/Set up my week/.test(box.querySelector('#planCard').textContent)&&!box.querySelector('.pl-c'),'');
+    });
+    window.strategy=keep;
+    // the briefing row
+    base();_s.insightLog=[];updateInsNudge();const nu=box.querySelector('#insNudge');
+    check('v129 briefing row: Today\'s briefing, not written yet, with a chevron, as a button',!nu.classList.contains('hidden')&&txt(nu.querySelector('.in-t b'))==='Today\'s briefing'&&txt(nu.querySelector('.in-t small'))==='Not written yet. Tap to write it.'&&nu.querySelector('.in-go')&&nu.getAttribute('role')==='button'&&nu.getBoundingClientRect().height>=44,txt(nu));
+    _s.insightLog=[{date:td(),ts:1,rendered:'{}'}];updateInsNudge();
+    check('v129 briefing row: hidden once today\'s briefing is written',nu.classList.contains('hidden')&&getComputedStyle(nu).display==='none','');
+    // the last 7 days
+    base();const W=[{id:'t1',date:td(),type:'Run',durMin:48,distKm:8.2,rpe:3,notes:'felt good',sets:[]},{id:'t2',date:dAgo(1),type:'Yoga',durMin:30,sets:[]},
+      {id:'t3',date:dAgo(3),type:'Weights',durMin:50,rpe:3,sets:[{ex:'Squat',muscle:'legs',kg:80,reps:8},{ex:'Squat',muscle:'legs',kg:80,reps:8}]},{id:'t4',date:dAgo(8),type:'Run',durMin:40,sets:[]}];
+    _s.workouts=W;renderActList();
+    const rows=[...box.querySelectorAll('#actList .act-item')],metas=rows.map(r=>txt(r.querySelector('.act-meta')));
+    check('v129 last 7 days: the header shows the total time of the week\'s workouts',box.querySelector('#actTot').textContent===fmtDur(128),box.querySelector('#actTot').textContent);
+    check('v129 last 7 days: only workouts, newest first, no Nothing logged rows',rows.length===3&&!/Nothing logged/.test(box.querySelector('#actList').textContent),metas.join(' | '));
+    check('v129 last 7 days: day words Today, Yesterday, then the short weekday',metas[0].startsWith('Today · 48min')&&metas[1].startsWith('Yesterday')&&metas[2].startsWith(new Date(dAgo(3)+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'})+' · 2 sets'),metas.join(' | '));
+    check('v129 last 7 days: one line each, tile and chevron kept, no Edit or Delete',rows.every(r=>!r.querySelector('.wk-acts')&&!r.querySelector('.wk-mo')&&r.querySelectorAll('.act-meta').length===1&&!r.querySelector('.act-notes')&&r.querySelector('.act-icon')&&r.querySelector('.act-go'))&&/openDetail\('wk:t1'\)/.test(rows[0].getAttribute('onclick')),'');
+    check('v129 last 7 days: Log rows keep Edit and Delete',/>Edit<.*>Delete</.test(wkRow(W[0])),'');
+    _s.workouts=[W[3]];renderActList();
+    check('v129 last 7 days: nothing this week says so, with a way to log one, and no total',/Nothing logged in the last 7 days/.test(box.querySelector('#actList').textContent)&&/logGo\('lWorkout'\)/.test(box.querySelector('#actList button').getAttribute('onclick'))&&box.querySelector('#actTot').textContent==='','');
+    // training load
+    base();_s.intervalsData={ctl:38.4,atl:42,tsb:-4,prs:[]};_s.wellness[dAgo(30)].ctl=38;renderTLoad();
+    const tl=[...box.querySelectorAll('#tloadContent .dy-tl')].map(t=>[...t.children].map(c=>c.textContent));
+    check('v129 load: three tiles, Fitness with its trend, Fatigue and Form with their words',J(tl)===J([['Fitness','38','Steady'],['Fatigue','42',zL(42,'atl')],['Form','−4',zL(-4,'tsb')]]),J(tl));
+    check('v129 load: plain tiles, no state colours',!/style=|sbar|var\(--(green|amber|red)/.test(box.querySelector('#tloadContent').innerHTML),'');
+    _s.intervalsData={ctl:null,atl:null,tsb:null,prs:[]};renderTLoad();
+    check('v129 load: no data keeps the setup note',/No training-load data yet/.test(box.querySelector('#tloadContent').textContent),'');
+  }finally{window.strategy=keep;_plEdit=false;box.remove();}
+});
+
+// v129: the Recovery sheet: a waterfall from your usual day (every part at its usual) to the score, steps that add up
+// exactly to the score shown, each part against its usual range (the word and the bar agree), one line by the v123 rule
+run('v129 recovery steps',()=>{
+  const J=x=>JSON.stringify(x);base();const B=calcBody(),R=recSteps(B),sum=R.steps.reduce((a,x)=>a+x.r,0);
+  check('v129 recovery: the usual day is 67.5 with all three parts',Math.abs(R.start-67.5)<1e-9&&R.s0===68&&R.steps.length===3,R.start);
+  check('v129 recovery: the rounded steps add up to the score',R.s0+sum===B.score,`${R.s0} + ${sum} = ${B.score}`);
+  check('v129 recovery: steps listed largest first, shares 45/20/35',R.steps.every((x,i)=>!i||Math.abs(x.s)<=Math.abs(R.steps[i-1].s))&&J(R.steps.map(x=>x.k+x.sh).sort())===J(['hrv45','rhr20','sleep35']),J(R.steps.map(x=>[x.k,x.r,x.sh])));
+  base({noSleep:true});const B2=calcBody(),R2=recSteps(B2);
+  check('v129 recovery: with sleep missing the usual day is re-weighted to 50, shares 69/31',Math.abs(R2.start-50)<1e-9&&R2.s0+R2.steps.reduce((a,x)=>a+x.r,0)===B2.score&&J(R2.steps.map(x=>x.k+x.sh).sort())===J(['hrv69','rhr31']),J(R2.steps.map(x=>[x.k,x.r,x.sh])));
+  // any mix of parts: the steps still add up to calcBody's rounding
+  let seed=3,bad=0;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647,W={hrv:TH.W_HRV,rhr:TH.W_RHR,sleep:TH.W_SLEEP};
+  for(let n=0;n<400;n++){
+    const P={hrv:rnd()<0.85?{pts:rnd()*100}:null,rhr:rnd()<0.85?{pts:rnd()*100}:null,sleep:rnd()<0.8?{pts:rnd()*100}:null};
+    if(!P.hrv&&!P.rhr)continue;
+    const c=Object.keys(P).filter(k=>P[k]),w=c.reduce((a,k)=>a+W[k],0),score=Math.round(c.reduce((a,k)=>a+P[k].pts*W[k],0)/w),r=recSteps({score,parts:P});
+    if(r.s0+r.steps.reduce((a,x)=>a+x.r,0)!==score||r.steps.some(x=>Math.abs(x.r-x.s)>1))bad++;
+  }
+  check('v129 recovery: 400 random mixes, the steps add up and each stays within a point of its share',!bad,bad+' bad');
+  // the HRV word and the bar agree: above, inside and under the range
+  const hrvRow=B=>{const box=document.createElement('div');box.innerHTML=recRows(B,recSteps(B));const r=box.querySelector('.rc-rg'),u=r.querySelector('.u'),m=r.querySelector('.m');
+    return{w:r.querySelector('.v small').textContent,l:parseFloat(u.style.left),r:parseFloat(u.style.left)+parseFloat(u.style.width),m:parseFloat(m.style.left),c:m.style.background};};
+  const words=[];let agree=true;
+  [[null],[60,60],[50,60]].forEach(([last7,rest])=>{
+    base();if(last7!=null)for(let i=0;i<35;i++)_s.wellness[dAgo(i)].hrv=i<=6?last7:rest;
+    const B=calcBody(),h=B.parts.hrv,se=h.sd/TH.HRV_SE,x=hrvRow(B);words.push(x.w);
+    const exp=h.v7>h.m+se?'over':h.v7<h.m-se?'under':'inside';
+    if(!x.w.includes(exp))agree=false;
+    if(exp==='over'&&!(x.m>x.r))agree=false;if(exp==='under'&&!(x.m<x.l&&/amber/.test(x.c)))agree=false;if(exp==='inside'&&!(x.m>=x.l&&x.m<=x.r))agree=false;
+  });
+  check('v129 recovery: the HRV word and its bar agree above, inside and under the usual range',agree&&/over usual/.test(words[0])&&/inside your usual/.test(words[1])&&/under usual/.test(words[2]),words.join(' | '));
+  base();_s.sleepLogs.find(x=>x.date===td()).durMin=300;let B3=calcBody(),box=document.createElement('div');box.innerHTML=recRows(B3,recSteps(B3));
+  const sr=[...box.querySelectorAll('.rc-rg')].pop();
+  check('v129 recovery: the sleep row shows time asleep against the need, with a need line',sr.querySelector('.v b').textContent===fmtDur(300)&&sr.querySelector('.v small').textContent===`${Math.round(B3.parts.sleep.pct*100)}% of your ${fmtDur(B3.parts.sleep.need)} need`&&sr.querySelector('.n')&&sr.querySelector('.rc-bll span').textContent==='need',sr.textContent);
+  base({noSleep:true});B3=calcBody();box.innerHTML=recRows(B3,recSteps(B3));
+  check('v129 recovery: a missing part says Missing, why, and Not counted, with no bar',/Missing/.test(box.querySelectorAll('.rc-rg')[2].textContent)&&/Not counted/.test(box.querySelectorAll('.rc-rg')[2].textContent)&&!box.querySelectorAll('.rc-rg')[2].querySelector('.rc-bl'),box.querySelectorAll('.rc-rg')[2].textContent);
+});
+run('v129 recovery line',()=>{
+  const v123=t=>t.length<=140&&t.split(/[.!?](?:\s|$)/).filter(x=>x.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(t);
+  const lines=[];
+  // high HRV and enough sleep, low HRV and short sleep, and close to usual; today and a past day
+  base();for(let i=0;i<=6;i++)_s.wellness[dAgo(i)].hrv=72;let B=calcBody(),R=recSteps(B);const up=recLine(B,R,true);lines.push(up);
+  check('v129 recovery line: a high score names what lifted it',/^Above your usual day: strong HRV/.test(up)&&/enough sleep/.test(up),up);
+  base();for(let i=0;i<=6;i++)_s.wellness[dAgo(i)].hrv=48;_s.wellness[td()].rhr=56;_s.sleepLogs.find(x=>x.date===td()).durMin=320;
+  B=calcBody();R=recSteps(B);const dn=recLine(B,R,true),nm={hrv:'low HRV',rhr:'raised resting heart rate',sleep:'short sleep'},two=R.steps.filter(x=>x.r<0).sort((a,b)=>a.r-b.r).slice(0,2).map(x=>nm[x.k]);lines.push(dn,recLine(B,R,false));
+  check('v129 recovery line: a low score names the two biggest falls and what to do today',two.length===2&&dn.startsWith(`Below your usual day: ${two.join(' and ')}.`)&&dn.endsWith(renderZone(B.score).act)&&!recLine(B,R,false).includes(renderZone(B.score).act),dn);
+  const fake={score:68,parts:{hrv:{pts:50},rhr:{pts:51},sleep:{pts:100}}},cl=recLine(fake,recSteps(fake),false);lines.push(cl);
+  check('v129 recovery line: close to usual says so',cl==='Close to your usual day.',cl);
+  check('v129 recovery line: every line follows the v123 rule',lines.every(v123),lines.filter(l=>!v123(l)).join(' | '));
+});
+seq('v129 recovery sheet',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';box.innerHTML=doc.getElementById('dtModal').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const y=dAgo(1),txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  try{
+    base();_dtDay=null;openDetail('recovery');
+    const b=$('dtBody'),B=calcBody(),wf=b.querySelector('.rc-wf'),lbl=[...wf.querySelectorAll('text')].map(x=>x.textContent);
+    check('v129 recovery sheet: titled Recovery, the score with its word, one line',txt($('dtTitle')).startsWith('Recovery')&&txt(b.querySelector('.dt-big'))===`${B.score}${scoreWord(B.score)}`&&txt(b.querySelector('.dt-ln'))===recLine(B,recSteps(B),true),txt(b.querySelector('.dt-big')));
+    check('v129 recovery sheet: the day bar reads Today, › off',txt(b.querySelector('.dt-dbar b'))==='Today'&&b.querySelectorAll('.dt-dbar .db')[1].disabled,txt(b.querySelector('.dt-dbar')));
+    check('v129 recovery sheet: waterfall from the usual day to Today, five bars, and the score on the last',wf.querySelectorAll('rect').length===5&&lbl.includes('Usual')&&lbl.includes('Today')&&lbl.includes(String(B.score))&&lbl.includes('68'),lbl.join(' '));
+    check('v129 recovery sheet: three range rows, then Last 30 days in a card with its chart',b.querySelectorAll('.rc-rg').length===3&&b.querySelector('.dt-card #dtChart')&&/From your usual day to today/.test(b.textContent)&&/Against your usual range/.test(b.textContent),'');
+    check('v129 recovery sheet: no Effect on recovery section and no Open Settings button with a score',!/Effect on recovery/.test(b.textContent)&&!b.querySelector('.dt-link'),'');
+    const btn=[...b.querySelectorAll('.dt-dbar .db')];btn[0].click();
+    const b1=$('dtBody'),B1=calcBody(y);
+    check('v129 recovery sheet: ‹ moves to yesterday, the waterfall ends on its weekday and says that day',_dtDay===y&&txt(b1.querySelector('.dt-dbar b'))==='Yesterday'&&[...b1.querySelectorAll('.rc-wf text')].some(x=>x.textContent===dayWd(y))&&/to that day/.test(b1.textContent)&&txt(b1.querySelector('.dt-big')).startsWith(String(B1.score)),txt(b1.querySelector('.dt-dbar')));
+    check('v129 recovery sheet: a past day has no advice for today',!txt(b1.querySelector('.dt-ln')).includes('Train, but')&&!txt(b1.querySelector('.dt-ln')).includes('Rest or easy'),txt(b1.querySelector('.dt-ln')));
+    for(let i=0;i<30;i++)dtDayGo(-1);
+    check('v129 recovery sheet: ‹ stops at TH.DAY_BACK days',_dtDay===dAgo(TH.DAY_BACK)&&$('dtBody').querySelectorAll('.dt-dbar .db')[0].disabled,_dtDay);
+    for(let i=0;i<30;i++)dtDayGo(1);
+    check('v129 recovery sheet: › stops at today',_dtDay===null&&txt($('dtBody').querySelector('.dt-dbar b'))==='Today',_dtDay);
+    _dtDay=y;closeDetail();
+    check('v129 recovery sheet: closing forgets the day',_dtDay===null&&_dtKey===null,'');
+    // a missing part is named under the line
+    base({noSleep:true});openDetail('recovery');
+    check('v129 recovery sheet: missing parts follow the line',/^Missing today: no sleep record/.test(txt($('dtBody').querySelector('.dt-mute'))),txt($('dtBody').querySelector('.dt-mute')));
+    closeDetail();
+    // before Body is live: the old score keeps its list, gains the day bar and the top line
+    base({live:false});_s.checkins=[ci()];openDetail('recovery');const sc=calcReadiness();
+    check('v129 recovery sheet: before Body is live, the old score with its line and its list',txt($('dtBody').querySelector('.dt-ln'))===renderZone(sc).ins&&$('dtBody').querySelector('.dt-dbar')&&/Effect on recovery/.test($('dtBody').textContent)&&!$('dtBody').querySelector('.rc-wf'),txt($('dtBody').querySelector('.dt-ln')));
+    closeDetail();
+    // 360px: the sheet fits
+    base();openDetail('recovery');const m=box.querySelector('.modal'),R0=box.getBoundingClientRect().right,wide=[...$('dtBody').querySelectorAll('*')].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().right>R0+0.5);
+    check('v129 recovery sheet: nothing wider than 360px',m.getBoundingClientRect().width<=360&&m.scrollWidth<=m.clientWidth&&!wide.length,wide.map(e=>e.className).join(' '));
+    closeDetail();
+  }finally{closeDetail();box.remove();css.remove();}
+});
+
+// v129: the Strain sheet: today's aim, where the strain came from, heart rate zones all day, your day, the heart rate line, this week
+run('v129 strain',()=>{
+  const y=dAgo(1),t=td(),T=(d,hm)=>plT(d+'T'+hm+':00'),J=x=>JSON.stringify(x);
+  const v123=x=>x.length<=140&&x.split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(x);
+  // shares
+  const P=[[1,1,1],[3,1],[0,0],[120,60],[5,0,0],[120,30,60]].map(snPct);let ok=true,x=7;
+  for(let k=0;k<60;k++){const a=Array.from({length:1+k%6},()=>(x=(x*9301+49297)%233280)/2332.8),r=snPct(a);if(r.reduce((q,v)=>q+v,0)!==100||r.some(v=>v<0))ok=false;}
+  check('v129 strain: shares are whole percentages that add up to 100',J(P)==='[[34,33,33],[75,25],[0,0],[67,33],[100,0,0],[57,14,29]]'&&ok,J(P));
+  // a band day of 5-minute means; f(minute of the day) gives bpm
+  const hr5=(dt,f,o={})=>({id:'pd-'+dt,date:dt,data:{steps:8000,act:60,...o,hr:[{t:dt+'T00:00:00',dt:300,v:Array.from({length:288},(_,i)=>f(i*5))}]}});
+  // yesterday: hard 10:00 to 11:00, steady to 11:30, easy to 13:30, and hard again from 23:00, inside the night that starts that evening
+  const zf=m=>m<390?52:m<600?70:m<660?155:m<690?145:m<810?110:m>=1380?155:70;
+  base();_s.sleepLogs.forEach(r=>{r.bed='23:00';r.wake='06:30';});_s.workouts=[];_s.icuThr={run:{lthr:160}};_s.polarDays=[hr5(y,zf)];
+  const D=dyDay(y,1),Dt=dyDay(t,1);
+  check('v129 strain: a past day runs midnight to midnight, the night that starts that evening is a second sleep',D.cal&&D.a===T(y,'00:00')&&D.b===T(t,'00:00')&&D.now===null&&D.sleep.a===T(y,'00:00')&&D.sleep.b===T(y,'06:30')&&D.sleep2.a===T(y,'23:00')&&D.sleep2.b===T(t,'00:00'),J({s:D.sleep,s2:D.sleep2}));
+  check('v129 strain: today runs from midnight to now, with no second sleep and no Now line',Dt.a===T(t,'00:00')&&Dt.b<=Date.now()&&Dt.b>Date.now()-60000&&Dt.sleep2===null&&Dt.now===null,J({a:Dt.a,b:Dt.b}));
+  const Z=snZoneMin(y);
+  check('v129 strain: zone minutes against threshold heart rate 160, both nights left out',Z&&Z.easy===120&&Z.steady===30&&Z.hard===60,J(Z));
+  const lg=[...new DOMParser().parseFromString(snZones(y),'text/html').querySelectorAll('.sn-lr')].map(r=>r.querySelector('span').textContent+' '+r.querySelector('b').textContent+' '+r.querySelector('em').textContent);
+  check('v129 strain: the zone legend names each zone with its time and share',J(lg)===J([`Easy ${fmtDur(120)} 57%`,`Steady ${fmtDur(30)} 14%`,`Hard ${fmtDur(60)} 29%`]),J(lg));
+  _s.icuThr={};
+  check('v129 strain: no zones without a threshold heart rate',snZoneMin(y)===null&&snZones(y)==='');
+  _s.icuThr={run:{lthr:160}};_s.polarDays=[hr5(y,()=>70)];
+  check('v129 strain: no zones when the whole day sits under easy',snZoneMin(y)===null&&snZones(y)==='');
+  // your day: calories, sitting, against usual
+  const tl=h=>[...new DOMParser().parseFromString(h,'text/html').querySelectorAll('.sn-tl')].map(r=>[r.querySelector('small').textContent,r.querySelector('b').textContent,(r.querySelector('span')||{}).textContent||'']);
+  const kc=a=>J(a.find(r=>r[0]==='Calories burned')||null);
+  _s.polarDays=[hr5(y,zf,{met:30,sit:420,sitMax:95})];_s.measurements=[];const t0=tl(snTiles(y));
+  _s.measurements=[{id:'m-1',date:dAgo(5),weight:70},{id:'m-2',date:t,weight:80}];const t1=tl(snTiles(y));
+  _s.polarDays[0].data.kcal=2500;const t2=tl(snTiles(y));delete _s.polarDays[0].data.kcal;
+  check('v129 strain: calories are MET-hours times the weight on or before that day, marked about; hidden without a weight',kc(t0)==='null'&&kc(t1)===J(['Calories burned','2,100kcal','about, whole day'])&&kc(t2)===J(['Calories burned','2,500kcal','whole day']),kc(t1)+' '+kc(t2));
+  check('v129 strain: sitting with its longest stretch',J(t1.find(r=>r[0]==='Sitting'))===J(['Sitting',fmtDur(420),'longest '+fmtDur(95)]),J(t1));
+  for(let i=2;i<=13;i++)_s.polarDays.push({id:'pd-'+dAgo(i),date:dAgo(i),data:{steps:6000,act:40}});
+  _s.polarDays.push({id:'pd-'+t,date:t,data:{steps:3000,act:10,met:6}});
+  const ty=tl(snTiles(y)),tt=tl(snTiles(t));_s.polarDays[0].data.steps=5000;_s.polarDays[0].data.act=40;const tz=tl(snTiles(y));
+  check('v129 strain: a past day reads against your usual with ▲ ▼ ●, today says usual a day',ty[0][2]==='▲2,000 over usual'&&ty[1][2]==='▲20min over usual'&&tz[0][2]==='▼1,000 under usual'&&tz[1][2]==='●at your usual'&&tt[0][2]==='usual 6,000 a day'&&tt[1][2]==='usual 40min a day'&&kc(tt)===J(['Calories burned','480kcal','about, so far today']),J([ty,tz,tt]));
+  // the longest sitting stretch: sedentary changes in a row are one stretch
+  const v4=inf=>polarDay({date:y,activity:{date:y,activitiesPerDevice:[v4Dev(Array.from({length:1440},()=>5),Array.from({length:2880},()=>1),inf)]},hr:null}).data;
+  const s1=v4([v4Cls('00:00:00','SLEEP'),v4Cls('08:00:00','SEDENTARY'),v4Cls('09:00:00','SEDENTARY'),v4Cls('10:30:00','LIGHT'),v4Cls('13:00:00','SEDENTARY'),v4Cls('14:00:00','LIGHT')]);
+  const s2=v4([v4Cls('07:00:00','SEDENTARY'),v4Cls('09:00:00','LIGHT'),v4Cls('22:00:00','SEDENTARY')]),s3=v4(null);
+  check('v129 strain: the longest sitting stretch joins sedentary changes in a row and never adds two apart',s1.sit===210&&s1.sitMax===150&&s2.sit===240&&s2.sitMax===120&&!('sitMax' in s3),J([s1,s2,s3]));
+  // the aim
+  const cv=window.coachVerdict,ln=[];
+  try{
+    window.coachVerdict=()=>({lvl:'ok'});ln.push(snAimLine(4,[10,14],false),snAimLine(12,[10,14],false),snAimLine(15.2,[10,14],false),snAimLine(2,[10,14],true));
+    window.coachVerdict=()=>({lvl:'warn'});ln.push(snAimLine(2,[6,11],false));
+  }finally{window.coachVerdict=cv;}
+  check('v129 strain: the aim line says what still fits',J(ln)===J(['Room for about 10 more. A full session fits.',"Inside today's aim. An easy session still fits; nothing hard.","Over today's aim. Keep the rest of the day easy.",'Rest day: keep it to everyday moving.','Room for about 9 more. Keep it easy today.'])&&ln.every(v123),J(ln));
+  const ad=new DOMParser().parseFromString(snAim(7,[6,11],false),'text/html'),a0=new DOMParser().parseFromString(snAim(3,[0,5],false),'text/html');
+  const lb=d=>[...d.querySelectorAll('.sn-sbl span')].map(r=>r.textContent).join(' ');
+  check('v129 strain: the aim bar shades the aim on 0 to 21 and fills to the strain',ad.querySelector('.sn-aim').style.left==='28.6%'&&ad.querySelector('.sn-aim').style.width==='23.8%'&&ad.querySelector('.sn-fill').style.width==='33.3%'&&lb(ad)==='0 6 11 21'&&lb(a0)==='0 5 21'&&ad.querySelector('.sn-sb').getAttribute('aria-label')==='Strain 7.0, aim 6 to 11',lb(ad)+' / '+lb(a0));
+  // this week, on a Monday and on a Thursday
+  const sg=window.strategy,mon=dAgo(stWd(td()));let W;
+  try{
+    W=atDay(mon,()=>{
+      const dd=(i,role,type,lo,hi,done)=>({i,date:stAdd(td(),i),role,type,lo,hi,...(done?{done:true}:{})}),mk=(now,days,tg=300)=>{window.strategy=()=>({target:tg,now,days});return snWeekInfo();};
+      return{ahead:mk(320,[dd(0,'easy','Run',30,40)]),even:mk(300,[dd(0,'easy','Run',30,40)]),
+        on:mk(120,[dd(0,'easy','Run',30,40),dd(2,'tempo','Run',40,50),dd(5,'long','Cycle',90,110),dd(6,'rest','Rest',0,0)]),
+        behind:mk(60,[dd(0,'easy','Run',30,40,true),dd(1,'easy','Run',30,40),dd(3,'rest','Rest',0,0)]),
+        none:mk(0,[],0)};
+    });
+    W.thu=atDay(stAdd(mon,3),()=>{const dd=(i,role,type,lo,hi)=>({i,date:stAdd(td(),i),role,type,lo,hi});window.strategy=()=>({target:300,now:150,days:[dd(0,'easy','Run',30,40),dd(4,'long','Run',200,200)]});return snWeekInfo();});
+  }finally{window.strategy=sg;}
+  check('v129 strain: this week reads ahead, on track with the long day still to come, or behind by what is left',W.ahead.st==='ahead'&&W.ahead.ln==="Ahead: past this week's target already."&&W.even.st==='ahead'&&W.even.ln==='Target reached for this week.'&&W.on.st==='on'&&W.on.ln==="On track. Saturday's long ride makes up most of the rest."&&W.behind.st==='behind'&&W.behind.ln===`Behind: the rest of the plan leaves about ${fmtDur(205)} short.`&&W.none===null,J(W));
+  check('v129 strain: a day after Sunday is next week and never counts',W.thu.st==='behind'&&W.thu.ln===`Behind: the rest of the plan leaves about ${fmtDur(115)} short.`,J(W.thu));
+  check('v129 strain: the week lines follow the v123 rule',[W.ahead,W.on,W.behind,W.thu].every(w=>v123(w.ln)),'');
+});
+seq('v129 strain sheet',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';box.innerHTML=doc.getElementById('dtModal').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const y=dAgo(1),t=td(),txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',noNames=x=>!/Polar|Intervals|Garmin|Strava/i.test(x),J=x=>JSON.stringify(x);
+  const hr5=(dt,f,o={})=>({id:'pd-'+dt,date:dt,data:{steps:8000,act:60,...o,hr:[{t:dt+'T00:00:00',dt:300,v:Array.from({length:288},(_,i)=>f(i*5))}]}});
+  const zf=m=>m<390?52:m<600?70:m<660?155:m<690?145:m<810?110:m>=1380?155:70;
+  const sg=window.strategy,secs=b=>[...b.querySelectorAll('.dt-sec')].map(txt);
+  const srcOf=b=>[...b.querySelectorAll('.sn-src')].map(x=>[x.querySelector('.sn-l').firstChild.textContent,txt(x.querySelector('.sn-l small')),txt(x.querySelector('b'))]);
+  const tlOf=b=>[...b.querySelectorAll('.sn-tl')].map(x=>[txt(x.querySelector('small')),txt(x.querySelector('b')),txt(x.querySelector('span'))]);
+  try{
+    base();_s.sleepLogs.forEach(r=>{r.bed='23:00';r.wake='06:30';});_s.icuThr={run:{lthr:160}};_s.measurements=[{id:'m-1',date:dAgo(5),weight:70}];
+    _s.polarDays=[hr5(y,zf,{act:90,met:30,sit:420,sitMax:95}),hr5(t,m=>m<390?52:m>=420&&m<480?110:70,{met:12,sit:200,sitMax:60})];
+    for(let i=2;i<=13;i++)_s.polarDays.push(hr5(dAgo(i),m=>m<390?52:68));
+    _s.workouts=[{id:'w-sy',date:y,type:'Run',durMin:60,rpe:4,sets:[],sub:{icu:{t:'10:00'}}}];
+    window.strategy=()=>({target:300,now:120,days:[0,1,2,3,4,5,6].map(i=>({i,date:stAdd(td(),i),role:'easy',type:'Run',lo:20,hi:30}))});
+    const T0=atDay(t,()=>{_dtDay=null;openDetail('strain');const b=$('dtBody');
+      return{s:secs(b),big:txt(b.querySelector('.dt-big')),sub:txt(b.querySelector('.dt-sub')),bar:!!b.querySelector('.sn-sb[role=img]'),aim:txt(b.querySelector('.sn-sbl+.dt-ln')),
+        src:srcOf(b),tl:tlOf(b),chart:!!b.querySelector('.dt-card #dtChart'),wk:[txt(b.querySelector('.sn-wkl b')),txt(b.querySelector('.sn-wkl span'))],all:b.textContent,st:strainOf(strainLoad(t)),tg:strainTarget()};});
+    check('v129 strain sheet: today in order: where it came from, zones, your day, heart rate today, this week, then the 30-day chart',J(T0.s)===J(['Where it came from','Heart rate zones, all day','Your day','Heart rate today','This week','Last 30 days'])&&T0.chart,J(T0.s));
+    check('v129 strain sheet: today\'s strain of 21 with the aim, its bar and its line',T0.big===T0.st.toFixed(1)+'of 21'&&T0.sub===`Aim today: ${T0.tg[0]} to ${T0.tg[1]}`&&T0.bar&&T0.aim===snAimLine(T0.st,T0.tg,false),T0.big+' / '+T0.sub+' / '+T0.aim);
+    check('v129 strain sheet: today\'s strain is all from time on your feet; tiles read usual a day and calories so far',J(T0.src)===J([['On your feet',fuN(8000)+' steps','100%']])&&T0.tl.some(x=>J(x)===J(['Steps','8,000','usual 8,000 a day']))&&T0.tl.some(x=>J(x)===J(['Calories burned','840kcal','about, so far today'])),J([T0.src,T0.tl]));
+    check('v129 strain sheet: this week from the outline',J(T0.wk)===J([fmtDur(120),'of about '+fmtDur(300)])&&noNames(T0.all),J(T0.wk));
+    // yesterday
+    const h0=_ch.dtChart&&_ch.dtChart.on?_ch.dtChart.hover:'off';
+    $('dtBody').querySelectorAll('.dt-dbar .db')[0].click();
+    const b=$('dtBody'),s1=secs(b),D=dyDay(y,1),st=daySettle(D,dyUsual(y));
+    check('v129 strain sheet: ‹ moves to yesterday: a day total, no aim, no this week, heart rate yesterday',_dtDay===y&&txt(b.querySelector('.dt-sub'))==='Day total'&&!b.querySelector('.sn-sb')&&J(s1)===J(['Where it came from','Heart rate zones, all day','Your day','Heart rate yesterday','Last 30 days']),J(s1));
+    const src=srcOf(b),pc=snPct([240,45]);
+    check('v129 strain sheet: the run with its start, length and effort word, then time on your feet, as shares',J(src)===J([['Run',`10:00 · ${fmtDur(60)} · hard`,pc[0]+'%'],['On your feet',fuN(8000)+' steps',pc[1]+'%']]),J(src));
+    const tl=tlOf(b);
+    check('v129 strain sheet: yesterday\'s tiles against usual: steps at usual, active over, calories for the whole day, sitting',J(tl)===J([['Steps','8,000','●at your usual'],['Active',fmtDur(90),`▲${fmtDur(30)} over usual`],['Calories burned','2,100kcal','about, whole day'],['Sitting',fmtDur(420),'longest '+fmtDur(95)]]),J(tl));
+    check('v129 strain sheet: the settle line after the run',st&&st.min!=null&&txt(b.querySelector('.dy-m'))===snSettleLine(st)&&/^Took .* to get back under \d+ after your run\.$/.test(snSettleLine(st)),txt(b.querySelector('.dy-m')));
+    check('v129 strain sheet: no app or device names',noNames(b.textContent),'');
+    const ch=_ch.dtChart,ro=txt(b.querySelector('#dtChart .vc-ro'));
+    check('v129 strain sheet: the 30-day chart opens on the day shown: none inspected on today, yesterday inspected on a past day',h0===null&&ch&&ch.on&&ch.hover===DN(y)&&ch.hover>=ch.view[0]&&ch.hover<=ch.view[1]&&!/^Today/.test(ro),h0+' / '+(ch&&ch.hover)+' / '+ro);
+    // a day with nothing recorded
+    for(let i=0;i<30;i++)dtDayGo(-1);
+    check('v129 strain sheet: a past day with nothing recorded says so',_dtDay===dAgo(TH.DAY_BACK)&&txt($('dtBody').querySelector('.dt-miss'))==='Nothing was recorded for this day.',txt($('dtBody').querySelector('.dt-miss')));
+    closeDetail();
+    // 360px
+    atDay(t,()=>openDetail('strain'));const m=box.querySelector('.modal'),R0=box.getBoundingClientRect().right,wide=[...$('dtBody').querySelectorAll('*')].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().right>R0+0.5);
+    check('v129 strain sheet: nothing wider than 360px',m.getBoundingClientRect().width<=360&&m.scrollWidth<=m.clientWidth&&!wide.length,wide.map(e=>e.tagName+'.'+e.className).join(' '));
+    // a refresh keeps the place; the next sheet starts at its top (a hidden sheet would keep its old offset)
+    const [sc0,sc1,sc2]=atDay(t,()=>{m.scrollTop=m.scrollHeight;const a=m.scrollTop;refreshDetail();const r=m.scrollTop;closeDetail();openDetail('sleep');return[a,r,m.scrollTop];});
+    check('v129 strain sheet: a refresh keeps the place; the next sheet opens at its top',sc0>0&&sc1===sc0&&sc2===0,[sc0,sc1,sc2].join());
+    closeDetail();
+  }finally{window.strategy=sg;closeDetail();box.remove();css.remove();}
+});
+
+// v129: the Sleep sheet: the need bar from the same need as Body, the stages ring, the night with the band's heart rate, Details
+// against your usual (bedtimes either side of midnight), the sleep window and its line, Tonight, the night browser, a battery night
+seq('v129 sleep sheet',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';box.innerHTML=doc.getElementById('dtModal').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const t=td(),y=dAgo(1),keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',noNames=x=>!/Polar|Intervals|Garmin|Strava/i.test(x),J=x=>JSON.stringify(x),B=()=>$('dtBody');
+  const secs=()=>[...B().querySelectorAll('.dt-sec')].map(txt),row=l=>{const r=[...B().querySelectorAll('.dt-row')].find(r=>r.firstElementChild&&r.firstElementChild.textContent===l);return r?r.lastElementChild.textContent:'';};
+  const lg=n=>{const r=[...B().querySelectorAll('.sl-ring .sn-lr')].find(r=>r.querySelector('span').textContent===n);return r?r.querySelector('b').textContent:'';};
+  const v123=x=>x.length<=140&&x.split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(x);
+  // the band's day in 5-minute means: asleep 54 with a low at 03:00, 52 from 23:00, 70 by day
+  const hr5=(dt,lo)=>({id:'pd-'+dt,date:dt,data:{hr:[{t:dt+'T00:00:00',dt:300,v:Array.from({length:288},(_,i)=>{const m=i*5;return m===180?lo:m<390?54:m>=1380?52:70;})}]}});
+  try{
+    // a night from the log with stages typed, bed 23:00 and wake 06:30 every night; the band's lowest 46 today against 50 before
+    base();_s.sleepLogs.forEach(r=>{r.bed='23:00';r.wake='06:30';});Object.assign(slOf(t),{deepH:1,deepM:30,remH:1,remM:30});
+    _s.polarDays=Array.from({length:15},(_,i)=>hr5(dAgo(i),i?50:46));
+    const A=atDay(t,()=>{_dtDay=null;openDetail('sleep');const P=calcBody().parts.sleep,nb=B().querySelector('.sl-need');
+      return{s:secs(),P,pct:Math.round(P.pct*100),sub:txt(B().querySelector('.dt-sub')),aria:nb&&nb.getAttribute('aria-label'),w:nb&&nb.querySelector('i').style.width,
+        ring:[lg('Deep'),lg('Dreaming'),lg('Light'),lg('Awake')],dc:txt(B().querySelector('.sl-ring .sn-dc')),
+        bed:row('Bedtime'),wake:row('Wake-up'),eff:row('Time asleep in bed'),lo:row('Lowest heart rate'),loC:(B().querySelector('.dt-row b small i')||{}).outerHTML,
+        wn:[...B().querySelectorAll('.sl-win rect.wn')].map(r=>[r.getAttribute('data-d'),r.style.opacity]),wl:txt(B().querySelector('.sl-win .dy-m')),
+        nav:[txt(B().querySelector('.dt-dbar .dt b')),B().querySelectorAll('.dt-dbar .db')[1].disabled],ch:_dtCh,cv:!!B().querySelector('#dtChart'),all:B().textContent,wk:!!B().querySelector('.dt-wake input')};});
+    check('v129 sleep sheet: in order: stages, details, the sleep window, the effect, then Tonight; no 30-day chart',J(A.s)===J(['Stages','Details','Sleep window, 14 nights','Effect on recovery','Tonight'])&&A.ch===null&&!A.cv&&A.wk,J(A.s));
+    check('v129 sleep sheet: the headline and the need bar use the need Body uses',A.sub===`asleep, ${A.pct}% of the ${fmtDur(A.P.need)} you needed`&&A.aria===`${A.pct}% of what you needed`&&A.w===Math.min(A.pct,100)+'%',A.sub+' / '+A.aria+' / '+A.w);
+    check('v129 sleep sheet: the ring shows deep, dreaming and light from the log, no awake row, time asleep in the middle',J(A.ring)===J([fmtDur(90),fmtDur(90),fmtDur(270),''])&&A.dc===fmtDur(450),J(A.ring)+' '+A.dc);
+    check('v129 sleep sheet: bedtime and wake-up against your usual, time asleep in bed',A.bed==='23:00usual 23:00'&&A.wake==='06:30usual 06:30'&&A.eff==='100%',[A.bed,A.wake,A.eff].join(' / '));
+    check('v129 sleep sheet: the lowest heart rate with its time, under your usual of the nights before, in green',A.lo==='46 bpm at 03:00▼4 under usual'&&/var\(--green\)/.test(A.loC||''),A.lo+' '+A.loC);
+    check('v129 sleep sheet: the sleep window shows 14 nights, the last one solid, with a steady line',A.wn.length===14&&J(A.wn[13])===J([t,'1'])&&A.wn.slice(0,13).every(x=>x[1]==='0.32')&&A.wl==='Steady: you go to bed within half an hour of your usual most nights.'&&v123(A.wl),J(A.wn.slice(-2))+' '+A.wl);
+    check('v129 sleep sheet: the browser says Last night with › off, no app or device names',A.nav[0]==='Last night'&&A.nav[1]===true&&noNames(A.all),J(A.nav));
+    B().querySelectorAll('.dt-dbar .db')[0].click();
+    const pv=dAgo(2),nb2=[txt(B().querySelector('.dt-dbar .dt b')),txt(B().querySelector('.dt-dbar .dt small'))];
+    check('v129 sleep sheet: ‹ shows the night ending yesterday, with its dates, and Tonight stays',_dtDate===y&&_dtShown===y&&nb2[0]==='Night ending yesterday'&&nb2[1]===`${dayWd(pv)} ${pv.slice(0,7)===y.slice(0,7)?+pv.slice(8):fmtD(pv)} to ${dayWd(y)} ${fmtD(y)}`&&!B().querySelectorAll('.dt-dbar .db')[1].disabled&&secs().includes('Tonight')&&[...B().querySelectorAll('.sl-win rect.wn')].pop().getAttribute('data-d')===y,J(nb2));
+    const ef0=txt(B().querySelector('.dt-eff'));closeDetail();
+    check('v129 sleep sheet: closing clears the night picked',_dtDate===null&&_dtShown===null);
+    // a past day shown: › to last night names the night that day uses, never "today" or "too old"
+    _dtDay=y;openDetail('sleep');const ef1=txt(B().querySelector('.dt-eff'));B().querySelectorAll('.dt-dbar .db')[1].click();const ef2=txt(B().querySelector('.dt-eff'));closeDetail();
+    check('v129 sleep sheet: a night the shown day does not use names the night it does',ef0===`Not counted today: the score uses the night ending ${fmtD(t)}.`&&!/today|too old/.test(ef1)&&ef2===`Not counted that day: the score uses the night ending ${fmtD(y)}.`,J([ef0,ef1,ef2]));
+    // the detailed night cut at 22:40: the band's heart rate under the stages, the lowest kept value marked
+    base();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==t);_s.polarDays=cutDays();_s.polarNights=[{id:'pn-'+t,...polarNight(cutNight())}];plRetrim(dAgo(2));
+    openDetail('sleep');
+    const hy=B().querySelector('.dt-hy svg'),lo=hy&&hy.querySelector('circle.dt-lo');
+    check('v129 sleep sheet: the night has a heart rate row on the same axis, the lowest kept value marked, stages before details and the score',hy&&hy.getAttribute('viewBox')==='0 0 320 146'&&hy.querySelectorAll('polyline').length>0&&lo&&lo.nextElementSibling.textContent==='52'&&row('Lowest heart rate')==='52 bpm at 00:00'&&J(secs().slice(0,4))===J(['Stages','The night','Details','Sleep score · 70 of 100']),hy&&hy.getAttribute('viewBox')+' '+J(secs()));
+    const m=box.querySelector('.modal'),R0=box.getBoundingClientRect().right,wide=[...B().querySelectorAll('*')].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().right>R0+0.5);
+    check('v129 sleep sheet: nothing wider than 360px',m.getBoundingClientRect().width<=360&&m.scrollWidth<=m.clientWidth&&!wide.length,wide.map(e=>e.tagName+'.'+e.className.baseVal||e.className).join(' '));
+    closeDetail();
+    // a battery night (asleep 22:50, recording stops 03:12): details, On Today, Not recorded to your usual wake-up, no ring or need bar
+    base();_s.sleepLogs.forEach(r=>{r.bed='23:00';r.wake='06:30';});_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==t);_s.polarDays=[];
+    _s.polarNights=[{id:'pn-'+t,...polarNight(rawNight(t,y+'T22:50:00',t+'T03:12:00',[[0,1],[3600,2],[7200,1],[10800,3],[13200,1]],{batt:true,hrvT:y+'T22:55:00'}))}];plRetrim(dAgo(2));
+    openDetail('sleep');const nr=B().querySelector('.dt-hyp .dt-nr'),ax=[...B().querySelectorAll('.dt-hy svg > text')].map(txt);
+    check('v129 sleep sheet: a battery night: the night, details and On Today, no ring, need bar, window or effect',J(secs())===J(['The night','Details','On Today','Tonight'])&&!B().querySelector('.sl-ring')&&!B().querySelector('.sl-need')&&_dtCh===null&&txt(B().querySelector('.dt-sub'))==='recorded, from 22:50 until the battery ran out',J(secs()));
+    check('v129 sleep sheet: the battery night\'s details',row('Asleep from')==='22:50usual 23:00'&&row('Recorded until')==='03:12battery ran out'&&row('Recovery that day')==='HRV and resting heart ratesleep left out'&&row('Sleep debt')==='Nothing added'&&txt(B().querySelector('.rf.none .rf-v'))==='Not counted',[row('Asleep from'),row('Recorded until'),row('Recovery that day'),row('Sleep debt')].join(' / '));
+    check('v129 sleep sheet: the battery night runs on to your usual wake-up as Not recorded',nr&&txt(nr)==='Not recorded'&&nr.getAttribute('data-s')==='15720'&&nr.getAttribute('data-e')==='27600'&&ax.includes('usual wake 06:30')&&noNames(B().textContent),nr&&nr.outerHTML.slice(0,80)+' '+J(ax));
+    closeDetail();
+    // your usual bedtime either side of midnight: counted from noon, so 23:30, 23:50 and 00:15 give 23:50 (not 23:30)
+    base();const bd=['23:30','23:30','23:30','23:50','23:50','00:15','00:15','00:15','00:15'];
+    _s.sleepLogs.forEach(r=>{const i=daysAgo(r.date)-1;if(i>=0&&i<bd.length){r.bed=bd[i];r.wake='07:00';}});
+    const U=slUsualBW(t),U4=(_s.sleepLogs.forEach(r=>{if(daysAgo(r.date)>4)delete r.bed;}),slUsualBW(t));
+    check('v129 sleep sheet: your usual bedtime across midnight, and none before 5 nights',U&&hhmm(U.bed+720)==='23:50'&&hhmm(U.wake+720)==='07:00'&&U4===null,J(U));
+    const u0={bed:660,wake:1110},ok=n=>Array.from({length:n},(_,i)=>({v:{b:660+(i%2?50:0)}}));
+    const W=[winMeaning([],null,null,true),winMeaning(ok(6),{b:720},u0,true),winMeaning(ok(6),{b:600},u0,false),winMeaning(Array.from({length:6},()=>({v:{b:660}})),{b:660},u0,true),winMeaning(Array.from({length:6},(_,i)=>({v:{b:i<4?740:660}})),{b:660},u0,true)];
+    check('v129 sleep sheet: the window line, each case one short line',W[0]==='Your usual window builds after 5 nights.'&&W[1]==='Later to bed than usual last night: 00:00 against 23:00.'&&W[2]==='Earlier to bed than usual that night: 22:00 against 23:00.'&&W[3]==='Steady: you go to bed within half an hour of your usual most nights.'&&W[4]==='Your bedtime varies by more than half an hour most nights. A steadier one helps.'&&W.every(v123),J(W));
+  }finally{closeDetail();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// v129: Health: baselines against your usual, blood markers that open to a chart with no toolbar, injuries with Mark healed
+seq('v129 health',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  box.firstElementChild.classList.add('active');box.firstElementChild.style.display='block';
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={},had={},stub={recalc:()=>{},showToast:()=>{},renderInjuryDisplay:()=>{},refreshAll:()=>renderHealth()};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',J=x=>JSON.stringify(x),noNames=x=>!/Polar|Intervals|Garmin|Strava/i.test(x);
+  const v123=x=>x.length<=140&&x.split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(x);
+  const rows=()=>[...$('hBase').querySelectorAll('.rf')].map(r=>[txt(r.querySelector('.rf-l')),txt(r.querySelector('.rf-v')),txt(r.querySelector('.rf-n')),r.className.replace(/^rf\s*/,'')]);
+  const brow=k=>{const r=$('br_'+k);return r?[txt(r.querySelector('.t b')),txt(r.querySelector('.t small')),txt(r.querySelector('.vv b')),txt(r.querySelector('.vv small')),r.className.replace(/^br2\s*/,'')]:null;};
+  const key=(el,k)=>el.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true}));
+  try{
+    base();_s.profile.wtGoal=72;
+    _s.measurements=[...Array.from({length:10},(_,i)=>({id:'m-'+i,date:dAgo(3+i*2),weight:72,bpSys:112,bpDia:74})),{id:'m-n',date:td(),weight:73.1,bpSys:118,bpDia:76}];
+    renderHealth();let R=rows();
+    check('v129 health: baselines show the value with its unit and the comparison under it',J(R)===J([['Resting heart rate','50 bpm','●at your usual','nt'],['Weight','73.1 kg','▲1.1 over usual','nt'],['Blood pressure','118/76 mmHg','▲usual 112/74','nt'],['Weight goal','72 kg','1.1 kg to lose','nt']]),J(R));
+    check('v129 health: each baseline has its line icon, the first row no rule above it',[...$('hBase').querySelectorAll('.rf')].every(r=>r.firstElementChild.classList.contains('ui-i'))&&getComputedStyle($('hBase').querySelector('.rf')).borderTopWidth==='0px','');
+    const rh=v=>{_s.wellness[td()].rhr=v;renderHealth();return rows()[0].slice(2).join(' ');};
+    const rr=[rh(53),rh(47),rh(51)];
+    check('v129 health: resting heart rate 2+ over your usual is amber, 2+ under green, 1 over neutral',J(rr)===J(['▲3 over usual warn','▼3 under usual good','▲1 over usual nt']),J(rr));
+    const gl=g=>{_s.profile.wtGoal=g;renderHealth();const r=rows().find(x=>x[0]==='Weight goal');return r?r[2]:null;},gw=[gl(73.3),gl(75),gl(null)];
+    check('v129 health: the weight goal reads Reached within half a kilo, kg to gain, and no row without a goal',gw[0]==='Reached'&&gw[1]==='1.9 kg to gain'&&!rows().some(r=>r[0]==='Weight goal'),J(gw));
+    _s.measurements=_s.measurements.filter(m=>m.id!=='m-n');renderHealth();R=rows();
+    check('v129 health: a reading older than yesterday carries its date',R[1][2]==='●at your usual · '+fmtD(dAgo(3))&&R[0][2].indexOf(' · ')<0,J(R[1]));
+    _s.measurements=[{id:'m-1',date:td(),weight:70.0}];delete _s.wellness[td()].rhr;Object.values(_s.wellness).forEach(w=>delete w.rhr);renderHealth();R=rows();
+    check('v129 health: a first reading says so, with no glyph',J(R)===J([['Weight','70.0 kg','First reading','nt']]),J(R));
+    _s.measurements=[];renderHealth();
+    check('v129 health: no measurements and no resting heart rate gives the empty state with its button',/No measurements yet/.test(txt($('hBase')))&&!!$('hBase').querySelector('.empty-btn'),txt($('hBase')));
+    hlInfo('base');const ib=$('hib_base');
+    check('v129 health: the ⓘ opens a plain line about the usual, from TH',ib.classList.contains('on')&&ib.getAttribute('aria-expanded')==='true'&&!$('hinf_base').hidden&&$('hinf_base').textContent===`Usual is your average over the ${TH.HL_USUAL} days before the latest reading.`&&!!ib.querySelector('svg')&&ib.getBoundingClientRect().width>=44,$('hinf_base').textContent);
+    hlInfo('base');
+    // blood: three tests, the latest in range
+    base();_s.bloodLogs=[{id:'b1',date:dAgo(400),glucose:98,chol:215,uric:8.1},{id:'b2',date:dAgo(200),glucose:103,chol:205,uric:7.6},{id:'b3',date:dAgo(44),glucose:91,chol:193,uric:7.1}];
+    _hlOpen=null;renderHealth();
+    const B0=['glucose','chol','uric'].map(brow);
+    check('v129 health: one row per marker: name, range, value, state and the change since the test before',txt($('hBlood').querySelector('.ksub'))==='Latest test '+fmtD(dAgo(44))&&J(B0)===J([['Glucose','70 to 100 mg/dL, fasting','91','●In range · down 12','good'],['Total cholesterol','Under 200 mg/dL','193','●In range · down 12','good'],['Uric acid','3.5 to 7.2 mg/dL','7.1','●In range · down 0.5','good']]),J(B0));
+    check('v129 health: closed rows hold no chart, each row is a 44px+ button',!$('hBlood').querySelector('.bx')&&['glucose','chol','uric'].every(k=>$('br_'+k).getAttribute('role')==='button'&&$('br_'+k).getAttribute('aria-expanded')==='false'&&$('br_'+k).getBoundingClientRect().height>=44),'');
+    key($('br_glucose'),'Enter');const st=_ch.btc_glucose,hd=()=>[...$('bth_glucose').children].map(txt);
+    check('v129 health: Enter opens the row: unit beside the value, the change moves to the header',_hlOpen==='glucose'&&$('br_glucose').getAttribute('aria-expanded')==='true'&&brow('glucose')[2]==='91 mg/dL'&&brow('glucose')[3]==='●In range'&&!!$('bx_glucose'),J(brow('glucose')));
+    check('v129 health: the header: the latest test and the one before',J(hd())===J([`${fmtD(dAgo(44))}91 mg/dL●In range`,`Previous103 mg/dL${fmtD(dAgo(200))}`])&&$('bth_glucose').firstElementChild.className==='good',J(hd()));
+    check('v129 health: the chart has no toolbar, chips or readout; the healthy range is the legend',st&&st.on&&!$('bx_glucose').querySelector('.vc-tb,.vc-chips,.vc-ro,.vc-nav')&&txt($('bx_glucose').querySelector('.vc-lg'))==='Healthy range',st&&Object.keys(st).join());
+    check('v129 health: each value over its dot, numbers only; the y labels are the range edges',J(st.vals.slice().sort())===J(['103','91','98'])&&J(st.yl)===J(['70','100']),J(st.vals)+' '+J(st.yl));
+    const mg=txt($('bx_glucose').querySelector('.vc-mean'));
+    check('v129 health: one line: where it is and the change since the first test',mg===`In range, down 7 mg/dL since ${fmtD(dAgo(400))}.`&&v123(mg),mg);
+    key(st.cv,'ArrowLeft');key(st.cv,'ArrowLeft');
+    check('v129 health: stepping to an earlier test moves the header to it',J(hd())===J([`${fmtD(dAgo(200))}103 mg/dL▲Borderline`,`Previous98 mg/dL${fmtD(dAgo(400))}`])&&$('bth_glucose').firstElementChild.className==='warn',J(hd()));
+    key(st.cv,'Escape');
+    check('v129 health: Escape goes back to the latest',hd()[0]===`${fmtD(dAgo(44))}91 mg/dL●In range`,hd()[0]);
+    const wm=$('bx_glucose').querySelector('details.wm');wm.open=true;wm.dispatchEvent(new Event('toggle'));
+    check('v129 health: What moves it is folded under the chart, in plain words',txt(wm.querySelector('summary'))==='What moves it'&&/Sleep/.test(txt(wm.querySelector('p')))&&!/Moves with/.test(txt(wm)),txt(wm.querySelector('p')).slice(0,60));
+    hlBm('uric');
+    const mu=txt($('bx_uric').querySelector('.vc-mean'));
+    check('v129 health: one row open at a time; uric keeps one decimal',_hlOpen==='uric'&&!$('bx_glucose')&&!_ch.btc_glucose&&_ch.btc_uric.on&&J(_ch.btc_uric.yl)===J(['3.5','7.2'])&&mu===`In range, down 1 mg/dL since ${fmtD(dAgo(400))}.`,mu+' '+J(_ch.btc_uric.yl));
+    hlBm('chol');
+    check('v129 health: cholesterol has its upper edge only',J(_ch.btc_chol.yl)===J(['200']),J(_ch.btc_chol.yl));
+    hlBm('chol');
+    check('v129 health: tapping the open row closes it',_hlOpen===null&&!$('hBlood').querySelector('.bx')&&!_ch.btc_chol,'');
+    // out of range: high, low, borderline; the line says when it moves towards the range
+    _s.bloodLogs=[{id:'b1',date:dAgo(90),glucose:140,uric:8.6},{id:'b2',date:dAgo(10),glucose:132,uric:3.1}];renderHealth();
+    check('v129 health: High ▲ in red, Low ▼ in red',J(brow('glucose').slice(2))===J(['132','▲High · down 8','bad'])&&J(brow('uric').slice(2))===J(['3.1','▼Low · down 5.5','bad'])&&!$('br_chol'),J([brow('glucose'),brow('uric')]));
+    hlBm('glucose');const mh=txt($('bx_glucose').querySelector('.vc-mean'));
+    check('v129 health: high and falling says it is moving towards the range',mh===`High, down 8 mg/dL since ${fmtD(dAgo(90))}: moving towards the range.`&&v123(mh),mh);
+    hlBm('uric');const ml=txt($('bx_uric').querySelector('.vc-mean'));
+    check('v129 health: low and falling does not',ml===`Low, down 5.5 mg/dL since ${fmtD(dAgo(90))}.`,ml);
+    _s.bloodLogs=[{id:'b1',date:dAgo(10),glucose:91}];renderHealth();
+    check('v129 health: one result: no change on the row, other markers have no row',brow('glucose')[3]==='●In range'&&!$('br_chol')&&!$('br_uric')&&_hlOpen===null,J(brow('glucose')));
+    hlBm('glucose');
+    check('v129 health: one result open: the header shows it and the chart says it needs a second',/91 mg\/dL/.test(txt($('bth_glucose')))&&!/Previous/.test(txt($('bth_glucose')))&&/after your second test/.test(txt($('btc_glucose'))),txt($('bx_glucose')));
+    _s.bloodLogs=[];_hlOpen=null;renderHealth();
+    check('v129 health: no blood results gives the empty state',/No blood results yet/.test(txt($('hBlood')))&&!!$('hBlood').querySelector('.empty-btn'),'');
+    // injuries
+    _s.injuries=[{id:'inj-1',date:dAgo(10),part:'Left calf',sev:1,notes:'Tight after hills',active:true},{id:'inj-2',date:dAgo(40),part:'Knee',sev:2,active:false}];renderHealth();
+    const ij=[...$('hInj').querySelectorAll('.inj')];
+    check('v129 health: an active injury: part, severity and since, the note, Mark healed 44px',ij.length===1&&txt(ij[0].querySelector('.t b'))==='Left calf'&&ij[0].querySelector('.t small').innerHTML===`Mild · since ${fmtD(dAgo(10))}<br>Tight after hills`&&txt(ij[0].querySelector('.sbtn'))==='Mark healed'&&ij[0].querySelector('.sbtn').getBoundingClientRect().height>=44,txt(ij[0]));
+    ij[0].querySelector('.sbtn').click();
+    check('v129 health: Mark healed from Health ends the injury and the list empties',_s.injuries[0].active===false&&/No active injuries/.test(txt($('hInj')))&&txt($('hInj').querySelector('.sbtn'))==='Log an injury',txt($('hInj')));
+    // the page as a whole
+    base();_s.profile.wtGoal=72;_s.measurements=[{id:'m-1',date:dAgo(9),weight:72.4,bpSys:121,bpDia:79},{id:'m-2',date:td(),weight:72.9,bpSys:118,bpDia:76}];
+    _s.bloodLogs=[{id:'b1',date:dAgo(400),glucose:98,chol:215,uric:8.1},{id:'b3',date:dAgo(44),glucose:91,chol:193,uric:7.1}];_s.injuries=[{id:'inj-1',date:dAgo(10),part:'Left calf',sev:2,notes:'Tight after hills',active:true}];
+    _hlOpen=null;renderHealth();hlBm('glucose');
+    const pg=box.firstElementChild,all=pg.textContent;
+    check('v129 health: four cards in order, the report with two buttons side by side',J([...pg.querySelectorAll('.kh b')].map(txt))===J(['Your baselines','Blood markers','Active injuries','Report for your doctor or coach'])&&pg.querySelectorAll('.two button').length===2&&pg.querySelector('.two .btn-gold').getBoundingClientRect().top===pg.querySelector('.two .btn-out').getBoundingClientRect().top,J([...pg.querySelectorAll('.kh b')].map(txt)));
+    check('v129 health: no sideways scroll at 360px, no source names, no emoji, no NaN',pg.scrollWidth<=pg.clientWidth+1&&noNames(all)&&!/\p{Extended_Pictographic}/u.test(all.replace(/[ⓘ]/g,''))&&!/NaN|undefined/.test(all),pg.scrollWidth+' / '+pg.clientWidth);
+  }finally{if(_hlOpen)chUnmount('btc_'+_hlOpen);_hlOpen=null;box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+seq('v129 log',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-log').outerHTML;document.body.appendChild(box);
+  const pg=box.firstElementChild;pg.classList.add('active');pg.style.display='block';
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const hit=[],keep={},had={},stub={recalc:()=>{},showToast:()=>{},refreshAll:()=>{},openDetail:k=>hit.push('open:'+k),editWorkout:id=>hit.push('edit:'+id),delWorkout:id=>hit.push('del:'+id),lgPlan:()=>''};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const gh=Date.prototype.getHours;
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',J=x=>JSON.stringify(x),noNames=x=>!/Polar|Intervals|Garmin|Strava/i.test(x);
+  const seg=()=>[...$('lgProg').querySelectorAll('.lp-seg i')].map(i=>i.className).join(),ico=()=>['lCheckin','lSleep','lWorkout','lMind'].map(id=>$(id+'St').className.replace('log-st ','')).join();
+  const word=k=>{const e=pg.querySelector(`.ci-w[data-k="${k}"]`);return e.textContent+(e.classList.contains('on')?'*':'');};
+  const tall=e=>e.getBoundingClientRect().height>=44;
+  try{
+    // nothing logged
+    base({noSleep:true});Object.assign(_s,{checkins:[],workouts:[],measurements:[],bloodLogs:[],injuries:[],foodLogs:[]});
+    renderLogHead();
+    check('v129 log: with nothing logged every row says what goes in it',J(lgSum())===J({ciStat:'Takes under a minute',sleepStat:'Not logged today',wkStat:'Nothing logged today',mindStat:'Not yet today',foodStat:'Optional · nothing yet',measStat:'Weight, blood pressure, resting heart rate',bloodStat:'Glucose, cholesterol, uric acid',injStat:'None active'})&&txt($('wkStat'))==='Nothing logged today'&&txt($('injStat'))==='None active',J(lgSum()));
+    window.lgPlan=()=>'Run';
+    check('v129 log: with nothing logged and a session planned, the workout row names it',lgSum().wkStat==='Plan today: Run',lgSum().wkStat);window.lgPlan=stub.lgPlan;
+    const day=new Date(td()+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    check('v129 log: the progress card reads Today, the date, 0 of 4 done, four empty segments, no note',txt($('lgProg').querySelector('.lp-h'))===`Today${day}0 of 4 done`&&seg()===',,,'&&!$('lgProg').querySelector('.lp-n')&&ico()==='no,no,no,no'&&$('lCheckinSt').getAttribute('aria-label')==='Not done',txt($('lgProg'))+' · '+seg()+' · '+ico());
+    // everything logged
+    base();const T=new Date(td()+'T07:12:00').getTime(),W=[{id:'w-a',date:td(),type:'Run',durMin:48,distKm:8.2,rpe:3,notes:'',sets:[]},{id:'w-b',date:dAgo(2),type:'Cycle',durMin:60,distKm:24,rpe:2,notes:'',sets:[]}];
+    Object.assign(_s,{checkins:[ci({ts:T,mindfulMin:10,coffee:2,soreness:1})],workouts:W,foodLogs:[{id:'fd-'+td(),date:td(),kcal:1450,protein:80}],measurements:[{id:'m1',date:dAgo(9),weight:72.4},{id:'m2',date:dAgo(3),weight:73.1}],bloodLogs:[{id:'b1',date:dAgo(400),glucose:98},{id:'b2',date:dAgo(44),glucose:91}],injuries:[{id:'i1',date:dAgo(5),part:'Left calf',sev:1,active:true},{id:'i2',date:dAgo(60),part:'Back',sev:1,active:false}]});
+    const m=mindOf(_s.checkins[0]),mw=m>=TH.MIND_GOOD?'Good':m>=TH.MIND_FLAT?'Flat':'Strained';
+    renderLogHead();const S1=lgSum();
+    check('v129 log: with everything logged each row sums it up in one line',J(S1)===J({ciStat:mw+' · 07:12',sleepStat:fmtDur(450),wkStat:'Run · '+fmtDur(48)+' · '+fmtDist(W[0]),mindStat:'10 min today',foodStat:'Optional · 1,450 kcal so far',measStat:'Weighed 3 days ago · 73.1 kg',bloodStat:'Last test '+fmtD(dAgo(44)),injStat:'1 active · Left calf'})&&/8\.2 km/.test(S1.wkStat)&&txt($('ciStat'))===S1.ciStat,J(S1));
+    check('v129 log: all four done fills four green segments and four ticks',/4 of 4 done/.test(txt($('lgProg')))&&seg()==='ok,ok,ok,ok'&&ico()==='ok,ok,ok,ok'&&$('lSleepSt').getAttribute('aria-label')==='Done'&&getComputedStyle($('lgProg').querySelector('.lp-seg i')).backgroundColor===getComputedStyle(document.documentElement).getPropertyValue('--green').trim().replace(/^#(..)(..)(..)$/,(_,a,b,c)=>`rgb(${parseInt(a,16)}, ${parseInt(b,16)}, ${parseInt(c,16)})`),seg()+' · '+ico());
+    _s.workouts=[...W,{id:'w-c',date:td(),type:'Yoga',durMin:30,rpe:1,notes:'',sets:[]}];_s.injuries.push({id:'i3',date:dAgo(1),part:'Right knee',sev:1,active:true});
+    check('v129 log: two workouts today give the count and total time, two injuries the newest and how many more',lgSum().wkStat==='2 workouts · '+fmtDur(78)&&lgSum().injStat==='2 active · Right knee and 1 more',lgSum().wkStat+' | '+lgSum().injStat);
+    _s.workouts=W;_s.injuries.pop();
+    // sleep that needs a detail
+    const sl=_s.sleepLogs.find(x=>x.date===td());sl.src={durMin:'icu'};renderLogHead();
+    check('v129 log: a night that needs its bedtime is an amber segment and icon, with the note under the bar',seg()==='ok,pt,ok,ok'&&ico()==='ok,pt,ok,ok'&&$('lSleep').classList.contains('part')&&txt($('lgProg').querySelector('.lp-n'))==='Sleep needs your bedtime.'&&lgSum().sleepStat===fmtDur(450)+' · add your bedtime'&&/3 of 4 done/.test(txt($('lgProg'))),seg()+' · '+txt($('lgProg')));
+    delete sl.src;renderLogHead();
+    // rows, groups, status icons only on the four daily rows
+    check('v129 log: two groups, the status icon only on the four daily rows',J([...pg.querySelectorAll('.lg-grp')].map(txt))===J(['Every day','Now and then'])&&['lFood','lMeas','lBlood','lInjury'].every(id=>!$(id).querySelector('.log-st')&&$(id).querySelector('.log-hdr.c3'))&&['lCheckin','lSleep','lWorkout','lMind'].every(id=>$(id).querySelector('.log-st svg.ui-i')),'');
+    // check-in words and the switch
+    $('lCheckin').classList.add('open');fillCI();
+    const w1=['bodyFeel','energy','stress','soreness','coffee'].map(word);
+    check('v129 log: each question shows the chosen word beside it, else the two ends of the scale',J(w1)===J(['Wrecked to Strong','Good*','Some stress*','None*','2 cups*']),J(w1));
+    const cw=[];[4,1,0].forEach(v=>{_ci.coffee=v;ciWord('coffee');cw.push(word('coffee'));});
+    check('v129 log: coffee reads 4+ cups, 1 cup, 0 cups',J(cw)===J(['4+ cups*','1 cup*','0 cups*']),J(cw));
+    const sw=$('ciLate'),lb=sw.closest('.ci-sw'),sel=pg.querySelector('#ciCard .ci-btn.sel');
+    check('v129 log: the late coffee answer is a switch in a 44px row, the selected answer outlined in the text colour, not the accent',sw.type==='checkbox'&&sw.getAttribute('role')==='switch'&&!!lb&&!!lb.querySelector('.tgl')&&tall(lb)&&getComputedStyle(sel).borderTopColor===getComputedStyle(pg).color&&[...pg.querySelectorAll('#ciCard .ci-btn')].filter(b=>b.offsetParent).every(tall),getComputedStyle(sel).borderTopColor+' · '+getComputedStyle(pg).color);
+    // the evening reflection
+    Date.prototype.getHours=()=>17;renderReflect();const r17=txt($('reflWhen'));Date.prototype.getHours=()=>18;renderReflect();const r18=txt($('reflWhen'));Date.prototype.getHours=gh;
+    _s.checkins[0].reflection=JSON.stringify({g:'A long ride',d:''});renderReflect();const rs=txt($('reflWhen'));delete _s.checkins[0].reflection;
+    check('v129 log: the evening reflection opens from 18:00, then reads Optional, then Saved',r17==='From 18:00'&&r18==='Optional'&&rs==='Saved',[r17,r18,rs].join(' | '));
+    $('lCheckin').classList.remove('open');
+    // the workout list and its menu
+    $('lWorkout').classList.add('open');renderExGrid();renderWkLog();
+    const rows=[...$('wkRecent').querySelectorAll('.act-item')],mo=rows.map(r=>r.querySelector('.wk-mo')),mn=rows.map(r=>r.querySelector('.wk-menu'));
+    check('v129 log: Other is in the sport grid',[...$('exGrid').querySelectorAll('.ex-nm')].map(txt).includes('Other'),'');
+    check('v129 log: each recent workout has a 44px ⋯ button holding Edit and Delete, closed at first',rows.length===2&&mo.every(b=>b&&b.getAttribute('aria-haspopup')==='menu'&&b.getAttribute('aria-expanded')==='false'&&tall(b)&&/More for /.test(b.getAttribute('aria-label')))&&mn.every(x=>x.hidden&&J([...x.querySelectorAll('button')].map(txt))===J(['Edit','Delete'])),'');
+    mo[0].click();const o1=!mn[0].hidden&&mo[0].getAttribute('aria-expanded')==='true'&&document.activeElement===mn[0].querySelector('button');
+    const mr=mn[0].getBoundingClientRect(),br=box.getBoundingClientRect(),tallI=[...mn[0].querySelectorAll('button')].every(tall);
+    mo[1].click();const o2=mn[0].hidden&&!mn[1].hidden;
+    document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));const o3=mn.every(x=>x.hidden)&&document.activeElement===mo[1]&&mo[1].getAttribute('aria-expanded')==='false';
+    mo[0].click();document.body.click();const o4=mn.every(x=>x.hidden);
+    check('v129 log: the menu opens on ⋯ with focus inside, one at a time, closes on Escape (focus back) and on a tap outside, inside the screen',o1&&o2&&o3&&o4&&tallI&&mr.right<=br.right+1&&mr.left>=br.left&&!hit.length,J([o1,o2,o3,o4,tallI,Math.round(mr.right-br.right)])+' '+hit.join());
+    mo[0].click();mn[0].querySelectorAll('button')[0].click();const e1=hit.join()==='edit:w-a'&&mn[0].hidden;
+    mo[1].click();mn[1].querySelectorAll('button')[1].click();
+    rows[0].click();
+    check('v129 log: Edit and Delete do their own job and close the menu; tapping the row opens the workout sheet',e1&&hit.join()==='edit:w-a,del:w-b,open:wk:w-a',hit.join());
+    // the page as a whole
+    ['lCheckin','lSleep','lMind','lFood','lMeas','lBlood','lInjury'].forEach(id=>$(id).classList.add('open'));
+    const all=pg.textContent;
+    check('v129 log: no sideways scroll at 360px with every row open, no source names, no emoji, no old progress line',pg.scrollWidth<=pg.clientWidth+1&&box.scrollWidth<=box.clientWidth+1&&noNames(all)&&!/\p{Extended_Pictographic}/u.test(all)&&!/daily entries done|NaN|undefined/.test(all),[pg.scrollWidth,pg.clientWidth,box.scrollWidth,box.clientWidth,noNames(all),(all.match(/\p{Extended_Pictographic}|daily entries done|NaN|undefined/u)||[''])[0]].join(' / '));
+  }finally{Date.prototype.getHours=gh;wkMenuClose();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
 
 Promise.all(later).then(()=>{

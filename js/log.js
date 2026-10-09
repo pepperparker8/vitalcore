@@ -15,15 +15,24 @@ function finishWelcome(skip){
   if(!skip&&nm){d.profile.name=nm;markProfile();}
   d.onboardingDone=true;save(d);
   $('welcome').style.display='none';
-  renderGreeting();updSyncStatus();
+  updSyncStatus();
   if(!skip)showToast(nm?`Welcome, ${nm}! Start with today's check-in.`:'Start with today\'s check-in.');
 }
 
 // ── CHECK-IN ─────────────────────────────────────────────────────────────────
 let _ci={energy:null,mood:null,stress:null,motivation:null,rested:null,symptoms:null,bodyFeel:null,soreArea:[]};
-function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');if(k==='soreness')$('ciAreaRow').style.display=v>=3?'':'none';}
+function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');if(k==='soreness')$('ciAreaRow').style.display=v>=3?'':'none';ciWord(k);}
+// v129: the chosen answer in words beside each question (the button's own label), else the two ends of the scale
+function ciWord(k){
+  const el=document.querySelector(`#ciCard .ci-w[data-k="${k}"]`);if(!el)return;
+  let w='';
+  if(k==='soreArea')w=_ci.soreArea.map(a=>EM.soreArea[a]).filter(Boolean).join(', ');
+  else if(k==='coffee'){const v=_ci.coffee;if(v!=null)w=v>=4?'4+ cups':v+(v===1?' cup':' cups');}
+  else{const b=document.querySelector(`#ciCard .ci-btns[data-k="${k}"] .ci-btn.sel`);if(b)w=b.getAttribute('aria-label')||b.textContent.trim();}
+  el.textContent=w||el.dataset.e;el.classList.toggle('on',!!w);
+}
 // v118: where it is sore, shown from Moderate up; several areas allowed
-function selArea(a,btn){const i=_ci.soreArea.indexOf(a);if(i<0)_ci.soreArea.push(a);else _ci.soreArea.splice(i,1);btn.classList.toggle('sel',i<0);}
+function selArea(a,btn){const i=_ci.soreArea.indexOf(a);if(i<0)_ci.soreArea.push(a);else _ci.soreArea.splice(i,1);btn.classList.toggle('sel',i<0);ciWord('soreArea');}
 function todayCI(){return S().checkins.find(c=>c.date===td());}
 let _ciKey='';
 const ciKey=()=>td()+'|'+(todayCI()?.ts||0);
@@ -37,8 +46,9 @@ function fillCI(){
   document.querySelectorAll('#ciAreaRow .ci-btn').forEach(b=>b.classList.toggle('sel',_ci.soreArea.includes(b.dataset.a)));
   $('ciAreaRow').style.display=(c?.soreness||0)>=3?'':'none';
   $('ciGrat').value=c?.gratitude||'';$('ciLate').checked=!!c?.coffeeLate;
+  ['bodyFeel','energy','mood','stress','motivation','soreness','soreArea','symptoms','coffee'].forEach(ciWord);
   const done=ciFull(c);
-  $('ciCard').classList.toggle('done',done);$('ciStat').textContent=done?'Done today':'Not done today';
+  $('ciCard').classList.toggle('done',done);lgStat();
   $('ciCta').textContent=done?'Update check-in':'Save check-in';
   const sum=$('ciSum');
   if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}${c.bodyFeel?` · Body ${EM.bodyFeel[c.bodyFeel]}`:''}${c.soreness?` · Soreness ${EM.soreness[c.soreness]}${c.soreArea&&c.soreness>=3?` (${c.soreArea.split(',').map(a=>EM.soreArea[a]||'').filter(Boolean).join(', ').toLowerCase()})`:''}`:''}${c.symptoms?` · Symptoms ${EM.symptoms[c.symptoms].toLowerCase()}`:''}${c.coffee!=null?` · Coffee ${c.coffee===4?'4+':c.coffee}${c.coffeeLate?' (late)':''}`:''}`;sum.classList.add('show');}
@@ -66,7 +76,7 @@ function undoMind(){
   const c=todayCI();if(!c||!c.mindfulMin){showToast('Nothing to reset');return;}
   c.mindfulMin=0;put('checkins',c);renderMind();refreshAll();showToast('Minutes reset');
 }
-function renderMind(){const m=todayCI()?.mindfulMin||0;$('mindToday').textContent=m;$('mindStat').textContent=m?m+' min today':'0 min today';}
+function renderMind(){const m=todayCI()?.mindfulMin||0;$('mindToday').textContent=m;lgStat();}
 let _mind=null,_wake=null;
 function startMind(min){
   _mind={min,start:Date.now(),end:Date.now()+min*60000};
@@ -106,9 +116,9 @@ const slAsk=x=>{const s=x&&x.src||{},n=(s.bed==='polar'||s.wake==='polar')&&pola
 // what a night still needs, or null: st the Log status, hd the progress line, nt the form note, ask 1 = offer Check the night
 function slWhy(x){
   if(!x)return null;
-  if(slNeedsTime(x))return{st:'Needs bedtime or wake-up',hd:'sleep needs one detail',nt:'Recorded automatically. Add your bedtime or wake-up time to complete it.'};
-  if(!slCounts(x))return{st:'Battery ran out: add your wake-up time',hd:'sleep needs your wake-up time',nt:'Your band ran out of battery during the night. Add your wake-up time and the night counts.'};
-  if(slAsk(x)){const h=plAskHead(plTrim(polarOn(x.date)));return{st:h,hd:'check last night\'s sleep',nt:h+'.',ask:1};}
+  if(slNeedsTime(x))return{st:'Needs bedtime or wake-up',hd:'sleep needs your bedtime',sm:'add your bedtime',nt:'Recorded automatically. Add your bedtime or wake-up time to complete it.'};
+  if(!slCounts(x))return{st:'Battery ran out: add your wake-up time',hd:'sleep needs your wake-up time',sm:'add your wake-up time',nt:'Your band ran out of battery during the night. Add your wake-up time and the night counts.'};
+  if(slAsk(x)){const h=plAskHead(plTrim(polarOn(x.date)));return{st:h,hd:'check last night\'s sleep',sm:'check the night',nt:h+'.',ask:1};}
   return null;
 }
 const slHM=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
@@ -296,8 +306,9 @@ function delWorkout(id){
 // ── Workout list with Edit / Delete, and "logged twice" check ────────────────
 const isIcu=w=>String(w.id).startsWith('icu-');
 const fmtDay=dt=>dt===td()?'Today':daysAgo(dt)===1?'Yesterday':new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-function wkRow(w,today){
-  const meta=[fmtDay(w.date)];
+// v129: o.plain (Today's last 7 days) gives one line, the weekday word and no Edit or Delete
+function wkRow(w,o){
+  const pl=!!(o&&o.plain),meta=[pl&&daysAgo(w.date)>1?new Date(w.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'}):fmtDay(w.date)];
   const st=w.sets&&w.sets.length;
   if(!st&&w.durMin)meta.push(fmtDur(w.durMin));
   if(w.distKm)meta.push(fmtDist(w));
@@ -305,8 +316,20 @@ function wkRow(w,today){
   if(w.rpe)meta.push('effort '+w.rpe+'/5');
   if(painOf(w)!=null)meta.push('pain '+painOf(w)+' of 10');
   // v122: the row opens the workout sheet; Edit and Delete do only their own job
-  return `<div class="act-item tap" role="button" tabindex="0" aria-label="${esc(wkLabel(w))}, ${esc(fmtD(w.date))}: details" onclick="openDetail('wk:${esc(w.id)}')"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(wkLabel(w))}</div><div class="act-meta">${meta.join(' · ')}</div>${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${st?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}<div class="wk-acts"><button type="button" onclick="event.stopPropagation();editWorkout('${esc(w.id)}')">Edit</button><button type="button" onclick="event.stopPropagation();delWorkout('${esc(w.id)}')">Delete</button></div></div><span class="act-go" aria-hidden="true">${UI.chev}</span></div>`;
+  return `<div class="act-item tap" role="button" tabindex="0" aria-label="${esc(wkLabel(w))}, ${esc(fmtD(w.date))}: details" onclick="openDetail('wk:${esc(w.id)}')"><div class="act-icon ${w.date===td()?'today':'past'}">${ICON[w.type]||UI.bolt}</div><div style="flex:1;min-width:0"><div class="act-name">${esc(wkLabel(w))}</div><div class="act-meta">${meta.join(' · ')}</div>${pl?'':`${fmtIcu(w)?`<div class="act-meta">${fmtIcu(w)}</div>`:''}${st?`<div class="act-notes">${esc(setsText(w))}</div>`:''}${w.notes?`<div class="act-notes">${esc(w.notes)}</div>`:''}`}</div>${pl?`<span class="act-go" aria-hidden="true">${UI.chev}</span>`:`<button type="button" class="wk-mo" aria-haspopup="menu" aria-expanded="false" aria-label="More for ${esc(wkLabel(w))}, ${esc(fmtD(w.date))}" onclick="event.stopPropagation();wkMenu(this)" onkeydown="event.stopPropagation()">${WK_DOTS}</button><div class="wk-menu" role="menu" hidden><button type="button" role="menuitem" onclick="event.stopPropagation();wkMenuClose();editWorkout('${esc(w.id)}')">${WK_PEN}<span>Edit</span></button><button type="button" role="menuitem" class="del" onclick="event.stopPropagation();wkMenuClose();delWorkout('${esc(w.id)}')">${WK_BIN}<span>Delete</span></button></div>`}</div>`;
 }
+// v129: Tabler dots, pencil and trash for the workout row menu; one menu open at a time, closed by a tap elsewhere or Esc
+const WK_DOTS='<svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>';
+const WK_PEN='<svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>';
+const WK_BIN='<svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>';
+function wkMenuClose(){document.querySelectorAll('.wk-menu:not([hidden])').forEach(m=>{m.hidden=true;const b=m.previousElementSibling;if(b){b.setAttribute('aria-expanded','false');b.classList.remove('on');}});}
+function wkMenu(btn){
+  const m=btn.nextElementSibling,open=m&&m.hidden;wkMenuClose();if(!open)return;
+  m.hidden=false;btn.setAttribute('aria-expanded','true');btn.classList.add('on');
+  const f=m.querySelector('button');if(f)f.focus();
+}
+document.addEventListener('click',e=>{if(!e.target.closest||!e.target.closest('.wk-menu,.wk-mo'))wkMenuClose();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.wk-menu:not([hidden])')){const b=document.querySelector('.wk-mo.on');wkMenuClose();if(b)b.focus();}});
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
 function findDups(){
   const d=S(),ok=d.dupOk||[],out=[];
@@ -374,9 +397,8 @@ function renderWkLog(){
   const n=$('wkIcuNote'),on=!!(d.intervalsKey&&d.intervalsID);
   n.style.display=on?'':'none';
   n.textContent=on?'Workouts recorded by your watch arrive here on their own after a sync. Add by hand only what the watch did not record.':'';
-  el.innerHTML=ws.length?`<div class="sec">Last 7 days</div>`+ws.map(w=>wkRow(w)).join(''):'';
-  const nT=d.workouts.filter(w=>w.date===td()).length;
-  $('wkStat').textContent=nT?nT+' logged today':'Nothing logged today';
+  el.innerHTML=ws.length?`<div class="lg-sh">Last 7 days</div>`+ws.map(w=>wkRow(w)).join(''):'';
+  lgStat();
 }
 
 // ── MEASUREMENTS ─────────────────────────────────────────────────────────────
@@ -395,7 +417,6 @@ function saveMeas(){
   rec.src=manSrc(null,rec,['bpSys','bpDia','weight','hr']);
   put('meas',rec);
   ['bpSys','bpDia','wtKg','hrVal'].forEach(i=>$(i).value='');
-  $('measStat').textContent='Saved today';
   updMeasHist();renderWtChart();showToast('Measurements saved');
 }
 function updMeasHist(){
@@ -404,7 +425,7 @@ function updMeasHist(){
   $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg`:'—';
   $('wtRec').textContent=w?`${w.weight} kg`:'—';
   $('hrRec').textContent=h?`${h.hr} bpm`:'—';
-  const l=last(ms);$('measStat').textContent=l?(l.date===td()?'Saved today':`Last: ${daysAgo(l.date)} days ago`):'Not logged yet';
+  lgStat();
 }
 
 // ── INJURY LOG ───────────────────────────────────────────────────────────────
@@ -417,7 +438,7 @@ function saveInjury(){
 }
 function renderInjuryDisplay(){
   const injs=S().injuries.filter(i=>i.active).slice(-5).reverse();
-  $('injStat').textContent=injs.length?`${S().injuries.filter(i=>i.active).length} active`:'No active injuries';
+  lgStat();
   const el=$('injDisplay');
   if(!injs.length){el.innerHTML='<div class="hist-ttl">ACTIVE / RECENT</div><div style="font-size:12px;color:var(--t3);padding:4px 0">No injuries logged</div>';return;}
   el.innerHTML='<div class="hist-ttl">ACTIVE</div>'+injs.map(inj=>`
@@ -448,14 +469,14 @@ function saveBlood(){
   if(v.chol&&(v.chol<50||v.chol>500)){showToast('Cholesterol value seems off (mg/dL)');return;}
   put('blood',{id:mkId(),date,...v});
   ['bmG','bmC','bmU'].forEach(i=>$(i).value='');
-  $('bloodStat').textContent=`Last tested: ${fmtD(date)}`;
+  lgStat();
   renderBloodDisplay();showToast('Blood results saved');
 }
 function renderBloodDisplay(){
   const d=S(),b=last(d.bloodLogs);
   const el=$('bmDisplay');if(!el)return;
   if(!b){el.innerHTML='<div class="hist-ttl">NO RESULTS YET</div><div style="font-size:12px;color:var(--t3)">Enter your latest lab results below (mg/dL).</div>';return;}
-  $('bloodStat').textContent=`Last tested: ${fmtD(b.date)}`;
+  lgStat();
   const markers=[['Glucose','glucose'],['Cholesterol','chol'],['Uric acid','uric']];
   const C=2*Math.PI*12;
   el.innerHTML=`<div class="hist-ttl">LAST RESULTS · ${fmtD(b.date)}</div>`+markers.filter(([,k])=>b[k]).map(([name,k])=>{
@@ -480,10 +501,43 @@ function logStatus(){
 }
 function renderLogHead(){
   const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
-  st.forEach(([id,ok,part])=>{if($(id)){$(id).classList.toggle('done',ok);$(id).classList.toggle('part',part==='part');}});
-  const pt=st.find(x=>x[2]==='part'),part=pt?', '+pt[3]:'';
-  const h=n+'|'+part;if(el&&el._h!==h){el._h=h;el.innerHTML=`<b>${n} of 4</b> daily entries done${part}<span class="lg-bar"><i style="width:${n*25}%"></i></span>`;}
+  st.forEach(([id,ok,part])=>{const r=$(id);if(!r)return;r.classList.toggle('done',ok);r.classList.toggle('part',part==='part');
+    const i=$(id+'St');if(i){const k=ok?'ok':part==='part'?'pt':'no';if(i._k!==k){i._k=k;i.className='log-st '+k;i.setAttribute('role','img');i.setAttribute('aria-label',ok?'Done':k==='pt'?'Needs a detail':'Not done');i.innerHTML=LG_ST[k];}}});
+  const pt=st.find(x=>x[2]==='part'),note=pt?pt[3].charAt(0).toUpperCase()+pt[3].slice(1)+'.':'';
+  const day=new Date(td()+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  const h=st.map(x=>x[1]?'1':x[2]==='part'?'p':'0').join('')+'|'+note+'|'+day;
+  if(el&&el._h!==h){el._h=h;
+    el.innerHTML=`<div class="lp-h"><span><b>Today</b><small>${day}</small></span><span>${n} of ${st.length} done</span></div><div class="lp-seg" aria-hidden="true">${st.map(x=>`<i class="${x[1]?'ok':x[2]==='part'?'pt':''}"></i>`).join('')}</div>${note?`<div class="lp-n">${esc(note)}</div>`:''}`;}
+  lgStat();
 }
+// status icons on the four daily rows: done, needs a detail, not done
+const LG_O='<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>';
+const LG_ST={ok:`<svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true">${LG_O}<path d="M9 12l2 2l4 -4"/></svg>`,pt:`<svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true">${LG_O}<path d="M12 8v4"/><path d="M12 16h.01"/></svg>`,no:`<svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true">${LG_O}</svg>`};
+// v129: the one-line summary under every Log row, written in one place
+const lgAgo=dt=>{const n=daysAgo(dt);return n<=0?'today':n===1?'yesterday':n+' days ago';};
+const lgClock=ts=>new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+function lgPlan(){try{const x=strategy().days[0];return x&&x.type&&x.role!=='rest'&&x.role!=='race'&&x.role!=='recover'?x.type:'';}catch(e){return'';}}
+function lgSum(){
+  const d=S(),t=td(),ci=todayCI(),o={};
+  if(ciFull(ci)){const m=mindOf(ci);o.ciStat=(m>=TH.MIND_GOOD?'Good':m>=TH.MIND_FLAT?'Flat':'Strained')+(ci.ts?' · '+lgClock(ci.ts):'');}
+  else o.ciStat='Takes under a minute';
+  const sl=d.sleepLogs.find(s=>s.date===t),w=slWhy(sl);
+  o.sleepStat=!sl?'Not logged today':[sl.durMin?fmtDur(sl.durMin):sl.score?'Score '+sl.score:'',w?w.sm:sl.bed&&sl.wake?sl.bed+' to '+sl.wake:''].filter(Boolean).join(' · ')||'Logged today';
+  const wt=d.workouts.filter(x=>x.date===t);
+  if(wt.length===1){const x=wt[0];o.wkStat=[wkLabel(x),!(x.sets&&x.sets.length)&&x.durMin?fmtDur(x.durMin):'',fmtDist(x)].filter(Boolean).join(' · ');}
+  else if(wt.length){const m=wt.reduce((a,x)=>a+(x.durMin||0),0);o.wkStat=wt.length+' workouts'+(m?' · '+fmtDur(m):'');}
+  else{const p=lgPlan();o.wkStat=p?'Plan today: '+p:'Nothing logged today';}
+  const mm=ci?.mindfulMin||0;o.mindStat=mm?mm+' min today':'Not yet today';
+  const fd=fuFood(t);o.foodStat='Optional · '+(fd?fuN(fd.kcal)+' kcal so far':'nothing yet');
+  const ms=d.measurements.filter(x=>x.date<=t).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0),mw=ms.filter(x=>x.weight).pop(),ml=ms[ms.length-1];
+  o.measStat=mw?'Weighed '+lgAgo(mw.date)+' · '+mw.weight+' kg':ml?'Measured '+lgAgo(ml.date):'Weight, blood pressure, resting heart rate';
+  const bl=d.bloodLogs.filter(x=>x.date<=t).map(x=>x.date).sort().pop();
+  o.bloodStat=bl?'Last test '+fmtD(bl):'Glucose, cholesterol, uric acid';
+  const ij=d.injuries.filter(x=>x.active).slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  o.injStat=ij.length?ij.length+' active · '+ij[0].part+(ij.length>1?' and '+(ij.length-1)+' more':''):'None active';
+  return o;
+}
+function lgStat(){const o=lgSum();for(const k in o){const e=$(k);if(e&&e.textContent!==o[k])e.textContent=o[k];}}
 function logAuto(){
   renderLogHead();
   document.querySelectorAll('.log-sec.open').forEach(x=>x.classList.remove('open'));

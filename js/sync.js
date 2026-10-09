@@ -678,7 +678,7 @@ const plClock=t=>typeof t==='string'&&/^\d\d:\d\d/.test(t)?+t.slice(0,2)*3600+ +
 // Polar's V4 day: per device activitySamples [{stepSamples {startTime, interval ms, steps[]}, metSamples {startTime, interval ms, mets[]},
 // activityInfos [{activityClass, time}] (the moments the class changes)}]. The device with the most steps counts.
 // act = minutes in a moderate or vigorous class (from METs at ACT_MET+ when the day has no classes), sit = sedentary minutes,
-// met = MET-hours (about kcal per kg of body weight). Null when the answer holds no samples.
+// met = MET-hours (about kcal per kg of body weight), sitMax = the longest sitting stretch in minutes (v129). Null when the answer holds no samples.
 function plAct(a){
   const devs=[];
   const walk=(o,dp)=>{
@@ -690,7 +690,7 @@ function plAct(a){
   walk(a,0);
   let best=null;
   for(const list of devs){
-    const r={steps:0,act:0,sit:0,met:0,n:0};let cls=0,hiMet=0;
+    const r={steps:0,act:0,sit:0,met:0,n:0};let cls=0,hiMet=0,sr=0,sMax=0;
     for(const x of list){
       const st=x&&x.stepSamples||{},me=x&&x.metSamples||{};
       const sv=Array.isArray(st.steps)?st.steps:[],mv=Array.isArray(me.mets)?me.mets:[];
@@ -702,10 +702,13 @@ function plAct(a){
       const end=Math.min(86400,Math.max(sv.length?s0+sv.length*si/1000:0,mv.length?m0+mv.length*mi/1000:0));
       const ch=(x&&x.activityInfos||[]).map(c=>[plClock(c&&c.time),String(c&&c.activityClass||'')]).filter(c=>c[0]!=null).sort((p,q)=>p[0]-q[0]);
       ch.forEach((c,i)=>{const to=i+1<ch.length?ch[i+1][0]:end,d=to-c[0];if(d<=0)return;cls++;
-        if(/MODERATE|VIGOROUS/.test(c[1]))r.act+=d;else if(/SEDENTARY/.test(c[1]))r.sit+=d;});
+        if(/MODERATE|VIGOROUS/.test(c[1]))r.act+=d;else if(/SEDENTARY/.test(c[1]))r.sit+=d;
+        // v129: the longest stretch sitting; sedentary changes in a row are one stretch
+        if(/SEDENTARY/.test(c[1]))sr+=d;else{sMax=Math.max(sMax,sr);sr=0;}});
+      sMax=Math.max(sMax,sr);sr=0;
     }
     if(!r.n&&!cls)continue;
-    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,met:r.met?Math.round(r.met*10)/10:null};
+    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,sitMax:cls?Math.round(sMax/60):null,met:r.met?Math.round(r.met*10)/10:null};
     if(!best||(out.steps||0)>(best.steps||0))best=out;
   }
   return best;

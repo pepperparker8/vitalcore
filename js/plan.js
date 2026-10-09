@@ -34,18 +34,30 @@ function renderPlan(){
   const el=$('planCard');if(!el)return;
   const d=S(),has=Object.values(d.profile.plan||{}).some(p=>p&&p.type);
   if(!has&&!_plEdit){
-    el.innerHTML='<div class="sg-lbl">WEEKLY PLAN</div><div class="sg-s">Set what you plan to do each day. The app then shows what you did, how well you followed the plan, and suggests today\'s session from it.</div><button class="btn-out" onclick="togglePlanEdit()">Set up my week</button>';return;
+    el.innerHTML='<div class="dy-h"><b>Weekly plan</b></div><p class="pl-ln">Set what you plan each day to see how the week is going.</p><button class="btn-out" onclick="togglePlanEdit()">Set up my week</button>';return;
   }
   if(_plEdit){
-    el.innerHTML=`<div class="sg-lbl">EDIT WEEKLY PLAN</div>${PL_DAYS.map((n,i)=>{const p=planOf(i)||{};return`<div class="pl-er"><span class="pl-dn">${n}</span><select class="sel-inp" onchange="setPlan(${i},'type',this.value)"><option value="">Nothing</option>${PL_TYPES.map(t=>`<option ${p.type===t?'selected':''}>${t}</option>`).join('')}</select><input class="inp" placeholder="e.g. 10 km" value="${esc(p.note||'')}" maxlength="24" onchange="setPlan(${i},'note',this.value.trim())"></div>`;}).join('')}<button class="btn-gold" onclick="togglePlanEdit()">Done</button>`;return;
+    el.innerHTML=`<div class="dy-h"><b>Weekly plan</b></div>${PL_DAYS.map((n,i)=>{const p=planOf(i)||{};return`<div class="pl-er"><span class="pl-dn">${n}</span><select class="sel-inp" onchange="setPlan(${i},'type',this.value)"><option value="">Nothing</option>${PL_TYPES.map(t=>`<option ${p.type===t?'selected':''}>${t}</option>`).join('')}</select><input class="inp" placeholder="e.g. 10 km" value="${esc(p.note||'')}" maxlength="24" onchange="setPlan(${i},'note',this.value.trim())"></div>`;}).join('')}<button class="btn-gold" onclick="togglePlanEdit()">Done</button>`;return;
   }
-  const w=planWeek(),pct=w.due?Math.round(w.days.filter(x=>x.p&&x.p.type!=='Rest'&&x.dt<=td()&&x.st==='done').length/w.due*100):null;
-  el.innerHTML=`<div class="pl-h"><div class="sg-lbl">THIS WEEK'S PLAN</div><button class="pl-ed" onclick="togglePlanEdit()">Edit</button></div>
-    <div class="pl-row">${w.days.map(x=>{const t=x.p?x.p.type:'';const ic=t&&t!=='Rest'?(ICON[t]||''):t==='Rest'?'<span class="pl-z">zz</span>':'';
-      const mk=x.st==='done'?'✓':x.st==='miss'?'✕':x.st==='bonus'?'+':'';
-      return`<button class="pl-d ${x.st}${x.dt===td()?' now':''}" onclick="planDay(${x.i})" aria-label="${PL_DAYS[x.i]} ${t||'no plan'}"><span class="pl-n">${PL_DAYS[x.i]}</span><span class="pl-i">${ic||'·'}</span><span class="pl-m">${mk}</span></button>`;}).join('')}</div>
+  const w=planWeek();
+  el.innerHTML=`<div class="dy-h"><b>This week's plan</b><button class="pl-ed" onclick="togglePlanEdit()">Edit</button></div>
+    <div class="pl-wk">${w.days.map(x=>{const t=x.p?x.p.type:'',now=x.dt===td(),mk=PL_MK[x.st];
+      const ic=t==='Rest'?UI.moon:t?(ICON[t]||UI.bolt):'<i class="pl-no">–</i>';
+      return`<button class="pl-c ${x.st}${now?' now':''}" onclick="planDay(${x.i})" aria-label="${PL_DAYS[x.i]}: ${esc(t||'no plan')}${mk?', '+mk[1]:''}"><small>${now?'Today':PL_DAYS[x.i]}</small>${ic}${mk?UI[mk[0]].replace('ui-i','ui-i pl-mk'):'<i class="pl-sp"></i>'}</button>`;}).join('')}</div>
     <div id="planDet" class="set-note"></div>
-    <div class="set-note">${w.planned?`${w.done} of ${w.planned} planned sessions done${pct!==null?` · ${pct}% of those due so far`:''}.`:'No training sessions planned this week.'}</div>`;
+    <p class="pl-ln">${[planSoFar(w),planLongDay()].filter(Boolean).join(' ')}</p>`;
+}
+// v129: one line under the week: how the plan is going so far, then the long session still to come this week
+const PL_MK={done:['check','done'],miss:['xc','missed'],bonus:['pc','extra session']};
+function planSoFar(w){
+  if(!w.planned)return'No training sessions planned this week.';
+  return w.due?`On plan: ${w.done} of ${w.due} so far.`:`${w.planned} session${w.planned===1?'':'s'} planned this week.`;
+}
+function planLongDay(){
+  let st=null;try{st=typeof strategy==='function'?strategy():null;}catch(e){st=null;}
+  const sun=weekDates()[6],L=st&&st.days.find(x=>x.role==='long'&&x.date<=sun);
+  if(!L||!L.name)return'';
+  return L.date===td()?`${L.name} today.`:`${L.name} on ${new Date(L.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'})}.`;
 }
 function planDay(i){
   const dts=weekDates(),s=planDayState(i,dts[i]),el=$('planDet');if(!el)return;

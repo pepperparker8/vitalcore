@@ -5,12 +5,14 @@
 //   zones:[{lo,hi,color,label}] shaded threshold bands (lo inclusive, hi exclusive, null = open; zs = the series they describe, default 0),
 //   lines:[{v,label,color,dash}] threshold lines, hi (ring the high and low in view, fill the latest point),
 //   stats:{s,good(v,d),words:['Fastest','Slowest']} which series means() reads and what counts as good (words rename high and low on the chart), means(info) the one plain line under the chart for the window in view (v123: no stats line, no drag hint, no "How to read this"),
-//   group (charts that pan and zoom together)}
+//   group (charts that pan and zoom together), at (v129: a past date the chart opens on, inspected; the sheets' day)}
 // v128 Trends options: tb:false (no toolbar or readout: the chart follows its group's one window, _chG, and opens on TH.TR_DEF days),
 //   head(x) the stat header {v,u,st,sa,cls,rl,rv,ru,dv,dd} (x = {d,p,lab,tap,wk,n,from,to,pfrom,pto}), today (the left label for today, e.g. 'Last night'),
 //   weekly:{series,lines,zones,extra} used when the window is over TH.TR_WEEKLY days, legend (band, labelled lines and series with lg into a row under the chart),
 //   vs:[series indexes that carry values in a short window, default [0]]; a series may set vl(v) (a string, or an array for two lines) and, on bars, zero:'–' for an empty day.
 //   ysteps:[allowed gridline steps] (minutes: CH_MIN_STEPS with yfmt:axMin, so the axis reads 30m, 1h, 1h 30m, never decimal hours).
+// v129 bare:true (Health's blood charts): no toolbar and no readout, only the canvas and the line; drag and pinch stay, y labels on the right.
+//   pick(d) is told the tapped date (null when cleared), yat:[values] the only gridlines (each also kept in the y range), vals:true writes each value over its point (the latest bold), legend:'text' one band swatch under the chart.
 // Colours are CSS variable names; '--teal/.5' draws at half strength.
 const _ch={},_chG={},_chQ=new Set();let _chRaf=0,_chQV=false;
 const DN=s=>Math.floor(Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5);
@@ -64,7 +66,15 @@ function mountChart(id,cfg){
     host.innerHTML=`<div class="vc-hd"></div><canvas class="vc-cv" tabindex="0" style="width:100%;height:${cfg.H||170}px;display:block"></canvas>${cfg.legend?'<div class="vc-lg"></div>':''}<div class="vc-sub"></div>${cfg.means?'<div class="vc-mean"></div>':''}`;
     st.cv=host.querySelector('canvas');st.host=host;chBind(id);chDraw(id);return;
   }
-  if(!st.view||st.dataKey!==cfg.key){st.dataKey=cfg.key;const span=Math.min(dmax-dmin,cfg.span||90);st.view=[dmax-Math.max(span,13),dmax];st.hover=null;}
+  if(cfg.bare){
+    if(!st.view||st.dataKey!==cfg.key){st.dataKey=cfg.key;const span=Math.min(dmax-dmin,cfg.span||90),pd=chPad(st);st.view=[dmax-Math.max(span,13)-pd,dmax+pd];st.hover=null;}
+    chClamp(st);
+    host.innerHTML=`<canvas class="vc-cv" tabindex="0" style="width:100%;height:${cfg.H||150}px;display:block"></canvas>${cfg.legend?`<div class="vc-lg"><span><i class="vc-lb"></i>${esc(cfg.legend)}</span></div>`:''}${cfg.means?'<div class="vc-mean"></div>':''}`;
+    st.cv=host.querySelector('canvas');st.host=host;chBind(id);chDraw(id);return;
+  }
+  if(!st.view||st.dataKey!==cfg.key){st.dataKey=cfg.key;const span=Math.min(dmax-dmin,cfg.span||90);st.view=[dmax-Math.max(span,13),dmax];st.hover=null;
+    // v129: a sheet open on a past day opens its chart on that day, inspected
+    if(cfg.at&&DN(cfg.at)<DN(td())){const n=DN(cfg.at);if(n<st.view[0]+1){const sp=st.view[1]-st.view[0];st.view=[n-1,n-1+sp];}chClamp(st);st.hover=chSnap(st,n);}}
   host.innerHTML=`<div class="vc-tb"><div class="vc-chips">${CH_R.map(([l,n])=>`<button data-n="${n}">${l}</button>`).join('')}</div>
     <div class="vc-nav"><button data-a="prev" aria-label="Earlier">‹</button><button class="vc-win" data-a="reset"></button><button data-a="next" aria-label="Later">›</button></div></div>
     <div class="vc-ro"></div><canvas class="vc-cv" tabindex="0" style="width:100%;height:${cfg.H||190}px;display:block"></canvas><div class="vc-sub"></div>
@@ -79,10 +89,13 @@ function chUnmount(id){const st=_ch[id];if(st&&st.host)st.host.innerHTML='';dele
 // redraw every mounted chart (theme switch, resize): canvas colours are read from the CSS variables at draw time
 function chRedrawAll(){Object.keys(_ch).forEach(id=>{const st=_ch[id];if(st.on&&st.cv&&st.cv.isConnected)chDraw(id);});if(typeof wkDraw==='function')wkDraw();}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>setTimeout(chRedrawAll,0));}catch(e){}
+// days kept free either side of the data (bare charts: a twentieth of the data's span, so the first and last dots stay whole)
+const chPad=st=>st.cfg&&st.cfg.bare?Math.max(2,Math.round((st.dmax-st.dmin)/20)):2;
 function chClamp(st){
   if(st.tr)return chClampT(st);
-  let[a,b]=st.view,span=Math.max(6,Math.min(b-a,Math.max(st.dmax-st.dmin+2,13)));
-  const lo=st.dmin-2,hi=st.dmax+2;
+  const pd=chPad(st);
+  let[a,b]=st.view,span=Math.max(6,Math.min(b-a,Math.max(st.dmax-st.dmin+2*pd,13)));
+  const lo=st.dmin-pd,hi=st.dmax+pd;
   if(a<lo){a=lo;}b=a+span;if(b>hi){b=hi;a=b-span;if(a<lo)a=lo;}
   st.view=[a,b];
 }
@@ -178,13 +191,13 @@ function chRR(ctx,x,y,w,h,r,down){r=Math.min(r,w/2,h);ctx.beginPath();
   ctx.closePath();}
 function chDraw(id){
   const st=_ch[id];if(!st||!st.on)return;
-  const cfg=chVC(st),c=st.cv,tr=st.tr,H=cfg.H||(tr?170:190),W=c.parentElement.clientWidth||300,r=window.devicePixelRatio||1;
+  const cfg=chVC(st),c=st.cv,tr=st.tr,tl=tr||!!cfg.bare,H=cfg.H||(tr?170:cfg.bare?150:190),W=c.parentElement.clientWidth||300,r=window.devicePixelRatio||1;
   c.width=W*r;c.height=H*r;const ctx=c.getContext('2d');ctx.scale(r,r);
   const[a,b]=st.view,sh=tr&&b-a<=TH.TR_VALS+0.01,T0=DN(td()),B=22;
   const inV=d=>d>=a-1&&d<=b+1,inB=(s,p)=>tr&&s.type==='bar'?DN(p.d)+(s.w||1)-1>=Math.ceil(a-1e-6)&&DN(p.d)<=Math.floor(b+1e-6):inV(DN(p.d)+chOff(s));   // a Trends bar counts when one of its days is inside the window
   const bars=cfg.series.some(s=>s.type==='bar');
   // y range from visible points, threshold lines and any zone edge close to the data
-  const vis=cfg.series.flatMap(s=>s.pts.filter(p=>inB(s,p)).map(p=>p.v)).concat((cfg.ref||[]).map(f=>f.v),(cfg.lines||[]).map(f=>f.v),(cfg.band||[]).filter(p=>inV(DN(p.d))).flatMap(p=>[p.lo,p.hi]),bars?[0]:[]).filter(v=>v!=null);
+  const vis=cfg.series.flatMap(s=>s.pts.filter(p=>inB(s,p)).map(p=>p.v)).concat((cfg.ref||[]).map(f=>f.v),(cfg.lines||[]).map(f=>f.v),(cfg.band||[]).filter(p=>inV(DN(p.d))).flatMap(p=>[p.lo,p.hi]),cfg.yat||[],bars?[0]:[]).filter(v=>v!=null);
   let mn=cfg.min,mx=cfg.max;
   if(vis.length&&(mn==null||mx==null)){
     let lo=Math.min(...vis),hi=Math.max(...vis);const rg=hi-lo||Math.abs(hi)||1;
@@ -195,7 +208,7 @@ function chDraw(id){
   // short Trends windows write each value on its point or bar (series in vs, default the first), so there is no y axis
   const vsI=cfg.vs||[0],vlines=(s,v)=>{const t=(s.vl||chFmt(cfg,s))(v);return Array.isArray(t)?t.map(String):[String(t)];};
   let nl=1;if(sh&&bars)cfg.series.forEach((s,i)=>{if(vsI.includes(i)&&s.type==='bar')s.pts.forEach(p=>{if(p.v&&inB(s,p))nl=Math.max(nl,vlines(s,p.v).length);});});
-  const T=sh?(bars?20+12*nl:26):tr?12:10,yf=cfg.yfmt||(v=>Math.round(v*10)/10);
+  const T=sh?(bars?20+12*nl:26):cfg.bare&&cfg.vals?24:tr?12:10,yf=cfg.yfmt||(v=>Math.round(v*10)/10);
   // two or more lines with values written: room under the lowest point, where a label goes when another line's point takes its place
   if(sh&&!bars&&cfg.min==null&&cfg.series.length>1)mn-=22*(mx-mn)/Math.max(1,H-T-B-22);
   const Y=v=>T+(mx-v)*(H-T-B)/(mx-mn||1);
@@ -204,28 +217,29 @@ function chDraw(id){
   let grid=[],lastL=null;
   for(let v=Math.ceil(mn/stp-1e-9)*stp;v<=mx+1e-9;v+=stp){const yl=yf(Math.round(v/stp)*stp);if(yl===lastL)continue;lastL=yl;grid.push([v,String(yl)]);}
   if(tr)while(grid.length>4)grid=grid.filter((_,i)=>i%2===0);
+  if(cfg.yat)grid=cfg.yat.filter(v=>v>=mn&&v<=mx).map(v=>[v,String(yf(v))]);
   let L,R;
-  if(!tr){L=cfg.wide?40:34;R=10;}
+  if(!tl){L=cfg.wide?40:34;R=10;}
   else if(sh){L=4;R=4;}
   else{ctx.font='500 9px Inter,sans-serif';L=6;R=Math.ceil(Math.max(0,...grid.map(g=>ctx.measureText(g[1]).width)))+8;}
   st.L=L;st.R=R;
   const X=d=>L+(d-a)*(W-L-R)/(b-a);
   ctx.textBaseline='middle';st.yl=[];
-  if(!tr){ctx.font='500 10px Inter,sans-serif';grid.forEach(([v,yl])=>{const y=Y(v);ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=v===0&&cfg.zero?1:.6;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.globalAlpha=1;
+  if(!tl){ctx.font='500 10px Inter,sans-serif';grid.forEach(([v,yl])=>{const y=Y(v);ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=v===0&&cfg.zero?1:.6;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.globalAlpha=1;
     ctx.fillStyle=cssv('--t3');ctx.textAlign='right';ctx.fillText(yl,L-6,y);});}
   else if(!sh){ctx.font='500 9px Inter,sans-serif';grid.forEach(([v,yl])=>{const y=Y(v);ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=v===0&&cfg.zero?1:.6;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R+2,y);ctx.stroke();ctx.globalAlpha=1;
     ctx.fillStyle=cssv('--t3');ctx.textAlign='right';ctx.fillText(yl,W-2,y);st.yl.push(yl);});}
   ctx.textBaseline='alphabetic';ctx.textAlign='center';ctx.fillStyle=cssv('--t3');st.ticks=[];
   if(sh){for(let d=Math.ceil(a);d<=Math.floor(b);d++){const t=d===T0,l=t?'Today':WDN[new Date(d*864e5).getUTCDay()];ctx.font=(t?'600':'500')+' 10px Inter,sans-serif';ctx.fillStyle=cssv(t?'--text':'--t3');ctx.fillText(l,X(d),H-6);st.ticks.push(l);}}
   else{ctx.font='500 10px Inter,sans-serif';let tk=chTicks(a,b);const tkMax=Math.max(2,Math.floor((W-L-R)/52));while(tk.length>tkMax)tk=tk.filter((_,i)=>i%2===0);
-    tk.forEach(([d,l])=>{const x=X(d);if(x<L+8||x>W-R-8)return;if(!tr){ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.globalAlpha=1;}ctx.fillText(l,x,H-6);st.ticks.push(l);});}
+    tk.forEach(([d,l])=>{const x=X(d);if(x<L+8||x>W-R-8)return;if(!tl){ctx.strokeStyle=cssv('--bdr');ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.globalAlpha=1;}ctx.fillText(l,x,H-6);st.ticks.push(l);});}
   ctx.save();ctx.beginPath();ctx.rect(L,0,W-L-R,H-B+2);ctx.clip();
   const boxes=[],lineLab=[],zoneLab=[],hit=q=>boxes.some(b=>q[0]<b[2]&&q[2]>b[0]&&q[1]<b[3]&&q[3]>b[1]);
   // threshold zones: a faint fill and the zone's word at the right edge (drawn last, where nothing else is); never on Trends, where the header names the zone
   (cfg.zones||[]).forEach(z=>{
     const top=Y(Math.min(z.hi==null?mx:z.hi,mx)),bot=Y(Math.max(z.lo==null?mn:z.lo,mn));if(bot-top<1)return;
     if(z.color){const k=chCol(z.color);ctx.globalAlpha=.1*k.a;ctx.fillStyle=k.c;ctx.fillRect(L,top,W-L-R,bot-top);ctx.globalAlpha=1;}
-    if(z.label&&bot-top>=13&&!tr)zoneLab.push([z.label,top,bot]);
+    if(z.label&&bot-top>=13&&!tl)zoneLab.push([z.label,top,bot]);
   });
   if(cfg.band&&cfg.band.length>1){const q=cfg.band.map(p=>[X(DN(p.d)),Y(p.lo),Y(p.hi)]);ctx.globalAlpha=.16;ctx.fillStyle=cssv(cfg.legend?'--t3':'--teal');ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p[0],p[2]):ctx.moveTo(p[0],p[2]));for(let i=q.length-1;i>=0;i--)ctx.lineTo(q[i][0],q[i][1]);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
   (cfg.lines||[]).forEach(f=>{if(f.v<mn||f.v>mx)return;const k=chCol(f.color);ctx.strokeStyle=k.c;ctx.globalAlpha=.85*k.a;ctx.setLineDash(f.dash||[4,4]);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(L,Y(f.v));ctx.lineTo(W-R,Y(f.v));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
@@ -250,6 +264,8 @@ function chDraw(id){
       q.forEach(p=>{if(p[0]<L-4||p[0]>W||p===lp||!(sh||roomy||s.dotColor))return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p[2].v,p[2].d)):cssv(s.color);ctx.beginPath();ctx.arc(p[0],p[1],sh?3:2.2,0,7);ctx.fill();});
       if(lp&&lp[0]>=L-4){ctx.fillStyle=s.dotColor?cssv(s.dotColor(lp[2].v,lp[2].d)):cssv(s.color);ctx.beginPath();ctx.arc(lp[0],lp[1],5,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();}
       return;}
+    // bare: every point a dot in its colour on a card-coloured ring, the latest larger
+    if(cfg.bare){const lp=q.filter(p=>DN(p[2].d)<=b).pop();q.forEach(p=>{if(p[0]<L-6||p[0]>W)return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p[2].v,p[2].d)):cssv(s.color);ctx.beginPath();ctx.arc(p[0],p[1],p===lp?5:4,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();});return;}
     if(!s.noDots&&(roomy||s.dotColor)){q.forEach(p=>{if(p[0]<L-4||p[0]>W)return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p[2].v,p[2].d)):cssv('--sur');ctx.strokeStyle=cssv(s.color);ctx.beginPath();ctx.arc(p[0],p[1],s.dotColor?4:roomy&&dots?3.2:2.4,0,7);ctx.fill();ctx.lineWidth=s.dotColor?1.2:1.8;ctx.stroke();});}
   });
   (cfg.marks||[]).forEach(m=>{const p=cfg.series[0].pts.find(q=>q.d===m);if(!p)return;ctx.strokeStyle=cssv('--gold');ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),7,0,7);ctx.stroke();});
@@ -274,11 +290,12 @@ function chDraw(id){
     const q=[top+12,bot-3].map(y=>[x-w-2,y-10,x+2,y+1]).find(b=>!hit(b)&&b[3]<=bot+1&&b[1]>=top-1);if(!q)return;
     boxes.push(q);st.zl.push(t);ctx.fillStyle=cssv('--t3');ctx.textAlign='right';ctx.fillText(t,x,q[3]-1);});
   if(st.hover!=null){const x=X(st.hover);
-    if(tr){ctx.strokeStyle=cssv('--t3');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,Math.max(0,T-8));ctx.lineTo(x,H-B);ctx.stroke();}
+    if(tl){ctx.strokeStyle=cssv('--t3');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,Math.max(0,T-8));ctx.lineTo(x,H-B);ctx.stroke();}
     else{ctx.strokeStyle=cssv('--t2');ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();ctx.setLineDash([]);}
     cfg.series.forEach(s=>{const p=chNear(s,st.hover);if(!p)return;
       if(s.type==='bar'){if(!p.v)return;const g=barGeo(s,p);ctx.strokeStyle=cssv('--text');ctx.lineWidth=1.5;ctx.strokeRect(g.x-1,g.y-1,g.w+2,g.h+1);return;}
       if(tr){ctx.fillStyle=cssv('--sur');ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),5,0,7);ctx.fill();ctx.strokeStyle=cssv('--text');ctx.lineWidth=2;ctx.stroke();return;}
+      if(cfg.bare){ctx.fillStyle=s.dotColor?cssv(s.dotColor(p.v,p.d)):cssv(s.color);ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),5.5,0,7);ctx.fill();ctx.strokeStyle=cssv('--text');ctx.lineWidth=2;ctx.stroke();return;}
       ctx.fillStyle=cssv(s.color);ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),4.5,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();});}
   ctx.restore();
   // the values, outside the clip so a label near the top or an edge stays whole; the latest in view is bold
@@ -301,6 +318,12 @@ function chDraw(id){
         lab(vlines(s,p.v)[0],X(dn),clash&&y+20<=Y(mn)?y+18:y-10,p===lp);});
     });
   }
+  // bare: each value over its point, the latest first and bold; one that would cover another is left out
+  if(cfg.bare&&cfg.vals){const s=cfg.series[0],inw=s.pts.filter(p=>p.v!=null&&inV(DN(p.d))),f=s.vl||chFmt(cfg,s),bx=[];
+    inw.slice().reverse().forEach((p,i)=>{const t=String(f(p.v)),bold=i===0;ctx.font=bold?'600 11px Inter,sans-serif':'500 10px Inter,sans-serif';
+      const w=ctx.measureText(t).width,x=Math.max(L+w/2+1,Math.min(W-R-w/2-1,X(DN(p.d)))),y=Y(p.v)-10,q=[x-w/2-2,y-11,x+w/2+2,y+3];
+      if(bx.some(o=>q[0]<o[2]&&q[2]>o[0]&&q[1]<o[3]&&q[3]>o[1]))return;bx.push(q);
+      ctx.fillStyle=cssv(bold?'--text':'--t2');ctx.textAlign='center';ctx.fillText(t,x,y);st.vals.push(t);});}
   if(tr&&cfg.legend)chLegend(st,cfg);
   c.setAttribute('aria-label',(cfg.label||'Chart')+': '+cfg.series.map(s=>s.name+' latest '+(s.pts.length?chFmt(cfg,s)(s.pts[s.pts.length-1].v):'none')).join(', ')+'. Drag or use the arrow keys to move through dates.');
   chReadout(id);
@@ -320,6 +343,7 @@ function chReadout(id){
   const st=_ch[id],{cfg,host}=st,[a,b]=st.view;
   if(st.tr){const x=chHead(st),vc=chVC(st),ex=st.hover!=null&&vc.extra&&x?vc.extra(x.d):'';
     const sub=host.querySelector('.vc-sub');if(sub){sub.textContent=ex||'';sub.style.display=ex?'':'none';}chMeaning(id);return;}
+  if(cfg.bare){const p=st.hover!=null&&cfg.series[0]?chNear(cfg.series[0],st.hover):null;try{cfg.pick&&cfg.pick(p?p.d:null);}catch(e){console.warn('chart pick',e);}chMeaning(id);return;}
   host.querySelectorAll('.vc-chips button').forEach(bn=>{const n=+bn.dataset.n,span=Math.round(b-a);bn.classList.toggle('on',n?Math.abs(span-n)<=2&&Math.abs(b-st.dmax)<2:(a<=st.dmin+1&&b>=st.dmax));});
   host.querySelector('.vc-win').textContent=dLab(Math.ceil(a))+' – '+dLab(Math.floor(b));
   const s0=cfg.series[0],wk=s0&&s0.w>1,p0=st.hover!=null&&s0?chNear(s0,st.hover):null;

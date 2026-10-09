@@ -1,87 +1,118 @@
-// ── HEALTH TAB: baselines, blood timeline, doctor/coach report ───────────────
+// ── HEALTH TAB: baselines, blood markers, injuries, doctor/coach report ──────
 const BM=[
   ['Glucose','glucose','70–100 mg/dL (fasting)'],
   ['Total cholesterol','chol','under 200 mg/dL'],
   ['Uric acid','uric','3.5–7.2 mg/dL']
 ];
 const BM_NOTE={
-  glucose:'Moves with: sleep (a poor night raises fasting glucose), refined carbs and sugary drinks late in the evening, stress, and regular training, which improves how your body handles sugar. Fast 8+ hours before the test for a fair reading.',
-  chol:'Moves with: saturated fat, fibre (oats, beans, vegetables), body weight and regular aerobic exercise. Changes take 6–12 weeks to show, so retest no sooner than that.',
-  uric:'Moves with: hydration, alcohol (especially beer), red and organ meat, seafood, sugary drinks and rapid weight loss. Hard training with dehydration can push it up briefly. Water and steady weight help.'
+  glucose:'Sleep (a poor night raises fasting glucose), refined carbs and sugary drinks late in the evening, stress, and regular training, which improves how your body handles sugar. Fast 8+ hours before the test for a fair reading.',
+  chol:'Saturated fat, fibre (oats, beans, vegetables), body weight and regular aerobic exercise. Changes take 6–12 weeks to show, so retest no sooner than that.',
+  uric:'Hydration, alcohol (especially beer), red and organ meat, seafood, sugary drinks and rapid weight loss. Hard training with dehydration can push it up briefly. Water and steady weight help.'
 };
-function toggleBT(k){
-  const p=$('btp_'+k);if(!p)return;const open=p.classList.toggle('open');
-  const b=$('btb_'+k);if(b)b.textContent=open?'Hide trend ▴':'Trend & what moves it ▾';
-  if(open)drawBloodChart(k);
-}
-// every result for one marker on the shared chart: normal, borderline and high zones from scoreBM's ranges (mg/dL)
-function drawBloodChart(k){
-  const name=(BM.find(x=>x[1]===k)||[])[0]||k,r=BM_RNG[k],e=1e-9,u=' mg/dL',f=v=>(k==='uric'?r1(v):Math.round(v))+u;
-  const pts=S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:1).map(x=>({d:x.date,v:x[k]}));
-  const zones=[{lo:r.warn[1]+e,hi:null,color:'--red',label:'High'},{lo:r.ok[1]+e,hi:r.warn[1]+e,color:'--amber',label:'Borderline'},{lo:r.ok[0],hi:r.ok[1]+e,color:'--green',label:'Normal'}];
-  if(r.ok[0]>0)zones.push({lo:null,hi:r.ok[0],color:'--red',label:'Low'});
-  mountChart('btc_'+k,{key:'bt'+k,H:150,span:730,label:name,yfmt:v=>k==='uric'?r1(v):Math.round(v),empty:'One result so far. The chart appears after your second test.',
-    series:[{name,color:'--text',thin:true,fmt:f,pts,dotColor:v=>{const st=scoreBM(v,k).status;return st==='ok'?'--green':st==='warn'?'--amber':'--red';}}],
-    zones,hi:true,
-    // v123: one line, the zone of the latest result and the change since the first one in view
-    means:info=>{
-      const l=info.last,a=info.first,z=chZone({zones},l.v),w=z?(z.label==='Normal'?'In range':z.label):'',df=l.v-a.v;
-      if(!w)return'';if(a.d===l.d)return w+'.';
-      if(Math.abs(df)<(k==='uric'?0.1:1))return`${w}, about the same since ${fmtD(a.d)}.`;
-      return`${w}, ${df>0?'up':'down'} ${f(Math.abs(df))} since ${fmtD(a.d)}`+(z.label!=='Normal'&&((df<0)===(l.v>r.ok[1]))?': moving towards normal.':'.');}});
-}
-const stCol=s=>s==='ok'?'var(--green)':s==='warn'?'var(--amber)':'var(--red)';
 const stTxt=s=>s==='ok'?'In range':s==='warn'?'Borderline':'Out of range';
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const pl=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
 const r1=v=>Math.round(v*10)/10;
+let _hlOpen=null,_hlInf={},_hlWm={};
 
-function baseline(field,days){
-  const ms=S().measurements.filter(m=>m[field]);
-  if(!ms.length)return null;
-  const cur=last(ms),older=ms.filter(m=>m!==cur&&daysAgo(m.date)<=days);
-  return{cur:cur[field],date:cur.date,avg:older.length?avg(older.map(m=>m[field])):null,n:older.length};
+// the ⓘ beside a card title (the same look as Trends)
+function hlInfo(k){_hlInf[k]=!_hlInf[k];const b=$('hib_'+k),t=$('hinf_'+k);if(!b||!t)return;b.classList.toggle('on',_hlInf[k]);b.setAttribute('aria-expanded',_hlInf[k]);t.hidden=!_hlInf[k];}
+
+// ── baselines: the latest reading against your usual (the mean of the TH.HL_USUAL days before it) ──
+const hlBefore=(dt,a)=>{const o=daysAgo(dt),x=daysAgo(a);return x>o&&x<=o+TH.HL_USUAL;};
+function hlRhr(){
+  for(let i=0;i<=TH.HL_USUAL;i++){const dt=dAgo(i),r=rhrOn(dt);if(r){const u=rhrIn(a=>hlBefore(dt,a),r.src);return{v:r.v,date:dt,u:u.length?avg(u):null};}}
+  return null;
 }
-function baseRow(label,b,unit,fmt=v=>v,goodLow=null){
-  if(!b)return`<div class="hist-row"><span>${label}</span><span class="hist-val">—</span></div>`;
-  let note='<small style="color:var(--t3)">first entries</small>';
-  if(b.avg!==null){
-    const diff=b.cur-b.avg,ad=Math.abs(diff)<0.05?0:diff;
-    const col=ad===0||goodLow===null?'var(--t2)':((ad<0)===goodLow?'var(--green)':'var(--amber)');
-    note=`<small style="color:${col}">${ad===0?'same as':ad>0?'+'+r1(ad):'−'+r1(-ad)+' vs'} your ${b.n>1?'30-day ':''}avg ${fmt(r1(b.avg))}</small>`;
-  }
-  return`<div class="hist-row"><span>${label}</span><span class="hist-val">${fmt(b.cur)} ${unit}${note}</span></div>`;
+function hlMeas(f,g){
+  const ms=S().measurements.filter(m=>m[f]).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);if(!ms.length)return null;
+  const c=last(ms),o=ms.filter(m=>hlBefore(c.date,m.date));
+  return{c,date:c.date,v:c[f],u:o.length?avg(o.map(m=>m[f])):null,u2:g&&o.length?avg(o.map(m=>m[g])):null};
 }
-function renderHealth(){
-  const d=S();
-  const bp=(()=>{const ms=d.measurements.filter(m=>m.bpSys);if(!ms.length)return null;const c=last(ms),o=ms.filter(m=>m!==c&&daysAgo(m.date)<=30);return{cur:c,avgS:o.length?avg(o.map(m=>m.bpSys)):null,avgD:o.length?avg(o.map(m=>m.bpDia)):null};})();
+// one row: icon, label, value with its unit, and under it the comparison (glyph coloured by the row's state)
+function hlRow(icon,label,v,unit,cmp,cls,date){
+  const m=/^([▲▼]) (.*)$/.exec(cmp),g=m?m[1]:cmp.startsWith('at ')?'●':'',t=m?m[2]:cmp,age=date&&daysAgo(date)>1?' · '+fmtD(date):'';
+  return`<div class="rf ${cls}">${UI[icon]}<span class="rf-l">${label}</span><span class="rf-r"><span class="rf-v">${v}${unit?` <em>${unit}</em>`:''}</span><span class="rf-n">${g?`<i class="rf-g" aria-hidden="true">${g}</i>`:''}${t}${age}</span></span></div>`;
+}
+function hlBase(){
+  const d=S(),out=[],rh=hlRhr(),wt=hlMeas('weight'),bp=hlMeas('bpSys','bpDia');
+  if(rh){const df=rh.u==null?0:Math.round(rh.v)-Math.round(rh.u);
+    out.push(hlRow('heart','Resting heart rate',Math.round(rh.v),'bpm',rh.u==null?'First reading':rfVs(rh.v,rh.u,0),rh.u==null?'nt':df>=TH.HL_RHR_UP?'warn':df<=-TH.HL_RHR_UP?'good':'nt',rh.date));}
+  if(wt)out.push(hlRow('scale','Weight',r1(wt.v).toFixed(1),'kg',wt.u==null?'First reading':rfVs(wt.v,wt.u,1),'nt',wt.date));
+  if(bp){const c=bp.c,ds=bp.u==null?0:c.bpSys-Math.round(bp.u),dd=bp.u==null?0:c.bpDia-Math.round(bp.u2);
+    const cmp=bp.u==null?'First reading':!ds&&!dd?'at your usual':`${(ds||dd)>0?'▲':'▼'} usual ${Math.round(bp.u)}/${Math.round(bp.u2)}`;
+    out.push(hlRow('gauge','Blood pressure',`${c.bpSys}/${c.bpDia}`,'mmHg',cmp,'nt',bp.date));}
   const goal=d.profile.wtGoal;
-  $('hBase').innerHTML=
-    baseRow('Resting heart rate',baseline('hr',30),'bpm',Math.round,true)+
-    baseRow('Weight',baseline('weight',30),'kg',r1,null)+
-    (bp?`<div class="hist-row"><span>Blood pressure</span><span class="hist-val">${bp.cur.bpSys}/${bp.cur.bpDia} mmHg${bp.avgS!==null?`<small style="color:var(--t2)"> · avg ${Math.round(bp.avgS)}/${Math.round(bp.avgD)}</small>`:''}</span></div>`:baseRow('Blood pressure',null,''))+
-    (goal&&last(d.measurements.filter(m=>m.weight))?`<div class="hist-row"><span>Weight goal</span><span class="hist-val">${goal} kg<small style="color:var(--t2)">${(df=>Math.abs(df)<0.5?' · reached':` · ${r1(Math.abs(df))} kg to ${df>0?'lose':'gain'}`)(last(d.measurements.filter(m=>m.weight)).weight-goal)}</small></span></div>`:'');
-  if(!d.measurements.length)$('hBase').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No measurements yet</div><div class="empty-sub">Log weight, blood pressure or resting heart rate and your personal baseline builds here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lMeas\')">Add a measurement</button></div>';
+  if(goal&&wt){const df=wt.v-goal;out.push(hlRow('target','Weight goal',goal,'kg',Math.abs(df)<TH.WT_GOAL_NEAR?'Reached':`${r1(Math.abs(df)).toFixed(1)} kg to ${df>0?'lose':'gain'}`,'nt'));}
+  return out.join('');
+}
 
-  const bl=d.bloodLogs.slice().sort((a,b)=>a.date<b.date?-1:1);
-  if(!bl.length){
-    $('hBlood').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-icon">'+UI.dna+'</div><div class="empty-title">No blood results yet</div><div class="empty-sub">Enter your latest lab results (mg/dL) and each marker gets a timeline against its reference range.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lBlood\')">Add lab results</button></div>';
-  }else{
-    $('hBlood').innerHTML=BM.map(([name,k,ref])=>{
-      const pts=bl.filter(x=>x[k]).slice(-8);
-      if(!pts.length)return'';
-      const cur=last(pts),s=scoreBM(cur[k],k),prev=pts.length>1?pts[pts.length-2]:null;
-      const mx=Math.max(...pts.map(p=>p[k]))||1;
-      const dif=prev?r1(cur[k]-prev[k]):null;
-      const bars=pts.map(p=>{const ss=scoreBM(p[k],k);return`<div class="bt-c"><div class="bt-v">${p[k]}</div><div class="bt-b" style="height:${Math.round(p[k]/mx*44)+4}px;background:${stCol(ss.status)}"></div><div class="bt-d">${new Date(p.date+'T12:00:00').toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}</div></div>`;}).join('');
-      return`<div class="bt-card"><div class="bt-h"><div><div class="bm-name">${name}</div><div class="bm-unit">Reference: ${ref}</div></div><div style="text-align:right"><div class="bt-now" style="color:${stCol(s.status)}">${cur[k]}</div><div class="bt-st" style="color:${stCol(s.status)}">${stTxt(s.status)}</div></div></div>
-        <div class="bt-row">${bars}</div>${dif!==null?`<div class="set-note" style="margin-top:6px">${dif===0?'Unchanged':(dif>0?'Up ':'Down ')+Math.abs(dif)} since ${fmtD(prev.date)}.</div>`:'<div class="set-note" style="margin-top:6px">First result. Add another test to see the change.</div>'}
-        <button class="bt-more" id="btb_${k}" onclick="toggleBT('${k}')">Trend & what moves it ▾</button>
-        <div class="bt-panel" id="btp_${k}"><div id="btc_${k}"></div><div class="set-note" style="margin-top:8px">${BM_NOTE[k]}</div></div></div>`;
-    }).join('')+'<div class="set-note">Reference ranges are general adult guides. Your doctor decides what is right for you.</div>';
-  }
-  const inj=d.injuries.filter(i=>i.active);
-  $('hInj').innerHTML=inj.length?inj.map(i=>`<div class="hist-row"><span>${esc(i.part)}</span><span class="hist-val">severity ${i.sev}/3 · since ${fmtD(i.date)}</span></div>`).join(''):'<div style="font-size:12px;color:var(--t3)">No active injuries. Add or heal them in the Log tab.</div>';
+// ── blood markers: one row each, tapped open to its chart ──
+const bmF=(k,v)=>k==='uric'?r1(v):Math.round(v);
+// the range under each name, from the same ranges scoreBM uses (mg/dL)
+function bmRef(k){const r=BM_RNG[k];return(r.ok[0]>0?`${r.ok[0]} to ${r.ok[1]} mg/dL`:`Under ${r.ok[1]} mg/dL`)+(k==='glucose'?', fasting':'');}
+function bmState(v,k){const s=scoreBM(v,k);return s.status==='ok'?{c:'good',g:'●',t:'In range'}:s.status==='warn'?{c:'warn',g:'▲',t:'Borderline'}:{c:'bad',g:s.low?'▼':'▲',t:s.low?'Low':'High'};}
+const bmPts=k=>S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).map(x=>({d:x.date,v:x[k]}));
+function bmChg(k,c,p){const df=bmF(k,c-p);return df>0?'up '+df:df<0?'down '+bmF(k,-df):'no change';}
+// the header over an open marker's chart: the tapped test (else the latest) and the one before it
+function bmHead(k,d){
+  const h=$('bth_'+k);if(!h)return;
+  const pts=bmPts(k);let i=d?pts.findIndex(p=>p.d===d):pts.length-1;if(i<0)i=pts.length-1;if(i<0)return;
+  const c=pts[i],p=pts[i-1],s=bmState(c.v,k),u=' <em>mg/dL</em>';
+  h.innerHTML=`<div class="${s.c}"><small>${fmtD(c.d)}</small><b class="v1">${bmF(k,c.v)}${u}</b><span><i>${s.g}</i>${s.t}</span></div>`
+    +(p?`<div><small>Previous</small><b class="v2">${bmF(k,p.v)}${u}</b><span>${fmtD(p.d)}</span></div>`:'');
+}
+// every result for one marker: the healthy range shaded, each dot in its state's colour; no toolbar (bare), drag and pinch stay
+function drawBloodChart(k){
+  const name=(BM.find(x=>x[1]===k)||[])[0]||k,r=BM_RNG[k],f=v=>bmF(k,v)+' mg/dL',pts=bmPts(k);
+  bmHead(k,null);
+  mountChart('btc_'+k,{bare:true,vals:true,key:'bt'+k,H:150,span:730,label:name,legend:'Healthy range',yfmt:v=>bmF(k,v),
+    yat:r.ok[0]>0?[r.ok[0],r.ok[1]]:[r.ok[1]],zones:[{lo:r.ok[0],hi:r.ok[1],color:'--t3/1.6'}],
+    empty:'One result so far. The chart appears after your second test.',
+    series:[{name,color:'--t3',thin:true,fmt:f,vl:v=>bmF(k,v),pts,dotColor:v=>({good:'--green',warn:'--amber',bad:'--red'})[bmState(v,k).c]}],
+    pick:d=>bmHead(k,d),
+    // v123: one line, the state of the latest result in view and the change since the first one
+    means:info=>{
+      const l=info.last,a=info.first;if(!l)return'';const w=bmState(l.v,k).t,df=l.v-a.v;
+      if(a.d===l.d)return w+'.';
+      if(!bmF(k,Math.abs(df)))return`${w}, about the same since ${fmtD(a.d)}.`;
+      return`${w}, ${df>0?'up':'down'} ${f(Math.abs(df))} since ${fmtD(a.d)}`+(w!=='In range'&&((df<0)===(l.v>r.ok[1]))?': moving towards the range.':'.');}});
+}
+function hlBm(k){
+  const was=_hlOpen===k;if(_hlOpen)chUnmount('btc_'+_hlOpen);_hlOpen=was?null:k;renderHealth();
+  if(_hlOpen){const e=$('br_'+k);if(e&&e.scrollIntoView)e.scrollIntoView({block:'nearest'});}
+}
+function hlBlood(){
+  const bl=S().bloodLogs.filter(x=>BM.some(([,k])=>x[k])).sort((a,b)=>a.date<b.date?-1:1);
+  if(!bl.length)return'<div class="empty-state" style="padding:8px 0"><div class="empty-icon">'+UI.dna+'</div><div class="empty-title">No blood results yet</div><div class="empty-sub">Enter your latest lab results (mg/dL) and each marker gets a timeline against its healthy range.</div><button class="empty-btn" onclick="logGo(\'lBlood\')">Add lab results</button></div>';
+  return`<p class="ksub">Latest test ${fmtD(last(bl).date)}</p>`+BM.map(([name,k])=>{
+    const pts=bmPts(k);if(!pts.length)return'';
+    const c=last(pts),p=pts[pts.length-2],s=bmState(c.v,k),op=_hlOpen===k,key=`if(event.key==='Enter'||event.key===' '){event.preventDefault();hlBm('${k}')}`;
+    return`<div class="br2 ${s.c}" id="br_${k}" role="button" tabindex="0" aria-expanded="${op}" aria-controls="bx_${k}" onclick="hlBm('${k}')" onkeydown="${key}">`
+      +`<div class="t"><b>${name}</b><small>${bmRef(k)}</small></div>`
+      +`<div class="vv"><b>${bmF(k,c.v)}${op?' <em>mg/dL</em>':''}</b><small><i aria-hidden="true">${s.g}</i>${s.t}${!op&&p?' · '+bmChg(k,c.v,p.v):''}</small></div>${op?UI.chevU:UI.chevD}</div>`
+      +(op?`<div class="bx" id="bx_${k}"><div class="vc-hd" id="bth_${k}"></div><div id="btc_${k}"></div>`
+        +`<details class="wm"${_hlWm[k]?' open':''} ontoggle="_hlWm['${k}']=this.open"><summary><b>What moves it</b>${UI.chevD}</summary><p>${BM_NOTE[k]}</p></details></div>`:'');
+  }).join('');
+}
+
+// ── active injuries, each with Mark healed (Log > Injury keeps its own list) ──
+const INJ_SEV=['','Mild','Moderate','Severe'];
+function hlInj(){
+  const inj=S().injuries.filter(i=>i.active);
+  if(!inj.length)return'<div class="hl-none"><span>No active injuries.</span><button class="sbtn" onclick="logGo(\'lInjury\')">Log an injury</button></div>';
+  return inj.map(i=>`<div class="inj">${UI.bandage}<div class="t"><b>${esc(i.part)}</b><small>${INJ_SEV[i.sev]||''} · since ${fmtD(i.date)}${i.notes?'<br>'+esc(i.notes):''}</small></div><button class="sbtn" onclick="clearInjury('${esc(i.id)}')">Mark healed</button></div>`).join('');
+}
+
+function renderHealth(){
+  const b=hlBase();
+  document.querySelectorAll('#pg-health .ib:empty').forEach(x=>x.innerHTML=TR_I_SVG);
+  $('hinf_base').textContent=`Usual is your average over the ${TH.HL_USUAL} days before the latest reading.`;
+  $('hBase').innerHTML=b||'<div class="empty-state" style="padding:8px 0"><div class="empty-title">No measurements yet</div><div class="empty-sub">Log weight, blood pressure or resting heart rate and your personal baseline builds here.</div><button class="empty-btn" onclick="logGo(\'lMeas\')">Add a measurement</button></div>';
+  if(_hlOpen&&!bmPts(_hlOpen).length){chUnmount('btc_'+_hlOpen);_hlOpen=null;}
+  $('hBlood').innerHTML=hlBlood();
+  if(_hlOpen)drawBloodChart(_hlOpen);
+  $('hInj').innerHTML=hlInj();
 }
 
 // ── report: a clean one-page summary the user can save as PDF ────────────────

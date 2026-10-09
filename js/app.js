@@ -29,8 +29,8 @@ function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove(
 function recalc(){
   // v118 parallel run: the old readiness and Body are both recorded; the hero shows Body once TH.PARALLEL_DAYS of it exist (heroScore)
   recordReadiness(calcReadiness());recordBody(calcBody().score);stSnap();
-  const s=heroScore();renderExTag();renderRing(s);renderGauges();renderZone(s);renderGreeting();
-  renderWhy();renderPlan();renderSoreSug();renderReflect();renderHabits();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
+  renderExTag();renderDayBar();renderRing(dayScore(tdDay()));renderGauges();renderYourDay();
+  renderPlan();renderSoreSug();renderReflect();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID)||S().polarKey)syncAll(false);updSyncStatus();});
@@ -39,8 +39,7 @@ window.addEventListener('resize',()=>{if(_tab==='trends')renderTrendsTab();});
 // ── INIT ─────────────────────────────────────────────────────────────────────
 let _day='';
 function dayForms(){
-  _day=td();
-  $('hdrDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+  _day=td();_tdView=null;   // a new day opens Today on today
   $('wDate').value=td();$('bmDate').value=td();$('injDate').value=td();
   $('wDate').max=td();$('slDate').max=td();loadSleepFor(td());
 }

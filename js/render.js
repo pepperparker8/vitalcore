@@ -1,9 +1,4 @@
 // ── RENDER: TODAY ────────────────────────────────────────────────────────────
-function renderGreeting(){
-  const hr=new Date().getHours(),name=S().profile.name;
-  const g=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  $('heroGreeting').textContent=`${g}${name?', '+name:''}`;
-}
 function renderRing(score){
   const fill=$('ringFill'),el=$('ringNum'),C=+fill.getAttribute('stroke-dasharray');
   clearInterval(renderRing.t);
@@ -27,40 +22,43 @@ function setGauge(id,numId,frac,txt){
   const f=$(id),n=$(numId);if(!f||!n)return;
   f.style.strokeDashoffset=GC*(1-Math.max(0,Math.min(1,frac)));n.textContent=txt;
 }
+// v129: the gauges follow the day in view (tdDay); a past day's strain is its total, its sleep the night ending that day against that night's need
 function renderGauges(){
-  const d=S(),load=strainLoad(td()),st=strainOf(load),tg=strainTarget();
+  const d=S(),dt=tdDay(),now=dt===td(),load=strainLoad(dt),st=strainOf(load),tg=now?strainTarget():null;
   setGauge('strFill','strNum',st/21,load?st.toFixed(1):'0');
-  $('gStrSub').textContent=!dayLoad(td())&&restToday()?'Rest day':tg?`Aim ${tg[0]}–${tg[1]}`:'\u00a0';
-  const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
+  $('gStrSub').textContent=!now?'Day total':!dayLoad(dt)&&restToday()?'Rest day':tg?`Aim ${tg[0]} to ${tg[1]}`:'\u00a0';
+  const sl=bodyNight(dt);
   if(sl&&!slCounts(sl)){setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Battery ran out';}
-  else if(sl){const goal=(d.profile.sleepGoal||7.5)*60,pc=Math.min(100,Math.round(sl.durMin/goal*100));
+  else if(sl){const pc=Math.min(100,Math.round(sl.durMin/needOf(sl)*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
-  else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent='Log sleep';}
-  renderFactors();if(typeof refreshDetail==='function')refreshDetail();const sc=heroScore();const n=daysLogged(30),bn=$('baseNote');if(bn){const b=!isExampleOnly()&&n<TH.MIN_BASE_DAYS;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of ${TH.MIN_BASE_DAYS} days logged. Scores and usual ranges get more personal after two weeks of data.`:'';}
-  $('gRecSub').textContent=scoreWord(sc);
+  else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent=now?'Log sleep':'Not logged';}
+  renderFactors();if(typeof refreshDetail==='function')refreshDetail();const sc=dayScore(dt);const n=daysLogged(30),bn=$('baseNote');if(bn){const b=now&&!isExampleOnly()&&n<TH.MIN_BASE_DAYS;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of ${TH.MIN_BASE_DAYS} days logged. Scores and usual ranges get more personal after two weeks of data.`:'';}
+  $('gRecSub').textContent=sc==null&&!now?'No data':scoreWord(sc);
 }
-function readinessFactors(){
-  const d=S(),goal=(d.profile.sleepGoal||7.5)*60,out=[];
-  const sl=last(d.sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<=1));
+// v129: any day on Today (default today). Order as the approved mockup: sleep, HRV, resting heart rate, breathing, check-in, form;
+// soreness and late coffee from that day's check-in; injuries only on today.
+function readinessFactors(date=td()){
+  const d=S(),out=[],now=date===td();
+  const sl=bodyNight(date);
   if(sl&&!slCounts(sl))out.push({k:'sleep',l:'Sleep',v:'Not counted',n:'battery ran out',st:'none'});
-  else if(sl){const pc=Math.round(sl.durMin/goal*100);out.push({k:'sleep',l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of goal',st:pc>=90?'good':pc>=75?'warn':'bad'});}
+  else if(sl){const pc=Math.round(sl.durMin/needOf(sl)*100);out.push({k:'sleep',l:'Sleep',v:fmtDur(sl.durMin),n:pc+'% of need',st:pc>=90?'good':pc>=75?'warn':'bad'});}
   else out.push({k:'sleep',l:'Sleep',v:'Not logged',n:'Tap for details',st:'none'});
-  const tsb=d.intervalsData.tsb;
-  if(tsb!==null&&tsb!==undefined)out.push({k:'form',l:'Form',v:(tsb>0?'+':'')+Math.round(tsb),n:zL(tsb,'tsb'),st:tsb>=TH.FORM_OK?'good':tsb>=TH.FORM_DEEP?'warn':'bad'});
-  const ci=todayCI();
-  if(ci&&ciFull(ci)){const p=Math.round((ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100);out.push({k:'checkin',l:'Check-in',v:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Okay':'Low',n:p+' of 100',st:p>=TH.MIND_GOOD?'good':p>=TH.MIND_FLAT?'warn':'bad'});}
-  else out.push({k:'checkin',l:'Check-in',v:'Not done',n:'Tap for details',st:'none'});
-  const hv=latestOf('hrv'),hb=wSeries('hrv');
+  const hv=latestOf('hrv',date),hb=wSeries('hrv',30,true,date);
   if(hv&&hb.length>=RB_MIN){const r=hv.v/avg(hb);out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:rfVs(hv.v,avg(hb),0),st:r>=0.97?'good':r>=0.9?'warn':'bad'});}
   else if(hv)out.push({k:'hrv',l:'HRV',v:Math.round(hv.v)+' ms',n:'building baseline',st:'none'});
-  const rv=latestOf('rhr'),rb=rhrSeries();
-  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:rfVs(rv.v,avg(rb),0),st:df<=2?'good':df<=5?'warn':'bad'});}
-  else if(rv)out.push({k:'rhr',l:'Resting HR',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
-  const pv=latestOf('resp'),pb=wSeries('resp');
+  const rv=latestOf('rhr',date),rb=rhrSeries(30,date);
+  if(rv&&rb.length>=RB_MIN){const df=rv.v-avg(rb);out.push({k:'rhr',l:'Resting heart rate',v:Math.round(rv.v)+' bpm',n:rfVs(rv.v,avg(rb),0),st:df<=2?'good':df<=5?'warn':'bad'});}
+  else if(rv)out.push({k:'rhr',l:'Resting heart rate',v:Math.round(rv.v)+' bpm',n:'building baseline',st:'none'});
+  const pv=latestOf('resp',date),pb=wSeries('resp',30,true,date);
   if(pv&&pb.length>=RB_MIN){const df=pv.v-avg(pb);out.push({k:'breathing',l:'Breathing',v:pv.v.toFixed(1)+' /min',n:rfVs(pv.v,avg(pb),1),st:df<=1?'good':df<=2?'warn':'bad'});}
-  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:bodyLive()?'shapes today\'s session':'−'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
+  const ci=d.checkins.find(c=>c.date===date);
+  if(ci&&ciFull(ci)){const p=mindOf(ci);out.push({k:'checkin',l:'Check-in',v:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Okay':'Low',n:p+' of 100',st:p>=TH.MIND_GOOD?'good':p>=TH.MIND_FLAT?'warn':'bad'});}
+  else out.push({k:'checkin',l:'Check-in',v:'Not done',n:'Tap for details',st:'none'});
+  const tsb=tsbOn(date);
+  if(tsb!=null)out.push({k:'form',l:'Form',v:(tsb>0?'+':tsb<0?'−':'')+Math.abs(Math.round(tsb)),n:zL(tsb,'tsb'),st:tsb>=TH.FORM_OK?'good':tsb>=TH.FORM_DEEP?'warn':'bad'});
+  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:bodyLive()?(now?'shapes today\'s session':'shaped that day\'s session'):'−'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
   if(ci&&ci.coffeeLate)out.push({k:'coffee',l:'Coffee',v:'Late cup',n:'after 14:00',st:'warn'});
-  const inj=d.injuries.filter(i=>i.active);
+  const inj=now?d.injuries.filter(i=>i.active):[];
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({k:'injury',l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
   return out;
 }
@@ -69,8 +67,8 @@ const RF_IC={sleep:'moon',form:'battery',checkin:'mood',hrv:'pulse',rhr:'heart',
 function rfVs(v,u,dp){const df=+(+v.toFixed(dp)-+u.toFixed(dp)).toFixed(dp);return df>0?'▲ '+df.toFixed(dp)+' over usual':df<0?'▼ '+(-df).toFixed(dp)+' under usual':'at your usual';}
 function renderFactors(){
   const el=$('rdFactors');if(!el)return;
-  const f=readinessFactors();
-  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>{const m=/^([▲▼]) (.*)$/.exec(x.n);return`<div class="rf ${x.st}" onclick="openDetail('${x.k}')" role="button" tabindex="0">${UI[RF_IC[x.k]]||''}<span class="rf-l">${x.l}</span><span class="rf-r"><span class="rf-v">${x.v}</span><span class="rf-n"><i class="rf-g" aria-hidden="true">${m?m[1]:'●'}</i>${m?m[2]:x.n}</span></span></div>`;}).join('');
+  const f=readinessFactors(tdDay());
+  el.innerHTML='<div class="rf-h">What is driving recovery</div>'+f.map(x=>{const m=/^([▲▼]) (.*)$/.exec(x.n);return`<div class="rf ${x.st}" onclick="tdOpen('${x.k}')" role="button" tabindex="0">${UI[RF_IC[x.k]]||''}<span class="rf-l">${x.l}</span><span class="rf-r"><span class="rf-v">${x.v}</span><span class="rf-n"><i class="rf-g" aria-hidden="true">${m?m[1]:'●'}</i>${m?m[2]:x.n}</span></span></div>`;}).join('');
 }
 // sleep needed for the night ending on date (default tonight): goal, plus up to 45 min for the day's strain, plus half the debt of the 3 nights before
 function sleepNeed(st,date){
@@ -80,21 +78,22 @@ function sleepNeed(st,date){
 }
 const hhmm=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function setWake(v){if(!/^\d\d:\d\d$/.test(v))return;const d=S();d.profile.wakeTime=v;save(d);markProfile();if(typeof refreshDetail==='function')refreshDetail();}
+// the headline and its line for a recovery score (v129: shown at the top of the Recovery sheet, no longer on Today)
 function renderZone(score){
-  let z,ins;
+  let z,ins,act=null;   // act: what to do today, for a score under green (the Recovery sheet's line)
   if(bodyLive()){
     // Body (v118): green, yellow, red from TH.BODY_*
     if(score===null){z='Waiting for your watch';ins='Body needs heart rate variability or resting heart rate from last night. Sync to refresh.';}
     else if(score>=TH.BODY_GREEN){z='Body is recovered';ins='HRV, resting heart rate and sleep are in your usual range. A good day to train as planned.';}
-    else if(score>=TH.BODY_YELLOW){z='Body is middling';ins='Some overnight signals are off. Train, but keep it controlled.';}
-    else{z='Body needs recovery';ins='Your overnight signals are well off your usual. Rest or easy movement.';}
+    else if(score>=TH.BODY_YELLOW){z='Body is middling';act='Train, but keep it controlled.';ins='Some overnight signals are off. '+act;}
+    else{z='Body needs recovery';act='Rest or easy movement.';ins='Your overnight signals are well off your usual. '+act;}
   }
   else if(score===null){z='Start with a check-in';ins='Tap how you feel below. Your readiness score appears once you check in or log sleep.';}
   else if(score>=TH.OLD_HIGH){z='Ready to push hard';ins='All systems green. Good day to train hard or race.';}
   else if(score>=TH.OLD_WARN){z='Solid day ahead';ins='Good recovery. Normal training appropriate today.';}
   else if(score>=TH.OLD_MOD){z='Moderate readiness';ins='Some fatigue. Keep intensity moderate today.';}
   else{z='Recovery day needed';ins='Body is under stress. Prioritise rest and sleep tonight.';}
-  $('heroZone').textContent=z;$('heroIns').textContent=ins;
+  return{z,ins,act};
 }
 function calcReadiness(){
   const d=S();
@@ -112,17 +111,6 @@ function calcReadiness(){
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));s=Math.max(20,s-m*8);}
   return Math.round(Math.min(100,Math.max(20,s)));
 }
-function renderHabits(){
-  const d=S(),t=td(),ci=todayCI();
-  const items=[
-    [UI.chat,'CHECK-IN',ciFull(ci),'logGo(\'lCheckin\')'],
-    [UI.lotus,'MINDFUL',(ci?.mindfulMin||0)>0,'logGo(\'lMind\')',ci?.mindfulMin?ci.mindfulMin+'m':''],
-    [UI.run,'MOVE',d.workouts.some(w=>w.date===t),'logGo(\'lWorkout\')'],
-    [UI.moon,'SLEEP',d.sleepLogs.some(s=>s.date===t),'switchTab(\'log\');openLog(\'lSleep\')']
-  ];
-  $('habits').innerHTML=items.map(([i,l,ok,go,txt])=>`<button class="hab ${ok?'done':''}" onclick="${go}"><div class="hab-i">${i}</div><div class="hab-l">${l}</div><div class="hab-s">${ok?(txt||'✓'):'Tap'}</div></button>`).join('');
-  $('habitsN').textContent=`${items.filter(x=>x[2]).length} of 4 done`;
-}
 function activeDays(){const s=new Set();S().checkins.forEach(c=>{if(ciFull(c)||c.mindfulMin>0)s.add(c.date);});return s;}
 function calcStreak(){const s=activeDays();let n=0,i=s.has(td())?0:1;while(s.has(dAgo(i))){n++;i++;}return n;}
 function bestStreak(){const a=[...activeDays()].sort();let best=0,run=0,prev=null;for(const x of a){run=prev&&daysAgoBetween(prev,x)===1?run+1:1;best=Math.max(best,run);prev=x;}return best;}
@@ -136,17 +124,17 @@ const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.dist
 function fitWord(){const d=S();let o=null;for(let i=28;i<=35&&o==null;i++){const x=d.wellness[dAgo(i)];if(x&&x.ctl!=null)o=x.ctl;}if(o==null)return'';const c=d.intervalsData.ctl-o;return c>=3?'Rising':c<=-3?'Falling':'Steady';}
 function renderTLoad(){
   const d=S(),{ctl,atl,tsb}=d.intervalsData;
-  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;}
-  else{$('tloadContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div class="sbar"><div class="sbar-lbl">FITNESS</div><div class="sbar-val" style="color:var(--teal)">${ctl}</div><div class="sbar-zone" style="color:var(--teal)">${fitWord()}</div></div><div class="sbar"><div class="sbar-lbl">FATIGUE</div><div class="sbar-val" style="color:var(--red)">${atl}</div><div class="sbar-zone" style="color:var(--amber)">${zL(atl,'atl')}</div></div><div class="sbar"><div class="sbar-lbl">FORM</div><div class="sbar-val" style="color:var(--green)">${tsb>0?'+':''}${tsb}</div><div class="sbar-zone" style="color:var(--green)">${zL(tsb,'tsb')}</div></div></div>`;}
+  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;return;}
+  // v129: three plain tiles, the number and its word; no state colours
+  const tl=(k,v,w)=>`<div class="dy-tl"><small>${k}</small><b>${v}</b><span>${w||'&nbsp;'}</span></div>`;
+  $('tloadContent').innerHTML=`<div class="dy-tiles">${tl('Fitness',Math.round(ctl),fitWord())}${tl('Fatigue',Math.round(atl),zL(atl,'atl'))}${tl('Form',(tsb>0?'+':tsb<0?'−':'')+Math.abs(Math.round(tsb)),zL(tsb,'tsb'))}</div>`;
 }
+// v129: the workouts of the last 7 days, the total time in the header; Edit and Delete live in Log
 function renderActList(){
-  const d=S(),t=td(),rows=[];
-  for(let i=0;i<7;i++){
-    const date=dAgo(i),isToday=i===0,ws=d.workouts.filter(w=>w.date===date);
-    if(!ws.length)rows.push(`<div class="act-item"><div class="act-icon past" style="font-size:13px;color:var(--t3)">—</div><div><div class="act-name" style="color:var(--t3);font-weight:400">Nothing logged</div><div class="act-meta">${isToday?'Today':fmtD(date)}</div></div></div>`);
-    else ws.forEach(w=>rows.push(wkRow(w)));
-  }
-  $('actList').innerHTML=dupHTML()+rows.join('');renderWkLog();
+  const d=S(),ws=d.workouts.filter(w=>daysAgo(w.date)>=0&&daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(wIcu(b).t||'')>(wIcu(a).t||'')?1:-1);
+  const tot=ws.reduce((a,w)=>a+(+w.durMin||0),0),te=$('actTot');if(te)te.textContent=tot?fmtDur(tot):'';
+  $('actList').innerHTML=dupHTML()+(ws.length?ws.map(w=>wkRow(w,{plain:1})).join(''):`<div class="empty-state"><div class="empty-title">Nothing logged in the last 7 days</div><div class="empty-sub">Workouts from your watch show here, or add one yourself.</div><button class="empty-btn" onclick="logGo('lWorkout')">Log a workout</button></div>`);
+  renderWkLog();
 }
 
 // ── RENDER: WELLBEING ────────────────────────────────────────────────────────
@@ -219,7 +207,7 @@ function renderSleepBars(){
   const l=last(nights.filter(s=>s.deepH||s.deepM||s.remH||s.remM));
   $('stNight').textContent=l?'Sleep stages, night ending '+fmtD(l.date):'';$('stBox').style.display=l?'':'none';
   if(l)setStages(l.deepH||0,l.deepM||0,l.remH||0,l.remM||0,l.durMin);
-  const t=d.sleepLogs.find(s=>s.date===td());$('sleepStat').textContent=!t?'Not logged today':slWhy(t)?slWhy(t).st:slIcu(t)?'Recorded':'Logged today';
+  lgStat();
   // keep the form in step with imports, but never while the user is in it
   const f=$('lSleep');if(f&&!f.classList.contains('open')&&!f.contains(document.activeElement))loadSleepFor($('slDate').value||td());
 }
