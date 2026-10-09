@@ -226,9 +226,15 @@ function strBests(){
   });
   return rows;
 }
-function weeklySets(days=7){
+// hard sets per muscle from one date to another
+function strSetsIn(from,to){
   const c=Object.fromEntries(MUSCLES.map(m=>[m,0]));
-  S().workouts.forEach(w=>{if(daysAgo(w.date)>=0&&daysAgo(w.date)<days)(w.sets||[]).filter(isWork).forEach(s=>{if(c[s.muscle]!==undefined)c[s.muscle]++;});});
+  S().workouts.forEach(w=>{if(w.date>=from&&w.date<=to)(w.sets||[]).filter(isWork).forEach(s=>{if(c[s.muscle]!==undefined)c[s.muscle]++;});});
+  return c;
+}
+// per muscle over the days up to end (default today); over 7 days the mean week
+function weeklySets(days=7,end=td()){
+  const c=strSetsIn(ND(DN(end)-days+1),end);
   if(days>7)Object.keys(c).forEach(m=>c[m]=Math.round(c[m]/(days/7)));
   return c;
 }
@@ -239,32 +245,43 @@ function renderStrTrend(){
   const card=$('strCard');if(!card)return;
   const hist=exHistory();
   if(!hist.size){
-    $('strMuscles').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No strength data yet</div><div class="empty-sub">Log a Weights or Calisthenics workout with sets and your progress shows here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';
-    $('strSel').style.display='none';$('strCanvas').innerHTML='';$('strSum').textContent='';return;
+    chUnmount('strCanvas');$('strHd').innerHTML='';$('strMuscles').innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No strength data yet</div><div class="empty-sub">Log a Weights or Calisthenics workout with sets and your progress shows here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';
+    $('strSel').style.display='none';$('strCanvas').innerHTML='';return;
   }
-  const wk=weeklySets(_range);
-  const tt=document.querySelector('#strCard .tr-sum');if(tt)tt.textContent=_range>7?`avg sets per week per muscle, last ${_range} days`:'sets per muscle, last 7 days';
-  const lo=TH.SETS_LO,hi=TH.SETS_HI,grp={on:[],low:[],high:[],none:[]};
-  $('strMuscles').innerHTML=MUSCLES.map(m=>{
-    const n=wk[m],k=n===0?'none':n<lo?'low':n<=hi?'on':'high',col=k==='low'||k==='none'?'var(--amber)':k==='on'?'var(--green)':'var(--red)',lbl={none:'none',low:'low',on:'on target',high:'high'}[k];
-    grp[k].push(m);
-    return`<div class="mu-row"><span class="mu-n">${m}</span><span class="mu-bar"><span class="mu-fill" style="display:block;width:${Math.min(100,n/hi*100)}%;background:${col}"></span></span><span class="mu-v" style="color:${col}">${n} · ${lbl}</span></div>`;
-  }).join('')+`<div class="vc-mean">${grp.high.length?`Over ${hi} sets: ${grp.high.join(', ')}. Fewer, harder sets work as well.`:grp.low.length?`Under ${lo} sets: ${grp.low.join(', ')}.`:grp.on.length?'On target for every muscle you trained.':''}</div><div class="set-note">Target: ${lo} to ${hi} hard sets per muscle a week.</div>`;
+  renderStrMuscles();
   const names=[...hist.keys()].sort((a,b)=>last(hist.get(b)).date<last(hist.get(a)).date?-1:1);
   if(!names.includes(_strEx))_strEx=names[0];
   const sel=$('strSel');sel.style.display='block';
   sel.innerHTML=names.map(n=>`<option ${n===_strEx?'selected':''}>${esc(n)}</option>`).join('');
   const a=hist.get(_strEx),weighted=a.some(x=>x.e1>0),timed=!weighted&&a.some(x=>x.secs);
-  const val=x=>weighted?x.e1:timed?x.secs:x.reps,unit=weighted?'kg (est. 1RM)':timed?'sec':'reps';
-  const cv=$('strCanvas'),fu=v=>Math.round(v)+' '+(weighted?'kg':timed?'s':'reps');
-  if(a.length>=2)mountChart('strCanvas',{key:'str'+_strEx,H:170,span:180,wide:true,yfmt:v=>Math.round(v),label:_strEx,
-    series:[{pts:a.map(x=>({d:x.date,v:val(x)})),color:'--gold-dk',name:_strEx,fmt:fu}],
-    hi:true,stats:{words:['Best','Lowest']},
-    means:info=>prMeaning(info,v=>fu(v),['Up','Down'],a.map(x=>x.date).filter((dt,i)=>i&&val(a[i])>Math.max(...a.slice(0,i).map(val))),'sessions')});
-  else cv.innerHTML='';
-  const vals=a.slice(-20).map(val);
-  const l=last(a),best=Math.max(...a.map(val));
-  $('strSum').textContent=vals.length<2?`Log ${_strEx} once more to see a trend.`:`Best ${Math.round(best)} ${unit}`;
+  const val=x=>weighted?x.e1:timed?x.secs:x.reps;
+  const fu=v=>Math.round(v)+' '+(weighted?'kg':timed?'s':'reps'),md=a.map(x=>x.date).filter((dt,i)=>i&&val(a[i])>Math.max(...a.slice(0,i).map(val)));
+  mountChart('strCanvas',{key:'str'+_strEx,group:'trends',tb:false,H:170,yfmt:v=>Math.round(v),label:_strEx,
+    empty:`Log ${esc(_strEx)} once more to see a trend.`,
+    series:[{pts:a.map(x=>({d:x.date,v:val(x)})),color:'--text',name:_strEx,fmt:fu,vl:v=>String(Math.round(v))}],
+    hi:true,stats:{words:['Best','Lowest']},head:prHead(a.map(x=>({date:x.date,v:val(x),txt:fu(val(x))})),md),
+    means:info=>prMeaning(info,v=>fu(v),['Up','Down'],md,'sessions')});
+}
+// the muscle bars and their header follow the Trends window: sets in it, muscles in the target zone, and sets per week (or muscles trained in a 7-day window)
+function renderStrMuscles(){
+  const hd=$('strHd'),el=$('strMuscles');if(!hd||!el||!exHistory().size)return;
+  const days=trSpan(),to=trEnd(),from=ND(DN(to)-days+1),pto=ND(DN(from)-1),pfrom=ND(DN(from)-days);
+  const raw=strSetsIn(from,to),prv=strSetsIn(pfrom,pto),wk=weeklySets(days,to),tot=o=>Object.values(o).reduce((s,v)=>s+v,0);
+  const lo=TH.SETS_LO,hi=TH.SETS_HI,grp={on:[],low:[],high:[],none:[]},pw=v=>days>7?Math.round(v/(days/7)):v;
+  el.innerHTML=MUSCLES.map(m=>{
+    const n=wk[m],k=n===0?'none':n<lo?'low':n<=hi?'on':'high',col=k==='low'||k==='none'?'var(--amber)':k==='on'?'var(--green)':'var(--red)',lbl={none:'none',low:'low',on:'on target',high:'high'}[k];
+    grp[k].push(m);
+    return`<div class="mu-row"><span class="mu-n">${m}</span><span class="mu-bar"><span class="mu-fill" style="display:block;width:${Math.min(100,n/hi*100)}%;background:${col}"></span></span><span class="mu-v" style="color:${col}">${n} · ${lbl}</span></div>`;
+  }).join('')+`<div class="vc-mean">${grp.high.length?`Over ${hi} sets: ${grp.high.join(', ')}. Fewer, harder sets work as well.`:grp.low.length?`Under ${lo} sets: ${grp.low.join(', ')}.`:grp.on.length?'On target for every muscle you trained.':''}</div>`;
+  // the window before counts only once there are sets from before it
+  const first=S().workouts.filter(w=>(w.sets||[]).some(isWork)).reduce((m,w)=>!m||w.date<m?w.date:m,null),before=first&&DN(first)<=DN(pfrom)+days/2;
+  const nT=grp.on.length+grp.low.length+grp.high.length,on=grp.on.length;
+  const rv=days>7?pw(tot(raw)):nT,pv=before?(days>7?pw(tot(prv)):Object.values(prv).filter(v=>v>0).length):null,dv=pv==null?null:rv-pv;
+  const now=to===td(),lab=now?`Last ${days} days`:`${fmtD(from)} to ${fmtD(to)}`;
+  hd.innerHTML=`<div class="vc-hd"><div><small>${esc(lab)}</small><b class="v1">${tot(raw)}<em> hard set${tot(raw)===1?'':'s'}</em></b>`
+    +(nT?`<span class="${on&&!grp.low.length&&!grp.high.length?'good':''}"><i>●</i>${on} muscle${on===1?'':'s'} on target</span>`:'')+`</div>`
+    +`<div><small>${days>7?'Sets per week':'Muscles trained'}</small><b class="v2">${rv}</b>`
+    +(dv!=null?`<span><i>${dv>0?'▲':dv<0?'▼':'●'}</i>${dv?Math.abs(dv)+' on '+chPer(days):'Same as '+chPer(days)}</span>`:'')+`</div></div>`;
 }
 
 // ---- rest timer: starts when you add the next set; end time based so it survives screen-off ----

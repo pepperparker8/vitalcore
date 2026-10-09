@@ -938,7 +938,7 @@ run('v123 text',()=>{
   const s1=L(scoreMeaning({pts:sp,n:sp.length})),s2=L(scoreMeaning({pts:sd,n:sd.length}));
   check('v123 text: the score line says mostly good, or the drop with what to look at',/^(All|Mostly) good\.$/.test(s1)&&/^Down 1[0-9] points in (a day|[23] days)\. Look at sleep, stress and training\.$/.test(s2),[s1,s2].join(' | '));
   const pr=seq([50,51,52,55,56,58]),p1=L(prMeaning({pts:pr,from:pr[0].d,to:td()},v=>Math.round(v)+' kg',['Up','Down'],[pr[5].d],'sessions'));
-  check('v123 text: progress gives the change and the new best in one line',/^Up \d+ kg over these sessions; a new best on .+\.$/.test(p1),p1);
+  check('v123 text: progress gives the change and the new best in one line',/^Up \d+ kg over these sessions; a new best (today|on .+)\.$/.test(p1),p1);
   const bad=lines.filter(x=>x.length>140||(x.match(/[.!?](?=\s|$)/g)||[]).length>2||/In view|Of \d|readings in a row|Nothing to act on/.test(x));
   check('v123 text: every line is at most 2 sentences and 140 characters, with no counting or method words',!bad.length,bad.join(' | ')||lines.length+' lines');
   const r=wkRow({id:'w1',date:td(),type:'Run',durMin:45,distKm:8,rpe:null,notes:'',sets:[]},true);
@@ -1466,6 +1466,137 @@ run('v127 bounce-back',()=>{
   // very hard never shorter than hard
   fix([...[12,32,52,72,92,112].map(a=>[a,Z_HARD,3]),...[22,42,62,82,102].map(a=>[a,Z_BIG,2])]);B=bounceDays();
   check('v127 bounce-back: a very hard session never gets fewer days than a hard one',B[4]===3&&B[5]===3&&B.n===11,JSON.stringify(B));
+});
+
+// v128: Trends charts share one window, open on 7 days, write their values in a short window and read the same header
+run('v128 engine',()=>{
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:328px';host.innerHTML='<div class="page"><div id="v8a"></div><div id="v8b"></div><div id="v8c"></div><div id="v8d"></div></div>';document.body.appendChild(host);
+  delete _chG.v8t;
+  try{
+    const T=DN(td()),A=[],Bp=[],Cp=[],wdn=n=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(n*864e5).getUTCDay()];
+    for(let i=299;i>=0;i--)A.push({d:dAgo(i),v:50+(i%5)});
+    for(let i=9;i>=0;i--)Bp.push({d:dAgo(i),v:420+(i%3)*20});
+    for(let i=60;i>=0;i--)if(i%2)Cp.push({d:dAgo(i),v:30+i%4*10});
+    const head=x=>({v:x.p?Math.round(x.p.v):null,u:'ms',st:'Inside your usual',cls:'',rl:x.n+'-day average',rv:'52',ru:'ms',dv:x.n===7?3:x.n===30?0:null,dd:'3'});
+    mountChart('v8a',{series:[{name:'HRV',color:'--teal',pts:A}],tb:false,group:'v8t',head,key:'a',means:i=>i.n+' days'});
+    mountChart('v8b',{series:[{name:'Sleep',color:'--teal',type:'bar',pts:Bp,vl:v=>[Math.floor(v/60)+'h',v%60+'min']}],tb:false,group:'v8t',today:'Last night',head:x=>({v:x.p?fmtDur(x.p.v):null}),key:'b'});
+    mountChart('v8c',{series:[{name:'Load',color:'--t2',type:'bar',pts:Cp,zero:'–'}],weekly:{series:[{name:'Load',color:'--t2',type:'bar',w:7,pts:weekBuckets(Cp)}]},tb:false,group:'v8t',head:x=>({v:x.p?x.p.v:0,u:'min'}),key:'c'});
+    const a=_ch.v8a,b=_ch.v8b,c=_ch.v8c,hd=id=>host.querySelector('#'+id+' .vc-hd'),lab=id=>hd(id).querySelector('small').textContent,same=()=>[b,c].every(o=>o.view[0]===a.view[0]&&o.view[1]===a.view[1]);
+    check('v128 engine: every chart opens on the same 7 days ending today',[a,b,c].every(o=>o.view[0]===T-6.5&&o.view[1]===T+0.5),JSON.stringify([a.view,b.view,c.view]));
+    check('v128 engine: no toolbar or readout on a Trends chart',!host.querySelector('.vc-tb,.vc-ro,.vc-chips,.vc-win'),host.innerHTML.slice(0,160));
+    check('v128 engine: 7 days write weekday ticks ending Today, every value, and no y labels',a.ticks.length===7&&a.ticks[6]==='Today'&&a.ticks[0]===wdn(T-6)&&a.vals.length===7&&a.vals[6]==='50'&&a.yl.length===0,JSON.stringify([a.ticks,a.vals,a.yl]));
+    check('v128 engine: bar values can take two lines',b.vals.length===14&&b.vals[12]==='7h'&&b.vals[13]==='0min',JSON.stringify(b.vals));
+    check('v128 engine: a day without a bar draws a dash, never Rest',c.vals.filter(v=>v==='–').length===4&&c.vals.filter(v=>v!=='–').length===3&&!c.vals.includes('Rest'),JSON.stringify(c.vals));
+    check('v128 engine: the header names today, its value, the 7-day average and the change on last week',lab('v8a')==='Today'&&hd('v8a').querySelector('.v1').textContent==='50 ms'&&/7-day average/.test(hd('v8a').textContent)&&/▲3 on last week/.test(hd('v8a').textContent),hd('v8a').textContent);
+    check('v128 engine: a chart can call today Last night, and a day without a bar reads 0',lab('v8b')==='Last night'&&lab('v8c')==='Today'&&hd('v8c').querySelector('.v1').textContent==='0 min',lab('v8b')+' | '+hd('v8c').textContent);
+    check('v128 engine: the meaning line counts the 7 days only',host.querySelector('#v8a .vc-mean').textContent==='7 days',host.querySelector('#v8a .vc-mean').textContent);
+    // tap: the header follows that day; the others keep today
+    a.hover=T-2;chUpd('v8a');chFlush();
+    check('v128 engine: a tap moves the header to that day and leaves the other charts alone',lab('v8a')===wdn(T-2)+' '+fmtD(dAgo(2))&&b.hover==null&&lab('v8b')==='Last night',lab('v8a'));
+    a.hover=null;chUpd('v8a');chFlush();
+    // the range bar sets every chart at once
+    chGSet('v8t',[T-29.5,T+0.5]);
+    check('v128 engine: 30 days moves every chart, drops the values and puts the y labels on the right',same()&&a.view[0]===T-29.5&&a.vals.length===0&&a.yl.length>=2&&a.yl.length<=4&&a.R>a.L,JSON.stringify([a.view,a.yl,a.L,a.R]));
+    check('v128 engine: 30 days says Same as last month when nothing changed, and bars stay daily',/Same as last month/.test(hd('v8a').textContent)&&chVC(c)===c.cfg&&host.querySelector('#v8a .vc-mean').textContent==='30 days',hd('v8a').textContent);
+    chGSet('v8t',[T-89.5,T+0.5]);
+    check('v128 engine: 90 days turns bars weekly',chVC(c)!==c.cfg&&chVC(c).series[0].w===7&&c.vals.length===0&&/90-day average/.test(hd('v8a').textContent)&&!/ on |Same as/.test(hd('v8a').textContent),hd('v8a').textContent);
+    check('v128 engine: in weekly bars the header reads This week',lab('v8c')==='This week',lab('v8c'));
+    chGSet('v8t',[T-364.5,T+0.5]);
+    check('v128 engine: 1Y is always a year, even with 300 days of data',same()&&a.view[1]-a.view[0]===365&&a.view[1]===T+0.5,JSON.stringify(a.view));
+    chGSet('v8t',[T-6.5,T+0.5]);
+    // panning back: the chart with 10 days stays on the same dates as the one with 300
+    chShift('v8b',-1);chFlush();
+    check('v128 engine: a chart with little data pans back with the rest of the group',same()&&a.view[1]===T-6.5&&lab('v8a')===wdn(T-7)+' '+fmtD(dAgo(7)),JSON.stringify([a.view,b.view])+' '+lab('v8a'));
+    chShift('v8a',2);chFlush();
+    check('v128 engine: never past today',same()&&a.view[1]===T+0.5,JSON.stringify(a.view));
+    // a zoom on one chart moves them all
+    chZoomBy('v8c',2);chFlush();
+    check('v128 engine: a zoom on one chart moves all of them and keeps today in view',same()&&a.view[1]===T+0.5&&Math.abs(a.view[1]-a.view[0]-14)<1e-9,JSON.stringify(a.view));
+    check('v128 engine: period words',chPer(7)==='last week'&&chPer(14)==='the 2 weeks before'&&chPer(30)==='last month'&&chPer(90)==='the 90 days before'&&chPer(365)==='the year before'&&chPer(23)==='the 23 days before',[7,14,30,90,365,23].map(chPer).join(' | '));
+    check('v128 engine: no change line without earlier data',/14-day average/.test(hd('v8a').textContent)&&!/ on |Same as/.test(hd('v8a').textContent),hd('v8a').textContent);
+    // a re-render keeps the window
+    mountChart('v8a',{series:[{name:'HRV',color:'--teal',pts:A}],tb:false,group:'v8t',head,key:'a'});
+    check('v128 engine: a re-render keeps the group window',_ch.v8a.view[0]===T-13.5,JSON.stringify(_ch.v8a.view));
+    // legend: the band and labelled lines go under the chart
+    const band=A.slice(-40).map(p=>({d:p.d,lo:48,hi:54}));
+    mountChart('v8d',{series:[{name:'HRV',color:'--teal',pts:A}],band,lines:[{v:52,label:'Goal 52',color:'--teal',dash:[4,3]}],legend:true,tb:false,group:'v8t',key:'d'});
+    const lg=host.querySelector('#v8d .vc-lg').textContent;
+    check('v128 engine: the legend lists your usual range and the labelled line',lg==='Your usual rangeGoal 52',lg);
+    // zone words: never on a Trends chart (the header names the zone)
+    const zn=[{lo:null,hi:52,color:'--amber',label:'Low'},{lo:52,hi:null,color:'--teal',label:'High'}];
+    chGSet('v8t',[T-29.5,T+0.5]);
+    mountChart('v8d',{series:[{name:'HRV',color:'--teal',pts:A}],zones:zn,tb:false,group:'v8t',key:'z'});
+    check('v128 engine: no zone words on a Trends chart at 30 days',Array.isArray(_ch.v8d.zl)&&_ch.v8d.zl.length===0&&_ch.v8d.yl.length>=2,JSON.stringify([_ch.v8d.zl,_ch.v8d.yl]));
+    // a chart outside Trends keeps its toolbar, and its zone words
+    mountChart('v8d',{series:[{name:'HRV',color:'--teal',pts:A}],zones:zn,key:'e'});
+    check('v128 engine: a chart without tb:false keeps its toolbar and readout',!!host.querySelector('#v8d .vc-tb .vc-chips')&&!!host.querySelector('#v8d .vc-ro')&&!_ch.v8d.tr,host.querySelector('#v8d').innerHTML.slice(0,120));
+    check('v128 engine: a chart with its own toolbar still names its zones',_ch.v8d.zl.length>=1&&_ch.v8d.zl.every(t=>t==='Low'||t==='High'),JSON.stringify(_ch.v8d.zl));
+    // minute axes read in hours and minutes, never decimal hours
+    check('v128 engine: minute axis labels',[0,45,60,90,125,1440].map(axMin).join('|')==='0m|45m|1h|1h 30m|2h 5m|24h'&&CH_MIN_STEPS.every(k=>k%5===0),[0,45,60,90,125,1440].map(axMin).join('|'));
+    const C2=[];for(let i=29;i>=0;i--)C2.push({d:dAgo(i),v:40+(i%3)*35});
+    mountChart('v8c',{series:[{name:'Load',color:'--t2',type:'bar',pts:C2}],yfmt:axMin,ysteps:CH_MIN_STEPS,tb:false,group:'v8t',key:'m'});
+    check('v128 engine: a minute axis at 30 days steps on whole minutes or hours',_ch.v8c.yl.length>=2&&_ch.v8c.yl.every(t=>/^(\d+h( \d+m)?|\d+m)$/.test(t)),JSON.stringify(_ch.v8c.yl));
+    // a progress value splits into a number and a small unit; a pace stays whole
+    check('v128 engine: progress values split into number and unit',JSON.stringify([prNU('~114 kg 1RM'),prNU('8.2 km'),prNU('5:12/km')])===JSON.stringify([['~114','kg 1RM'],['8.2','km'],['5:12/km','']]),JSON.stringify([prNU('~114 kg 1RM'),prNU('5:12/km')]));
+  }finally{['v8a','v8b','v8c','v8d'].forEach(chUnmount);delete _chG.v8t;host.remove();}
+});
+
+// v128: the Trends page itself (markup from index.html): one range bar, sections, an ⓘ on every card, headers and lines that agree, strength bars on the window
+seq('v128 page',async()=>{
+  const html=await realFetch('../index.html',{cache:'no-store'}).then(r=>r.text()),pg=new DOMParser().parseFromString(html,'text/html').getElementById('pg-trends');
+  // the app's stylesheet for the colours the canvases read and a real 360 px layout; taken off again at the end
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:360px';host.innerHTML=pg.outerHTML+'<span id="sleepStat" hidden></span>';document.body.appendChild(host);
+  const rAF=window.requestAnimationFrame;window.requestAnimationFrame=f=>{f(performance.now());return 0;};
+  const ids=['readCanvas','hrvCanvas','rhrCanvas','respCanvas','sleepCanvas','ldCanvas','formCanvas','tsbCanvas','prCanvas','spBars','strCanvas','moodCanvas','boCanvas','mindBars','wtCanvas','bodyCanvas'];
+  delete _chG.trends;_trInf={};_trSK='';_trT=null;_trView='charts';
+  try{
+    // a synthetic athlete: HRV well above the usual for the last 3 days, a run every other day, two bench sessions and a squat session, check-ins, weigh-ins
+    base();const T=DN(td()),d=_s;d.profile.wtGoal=70;
+    for(let i=0;i<35;i++){const w=d.wellness[dAgo(i)];if(i<3)w.hrv=75;w.resp=14+(i%3)*0.2;w.ctl=40+(35-i)*0.3;w.atl=42+(i%5);}
+    for(let i=0;i<60;i+=2)d.workouts.push({id:'r'+i,date:dAgo(i),type:'Run',distKm:8+i%3,durMin:45+i%4*5,rpe:3});
+    const sets=(n,ex,muscle,kg)=>Array.from({length:n},()=>({ex,muscle,kg,reps:8}));
+    d.workouts.push({id:'b3',date:dAgo(3),type:'Weights',durMin:50,rpe:3,sets:sets(12,'Bench Press','chest',60)},{id:'b10',date:dAgo(10),type:'Weights',durMin:50,rpe:3,sets:sets(12,'Bench Press','chest',57.5)},{id:'q20',date:dAgo(20),type:'Weights',durMin:50,rpe:3,sets:sets(15,'Squat','legs',80)});
+    for(let i=0;i<10;i++)d.checkins.push({id:'c'+i,date:dAgo(i),energy:3,mood:3,stress:2,motivation:3,soreness:1+i%2,coffee:i%3,mindfulMin:i%2?10:0});
+    for(let i=0;i<30;i++)d.measurements.push({id:'m'+i,date:dAgo(i),weight:72+(i%4)*0.2});
+    renderTrendsTab();
+    const sec=[...host.querySelectorAll('#trCharts .tr-sec')].map(e=>e.textContent),kh=[...host.querySelectorAll('#trCharts .kh[data-i]')];
+    check('v128 page: sections in order and nothing left of the old page',sec.join()==='Recovery,Sleep,Training,Mind,Body'&&!host.querySelector('#moreCharts,.rng,#weekStats,#trainBars,.week-ban,.pr-sum,.burnout-card')&&typeof setRange==='undefined'&&typeof renderWeekBanner==='undefined',sec.join(', '));
+    const tr=ids.map(k=>[k,_ch[k]]),bad=tr.filter(([k,o])=>!o||!o.on||!o.tr||o.cfg.group!=='trends'||o.view[0]!==T-6.5||o.view[1]!==T+0.5).map(x=>x[0]);
+    check('v128 page: every Trends chart opens on the same 7 days, with 7D lit and › off',!bad.length&&$('trR7').classList.contains('on')&&$('trR7').getAttribute('aria-pressed')==='true'&&$('trNext').disabled&&$('trSpanLbl').textContent==='Last 7 days'&&!host.querySelector('#trCharts .vc-tb'),bad.length?'off: '+bad.join(', '):$('trDates').textContent+' · '+$('trSpanLbl').textContent);
+    check('v128 page: every card has an ⓘ with its own text',kh.length===15&&kh.every(h=>{const b=h.querySelector('.ib'),p=$('inf-'+h.dataset.i);return b&&b.getAttribute('aria-expanded')==='false'&&p&&p.hidden&&p.textContent.length>30;}),kh.length+' cards');
+    trInfo('hrv');const ib=host.querySelector('.kh[data-i="hrv"] .ib');
+    check('v128 page: the ⓘ opens its text and says so',ib.getAttribute('aria-expanded')==='true'&&!$('inf-hrv').hidden&&ib.classList.contains('on'),ib.getAttribute('aria-expanded'));
+    renderTrendsTab();
+    check('v128 page: an open ⓘ stays open through a re-render',host.querySelector('.kh[data-i="hrv"] .ib').getAttribute('aria-expanded')==='true'&&!$('inf-hrv').hidden,'');
+    trInfo('hrv');
+    const words=Object.values(TR_INFO).join(' ');
+    check('v128 page: the ⓘ texts and the page name no source, say no How to read, and carry no emoji',!/How to read|Polar|Intervals|Garmin|Strava|WHOOP/i.test(words+' '+host.querySelector('#trCharts').textContent)&&!/\p{Extended_Pictographic}/u.test(words),'');
+    // headers and meaning lines at 7D
+    const hd=id=>host.querySelector('#'+id+' .vc-hd'),mn=id=>(host.querySelector('#'+id+' .vc-mean')||{}).textContent||'';
+    const hs=hd('hrvCanvas').querySelector('span');
+    check('v128 page: HRV well above the usual reads Above your usual in green, and the line agrees',/Above your usual/.test(hs.textContent)&&hs.className==='good'&&/^Above your usual for 3 days/.test(mn('hrvCanvas')),hs.textContent+' | '+mn('hrvCanvas'));
+    check('v128 page: sleep says Last night, load days without a workout draw a dash',hd('sleepCanvas').querySelector('small').textContent==='Last night'&&_ch.ldCanvas.vals.includes('–')&&!_ch.ldCanvas.vals.includes('Rest'),JSON.stringify(_ch.ldCanvas.vals));
+    const lines=()=>[...host.querySelectorAll('#trCharts .vc-mean')].map(e=>e.textContent).filter(Boolean);
+    const v123=t=>t.length<=140&&t.split(/[.!?](?:\s|$)/).filter(x=>x.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(t);
+    let L=lines();check('v128 page: every line at 7D keeps to two short sentences',L.length>=10&&L.every(v123),L.filter(t=>!v123(t)).join(' | ')||L.length+' lines');
+    check('v128 page: weight values keep one decimal',_ch.wtCanvas.vals.length>=7&&_ch.wtCanvas.vals.every(t=>/^\d+\.\d$/.test(t)),JSON.stringify(_ch.wtCanvas.vals));
+    check('v128 page: soreness shows a bar swatch in the legend and coffee reads Coffee a day',!!host.querySelector('#bodyCanvas .vc-lg .vc-lq')&&/Coffee a day/.test(hd('bodyCanvas').textContent),hd('bodyCanvas').textContent);
+    // strength bars follow the window
+    const sh=()=>$('strHd').textContent,mu=m=>[...host.querySelectorAll('#strMuscles .mu-row')].find(r=>r.querySelector('.mu-n').textContent===m).querySelector('.mu-v').textContent;
+    check('v128 page: strength at 7D counts the last 7 days and the muscles trained against last week',/^Last 7 days12 hard sets/.test(sh())&&mu('chest')==='12 · on target'&&mu('legs')==='0 · none'&&/Muscles trained1/.test(sh())&&/Same as last week/.test(sh()),sh());
+    trGo(30);
+    const bad30=ids.filter(k=>_ch[k].view[0]!==T-29.5);
+    check('v128 page: 30D moves every chart and the strength bars',!bad30.length&&$('trR30').classList.contains('on')&&!$('trR7').classList.contains('on')&&$('trSpanLbl').textContent==='Last 30 days'&&/^Last 30 days39 hard sets/.test(sh())&&/Sets per week9/.test(sh())&&mu('chest')==='6 · low'&&mu('legs')==='4 · low',bad30.join(', ')+' '+sh());
+    L=lines();check('v128 page: every line at 30D keeps to two short sentences',L.every(v123),L.filter(t=>!v123(t)).join(' | ')||L.length+' lines');
+    check('v128 page: at 30D the load axis reads hours and minutes and no Trends chart writes a zone word',_ch.ldCanvas.yl.length>=2&&_ch.ldCanvas.yl.every(t=>!/\./.test(t)&&/^(\d+h( \d+m)?|\d+m)$/.test(t))&&ids.every(k=>!(_ch[k].zl||[]).length),JSON.stringify(_ch.ldCanvas.yl)+' '+ids.filter(k=>(_ch[k].zl||[]).length).join());
+    trGo(7);trShift(-1);
+    check('v128 page: ‹ moves a week back: no chip lit, › on, dates and strength follow',ids.every(k=>_ch[k].view[1]===T-6.5)&&!host.querySelector('#trRange .on')&&!$('trNext').disabled&&$('trSpanLbl').textContent==='7 days'&&sh().startsWith(`${fmtD(dAgo(13))} to ${fmtD(dAgo(7))}12 hard sets`),$('trSpanLbl').textContent+' | '+sh());
+    trShift(1);chZoomBy('wtCanvas',2);chFlush();
+    check('v128 page: a zoom on one chart moves all of them and lights no chip',ids.every(k=>Math.abs(_ch[k].view[1]-_ch[k].view[0]-14)<1e-9&&_ch[k].view[1]===T+0.5)&&!host.querySelector('#trRange .on'),JSON.stringify(_ch.hrvCanvas.view));
+    check('v128 page: nothing wider than a 360 px phone',host.scrollWidth<=360&&[...host.querySelectorAll('#trCharts .card')].every(c=>c.scrollWidth<=c.clientWidth+1),host.scrollWidth+' px');
+    check('v128 page: the detail sheet and blood charts keep their own toolbar',!/tb:false/.test(dtTrend.toString())&&!/tb:false/.test(drawBloodChart.toString())&&/span:14/.test(dtTrend.toString()),'');
+  }finally{window.requestAnimationFrame=rAF;ids.forEach(chUnmount);delete _chG.trends;_trInf={};_trSK='';_trT=null;host.remove();css.remove();}
 });
 
 Promise.all(later).then(()=>{

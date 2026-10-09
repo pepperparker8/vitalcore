@@ -132,7 +132,6 @@ const moodOn=date=>{const c=S().checkins.find(x=>x.date===date);return c?.mood||
 const mindOn=date=>S().checkins.find(x=>x.date===date)?.mindfulMin||0;
 const fmtIcu=w=>{const r=wIcu(w),x={};['hr','hrMax','kcal','elev'].forEach(k=>x[k]=Math.round(+r[k])||0);const o=[];if(x.hr)o.push('avg '+x.hr+' bpm'+(x.hrMax?', max '+x.hrMax:''));if(x.kcal)o.push(x.kcal+' kcal');if(x.elev)o.push(x.elev+' m climb');return o.join(' · ');};
 const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):'';
-const trainOn=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);
 // v123: fitness against about 4 weeks ago in one word, instead of "CTL"
 function fitWord(){const d=S();let o=null;for(let i=28;i<=35&&o==null;i++){const x=d.wellness[dAgo(i)];if(x&&x.ctl!=null)o=x.ctl;}if(o==null)return'';const c=d.intervalsData.ctl-o;return c>=3?'Rising':c<=-3?'Falling':'Steady';}
 function renderTLoad(){
@@ -151,37 +150,31 @@ function renderActList(){
 }
 
 // ── RENDER: WELLBEING ────────────────────────────────────────────────────────
-let _range=7;
-function setRange(n){_range=n;[7,30,90].forEach(x=>$('rng'+x).classList.toggle('active',n===x));renderTrendsTab();}
-const nDays=info=>DN(info.to)-DN(info.from)+1;
+// v128: minutes as a header value ('1h 5min', or '0 min': fmtDur reads 0 as a dash)
+const durVU=v=>Math.round(v)?[fmtDur(Math.round(v)),'']:['0','min'];
+// a day in a line: 'Last night' or a weekday inside the last week, a date before that
+const dayWord=(d,night)=>d===td()?(night?'Last night':'Today'):daysAgo(d)<7?['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(d+'T12:00:00').getDay()]:fmtD(d);
+// inside a sentence: 'today', 'on Monday', 'on 20 Sept'
+const onDay=d=>d===td()?'today':'on '+dayWord(d);
 function renderTrends(){
   renderMoodChart();renderBodyChart();
-  const d=S(),mr=seriesFor(_range,mindOn),tr=seriesFor(_range,trainOn);
-  const tm=mr.reduce((a,x)=>a+x.v,0),tt=tr.reduce((a,x)=>a+x.v,0),days=mr.filter(x=>x.v).length,tdays=tr.filter(x=>x.v).length;
-  const hm=v=>v>=60?Math.round(v/60*10)/10+'h':Math.round(v)+'m',dur=v=>fmtDur(Math.round(v));
-  $('mindSum').textContent=tm?`${fmtDur(tm)} · ${days} day${days!==1?'s':''}, last ${_range} days`:'none in the last '+_range+' days';
-  const mp=d.checkins.filter(c=>c.mindfulMin>0).sort((a,b)=>a.date<b.date?-1:1);
-  if(mp.length<2)$('mindBars').innerHTML=`<div class="vc-empty">${mp.length?'One session so far. Log another in Log > Mindfulness to see the trend.':'Log a mindfulness session in the Log tab and it shows here.'}</div>`;
-  else mountChart('mindBars',{key:'mind'+_range,H:130,span:_range,label:'Mindfulness',yfmt:hm,
-    series:[{name:'Mindful',type:'bar',color:'--green/.8',fmt:dur,pts:mp.map(c=>({d:c.date,v:c.mindfulMin}))}],
+  const d=S(),dur=v=>fmtDur(Math.round(v));
+  const mp=d.checkins.filter(c=>c.mindfulMin>0).sort((a,b)=>a.date<b.date?-1:1),pts=mp.map(c=>({d:c.date,v:c.mindfulMin}));
+  if(mp.length<2){chUnmount('mindBars');$('mindBars').innerHTML=`<div class="vc-empty">${mp.length?'One session so far. Log another in Log > Mindfulness to see the trend.':'Log a mindfulness session in the Log tab and it shows here.'}</div>`;return;}
+  const T=DN(td()),cw=ND(T-((T+3)%7+7)%7),nd=k=>`${k} day${k!==1?'s':''}`;
+  mountChart('mindBars',{key:'mind',group:'trends',tb:false,H:130,label:'Mindfulness',yfmt:axMin,ysteps:CH_MIN_STEPS,
+    series:[{name:'Mindful',type:'bar',color:'--green/.8',zero:'–',fmt:dur,vl:v=>fmtDur(Math.round(v)).split(' '),pts}],
+    head:x=>{
+      const R=trRight(pts,x,{tot:true,f:durVU});
+      if(x.wk){const v=trLeft(pts,x,true),k=pts.filter(p=>DN(p.d)>=DN(x.d)&&DN(p.d)<=DN(x.d)+6).length;if(!v)return{...R,v:null};const[a,u]=durVU(v);return{...R,v:a,u,st:nd(k),sa:''};}
+      if(!x.p)return{...R,v:null};const[a,u]=durVU(x.p.v);return{...R,v:a,u};},
     means:info=>{
       // calm on practice days against other days, from your own check-ins; else how often
       const cis=d.checkins.filter(c=>ciFull(c)&&c.date>=info.from&&c.date<=info.to),on=cis.filter(c=>c.mindfulMin>0),off=cis.filter(c=>!(c.mindfulMin>0));
       if(on.length>=3&&off.length>=3){const k=avg(on.map(c=>5-c.stress))-avg(off.map(c=>5-c.stress));if(k>=0.3)return'Calmer on days you practised.';if(k<=-0.3)return'Less calm on days you practised.';}
-      const sh=info.n/nDays(info);return sh>=0.7?'Most days.':sh>=0.35?'A few days a week.':'Now and then.';}});
-  $('trainSum').textContent=tt?`${fmtDur(tt)} · ${tdays} day${tdays!==1?'s':''}, last ${_range} days`:'none in the last '+_range+' days';
-  const tp=[...new Set(d.workouts.map(w=>w.date))].sort().map(dt=>({d:dt,v:trainOn(dt)})).filter(p=>p.v>0);
-  if(tp.length<2)$('trainBars').innerHTML=`<div class="vc-empty">${tp.length?'One workout so far. Log another to see the trend.':'Log a workout in the Log tab and it shows here.'}</div>`;
-  else mountChart('trainBars',{key:'train'+_range,H:130,span:_range,label:'Training time',yfmt:hm,
-    series:[{name:'Training',type:'bar',color:'--t2',fmt:dur,pts:tp}],
-    hi:true,extra:dt=>d.workouts.filter(w=>w.date===dt).map(w=>w.type+(w.durMin?' '+fmtDur(w.durMin):'')).join(' · '),
-    means:info=>{
-      const set=new Set(info.pts.map(p=>p.d));let run=0;for(let x=DN(info.to);x>=DN(info.from)&&set.has(ND(x));x--)run++;
-      if(run>=7)return`${run} days in a row without a rest day. Take one soon.`;
-      // the same number of days just before the dates in view
-      const n=nDays(info),f0=ND(DN(info.from)-n),now=info.avg*info.n,prev=tp.filter(p=>p.d>=f0&&p.d<info.from).reduce((a,p)=>a+p.v,0);
-      if(!prev)return'';const r=now/prev-1;
-      return Math.abs(r)<0.15?'About the same as the stretch before.':`${r>0?'Up':'Down'} about ${Math.round(Math.abs(r)*10)*10}% on the stretch before.`;}});
+      const sh=pts.filter(p=>p.d>=info.from&&p.d<=info.to).length/info.days;return sh>=0.7?'Most days.':sh>=0.35?'A few days a week.':'Now and then.';},
+    weekly:{series:[{name:'Mindful',type:'bar',w:7,color:'--green/.8',fmt:dur,pts:weekBuckets(pts).map(w=>({d:w.d,v:w.v})),barColor:(v,dt)=>dt===cw?'--green/.45':'--green/.8'}],
+      extra:dt=>{const k=pts.filter(p=>DN(p.d)>=DN(dt)&&DN(p.d)<=DN(dt)+6).length;return nd(k)+(dt===cw?' (so far)':'');}}});
 }
 // bedtime as minutes from noon, so 23:30 and 00:30 sit an hour apart
 const bedMin=t=>{const[h,m]=t.split(':').map(Number);return(h<12?h+24:h)*60+m-720;};
@@ -191,7 +184,10 @@ function sleepMeaning(info,goal){
   const gH=goal/60,P=info.pts,l=last(P),r5=m=>Math.max(5,Math.round(m/5)*5);let k=0;for(let i=P.length-1;i>=0&&P[i].v<gH-1;i--)k++;
   if(k>=2&&daysAgo(l.d)<=1)return`Short ${k} nights in a row. An early night helps.`;
   const wk=S().sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<7&&slCounts(x)),debt=wk.reduce((a,x)=>a+(goal-x.durMin),0),diff=Math.round(info.avg*60-goal);
-  let t=info.to>=dAgo(1)&&wk.length>=3&&debt>=60?`${fmtDur(r5(debt))} short of your goal this week.`:Math.abs(diff)<10?'On your goal on average.':`About ${fmtDur(r5(Math.abs(diff)))} ${diff<0?'under':'over'} your goal on average.`;
+  if(info.to>=dAgo(1)&&wk.length>=3&&debt>=60){
+    const sn=wk.reduce((m,x)=>!m||x.durMin<m.durMin?x:m,null);
+    return`${fmtDur(r5(debt))} short of your goal this week.`+(sn.durMin<=goal-60?` ${dayWord(sn.date,true)} was the short night.`:'');}
+  let t=Math.abs(diff)<10?'On your goal on average.':`About ${fmtDur(r5(Math.abs(diff)))} ${diff<0?'under':'over'} your goal on average.`;
   const beds=S().sleepLogs.filter(x=>x.bed&&x.date>=info.from&&x.date<=info.to).map(x=>bedMin(x.bed));
   if(beds.length>=5){const m=avg(beds),sd=Math.sqrt(avg(beds.map(x=>(x-m)**2)));if(sd>=45)t+=` Bedtime varies by about ${fmtDur(r5(sd))}.`;}
   return t;
@@ -201,13 +197,24 @@ function renderSleepBars(){
   const nights=d.sleepLogs.filter(s=>s.durMin&&slCounts(s)).sort((a,b)=>a.date<b.date?-1:1);   // a battery night is a gap, not a short bar
   const host=$('sleepCanvas');
   if(host){
-    if(nights.length<2)host.innerHTML=`<div class="vc-empty">${nights.length?'One night saved. Log another and your sleep chart appears.':'Log your sleep in the Log tab (bedtime and wake-up) to see it here.'}</div>`;
-    else mountChart('sleepCanvas',{key:'sleep',H:160,span:14,label:'Time asleep',yfmt:v=>Math.round(v)+'h',
-      series:[{name:'Asleep',type:'bar',color:'--teal',fmt:v=>fmtDur(Math.round(v*60)),pts:nights.map(s=>({d:s.date,v:s.durMin/60})),
-        barColor:v=>v>=gH?'--teal':v>=gH-1?'--teal/.5':'--amber'}],
-      lines:[{v:gH,label:'Goal '+fmtDur(goal),color:'--teal'}],hi:true,
-      extra:date=>{const s=d.sleepLogs.find(x=>x.date===date);if(!s)return'';return[s.bed&&s.wake?`${s.bed} to ${s.wake}`:'',s.score?`score ${s.score} of 100`:'',s.rested?`felt ${['','not rested','so-so','rested','fully rested'][s.rested]||''}`:''].filter(Boolean).join(' · ');},
-      means:info=>sleepMeaning(info,goal)});
+    if(nights.length<2){chUnmount('sleepCanvas');host.innerHTML=`<div class="vc-empty">${nights.length?'One night saved. Log another and your sleep chart appears.':'Log your sleep in the Log tab (bedtime and wake-up) to see it here.'}</div>`;}
+    else{
+      const pts=nights.map(s=>({d:s.date,v:s.durMin/60})),hv=v=>fmtDur(Math.round(v*60)),r5=m=>Math.max(5,Math.round(m/5)*5);
+      const T=DN(td()),cw=ND(T-((T+3)%7+7)%7),bc=v=>v>=gH?'--teal':v>=gH-1?'--teal/.5':'--amber',gl=[{v:gH,label:'Goal '+fmtDur(goal),color:'--teal'}];
+      // under the goal by 10 minutes or more says by how much; an hour or more is a warning
+      const vsGoal=v=>{const m=goal-v*60;return m>=10?{st:`${fmtDur(r5(m))} under your goal`,cls:m>=60?'warn':'',sa:'▼'}:{st:'Goal met',cls:'good'};};
+      mountChart('sleepCanvas',{key:'sleep',group:'trends',tb:false,legend:true,today:'Last night',H:160,label:'Time asleep',yfmt:v=>Math.round(v)+'h',
+        series:[{name:'Asleep',type:'bar',color:'--teal',zero:'–',fmt:hv,vl:v=>hv(v).split(' '),pts,barColor:bc}],
+        lines:gl,
+        extra:date=>{const s=d.sleepLogs.find(x=>x.date===date);if(!s)return'';return[s.bed&&s.wake?`${s.bed} to ${s.wake}`:'',s.score?`score ${s.score} of 100`:'',s.rested?`felt ${['','not rested','so-so','rested','fully rested'][s.rested]||''}`:''].filter(Boolean).join(' · ');},
+        head:x=>{
+          const R=trRight(pts,x,{f:v=>[hv(v),''],r:v=>Math.round(v*12)/12});
+          const v=x.wk?trLeft(pts,x,false):x.p?x.p.v:null;
+          return v==null?{...R,v:null}:{...R,v:hv(v),u:'',...vsGoal(v)};},
+        means:info=>sleepMeaning(info,goal),
+        weekly:{series:[{name:'Asleep',type:'bar',w:7,color:'--teal',fmt:hv,pts:weekBuckets(pts,'avg').map(w=>({d:w.d,v:w.v})),barColor:(v,dt)=>dt===cw?'--teal/.5':bc(v)}],lines:gl,
+          extra:dt=>{const k=pts.filter(p=>DN(p.d)>=DN(dt)&&DN(p.d)<=DN(dt)+6).length;return`Average of ${k} night${k!==1?'s':''}`+(dt===cw?' (so far)':'');}}});
+    }
   }
   const l=last(nights.filter(s=>s.deepH||s.deepM||s.remH||s.remM));
   $('stNight').textContent=l?'Sleep stages, night ending '+fmtD(l.date):'';$('stBox').style.display=l?'':'none';
@@ -219,17 +226,22 @@ function renderSleepBars(){
 function renderWtChart(){
   const d=S(),host=$('wtCanvas');if(!host)return;
   const all=d.measurements.filter(m=>m.weight).sort((a,b)=>a.date<b.date?-1:1),goal=d.profile.wtGoal||null,gl=$('wtGoalLine');
-  if(all.length<2){host.innerHTML='';gl.textContent=all.length?`${all[0].weight} kg so far. Log again to see a trend.`:'Log your weight in the Log tab to see a trend.';return;}
-  const f1=v=>(Math.round(v*10)/10)+' kg';
+  if(all.length<2){chUnmount('wtCanvas');host.innerHTML='';gl.textContent=all.length?`${all[0].weight} kg so far. Log again to see a trend.`:'Log your weight in the Log tab to see a trend.';return;}
+  const f1=v=>(Math.round(v*10)/10).toFixed(1)+' kg',s1=v=>(Math.round(v*10)/10).toFixed(1);   // always one decimal: 73.0 sits beside 73.1
   // the 7-day average smooths out water and food swings, so the trend is read from it, never from one weigh-in
   const raw=all.map(m=>({d:m.date,v:m.weight})),sm=raw.map(p=>{const w=raw.filter(q=>q.d<=p.d&&DN(p.d)-DN(q.d)<7);return{d:p.d,v:avg(w.map(q=>q.v))};});
-  mountChart('wtCanvas',{key:'wt',H:170,span:90,wide:true,label:'Body weight',yfmt:v=>Math.round(v*10)/10,ref:goal?[{v:goal,label:'Goal '+goal}]:[],
-    series:[{pts:raw,color:'--teal',name:'Weight',fmt:f1,thin:true},{pts:sm,color:'--text',name:'7-day average',fmt:f1,noDots:true}],
+  const r1=v=>Math.round(v*10)/10;
+  mountChart('wtCanvas',{key:'wt',group:'trends',tb:false,legend:true,H:170,label:'Body weight',yfmt:r1,lines:goal?[{v:goal,label:'Goal '+goal+' kg',color:'--t3'}]:[],
+    series:[{pts:raw,color:'--teal',name:'Weight',fmt:f1,vl:s1,thin:true},{pts:sm,color:'--text',name:'7-day average',fmt:f1,noDots:true,lg:true}],
     hi:true,
+    head:x=>{
+      const R=trRight(raw,x,{f:v=>[s1(v),'kg'],r:r1});if(!x.p)return{...R,v:null};
+      const v=x.p.v,g=goal?r1(v-goal):null;
+      return{...R,v:s1(v),u:'kg',...(g==null?{}:Math.abs(g)<0.5?{st:'At your goal',cls:'good'}:{st:`${f1(Math.abs(g))} ${g>0?'over':'under'} your goal`,sa:g>0?'▲':'▼'})};},
     means:info=>{
       const v=sm.filter(p=>p.d>=info.from&&p.d<=info.to);if(v.length<2)return'';
       const a=v[0],b=last(v),wks=Math.max(1,(DN(b.d)-DN(a.d))/7),ch=b.v-a.v,rate=ch/wks;
-      let t=f1(b.v)+(Math.abs(ch)<0.3?', steady':`, ${ch<0?'down':'up'} ${f1(Math.abs(ch))} since ${fmtD(a.d)}`);
+      let t=f1(b.v)+(Math.abs(ch)<0.3?', steady':`, ${ch<0?'down':'up'} ${f1(Math.abs(ch))} since ${dayWord(a.d).replace('Today','today')}`);
       if(Math.abs(rate)>b.v*TH.WT_RATE)return t+(rate<0?'. That is fast; eat enough on training days.':'. That is fast.');
       if(goal)t+=Math.abs(b.v-goal)<0.5?': at your goal':Math.abs(ch)<0.3?`; your goal is ${goal} kg`:`: ${Math.sign(ch)===Math.sign(goal-b.v)?'towards':'away from'} your ${goal} kg goal`;
       return t+'.';}});
@@ -245,21 +257,21 @@ function calcBurnout(){
   return{score,label:score<TH.BURNOUT_MOD?'Low risk':score<TH.BURNOUT_HIGH?'Moderate risk':'High risk',sub:score<TH.BURNOUT_MOD?'':score<TH.BURNOUT_HIGH?'Some stress signals. Watch energy and sleep.':'Low energy, low mood or stress for a week. Keep hard days few and protect sleep.',psy,phys:null,n:cis.length};
 }
 function renderBurnout(){
-  const b=calcBurnout();
-  $('boScore').textContent=b.score;$('boLabel').textContent=b.label;$('boSub').textContent=b.sub;
-  // the same maths for every day with a check-in, over the 7 check-ins up to that day
+  // the same maths as calcBurnout for every day with a check-in, over the 7 check-ins up to that day
   const cis=S().checkins.filter(ciFull).sort((a,c)=>a.date<c.date?-1:1),pts=cis.map((c,i)=>{const w=cis.slice(Math.max(0,i-6),i+1);
     return{d:c.date,v:Math.round(100-w.reduce((a,x)=>a+(5-x.stress)+x.energy+x.mood,0)/(w.length*12)*100)};}).filter((p,i)=>i>=2);
-  if(pts.length<2){$('boCanvas').innerHTML='';return;}
-  mountChart('boCanvas',{key:'bo',H:140,min:0,max:100,span:60,label:'Burnout risk',yfmt:v=>Math.round(v),
+  if(pts.length<2){chUnmount('boCanvas');$('boCanvas').innerHTML=`<div class="vc-empty">${cis.length?'Check in a few more days and your burnout risk shows here.':'Your burnout risk appears after a few check-ins in the Log tab.'}</div>`;return;}
+  const lvl=v=>v>=TH.BURNOUT_HIGH?{st:'High risk',cls:'bad',sa:'▲'}:v>=TH.BURNOUT_MOD?{st:'Moderate risk',cls:'warn',sa:'▲'}:{st:'Low risk',cls:'good'};
+  mountChart('boCanvas',{key:'bo',group:'trends',tb:false,H:140,min:0,max:100,label:'Burnout risk',yfmt:v=>Math.round(v),
     series:[{name:'Risk',color:'--text',fmt:v=>String(Math.round(v)),pts}],
     zones:[{lo:TH.BURNOUT_HIGH,hi:null,color:'--red',label:'High'},{lo:TH.BURNOUT_MOD,hi:TH.BURNOUT_HIGH,color:'--amber',label:'Moderate'},{lo:null,hi:TH.BURNOUT_MOD,color:'--green',label:'Low'}],
     hi:true,
+    head:x=>{const R=trRight(pts,x,{f:v=>[String(Math.round(v)),'']});return x.p?{...R,v:String(Math.round(x.p.v)),u:'of 100',...lvl(x.p.v)}:{...R,v:null};},
     means:info=>{
       const v=info.pts,hi=v.filter(p=>p.v>=TH.BURNOUT_HIGH),mod=v.filter(p=>p.v>=TH.BURNOUT_MOD&&p.v<TH.BURNOUT_HIGH).length;
       let run=0;for(let i=v.length-1;i>=0&&v[i].v>=TH.BURNOUT_MOD;i--)run++;
       if(run>=7)return`Above low for ${run} check-ins in a row. Easier days and more sleep help most.`;
-      return hi.length?`High on ${hi.length} day${hi.length>1?'s':''}, the latest ${fmtD(last(hi).d)}.`:mod?`Mostly low, moderate on ${mod} day${mod>1?'s':''}.`:'Low throughout.';}});
+      return hi.length?`High on ${hi.length} day${hi.length>1?'s':''}, the latest ${dayWord(last(hi).d).replace('Today','today')}.`:mod?`Mostly low, moderate on ${mod} day${mod>1?'s':''}.`:'Low throughout.';}});
 }
 // v120: one line at a time. "All four" is the Mind score (calcMind's maths) with its zones; the chips show one answer
 // on its own, Low to Great. Tapping a day always lists the four answers in words. Four overlapping lines were hard to read.
@@ -268,22 +280,24 @@ function renderMoodChart(){
   const d=S(),host=$('moodCanvas'),ch=$('moodChips');if(!host)return;
   const cis=d.checkins.filter(ciFull).sort((a,b)=>a.date<b.date?-1:1);
   $('moodNote').textContent=cis.length>1?'':cis.length?'One check-in so far. Check in again tomorrow and your trend appears.':'Your trends appear after your first check-in in the Log tab.';
-  if(cis.length<2){host.innerHTML='';if(ch)ch.innerHTML='';return;}
+  if(cis.length<2){chUnmount('moodCanvas');host.innerHTML='';if(ch)ch.innerHTML='';return;}
   const L=['','Low','Fair','Good','Great'],f=v=>L[Math.round(v)]||'';
   // an average in words, to the nearest half step: 3.4 is "Good", 3.5 "between Good and Great"
   const fa=v=>{const h=Math.round(v*2)/2;return h%1?`between ${L[Math.floor(h)]} and ${L[Math.ceil(h)]}`:L[h];};
   const K=[['Mood',c=>c.mood],['Energy',c=>c.energy],['Calm',c=>5-c.stress],['Motivation',c=>c.motivation]];
   if(!K.some(k=>k[0]===_moodK))_moodK='Mind';
-  if(ch)ch.innerHTML=[['Mind','All four'],...K.map(k=>[k[0],k[0]])].map(([k,n])=>`<button class="chip ${k===_moodK?'sel':''}" onclick="_moodK='${k}';renderMoodChart()">${n}</button>`).join('');
+  if(ch)ch.innerHTML=[['Mind','All four'],...K.map(k=>[k[0],k[0]])].map(([k,n])=>`<button class="chip ${k===_moodK?'sel':''}" aria-pressed="${k===_moodK}" onclick="_moodK='${k}';renderMoodChart()">${n}</button>`).join('');
   const byDate={};cis.forEach(c=>byDate[c.date]=c);
   const extra=dt=>byDate[dt]?K.map(([n,fn])=>n+' '+f(fn(byDate[dt]))).join(' · '):'';
   const inView=info=>cis.filter(c=>c.date>=info.from&&c.date<=info.to);
   // a current run of check-ins with two or more answers under Good leads the line
-  const runNow=v=>{let k=0;for(let i=v.length-1;i>=0&&K.filter(q=>q[1](v[i])<3).length>=2;i--)k++;return k>=3&&daysAgo(last(v).date)<=1?`${k} low check-ins in a row. Look at sleep, training and stress.`:'';};
+  const runNow=v=>{let k=0;for(let i=v.length-1;i>=0&&K.filter(q=>q[1](v[i])<3).length>=2;i--)k++;return k>=3&&daysAgo(last(v).date)<=1?`${k} check-ins in a row with two answers or more under Good. Look at sleep, training and stress.`:'';};
   if(_moodK==='Mind'){
-    const zones=mindZones();
-    mountChart('moodCanvas',{key:'mood',H:170,min:25,max:100,span:30,label:'Mind',yfmt:v=>String(Math.round(v)),zones,hi:true,extra,
-      series:[{name:'Mind',color:'--text',fmt:v=>String(Math.round(v)),pts:cis.map(c=>({d:c.date,v:mindOf(c)}))}],
+    const zones=mindZones(),pts=cis.map(c=>({d:c.date,v:mindOf(c)})),zc={Good:'good',Strained:'warn'};
+    mountChart('moodCanvas',{key:'mood',group:'trends',tb:false,H:170,min:25,max:100,label:'Mind',yfmt:v=>String(Math.round(v)),zones,hi:true,extra,
+      series:[{name:'Mind',color:'--text',fmt:v=>String(Math.round(v)),pts}],
+      head:x=>{const R=trRight(pts,x,{f:v=>[String(Math.round(v)),'']});if(!x.p)return{...R,v:null};const z=chZone({zones},x.p.v);
+        return{...R,v:String(Math.round(x.p.v)),u:'of 100',...(z?{st:z.label,cls:zc[z.label]||'',sa:z.label==='Strained'?'▼':'●'}:{})};},
       means:info=>{
         const v=inView(info);if(!v.length)return'';const r=runNow(v);if(r)return r;
         const cnt=zones.map(z=>[z.label,v.filter(c=>chZone({zones},mindOf(c))===z).length]).sort((a,b)=>b[1]-a[1]),top=cnt[0];
@@ -293,9 +307,11 @@ function renderMoodChart(){
         if(m[3][1]-lo[1]>=0.3)t+=lo[0]==='Calm'&&lo[1]<2.75?'; stress pulls it down most':`; ${lo[0].toLowerCase()} is the lowest`;
         return t+'.';}});
   }else{
-    const fn=K.find(k=>k[0]===_moodK)[1];
-    mountChart('moodCanvas',{key:'mood',H:170,min:1,max:4,span:30,label:_moodK,yfmt:f,extra,
-      series:[{name:_moodK,color:'--text',fmt:f,pts:cis.map(c=>({d:c.date,v:fn(c)}))}],
+    const fn=K.find(k=>k[0]===_moodK)[1],pts=cis.map(c=>({d:c.date,v:fn(c)}));
+    mountChart('moodCanvas',{key:'mood',group:'trends',tb:false,H:170,min:1,max:4,label:_moodK,yfmt:f,extra,
+      series:[{name:_moodK,color:'--text',fmt:f,pts}],
+      // words, not numbers: the right side is the window's average to the nearest word, without a change line
+      head:x=>{const g=trAgg(pts,x,false),R=g.v==null?{}:{rl:trRl(x.n),rv:L[Math.round(g.v)]};return x.p?{...R,v:f(x.p.v),st:''}:{...R,v:null};},
       lines:[{v:3,color:'--t3'}],
       stats:{words:['Best','Worst']},
       means:info=>{
@@ -311,19 +327,26 @@ function renderBodyChart(){
   const d=S(),host=$('bodyCanvas');if(!host)return;
   const cis=d.checkins.filter(c=>c.soreness!=null||c.coffee!=null).sort((a,b)=>a.date<b.date?-1:1);
   const note=$('bodyNote');
-  if(cis.length<2){host.innerHTML='';note.textContent='Log soreness and coffee in your check-in for a few days to see them here.';return;}
+  if(cis.length<2){chUnmount('bodyCanvas');host.innerHTML='';note.textContent='Log soreness and coffee in your check-in for a few days to see them here.';return;}
   const SL=['None','Mild','Moderate','Severe'];
   const sore=cis.filter(c=>c.soreness!=null).map(c=>({d:c.date,v:c.soreness-1}));
   const cof=cis.filter(c=>c.coffee!=null).map(c=>({d:c.date,v:c.coffee}));
   const series=[];
-  if(sore.length>1)series.push({name:'Soreness',type:'bar',color:'--red',fmt:v=>SL[Math.round(v)]||'',pts:sore,barColor:v=>v>=3?'--red':v>=2?'--red/.65':'--red/.35'});
-  if(cof.length>1)series.push({name:'Coffee',color:'--text',thin:true,fmt:v=>Math.round(v)+(Math.round(v)>=4?'+':'')+' cups',pts:cof});
-  mountChart('bodyCanvas',{key:'body',H:150,min:0,max:4,span:30,label:'Soreness and coffee',yfmt:v=>String(Math.round(v)),series,
+  if(sore.length>1)series.push({name:'Soreness',type:'bar',color:'--red',lg:true,fmt:v=>SL[Math.round(v)]||'',pts:sore,barColor:v=>v>=3?'--red':v>=2?'--red/.65':'--red/.35'});
+  const cups=v=>Math.round(v)+(Math.round(v)>=4?'+':'');
+  if(cof.length>1)series.push({name:'Coffee',color:'--text',thin:true,lg:true,fmt:v=>cups(v)+' cups',vl:cups,pts:cof});
+  const byDate={},ci=series.findIndex(s=>s.name==='Coffee');cis.forEach(c=>byDate[c.date]=c);
+  if(!series.length){chUnmount('bodyCanvas');host.innerHTML='';note.textContent='Log soreness and coffee in your check-in for a few days to see them here.';return;}
+  mountChart('bodyCanvas',{key:'body',group:'trends',tb:false,legend:true,H:150,min:0,max:4,label:'Soreness and coffee',yfmt:v=>String(Math.round(v)),series,vs:ci>=0?[ci]:[],
     lines:cof.length>1?[{v:3,label:'3+ cups',color:'--amber'}]:[],
+    head:x=>{
+      const r1=v=>Math.round(v*10)/10,R=cof.length>1?trRight(cof,x,{f:v=>[String(r1(v)),r1(v)===1?'cup':'cups'],r:r1,rl:'Coffee a day'}):{},c=byDate[x.d];
+      if(!c)return{...R,v:null};const n=c.coffee!=null?Math.round(c.coffee):null;
+      return{...R,v:c.soreness!=null?SL[c.soreness-1]:'–',u:c.soreness!=null?'soreness':'',st:n==null?'':n?`${cups(n)} cup${n===1?'':'s'} of coffee`+(c.coffeeLate?', late':''):'No coffee',sa:''};},
     means:info=>{
       const v=cis.filter(c=>c.date>=info.from&&c.date<=info.to);if(!v.length)return'';
       const s=v.filter(c=>c.soreness>=2),m=v.filter(c=>c.soreness>=3),cf=v.filter(c=>c.coffee!=null),late=v.filter(c=>c.coffeeLate);
-      const t=m.length?`Sore on ${m.length} day${m.length>1?'s':''}, the latest ${fmtD(last(m).date)}.`:s.length?'Only mild soreness.':'No soreness.';
+      const t=m.length?`Sore on ${m.length} day${m.length>1?'s':''}, the latest ${dayWord(last(m).date).replace('Today','today')}.`:s.length?'Only mild soreness.':'No soreness.';
       return cf.length?t+' '+cupsLine(avg(cf.map(c=>c.coffee)),late.length,cf.length):t;}});
   // Coffee vs the following night's sleep, in words
   const slBy={};d.sleepLogs.forEach(s=>{if(s.durMin)slBy[s.date]=s.durMin;});
@@ -336,12 +359,6 @@ function renderBodyChart(){
     // v123: only when it makes a difference of 20 minutes or more
     note.textContent=Math.abs(diff)>=20?`After days with 3 or more cups you slept about ${fmtDur(Math.round(Math.abs(diff)/5)*5)} ${diff>0?'less':'more'}.`:'';
   }else note.textContent='';
-}
-function renderWeekBanner(){
-  const d=S(),wk=d.workouts.filter(w=>daysAgo(w.date)<7).length;
-  const sl=d.sleepLogs.filter(s=>s.score).slice(-7),avg=sl.length?Math.round(sl.reduce((a,s)=>a+s.score,0)/sl.length):0;
-  const sc=heroScore(),mm=seriesFor(7,mindOn).reduce((a,x)=>a+x.v,0);
-  $('weekStats').textContent=`${wk} workout${wk!==1?'s':''} · ${mm?fmtDur(mm)+' mindful':'no mindfulness yet'} · ${bodyLive()?'body':'readiness'} ${sc??'—'} · sleep ${avg?avg+'/100':'—'}`;
 }
 
 // ── RENDER: HISTORY ──────────────────────────────────────────────────────────

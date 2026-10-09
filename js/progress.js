@@ -34,35 +34,46 @@ function prMetrics(key){
   return w?[['e1','Est. 1RM'],['top','Top set'],['vol','Volume']]:t?[['secs','Hold time']]:[['reps','Reps']];
 }
 function renderProgress(){
-  const el=$('progCard');if(!el)return;
+  const el=$('progBody');if(!el)return;
   const{lifts,sp}=prOptions();
-  if(!lifts.length&&!sp.length){el.innerHTML='<div class="sec">Progress &amp; PRs</div><div class="empty-state" style="padding:8px 0"><div class="empty-title">Nothing to chart yet</div><div class="empty-sub">Log a lift with sets, or a run, ride or swim with distance and time. Each one gets a progress chart with your PRs marked.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';return;}
+  if(!lifts.length&&!sp.length){chUnmount('prCanvas');el.innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">Nothing to chart yet</div><div class="empty-sub">Log a lift with sets, or a run, ride or swim with distance and time. Each one gets a progress chart with your PRs marked.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';return;}
   const all=[...lifts,...sp];if(!all.includes(_prKey))_prKey=all[0];
   const mets=prMetrics(_prKey);if(!mets.some(m=>m[0]===_prMet))_prMet=mets[0][0];
   const sr=prSeries(_prKey,_prMet==='spd'?'pace':_prMet),pts=sr.pts;
   const opt=`<optgroup label="Lifts">${lifts.map(n=>`<option ${n===_prKey?'selected':''}>${esc(n)}</option>`).join('')}</optgroup><optgroup label="Endurance">${sp.map(n=>`<option ${n===_prKey?'selected':''}>${n}</option>`).join('')}</optgroup>`;
   const seg=(items,cur,fn)=>items.map(([v,l])=>`<button class="${cur===v?'active':''}" onclick="${fn}('${v}')">${l}</button>`).join('');
-  let h=`<div class="sec">Progress &amp; PRs</div><select class="sel-inp" onchange="_prKey=this.value;renderProgress()">${opt}</select>
+  let h=`<select class="sel-inp" onchange="_prKey=this.value;renderProgress()">${opt}</select>
     <div class="ld-seg">${seg(mets,_prMet,'setPrM')}</div>`;
-  if(pts.length<1){el.innerHTML=h+'<div class="set-note">No sessions with this measure in the period. Try a longer range.</div>';return;}
+  if(pts.length<1){chUnmount('prCanvas');el.innerHTML=h+'<div class="set-note">No sessions with this measure yet.</div>';return;}
   h+='<div id="prCanvas" style="margin-top:6px"></div>';
   // running bests
   let best=-Infinity;const marks=[];pts.forEach((p,i)=>{if(p.v>best+1e-9){if(i>0)marks.push(i);best=p.v;}});
-  const bi=pts.reduce((b,p,i)=>p.v>pts[b].v?i:b,0),b=pts[bi],l=last(pts);
-  h+=`<div class="pr-sum"><div><div class="pr-k">PR</div><div class="pr-v">${b.txt}</div><div class="pr-s">${fmtD(b.date)}</div></div><div><div class="pr-k">LATEST</div><div class="pr-v">${l.txt}</div><div class="pr-s">${fmtD(l.date)}</div></div><div><div class="pr-k">SESSIONS</div><div class="pr-v">${pts.length}</div><div class="pr-s">&nbsp;</div></div></div>`;
   el.innerHTML=h;
   const byD=new Map(pts.map(p=>[p.date,p]));
   const md=marks.map(i=>pts[i].date);
-  mountChart('prCanvas',{key:'pr'+_prKey+_prMet,H:190,span:365,wide:true,yfmt:sr.yf,marks:md,extra:dt=>{const p=byD.get(dt);return p?p.sub:'';},label:_prKey+' progress',
-    series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:sr.f}],
-    hi:true,stats:{words:sr.words},means:info=>prMeaning(info,sr.df,sr.ch,md,'sessions')});
+  mountChart('prCanvas',{key:'pr'+_prKey+_prMet,group:'trends',tb:false,H:190,yfmt:sr.yf,marks:md,extra:dt=>{const p=byD.get(dt);return p?p.sub:'';},label:_prKey+' progress',
+    empty:'One session so far. Log another and your progress shows here.',
+    series:[{pts:pts.map(p=>({d:p.date,v:p.v})),color:'--text',name:_prKey,fmt:sr.f,vl:v=>prNU(sr.f(v))[0]}],
+    hi:true,stats:{words:sr.words},means:info=>prMeaning(info,sr.df,sr.ch,md,'sessions'),head:prHead(pts,md)});
 }
+// the header of a progress chart: the session on the day (else the last one before the dates on screen) and whether it was a best; the best in view on the right
+// pts [{date, v (higher is better), txt}], md the dates of new bests
+function prHead(pts,md){
+  const byD=new Map(pts.map(p=>[p.date,p])),bestTo=dt=>pts.filter(p=>p.date<=dt).reduce((m,p)=>!m||p.v>m.v?p:m,null);
+  return x=>{
+    const w=pts.filter(p=>p.date>=x.from&&p.date<=x.to),wb=w.reduce((m,p)=>!m||p.v>m.v?p:m,null),R=wb?{rl:x.n===365?'Best in a year':`Best in ${x.n} days`,rv:prNU(wb.txt)[0],ru:prNU(wb.txt)[1]}:{};
+    const q=x.p?byD.get(x.p.d):x.tap?null:pts.filter(p=>p.date<=x.to).pop();if(!q)return{...R,v:null};
+    const b=bestTo(q.date),nb=md.includes(q.date),top=nb||q.v>=b.v-1e-9;   // equal to the best counts as your best
+    return{...R,lab:x.p?undefined:'Last session, '+fmtD(q.date),v:prNU(q.txt)[0],u:prNU(q.txt)[1],st:nb?'New best':top?'Your best':`Best so far ${b.txt}`,cls:top?'good':'',sa:top?'●':''};};
+}
+// '~114 kg 1RM' -> ['~114', 'kg 1RM'], so the unit is small in the header; a pace such as '5:12/km' stays whole
+function prNU(t){const m=/^(~?[\d.,:]+) (.+)$/.exec(t);return m?[m[1],m[2]]:[t,''];}
 // v123: one line. First few against last few sessions in view, plus the new bests in view
 function prMeaning(info,df,ch,marks,unit){
-  const v=info.pts;if(v.length<2)return'';
+  const v=info.pts,pr=marks.filter(x=>x>=info.from&&x<=info.to),on=x=>{const w=dayWord(x);return w==='Today'?'today':'on '+w;};
+  if(v.length<2)return pr.length?`A new best ${on(last(pr))}.`:'';
   const k=v.length>=6?3:1,m=a=>a.reduce((s,p)=>s+p.v,0)/a.length,a=m(v.slice(0,k)),b=m(v.slice(-k)),d=b-a,pct=a?Math.round(Math.abs(d/a)*100):0;
   const t=pct<2?'About level':`${d>0?ch[0]:ch[1]} ${df(Math.abs(d))} over these ${unit}`;
-  const pr=marks.filter(x=>x>=info.from&&x<=info.to);
-  return t+(pr.length?`; ${pr.length===1?'a new best on ':pr.length+' new bests, the latest on '}${fmtD(pr[pr.length-1])}.`:'.');
+  return t+(pr.length?`; ${pr.length===1?'a new best ':pr.length+' new bests, the latest '}${on(pr[pr.length-1])}.`:'.');
 }
 function setPrM(v){_prMet=v;renderProgress();}

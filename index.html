@@ -111,69 +111,37 @@
 <div class="page page-fade" id="pg-trends">
   <div class="seg"><button class="active" id="segCharts" onclick="setTrView('charts')">Charts</button><button id="segCal" onclick="setTrView('cal')">Calendar &amp; bests</button></div>
 <div id="trCharts">
-  <div class="week-ban"><div class="week-ban-lbl">THIS WEEK</div><div style="font-size:14px;color:rgba(255,255,255,0.85)" id="weekStats">—</div></div>
-  <div class="rng"><button class="active" id="rng7" onclick="setRange(7)">7 days</button><button id="rng30" onclick="setRange(30)">30 days</button><button id="rng90" onclick="setRange(90)">90 days</button></div>
-
-  <div class="card">
-    <div class="sec">Fitness, fatigue &amp; form</div>
-    <div class="tr-sum" id="formSum"></div>
-    <div id="formCanvas"></div>
-    <div class="sec" id="tsbSec" style="margin-top:16px">Form</div>
-    <div id="tsbCanvas"></div>
-    <div class="set-note" id="formNote"></div>
-  </div>
-  <div class="card" id="loadCard"></div>
-  <div class="card" id="progCard"></div>
-  <div class="card">
-    <div class="sec">Readiness trend</div>
-    <div id="readCanvas"></div>
-    <div class="set-note" id="readNote"></div>
-  </div>
-  <div class="card" id="recTrendCard" style="display:none">
-    <div class="sec">Heart rate variability</div>
-    <div id="hrvCanvas"></div>
-    <div class="sec" style="margin-top:16px">Resting heart rate</div>
-    <div id="rhrCanvas"></div>
-    <div class="sec" id="respSec" style="margin-top:16px;display:none">Breathing rate while asleep</div>
-    <div id="respCanvas"></div>
-    <div class="set-note">Shaded: your usual range.</div>
+  <div id="trRange">
+    <div class="tr-chips"><button id="trR7" onclick="trGo(7)">7D</button><button id="trR30" onclick="trGo(30)">30D</button><button id="trR90" onclick="trGo(90)">90D</button><button id="trR365" onclick="trGo(365)">1Y</button></div>
+    <div class="tr-spn"><button class="tr-nav" id="trPrev" aria-label="Earlier" onclick="trShift(-1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg></button><div class="tr-dt"><b id="trDates"></b><small id="trSpanLbl"></small></div><button class="tr-nav" id="trNext" aria-label="Later" onclick="trShift(1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></button></div>
   </div>
 
-  <div class="card">
-    <div class="sec">Mood &amp; energy</div>
-    <div class="chip-row" id="moodChips"></div>
-    <div id="moodCanvas"></div>
-    <div class="set-note" id="moodNote"></div>
-  </div>
+  <div class="tr-sec first">Recovery</div>
+  <div class="card"><div class="kh" data-i="read"><b>Recovery</b></div><div id="readCanvas"></div><div class="set-note" id="readNote"></div></div>
+  <div class="card" id="hrvCard"><div class="kh" data-i="hrv"><b>Heart rate variability</b></div><div id="hrvCanvas"></div></div>
+  <div class="card" id="rhrCard"><div class="kh" data-i="rhr"><b>Resting heart rate</b></div><div id="rhrCanvas"></div></div>
+  <div class="card" id="respCard" style="display:none"><div class="kh" data-i="resp"><b>Breathing rate</b></div><div id="respCanvas"></div></div>
 
-  <div class="card"><div class="sec">Sleep</div><div id="sleepCanvas"></div><div class="set-note" id="stNight"></div><div class="sleep-stages" id="stBox"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
+  <div class="tr-sec">Sleep</div>
+  <div class="card"><div class="kh" data-i="sleep"><b>Time asleep</b></div><div id="sleepCanvas"></div><div class="set-note" id="stNight"></div><div class="sleep-stages" id="stBox"><div class="stage-chip"><div class="stage-val" id="stDeep" style="color:var(--teal)">—</div><div class="stage-lbl">DEEP</div></div><div class="stage-chip"><div class="stage-val" id="stREM" style="color:var(--teal)">—</div><div class="stage-lbl">REM</div></div><div class="stage-chip"><div class="stage-val" id="stLight">—</div><div class="stage-lbl">LIGHT</div></div></div></div>
 
-  <div class="card"><div class="sec">Body weight</div><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
-
-  <details class="more-today" id="moreCharts" ontoggle="if(this.open)renderTrendsTab()"><summary>More charts</summary>
-  <div class="card">
-    <div class="sec">Soreness &amp; coffee</div>
-    <div id="bodyCanvas"></div>
-    <div class="set-note" id="bodyNote"></div>
-  </div>
-
-  <div class="card"><div class="tr-head"><div class="tr-title">Mindfulness</div><div class="tr-sum" id="mindSum">—</div></div><div id="mindBars"></div></div>
-  <div class="card"><div class="tr-head"><div class="tr-title">Training</div><div class="tr-sum" id="trainSum">—</div></div><div id="trainBars"></div></div>
-  <div class="card" id="strCard"><div class="tr-head"><div class="tr-title">Strength</div><div class="tr-sum">sets per muscle, last 7 days</div></div>
-    <div id="strMuscles"></div>
+  <div class="tr-sec">Training</div>
+  <div class="card"><div class="kh" data-i="load"><b>Training load</b></div><div id="loadBody"></div></div>
+  <div class="card"><div class="kh" data-i="form"><b>Fitness and form</b></div><div id="formCanvas"></div><div class="tr-sub" id="tsbSec">Form</div><div id="tsbCanvas"></div><div class="set-note" id="formNote"></div></div>
+  <div class="card"><div class="kh" data-i="pr"><b>Progress and bests</b></div><div id="progBody"></div></div>
+  <div class="card" id="sportCard"><div class="kh" data-i="dist"><b>Distance</b></div><div class="chip-row" id="spChips"></div><div id="spBars"></div><div class="set-note" id="spNote"></div></div>
+  <div class="card" id="strCard"><div class="kh" data-i="str"><b>Strength</b></div><div id="strHd"></div><div id="strMuscles"></div>
     <select class="sel-inp" id="strSel" style="margin-top:12px" onchange="_strEx=this.value;renderStrTrend()"></select>
-    <div id="strCanvas" style="margin-top:8px"></div><div class="set-note" id="strSum"></div></div>
+    <div id="strCanvas" style="margin-top:12px"></div></div>
 
-  <div class="card" id="sportCard"><div class="tr-head"><div class="tr-title">Distance per week</div><div class="tr-sum" id="spSum">—</div></div>
-    <div class="chip-row" id="spChips"></div><div id="spBars"></div><div class="set-note" id="spNote"></div></div>
+  <div class="tr-sec">Mind</div>
+  <div class="card"><div class="kh" data-i="mood"><b>Mood and energy</b></div><div class="chip-row" id="moodChips"></div><div id="moodCanvas"></div><div class="set-note" id="moodNote"></div></div>
+  <div class="card"><div class="kh" data-i="bo"><b>Burnout risk</b></div><div id="boCanvas"></div></div>
+  <div class="card"><div class="kh" data-i="mind"><b>Mindfulness</b></div><div id="mindBars"></div></div>
 
-  <div class="burnout-card">
-    <div class="sec">Burnout risk</div>
-    <div style="display:flex;align-items:flex-end;gap:12px"><div class="burnout-num" id="boScore">—</div><div class="bo-lbl">/ 100 — <span id="boLabel">—</span></div></div>
-    <div class="set-note" id="boSub"></div>
-    <div id="boCanvas" style="margin-top:8px"></div>
-  </div>
-  </details>
+  <div class="tr-sec">Body</div>
+  <div class="card"><div class="kh" data-i="wt"><b>Body weight</b></div><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
+  <div class="card"><div class="kh" data-i="sore"><b>Soreness and coffee</b></div><div id="bodyCanvas"></div><div class="set-note" id="bodyNote"></div></div>
 
 </div><!-- /trCharts -->
 <div id="trCal" style="display:none">
