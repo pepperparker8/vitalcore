@@ -263,7 +263,8 @@ function saveWorkout(){
   }
   const rec={id:_editId||mkId(),date,type:_selEx,distKm:dist,durMin:st?Math.max(10,Math.round(sets.filter(isWork).length*3)):dur,rpe:+$('wRPE').value||null,notes:$('wNotes').value.trim()};
   if(sets)rec.sets=sets;if(sub)rec.sub=sub;
-  const oi=_editId&&wIcu(S().workouts.find(x=>x.id===_editId));if(oi&&Object.keys(oi).length)rec.sub={...(rec.sub||{}),icu:oi};
+  const ow=_editId&&S().workouts.find(x=>x.id===_editId),oi=ow&&wIcu(ow);if(oi&&Object.keys(oi).length)rec.sub={...(rec.sub||{}),icu:oi};
+  if(wkBoth(ow))rec.sub={...(rec.sub||{}),both:1};   // v130: Show both stays on an edited copy
   const pn=painVal();if(pn!=null)rec.sub={...(rec.sub||{}),pain:pn};
   const wasEdit=!!_editId;put('workouts',rec);_editId=null;$('wSave').textContent='Save workout';$('wCancel').style.display='none';
   ['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';painSet(null);_sess=[];if(st)renderStrength();$('wPace').textContent='';$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';wkPreClear();renderDurChips();
@@ -289,7 +290,7 @@ function editWorkout(id){
 }
 function cancelEdit(){_editId=null;wkPreClear();$('wSave').textContent='Save workout';$('wCancel').style.display='none';['wDH','wDM','wDist','wNotes'].forEach(i=>$(i).value='');$('wRPE').value='';painSet(null);$('wDate').value=td();$('wMore').open=false;$('wkFormT').textContent='Add a workout';_sess=[];if(IS_STR(_selEx))renderStrength();renderDurChips();}
 function repeatLast(){
-  const w=last(S().workouts);if(!w){showToast('No previous workout');return;}
+  const w=last(wkOn());if(!w){showToast('No previous workout');return;}
   _selEx=w.type;_sess=[];if(w.sets)loadSession(w.sets);renderExGrid();
   $('wDH').value=Math.floor((w.durMin||0)/60)||'';$('wDM').value=(w.durMin||0)%60||'';
   $('wDist').value=w.type==='Swim'?(Math.round((w.distKm||0)*1000)||''):(w.distKm||'');if(w.sub){$('wPool').value=w.sub.pool||'pool';$('wStroke').value=w.sub.stroke||'Freestyle';}$('wRPE').value=w.rpe||'';$('wNotes').value=w.notes||'';
@@ -298,10 +299,13 @@ function repeatLast(){
 }
 function delWorkout(id){
   const w=S().workouts.find(x=>x.id===id);if(!w)return;
-  const copy=JSON.parse(JSON.stringify(w)),pan=()=>{if($('dayPanel').classList.contains('open'))openDay(copy.date);};
+  // v130: the hidden copies of a double go with the copy that counts (else one would show up in its place); Undo brings all back
+  const c=wkDupOf(id),ids=[id,...(c&&c.keep===id?c.hid:[])];
+  const copies=ids.map(i=>S().workouts.find(x=>x.id===i)).filter(Boolean).map(x=>JSON.parse(JSON.stringify(x)));
+  const copy=copies[0],pan=()=>{if($('dayPanel').classList.contains('open'))openDay(copy.date);};
   if(_editId===id)cancelEdit();
-  del('workouts',id);pan();refreshAll();
-  showToast('Workout deleted',{label:'Undo',fn:()=>{const d=S();d.gone=(d.gone||[]).filter(g=>g!==id);put('workouts',copy);pan();refreshAll();showToast('Workout restored');}});
+  ids.forEach(i=>del('workouts',i));pan();refreshAll();
+  showToast('Workout deleted',{label:'Undo',fn:()=>{const d=S();d.gone=(d.gone||[]).filter(g=>!ids.includes(g));copies.forEach(x=>put('workouts',x));pan();refreshAll();showToast('Workout restored');}});
 }
 // ── Workout list with Edit / Delete, and "logged twice" check ────────────────
 const isIcu=w=>String(w.id).startsWith('icu-');
@@ -333,8 +337,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelec
 // a hand-logged workout and an Intervals.icu one of the same type on the same day
 function findDups(){
   const d=S(),ok=d.dupOk||[],out=[];
-  d.workouts.filter(w=>isIcu(w)&&daysAgo(w.date)<30).forEach(a=>{
-    const m=d.workouts.find(w=>!isIcu(w)&&!w.isEx&&w.date===a.date&&w.type===a.type&&!ok.includes(w.id+'|'+a.id)&&!out.some(p=>p.m.id===w.id));
+  wkOn().filter(w=>isIcu(w)&&daysAgo(w.date)<30).forEach(a=>{
+    const m=wkOn().find(w=>!isIcu(w)&&!w.isEx&&w.date===a.date&&w.type===a.type&&!ok.includes(w.id+'|'+a.id)&&!out.some(p=>p.m.id===w.id));
     if(m)out.push({m,a});
   });
   return out;
@@ -356,7 +360,7 @@ function keepDup(mid,aid){const d=S();d.dupOk=[...(d.dupOk||[]),mid+'|'+aid].sli
 // ── Suggestions the user confirms (v99): watch effort, planned session, soreness streak ──
 const effOf5=r=>Math.max(1,Math.min(5,Math.round(r/2)));
 // imported workouts whose watch effort has not been accepted or declined
-const effSugs=()=>{const d=S(),ok=d.effOk||[];return d.workouts.filter(w=>isIcu(w)&&!w.rpe&&wIcu(w).rpe&&daysAgo(w.date)<30&&!ok.includes(w.id)).sort((a,b)=>a.date<b.date?1:-1).slice(0,3);};
+const effSugs=()=>{const d=S(),ok=d.effOk||[];return wkOn().filter(w=>isIcu(w)&&!w.rpe&&wIcu(w).rpe&&daysAgo(w.date)<30&&!ok.includes(w.id)).sort((a,b)=>a.date<b.date?1:-1).slice(0,3);};
 const effHTML=()=>effSugs().map(w=>{const r=wIcu(w).rpe;return`<div class="wk-dup"><div class="wk-dup-t">${fmtDay(w.date)}'s ${esc(w.type.toLowerCase())}: your watch recorded effort ${r} of 10</div><div class="wk-dup-s">Save it as ${effOf5(r)} of 5? Effort feeds training load, strain and the briefing.</div><div class="wk-acts"><button type="button" onclick="useEff('${esc(w.id)}')">Use ${effOf5(r)} of 5</button><button type="button" onclick="editWorkout('${esc(w.id)}')">Pick another</button><button type="button" onclick="skipEff('${esc(w.id)}')">Not now</button></div></div>`;}).join('');
 function useEff(id){const w=S().workouts.find(x=>x.id===id);if(!w)return;put('workouts',{...w,rpe:effOf5(wIcu(w).rpe)});refreshAll();showToast('Effort saved');}
 function skipEff(id){const d=S();d.effOk=[...(d.effOk||[]),id].slice(-100);save(d);refreshAll();}
@@ -392,7 +396,7 @@ function soreSkip(){const s=soreStreak(),d=S();if(s)d.soreOk=s.from;save(d);refr
 function renderSoreSug(){const b=$('injSug');if(b)b.innerHTML=soreHTML();}
 function renderWkLog(){
   const d=S(),el=$('wkRecent');if(!el)return;
-  const ws=d.workouts.filter(w=>daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));
+  const ws=wkOn().filter(w=>daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));
   $('wkDup').innerHTML=dupHTML()+effHTML();renderSoreSug();wkPrefill();painMark();
   const n=$('wkIcuNote'),on=!!(d.intervalsKey&&d.intervalsID);
   n.style.display=on?'':'none';
@@ -497,7 +501,7 @@ function logStatus(){
   const d=S(),t=td(),ci=todayCI();
   const sl=d.sleepLogs.find(s=>s.date===t);
   const w=slWhy(sl);
-  return[['lCheckin',ciFull(ci)],['lSleep',!!(sl&&(sl.durMin||sl.score)&&!w),w?'part':'',w?w.hd:''],['lWorkout',d.workouts.some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
+  return[['lCheckin',ciFull(ci)],['lSleep',!!(sl&&(sl.durMin||sl.score)&&!w),w?'part':'',w?w.hd:''],['lWorkout',wkOn().some(w=>w.date===t)],['lMind',(ci?.mindfulMin||0)>0]];
 }
 function renderLogHead(){
   const st=logStatus(),n=st.filter(x=>x[1]).length,el=$('lgProg');
@@ -523,7 +527,7 @@ function lgSum(){
   else o.ciStat='Takes under a minute';
   const sl=d.sleepLogs.find(s=>s.date===t),w=slWhy(sl);
   o.sleepStat=!sl?'Not logged today':[sl.durMin?fmtDur(sl.durMin):sl.score?'Score '+sl.score:'',w?w.sm:sl.bed&&sl.wake?sl.bed+' to '+sl.wake:''].filter(Boolean).join(' · ')||'Logged today';
-  const wt=d.workouts.filter(x=>x.date===t);
+  const wt=wkOn().filter(x=>x.date===t);
   if(wt.length===1){const x=wt[0];o.wkStat=[wkLabel(x),!(x.sets&&x.sets.length)&&x.durMin?fmtDur(x.durMin):'',fmtDist(x)].filter(Boolean).join(' · ');}
   else if(wt.length){const m=wt.reduce((a,x)=>a+(x.durMin||0),0);o.wkStat=wt.length+' workouts'+(m?' · '+fmtDur(m):'');}
   else{const p=lgPlan();o.wkStat=p?'Plan today: '+p:'Nothing logged today';}

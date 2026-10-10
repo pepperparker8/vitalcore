@@ -199,6 +199,8 @@ async function syncAll(manual){
       catch(e){msgs.push(e.message);}
     }
     if(!icu&&!pol&&manual&&!_auth)msgs.push('Nothing to sync yet — connect Intervals.icu or Polar, or sign in in Settings');
+    // v130: typed values on a hidden copy of a double move to the copy that counts (only into empty fields)
+    try{dupFill();}catch(e){}
     if(_auth&&!cloudErr){try{await pushAll();}catch(e){cloudErr=e;}}
   }finally{
     _syncing=false;$('syncBtn').textContent=_auth?'Sync':'Sign in';
@@ -297,7 +299,7 @@ async function pullIntervals(){
   save(d);
   return{n};
 }
-const ICU_KEYS=['hr','hrMax','kcal','elev','load','rpe','pw','np','dw','z','zb','lt','mx','dec','hrr','t','eb','cad','spd'];
+const ICU_KEYS=['hr','hrMax','kcal','elev','load','rpe','pw','np','dw','z','zb','lt','mx','dec','hrr','t','eb','cad','spd','gps','src'];
 // v122: more of each activity for the workout sheet and for reading effort from heart rate (js/workout.js):
 // z seconds per heart rate zone, zb zone tops (bpm), lt threshold heart rate at the time, mx max heart rate, dec heart rate drift (%),
 // hrr heart rate recovery (bpm in a minute), t start time HH:MM, eb 1 for an e-bike ride, cad average cadence, spd average speed (km/h)
@@ -309,7 +311,9 @@ function icuDet(a){
   const t=/T(\d\d:\d\d)/.exec(a.start_date_local||'');
   const z=arr(a.icu_hr_zone_times,86400*3),zb=arr(a.icu_hr_zones,250);
   return{z:z&&z.some(x=>x>0)?z:null,zb,lt:n(a.lthr,100,210),mx:n(a.athlete_max_hr,120,230),dec:r1(a.decoupling,-50,50),hrr:n(a.icu_hrr&&a.icu_hrr.hrr,1,120),
-    t:t?t[1]:null,eb:/^E(Mountain)?BikeRide$/.test(a.type||'')?1:null,cad:n(a.average_cadence,10,250),spd:r1(typeof a.average_speed==='number'?a.average_speed*3.6:null,1,110)};
+    t:t?t[1]:null,eb:/^E(Mountain)?BikeRide$/.test(a.type||'')?1:null,cad:n(a.average_cadence,10,250),spd:r1(typeof a.average_speed==='number'?a.average_speed*3.6:null,1,110),
+    // v130: gps 1 when the activity has a route (the copy to keep of a double); src the importer's code word, never shown on screen
+    gps:Array.isArray(a.stream_types)&&a.stream_types.includes('latlng')?1:null,src:typeof a.source==='string'&&/^[A-Z][A-Z0-9_]{1,23}$/.test(a.source)?a.source:null};
 }
 // arrays (zones) compare by value, never by reference; everything else as before
 const icuSame=(a,b)=>Array.isArray(a)||Array.isArray(b)?String(a??'')===String(b??''):(a??null)===(b??null);

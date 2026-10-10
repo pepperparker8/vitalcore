@@ -39,20 +39,20 @@ const wIcu=w=>(w&&w.sub&&typeof w.sub.icu==='object'&&w.sub.icu)||{};
 // Effort of one workout. Uses the Intervals.icu training load when present, scaled into the
 // same units as minutes x effort (your own median ratio once 5 workouts have both).
 function loadK(){
-  const ws=S().workouts,key=ws.length+'|'+ws.reduce((a,w)=>a+(wIcu(w).load||0),0);
+  const ws=wkOn(),key=ws.length+'|'+ws.reduce((a,w)=>a+(wIcu(w).load||0),0);
   if(loadK.key===key)return loadK.v;
   const r=ws.filter(w=>wIcu(w).load>0&&w.durMin>0).map(w=>w.durMin*(w.rpe||3)/wIcu(w).load).sort((a,b)=>a-b);
   loadK.key=key;return loadK.v=r.length>=5?r[Math.floor(r.length/2)]:3.3;
 }
 const wLoad=w=>wIcu(w).load>0?wIcu(w).load*loadK():(w.durMin||30)*(w.rpe||3);
-const dayLoad=date=>S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+wLoad(w),0);
+const dayLoad=date=>wkOn().filter(w=>w.date===date).reduce((a,w)=>a+wLoad(w),0);
 // v127: minutes on your feet outside workouts count in strain. The band's active time, else from steps (over STEP_BASE,
 // one minute per STEP_RATE); null with neither. Workout minutes come off, so a session is never counted twice.
 function actMin(date){
   const p=dayOn(date),a=p&&p.data||{},st=a.steps??((S().wellness||{})[date]||{}).steps;
   return a.act!=null?a.act:st!=null?Math.max(0,st-TH.STEP_BASE)/TH.STEP_RATE:null;
 }
-const actLoad=date=>{const m=actMin(date);if(!m)return 0;const wm=S().workouts.filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);return Math.max(0,m-wm)*TH.ACT_K;};
+const actLoad=date=>{const m=actMin(date);if(!m)return 0;const wm=wkOn().filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);return Math.max(0,m-wm)*TH.ACT_K;};
 // strain, sleep need and the strain sheet read this; training rules (hard days, drivers, briefing pairs) stay on dayLoad
 const strainLoad=date=>dayLoad(date)+actLoad(date);
 function recoveryDrivers(){

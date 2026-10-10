@@ -1,7 +1,7 @@
 // ── WEEKLY DIGEST: last 7 days vs the 7 before (local, no API key) ───────────
 function digestWeek(from,to){
   const d=S(),In=x=>{const a=daysAgo(x.date);return a>=from&&a<to;};
-  const ws=d.workouts.filter(In),sl=d.sleepLogs.filter(In).filter(s=>s.score),ci=d.checkins.filter(In).filter(ciFull);
+  const ws=wkOn().filter(In),sl=d.sleepLogs.filter(In).filter(s=>s.score),ci=d.checkins.filter(In).filter(ciFull);
   const wt=d.measurements.filter(In).filter(m=>m.weight);
   const A=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
   return{

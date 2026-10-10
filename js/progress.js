@@ -4,7 +4,7 @@ const PR_SPORT=['Run','Cycle','Swim','Hike','Walk'];
 function prOptions(){
   const d=S(),h=exHistory();
   const lifts=[...h.keys()].sort((a,b)=>last(h.get(b)).date<last(h.get(a)).date?-1:1);
-  const sp=PR_SPORT.filter(t=>d.workouts.some(w=>w.type===t&&w.distKm>0&&w.durMin>0&&!wkEb(w)));
+  const sp=PR_SPORT.filter(t=>wkOn().some(w=>w.type===t&&w.distKm>0&&w.durMin>0&&!wkEb(w)));
   return{lifts,sp};
 }
 // each entry: {date, v (higher is always better on the chart), txt, sub}
@@ -13,7 +13,7 @@ function prSeries(key,met){
   const inR=dt=>!_prRng||daysAgo(dt)<=_prRng;
   if(PR_SPORT.includes(key)){
     // v122: e-bike rides are assisted, so they never set a speed or distance best
-    const ws=d.workouts.filter(w=>w.type===key&&w.distKm>0&&w.durMin>0&&!wkEb(w)&&inR(w.date)).sort((a,b)=>a.date<b.date?-1:1);
+    const ws=wkOn().filter(w=>w.type===key&&w.distKm>0&&w.durMin>0&&!wkEb(w)&&inR(w.date)).sort((a,b)=>a.date<b.date?-1:1);
     const sw=key==='Swim',cy=key==='Cycle';
     const pace=w=>sw?w.durMin/(w.distKm*10):w.durMin/w.distKm;
     const pl=sw?'/100 m':'/km';

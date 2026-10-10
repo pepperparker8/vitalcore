@@ -136,7 +136,7 @@ function insightTrends(){
   const d=S(),wk=[];
   for(let w=0;w<12;w++){
     const from=w*7,to=from+7,inR=x=>{const a=daysAgo(x.date);return a>=from&&a<to;};
-    const ci=d.checkins.filter(ciFull).filter(inR),sl=d.sleepLogs.filter(inR),ws=d.workouts.filter(inR);
+    const ci=d.checkins.filter(ciFull).filter(inR),sl=d.sleepLogs.filter(inR),ws=wkOn().filter(inR);
     const wl=Object.entries(d.wellness||{}).filter(([dt])=>{const a=daysAgo(dt);return a>=from&&a<to;}).map(x=>x[1]);
     const r1=x=>x==null?null:+x.toFixed(1);
     wk.push({weeksAgo:w,checkins:ci.length,mood:r1(avg(ci.map(c=>c.mood))),energy:r1(avg(ci.map(c=>c.energy))),stress:r1(avg(ci.map(c=>c.stress))),
@@ -223,7 +223,7 @@ function insightData(){return insPrune(insightRaw());}
 function insightRaw(){
   const d=S(),p=d.profile,r1=x=>x==null||isNaN(x)?null:+(+x).toFixed(1),t=td();
   const v=coachVerdict(),sl=last(d.sleepLogs.filter(x=>daysAgo(x.date)<=1)),ci=d.checkins.find(c=>c.date===t);
-  const wT=d.workouts.filter(w=>w.date===t),load=strainLoad(t),ph=racePhase(),sg=suggestWorkout(),dw=(new Date(t+'T12:00:00').getDay()+6)%7,pl=(p.plan||{})[dw];
+  const wT=wkOn().filter(w=>w.date===t),load=strainLoad(t),ph=racePhase(),sg=suggestWorkout(),dw=(new Date(t+'T12:00:00').getDay()+6)%7,pl=(p.plan||{})[dw];
   const wl=(d.wellness||{})[t]||{};
   // v122: e-bike, effort read from heart rate when none was given, and for the last 7 days (as notes) the heart rate mix
   // [easy, steady, hard] minutes (which replaces the load number) and the drift where the sheet shows it; compact to keep
@@ -252,7 +252,7 @@ function insightRaw(){
     training:insTraining(),
     nutrition:insNutrition(),
     week:{last7days:dg(0,7),previous7days:dg(7,14),readinessAvg:rAvg(0,7),readinessAvgPrev:rAvg(7,14),bodyAvg:bAvg(0,7),bodyAvgPrev:bAvg(7,14),thisCalendarWeekMin:Math.round(L.now),usualWeekMin:L.base?Math.round(L.base):null,
-      workouts:d.workouts.filter(w=>daysAgo(w.date)<14).map(wo),hardSetsPerMuscle:weeklySets(),
+      workouts:wkOn().filter(w=>daysAgo(w.date)<14).map(wo),hardSetsPerMuscle:weeklySets(),
       checkins:d.checkins.filter(c=>daysAgo(c.date)<14&&c!==ci).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,soreness:c.soreness??null,coffeeCups:c.coffee??null,mindfulMin:c.mindfulMin||0,...(daysAgo(c.date)<7?{grateful:insClip(c.gratitude,200),reflection:insRefl(c)}:{})})),
       sleep:d.sleepLogs.filter(s=>daysAgo(s.date)<14&&s!==sl).map(s=>({date:s.date,hours:r1(s.durMin?s.durMin/60:null),batteryRanOut:slCounts(s)?undefined:true,bed:s.bed||null,wake:s.wake||null,score:s.score??null,night:daysAgo(s.date)<7?insPolar(s.date,true):null}))},
     month:{last30days:dg(0,30),previous30days:dg(30,60),readinessAvg:rAvg(0,30),readinessAvgPrev:rAvg(30,60)},
@@ -261,7 +261,7 @@ function insightRaw(){
       injuries:d.injuries.filter(i=>i.active).map(i=>({part:i.part,severity1to3:i.sev,since:i.date,notes:i.notes||undefined}))},
     profile:{age:p.age||null,heightCm:p.height||null,sleepGoalHours:p.sleepGoal||null,weightGoalKg:p.wtGoal||null,goal:p.goalName||null,goalDate:p.goalDate||null,daysToGoal:ph?ph.n:null,phase:ph&&ph.k?ph.k:null},
     previousBriefings:insPrev(),
-    coverage:{daysLoggedLast30:daysLogged(30),checkins:d.checkins.filter(ciFull).length,sleepNights:d.sleepLogs.length,detailedNights:(d.polarNights||[]).length,workouts:d.workouts.length,bloodTests:d.bloodLogs.length,wellnessDays:Object.keys(d.wellness||{}).length,exampleDataOnly:isExampleOnly()}
+    coverage:{daysLoggedLast30:daysLogged(30),checkins:d.checkins.filter(ciFull).length,sleepNights:d.sleepLogs.length,detailedNights:(d.polarNights||[]).length,workouts:wkOn().length,bloodTests:d.bloodLogs.length,wellnessDays:Object.keys(d.wellness||{}).length,exampleDataOnly:isExampleOnly()}
   };
 }
 const INS_COMMON=`Scales: check-in values are 1-4. Stress: 1 = calm, 4 = very stressed. "calm" is inverted stress, higher is better. Soreness: 1 = none, 4 = very sore. Readiness 20-100. Strain 0-21. Blood is mg/dL. A missing field or null means not measured. Today's check-in is in today.checkin and last night in today.lastNight; week.checkins and week.sleep hold the 13 days before (written notes and the detailed night for the last 7 days only).

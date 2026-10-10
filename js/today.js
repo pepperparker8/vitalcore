@@ -65,7 +65,7 @@ function racePhase(){
 function raceLoad(){
   const d=S(),m=new Date(td()+'T12:00:00');m.setDate(m.getDate()-((m.getDay()+6)%7));
   const wk=o=>{const a=new Date(m);a.setDate(a.getDate()+o*7);const b=new Date(a);b.setDate(b.getDate()+7);const A=ymd(a),B=ymd(b);
-    return d.workouts.filter(w=>w.date>=A&&w.date<B&&!w.isEx).reduce((t,w)=>t+(w.durMin||0),0);};
+    return wkOn().filter(w=>w.date>=A&&w.date<B&&!w.isEx).reduce((t,w)=>t+(w.durMin||0),0);};
   const prev=[-4,-3,-2,-1].map(wk).filter(x=>x>0);
   return{base:prev.length>=2?avg(prev):null,now:wk(0)};
 }

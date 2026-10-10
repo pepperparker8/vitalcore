@@ -41,7 +41,7 @@ function dyDay(day,cal){
   const pts=[...dyPts(prev),...dyPts(day)].filter(p=>p[0]>=a&&p[0]<=end).sort((x,y)=>x[0]-y[0]);
   const clip=x=>x&&x.b>a&&x.a<end?{a:Math.max(a,x.a),b:Math.min(end,x.b),min:x.min}:null;
   const sleep=clip(dyNight(day,prev)),sleep2=cal&&day!==td()?clip(dyNight(next,day)):null;
-  const wks=(S().workouts||[]).filter(w=>(w.date===prev||w.date===day)&&w.durMin>0&&/^\d\d:\d\d$/.test(wIcu(w).t||''))
+  const wks=wkOn().filter(w=>(w.date===prev||w.date===day)&&w.durMin>0&&/^\d\d:\d\d$/.test(wIcu(w).t||''))
     .map(w=>{const s=plT(w.date+'T'+wIcu(w).t+':00');return{a:s,b:s+w.durMin*DY_MIN,name:wkLabel(w),w};})
     .filter(k=>k.a!=null&&k.b>a&&k.a<end).map(k=>({...k,a:Math.max(a,k.a),b:Math.min(end,k.b)})).sort((x,y)=>x.a-y.a);
   // band off: the gaps, less the night

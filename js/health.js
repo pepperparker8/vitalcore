@@ -118,7 +118,7 @@ function renderHealth(){
 // ── report: a clean one-page summary the user can save as PDF ────────────────
 function buildReport(days=30){
   const d=S(),name=d.profile.name,rng=x=>daysAgo(x.date)<days;
-  const sl=d.sleepLogs.filter(rng),ms=d.measurements.filter(rng),ci=d.checkins.filter(rng).filter(ciFull),ws=d.workouts.filter(rng);
+  const sl=d.sleepLogs.filter(rng),ms=d.measurements.filter(rng),ci=d.checkins.filter(rng).filter(ciFull),ws=wkOn().filter(rng);
   const row=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
   const sc=sl.filter(s=>s.score).map(s=>s.score);
   const deep=sl.filter(s=>s.deepH||s.deepM).map(s=>s.deepH*60+s.deepM),rem=sl.filter(s=>s.remH||s.remM).map(s=>s.remH*60+s.remM);

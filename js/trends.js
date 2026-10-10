@@ -66,7 +66,7 @@ function trUsual(pts,from,n,first){
 }
 // training days in a row up to today (or yesterday when today has none yet); yoga and short walks do not count
 function trRunDays(thr){
-  const s=new Set(S().workouts.filter(w=>stTrains(w,thr)).map(w=>w.date));
+  const s=new Set(wkOn().filter(w=>stTrains(w,thr)).map(w=>w.date));
   let d=DN(td()),n=0;if(!s.has(ND(d)))d--;
   while(s.has(ND(d))){n++;d--;}
   return n;
@@ -95,7 +95,7 @@ const spVU=(v,swim)=>swim?[Math.round(v*1000)+'','m']:[(Math.round(v*10)/10)+'',
 function renderSportTrend(){
   const d=S(),sports=['Run','Cycle','Swim','Hike','Walk'],swim=_spSport==='Swim';
   $('spChips').className='chip-row sp';$('spChips').innerHTML=sports.map(s=>`<button class="chip ${s===_spSport?'sel':''}" aria-pressed="${s===_spSport}" onclick="_spSport='${s}';renderSportTrend()">${ICON[s]} ${s}</button>`).join('');
-  const every=d.workouts.filter(w=>w.type===_spSport&&w.distKm>0);
+  const every=wkOn().filter(w=>w.type===_spSport&&w.distKm>0);
   const fmt=v=>spVU(v,swim).join(' ');
   if(!every.length){chUnmount('spBars');$('spBars').innerHTML='';$('spNote').textContent=`No ${_spSport.toLowerCase()} distance logged yet. Log one in the Log tab.`;return;}
   $('spNote').textContent='';
@@ -141,7 +141,7 @@ function loadWeeks(n){
   const mon=new Date(td()+'T12:00:00');mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
   for(let w=n-1;w>=0;w--){
     const a=new Date(mon);a.setDate(a.getDate()-w*7);const b=new Date(a);b.setDate(b.getDate()+7);
-    const A=ymd(a),B=ymd(b),ws=d.workouts.filter(x=>x.date>=A&&x.date<B),by={};
+    const A=ymd(a),B=ymd(b),ws=wkOn().filter(x=>x.date>=A&&x.date<B),by={};
     ws.forEach(x=>{const v=f(x);if(v)by[x.type]=(by[x.type]||0)+v;});
     out.push({start:A,total:Object.values(by).reduce((s,x)=>s+x,0),by});
   }
@@ -190,12 +190,12 @@ function ldDaily(info,dp,wk,fm,first,thr){
 function renderLoad(){
   const el=$('loadBody');if(!el)return;
   const d=S(),f=LD_M[_ldMetric][1],fm=LD_M[_ldMetric][2],seg=opts=>opts.map(([v,l])=>`<button class="${_ldMetric===v?'active':''}" aria-pressed="${_ldMetric===v}" onclick="setLd('m','${v}')">${l}</button>`).join('');
-  const first=d.workouts.reduce((a,w)=>!a||w.date<a?w.date:a,null);
+  const first=wkOn().reduce((a,w)=>!a||w.date<a?w.date:a,null);
   if(!first){chUnmount('ldCanvas');el.innerHTML='<div class="empty-state" style="padding:8px 0"><div class="empty-title">No workouts yet</div><div class="empty-sub">Log a workout and your training load builds here.</div><button class="empty-btn" onclick="switchTab(\'log\');openLog(\'lWorkout\')">Log a workout</button></div>';return;}
   if(!el.querySelector('#ldCanvas'))el.innerHTML='<div class="ld-seg" id="ldSeg"></div><div id="ldCanvas"></div>';
   $('ldSeg').innerHTML=seg([['min','Time'],['km','Distance'],['n','Sessions']]);
   const thr=stThr(),day={},sp={};
-  d.workouts.forEach(w=>{const v=f(w);if(!v)return;day[w.date]=(day[w.date]||0)+v;(sp[w.date]=sp[w.date]||{})[w.type]=(sp[w.date][w.type]||0)+v;});
+  wkOn().forEach(w=>{const v=f(w);if(!v)return;day[w.date]=(day[w.date]||0)+v;(sp[w.date]=sp[w.date]||{})[w.type]=(sp[w.date][w.type]||0)+v;});
   const dp=Object.keys(day).sort().map(k=>({d:k,v:day[k]})),f0=dp.length?dp[0].d:null;
   // every week from the first workout (at least 8), so the chart can pan back through all of it
   const wk=loadWeeks(Math.max(8,Math.ceil(daysAgo(first)/7)+1)),by={};wk.forEach(w=>by[w.start]=w);

@@ -24,7 +24,7 @@ const stPctW=p=>p<0.4?'a third':p<0.55?'half':p<0.7?'two thirds':p<0.8?'three qu
 const stAdd=(dt,n)=>{const x=new Date(dt+'T12:00:00');x.setDate(x.getDate()+n);return ymd(x);};
 const stMon=dt=>{const x=new Date(dt+'T12:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return ymd(x);};
 const stWd=dt=>(new Date(dt+'T12:00:00').getDay()+6)%7;
-const stWs=()=>{const d=S();return isExampleOnly()?d.workouts:d.workouts.filter(w=>!w.isEx);};
+const stWs=()=>{const a=wkOn();return isExampleOnly()?a:a.filter(w=>!w.isEx);};
 // a hard day: effort 4 or 5 (v122: yours, the watch's, else from heart rate, wkHard), or a watch-recorded day with no effort, zones or
 // heart rate in the top quarter of your loads
 function stHard(dt,ws,thr){

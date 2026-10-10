@@ -9,7 +9,7 @@ function weekDates(){
   return PL_DAYS.map((_,i)=>{const x=new Date(m);x.setDate(x.getDate()+i);return ymd(x);});
 }
 function planDayState(i,dt){
-  const p=planOf(i),ws=S().workouts.filter(w=>w.date===dt);
+  const p=planOf(i),ws=wkOn().filter(w=>w.date===dt);
   if(!p)return{st:'none',p:null,ws};
   if(p.type==='Rest')return{st:dt>td()?'up':ws.length?'bonus':'done',p,ws};
   const hit=ws.some(w=>plKey(w.type)===plKey(p.type));

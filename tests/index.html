@@ -721,7 +721,7 @@ seq('Workout trace',async()=>{
     if(/\/activity\/i78$/.test(u))return J({id:'i78',type:'Run',icu_hr_zone_times:Z,icu_hr_zones:ZB,lthr:170,decoupling:3.14});
     return J(trace(3));};
   const r=await wkStreams(w),a=r.a||{},c0=calls[0]||{};
-  check('Workout trace: one request for the trace of that workout, with your key, and at most 600 points kept for the chart',r.ok&&calls.length===1&&c0.u==='https://intervals.icu/api/v1/activity/i77/streams.json?types=time&types=heartrate&types=altitude&types=velocity_smooth&types=watts&types=cadence&types=distance'&&/^Basic /.test(c0.h.Authorization)&&a.pts.length<=TH.WK_PTS&&a.pts.length>=500&&a.T===N-1&&a.has.hr&&a.has.alt&&a.has.spd&&!a.has.pw&&a.pts[0].spd===21.6,`${calls.length} requests; ${a.pts&&a.pts.length} points; ${JSON.stringify(a.has)}`);
+  check('Workout trace: one request for the trace of that workout, with your key, and at most 600 points kept for the chart',r.ok&&calls.length===1&&c0.u==='https://intervals.icu/api/v1/activity/i77/streams.json?types=time&types=heartrate&types=altitude&types=velocity_smooth&types=watts&types=cadence&types=distance&types=latlng'&&/^Basic /.test(c0.h.Authorization)&&a.pts.length<=TH.WK_PTS&&a.pts.length>=500&&a.T===N-1&&a.has.hr&&a.has.alt&&a.has.spd&&!a.has.pw&&a.pts[0].spd===21.6,`${calls.length} requests; ${a.pts&&a.pts.length} points; ${JSON.stringify(a.has)}`);
   const b5=a.b5||{},b20=a.b20||{};
   check('Workout trace: the hardest 5 and 20 minutes by average heart rate, with when and the speed then',b5.hr===150&&b5.at===1800&&b5.to===2099&&b5.spd===21.6&&b20.hr===140&&b20.at===3600,JSON.stringify([b5,b20]));
   const cl=a.climb||{},c10=(wkAnalyse(wkStParse(trace(10)))||{}).climb||{};
@@ -2264,6 +2264,375 @@ seq('v129 log',async()=>{
     const all=pg.textContent;
     check('v129 log: no sideways scroll at 360px with every row open, no source names, no emoji, no old progress line',pg.scrollWidth<=pg.clientWidth+1&&box.scrollWidth<=box.clientWidth+1&&noNames(all)&&!/\p{Extended_Pictographic}/u.test(all)&&!/daily entries done|NaN|undefined/.test(all),[pg.scrollWidth,pg.clientWidth,box.scrollWidth,box.clientWidth,noNames(all),(all.match(/\p{Extended_Pictographic}|daily entries done|NaN|undefined/u)||[''])[0]].join(' / '));
   }finally{Date.prototype.getHours=gh;wkMenuClose();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// ── v130: one copy of each workout ──────────────────────────────────────────────
+// Two imported workouts on one date that overlap by TH.DUP_OVERLAP of the shorter one are one session, whatever sport each names;
+// the most detailed copy counts, the other is hidden on the fly and never deleted, and every reader counts the session once.
+const dwk=(id,t,min,o={},icu={})=>({id,date:td(),type:'Cycle',durMin:min,distKm:0,rpe:null,notes:'',sets:[],...o,sub:{...(o.sub||{}),icu:{hr:130,...(t?{t}:{}),...icu}}});
+const dupHid=(...ws)=>{_s.workouts=ws;_wkDup=null;return[...wkHid()].sort().join();};
+run('v130 pairs',()=>{
+  base();const J=x=>JSON.stringify(x);
+  const at=dupHid(dwk('icu-a','07:00',60),dwk('icu-b','07:30',60)),under=dupHid(dwk('icu-a','07:00',60),dwk('icu-b','07:31',60));
+  check('v130 dups: two imported workouts overlapping by half of the shorter one are one session; a minute less is two',at==='icu-b'&&under==='',`${at} · ${under||'none'}`);
+  const sport=dupHid(dwk('icu-a','07:00',60,{type:'Run'}),dwk('icu-b','07:05',58));
+  check('v130 dups: any sport: a run and a ride at the same time are one session',sport==='icu-b',sport);
+  const noT=dupHid(dwk('icu-a','07:00',60),dwk('icu-b',null,60)),hand=dupHid(dwk('icu-a','07:00',60),dwk('w-1','07:00',60)),
+    ex=dupHid(dwk('icu-a','07:00',60),dwk('icu-b','07:00',60,{isEx:true})),day=dupHid(dwk('icu-a','07:00',60),dwk('icu-b','07:00',60,{date:dAgo(1)}));
+  check('v130 dups: no start time, a hand-logged workout, example data or another day: never paired',[noT,hand,ex,day].join('')==='',J([noT,hand,ex,day]));
+  const three=dupHid(dwk('icu-a','07:00',60),dwk('icu-b','07:20',60),dwk('icu-c','07:50',60)),c=wkDupOf('icu-c');
+  check('v130 dups: three copies chained by overlap are one session: one counts, two are hidden',three==='icu-b,icu-c'&&c&&c.keep==='icu-a'&&c.ids.length===3&&wkOn().map(w=>w.id).join()==='icu-a',`${three} · ${J(c)}`);
+  check('v130 dups: a hidden copy is never deleted',_s.workouts.length===3,_s.workouts.length);
+});
+run('v130 keeper',()=>{
+  base();const J=x=>JSON.stringify(x);
+  const gps=dwk('icu-a','07:00',60,{},{gps:1}),rich=dwk('icu-b','07:01',62,{distKm:20},{z:[600,600,0,0,0],cad:80});
+  const k1=dupHid(rich,gps);
+  check('v130 keeper: a route outweighs zones, cadence and distance (detail 5 against 4), even on the shorter copy',k1==='icu-b'&&wkDetScore(gps)===5&&wkDetScore(rich)===4,`hidden ${k1}; ${wkDetScore(gps)} against ${wkDetScore(rich)}`);
+  const k2=dupHid(dwk('icu-a','07:00',60),dwk('icu-b','07:00',65)),k3=dupHid(dwk('icu-b','07:00',60),dwk('icu-a','07:00',60));
+  check('v130 keeper: with the same detail the longer copy counts, then the first id',k2==='icu-a'&&k3==='icu-b',`${k2} · ${k3}`);
+  const k4=dupHid(dwk('icu-a','07:00',60,{sub:{both:1}}),dwk('icu-b','07:00',60,{sub:{both:1}})),c=wkDupOf('icu-b');
+  check('v130 keeper: Show both on the copies counts both and keeps them one session',k4===''&&c&&c.keep==='icu-a'&&!c.hid.length&&wkOn().length===2,`${k4||'none hidden'} · ${J(c)}`);
+  const a=_s.workouts,o=wkOn();o.pop();
+  check('v130 keeper: wkOn() hands out a fresh list each time',o!==a&&wkOn()!==a&&wkOn().length===2&&a.length===2,`${wkOn().length}, ${a.length}`);
+});
+run('v130 readers',()=>{
+  const J=x=>JSON.stringify(x),box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML='<span id="actTot"></span><div id="actList"></div>';document.body.appendChild(box);
+  try{atDay(td(),()=>{
+    trn();
+    const A=dwk('icu-a','07:00',90,{distKm:36},{gps:1,dw:1,z:[1800,1800,1200,600,0],zb:ZB7,cad:85,elev:300,pw:190}),B=dwk('icu-b','07:02',88,{rpe:4,notes:'Legs heavy',sub:{pain:2}});
+    const W=_s.workouts.slice();
+    const R=()=>{_wkDup=null;renderActList();return{dayLoad:dayLoad(td()),strainLoad:strainLoad(td()),calcLoad:calcLoad(),strategy:strategy(),progAll:progAll(),bounce:bounceDays(stThr()),fuel:fuelPlan(),
+      race:raceLoad(),weeks:loadWeeks(6),pr:prSeries('Cycle','dist'),insight:insightRaw(),report:buildReport(30),digest:digestWeek(dAgo(6),td()),
+      rows:$('actList').querySelectorAll('.act-item').length,tot:$('actTot').textContent};};
+    _s.workouts=[...W,A];const one=R();
+    _s.workouts=[...W,A,B];const two=R();
+    const diff=Object.keys(one).filter(k=>J(one[k])!==J(two[k]));
+    check('v130 readers: a doubled ride counts once in load, strain, the outline, levels, bounce-back, fuel, race load, Trends load, bests, the briefing, the report, the week summary and the workout list',!diff.length&&two.rows===one.rows,diff.join(', ')||`all the same; ${two.rows} rows, ${two.tot}`);
+    _s.workouts=[...W,{...A,sub:{...A.sub,both:1}},{...B,sub:{...B.sub,both:1}}];const both=R();
+    check('v130 readers (control): with Show both the second copy counts',both.dayLoad>one.dayLoad&&both.rows===one.rows+1&&J(both.insight)!==J(one.insight),`load ${Math.round(one.dayLoad)} → ${Math.round(both.dayLoad)}, rows ${one.rows} → ${both.rows}`);
+  });}finally{box.remove();}
+});
+seq('v130 source scan',async()=>{
+  const sw=await(await realFetch('../sw.js',{cache:'no-store'})).text(),files=[...sw.matchAll(/\.\/(js\/[\w-]+\.js)/g)].map(m=>m[1]);
+  const ok=[/const wkOn=/,/Array\.isArray\(b\.workouts\)/,/d\.workouts\.forEach\(w=>csv/,/const a=S\(\)\.workouts\|\|\[\];let ts/],bad=[];let n=0;
+  for(const f of files){
+    const L=(await(await realFetch('../'+f,{cache:'no-store'})).text()).split('\n');
+    L.forEach((l,i)=>{if(/^\s*\/\//.test(l))return;n+=(l.match(/\bwkOn\(\)/g)||[]).length;
+      if(/(?<!week)\.workouts\b(?!\.find\()/.test(l)&&!ok.some(r=>r.test(l)))bad.push(f+':'+(i+1));});
+  }
+  check('v130 readers: every list of workouts goes through wkOn(); only id lookups, the backup check, the CSV export and the duplicate scan read them all',files.length>=20&&n>=40&&!bad.length,`${files.length} files, wkOn() ${n} times; ${bad.join(', ')||'no other readers'}`);
+});
+run('v130 dupFill',()=>{
+  base();const J=x=>JSON.stringify(x);
+  const K=dwk('icu-a','07:00',90,{},{gps:1}),H=dwk('icu-b','07:02',88,{rpe:4,notes:'Legs heavy',sets:[{ex:'Plank',secs:60}],sub:{pain:2,pool:25,stroke:'free'}});
+  _s.workouts=[K,H];_s.pending={};_wkDup=null;
+  const n1=dupFill(),k=_s.workouts.find(w=>w.id==='icu-a'),h=_s.workouts.find(w=>w.id==='icu-b');
+  check('v130 dupFill: effort, sets, pain, pool and stroke typed on the hidden copy fill the empty fields of the one that counts; the note stays on the copy',
+    n1===1&&k.rpe===4&&k.sets.length===1&&k.sub.pain===2&&k.sub.pool===25&&k.sub.stroke==='free'&&k.notes===''&&wIcu(k).gps===1&&J(Object.keys(_s.pending))==='["workouts|icu-a"]'&&h.notes==='Legs heavy'&&h.rpe===4,J(k));
+  _s.pending={};const n2=dupFill();
+  check('v130 dupFill: a second run writes nothing',n2===0&&!Object.keys(_s.pending).length,`${n2} written`);
+  _s.workouts=[{...K,rpe:2,sub:{...K.sub,pain:0}},H];_wkDup=null;dupFill();const k2=_s.workouts.find(w=>w.id==='icu-a');
+  check('v130 dupFill: a value typed on the one that counts is never replaced (pain 0 included)',k2.rpe===2&&k2.sub.pain===0,J([k2.rpe,k2.sub.pain]));
+  _s.workouts=[{...K,sub:{...K.sub,both:1}},{...H,sub:{...H.sub,both:1}}];_wkDup=null;
+  check('v130 dupFill: with both shown nothing is copied',dupFill()===0,'');
+});
+run('v130 delete',()=>{
+  const J=x=>JSON.stringify(x),box=document.createElement('div');box.innerHTML='<div id="dayPanel"></div>';document.body.appendChild(box);
+  const keep={},had={},T=[],stub={refreshAll:()=>{},showToast:(m,o)=>T.push([m,o])};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  try{
+    base();_s.workouts=[dwk('icu-a','07:00',90,{},{gps:1}),dwk('icu-b','07:02',88)];_wkDup=null;
+    delWorkout('icu-a');const left=J(_s.workouts.map(w=>w.id)),g=_s.gone||[];
+    check('v130 delete: deleting the workout that counts takes its hidden copy with it, so the copy cannot pop up',left==='[]'&&g.includes('icu-a')&&g.includes('icu-b')&&T[0][0]==='Workout deleted',left+' '+J(g));
+    T[0][1].fn();
+    check('v130 delete: Undo brings both back, one counting',J(_s.workouts.map(w=>w.id).sort())==='["icu-a","icu-b"]'&&!(_s.gone||[]).some(i=>i==='icu-a'||i==='icu-b')&&wkOn().map(w=>w.id).join()==='icu-a',J(_s.gone));
+    delWorkout('icu-b');
+    check('v130 delete: deleting a hidden copy deletes only that copy',J(_s.workouts.map(w=>w.id))==='["icu-a"]',J(_s.workouts.map(w=>w.id)));
+    _s.workouts=[dwk('icu-a','07:00',90,{sub:{both:1}},{gps:1}),dwk('icu-b','07:02',88,{sub:{both:1}})];_wkDup=null;delWorkout('icu-a');
+    check('v130 delete: with both shown, deleting one keeps the other',J(_s.workouts.map(w=>w.id))==='["icu-b"]',J(_s.workouts.map(w=>w.id)));
+  }finally{box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+seq('v130 import',async()=>{
+  base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1',wtBack:td(),icuThr:{at:Date.now()}});
+  const R=x=>new Response(JSON.stringify(x),{status:200}),J=x=>JSON.stringify(x);
+  _s.workouts=[{id:'icu-2',date:dAgo(2),type:'Run',durMin:40,distKm:8,rpe:3,notes:'easy',sub:{pain:1,icu:{hr:150,t:'06:30'}}}];_s.pending={};
+  const acts=[{id:'i9',start_date_local:td()+'T07:12:00',type:'Ride',moving_time:4500,distance:30100,average_heartrate:128,stream_types:['time','heartrate','latlng','altitude'],source:'GARMIN_CONNECT'},
+    {id:'i10',start_date_local:td()+'T07:13:00',type:'Ride',moving_time:4400,average_heartrate:127,stream_types:['time','heartrate'],source:'polar'},
+    {id:'i11',start_date_local:dAgo(1)+'T07:00:00',type:'Run',moving_time:1800,distance:5000,source:'A'.repeat(30)},
+    {id:2,start_date_local:dAgo(2)+'T06:30:00',type:'Run',moving_time:2400,distance:8000,average_heartrate:150,stream_types:['time','latlng'],source:'OAUTH_CLIENT'}];
+  window.fetch=async u=>u.includes('/wellness')?R([]):u.includes('/activities')?R(acts):new Response('',{status:404});
+  await pullIntervals();
+  const i=id=>wIcu(_s.workouts.find(w=>w.id===id)||{});
+  check('v130 import: a route and the importer\'s source code come in; a source that is not a short upper-case word is left out',
+    i('icu-i9').gps===1&&i('icu-i9').src==='GARMIN_CONNECT'&&i('icu-i10').gps==null&&i('icu-i10').src==null&&i('icu-i11').src==null,J([i('icu-i9'),i('icu-i10').src,i('icu-i11').src]));
+  const w2=_s.workouts.find(w=>w.id==='icu-2');
+  check('v130 import: an older workout gets them on the next sync and keeps your effort, note and pain',!!_s.pending['workouts|icu-2']&&i('icu-2').gps===1&&i('icu-2').src==='OAUTH_CLIENT'&&w2.rpe===3&&w2.notes==='easy'&&w2.sub.pain===1,J(w2));
+  _wkDup=null;
+  check('v130 import: the two rides of one morning count once, the one with the route',wkOn().filter(w=>w.date===td()).map(w=>w.id).join()==='icu-i9'&&_s.workouts.filter(w=>w.date===td()).length===2,wkOn().filter(w=>w.date===td()).map(w=>w.id).join());
+});
+seq('v130 sheet',async()=>{
+  const box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px';
+  box.innerHTML='<div class="modal-ov" id="dtModal"><div class="modal"><div class="modal-title" id="dtTitle">Detail <button>×</button></div><div id="dtBody"></div></div></div>';
+  document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={},had={},T=[],stub={refreshAll:()=>{},showToast:(m,o)=>T.push([m,o])};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  window.fetch=async()=>new Response('',{status:404});
+  const wait=async id=>{const p=_wkPend.get(id);if(p)await p;await new Promise(r=>setTimeout(r,0));};
+  const line=()=>$('dtBody').querySelector('.wk-dup2'),lt=()=>{const l=line();return l?l.querySelector('p').textContent+' | '+l.querySelector('button').textContent:'';};
+  try{
+    base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1'});_wkSt.clear();
+    _s.workouts=[dwk('icu-a','07:00',90,{distKm:36},{gps:1}),dwk('icu-b','07:02',88)];_wkDup=null;
+    openDetail('wk:icu-a');await wait('icu-a');
+    const b=line()&&line().querySelector('button'),r=b?b.getBoundingClientRect():{},cs=b?getComputedStyle(b):{};
+    check('v130 sheet: the workout that counts says a copy is hidden, under the summary, with Show both (44px)',lt()==='Also recorded by another device. Hidden so it counts once. | Show both'&&line().previousElementSibling.classList.contains('dt-sub')&&r.height>=44,lt()+` · ${r.height}`);
+    const html=$('dtBody').innerHTML,acc=[cs.color,cs.borderColor,cs.backgroundColor].join();
+    check('v130 sheet: names no app or device and uses no accent colour',!/polar|intervals|garmin|strava|gold/i.test(html)&&!/255, 107, 31/.test(acc),acc);
+    b.click();
+    check('v130 sheet: Show both marks both copies, both count, and the line says so with Hide the copy',_s.workouts.every(w=>w.sub.both===1)&&wkOn().length===2&&lt()==='Recorded twice; both count. | Hide the copy'&&T[0][0]==='Both copies count'&&T[0][1].label==='Undo',lt()+' · '+(T[0]||[])[0]);
+    T[0][1].fn();
+    check('v130 sheet: Undo hides the copy again',_s.workouts.every(w=>!w.sub.both)&&wkOn().length===1&&/^Also recorded/.test(lt()),lt());
+    line().querySelector('button').click();openDetail('wk:icu-b');await wait('icu-b');
+    const lb=lt();line().querySelector('button').click();await wait('icu-a');
+    check('v130 sheet: Hide the copy on the copy\'s own sheet hides it and moves to the one that counts',lb==='Recorded twice; both count. | Hide the copy'&&_dtKey==='wk:icu-a'&&wkOn().map(w=>w.id).join()==='icu-a'&&T[T.length-1][0]==='Copy hidden'&&/^Also recorded/.test(lt()),`${lb} · ${_dtKey}`);
+    _s.workouts=[dwk('icu-a','07:00',90),dwk('icu-b','10:00',60)];_wkDup=null;openDetail('wk:icu-a');await wait('icu-a');
+    check('v130 sheet: no line on a workout without a copy',!line(),lt());
+  }finally{closeDetail();box.remove();css.remove();_wkSt.clear();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+
+// ── v130: the route of a GPS workout (made-up positions only) ──────────────────────────────────────────────────────
+// a loop of made-up positions: n samples spread over a circle of the given circumference (km), around 10°N 20°E
+const rtLoop=(n,km)=>{const r=km/(2*Math.PI),k=Math.cos(10*Math.PI/180);
+  return[...Array(n).keys()].map(i=>{const a=i/n*2*Math.PI;return[Math.round((10+r/111.2*Math.sin(a))*1e6)/1e6,Math.round((20+r/(111.2*k)*Math.cos(a))*1e6)/1e6];});};
+run('v130 route parse',()=>{
+  const J=x=>JSON.stringify(x);
+  const two=wkLL([1,2,95,0,'x'],[3,4,5,0,6]),pairs=wkLL([[1,3],[2,190],[0,0],null,[-45.5,-170.25]]);
+  check('v130 route: positions come as latitudes with the longitudes beside them, or as pairs; outside ±90 / ±180, 0,0 and missing ones are dropped',
+    J(two)==='[[1,3],[2,4],null,null,null]'&&J(pairs)==='[[1,3],null,null,null,[-45.5,-170.25]]'&&wkLL(null)===null,J(two)+' · '+J(pairs));
+  const L=[[10,20],[10.001,20.001],[0,0]],arr=wkStParse([{type:'time',data:[0,1,2]},{type:'latlng',data:L.map(x=>x[0]),data2:L.map(x=>x[1])}]),
+    obj=wkStParse({time:{data:[0,1,2]},latlng:{data:L.map(x=>x[0]),data2:L.map(x=>x[1])}}),obp=wkStParse({latlng:L});
+  check('v130 route: the trace reads the route from a list of streams and from an object of streams',J(arr.ll)==='[[10,20],[10.001,20.001],null]'&&J(obj.ll)===J(arr.ll)&&J(obp.ll)===J(arr.ll)&&J(arr.t)==='[0,1,2]',J([arr.ll,obj.ll,obp.ll]));
+  check('v130 route: a trace with no position at all has no route',!('ll' in wkStParse([{type:'latlng',data:[0,0],data2:[0,0]}])),'');
+  const tr=(np,hr)=>{const n=40,P=rtLoop(n,2);return wkAnalyse({t:[...Array(n).keys()],...(hr?{hr:Array(n).fill(130)}:{}),ll:P.map((q,i)=>i<np?q:null)});};
+  const a9=tr(TH.RT_MIN_PTS-1,1),a10=tr(TH.RT_MIN_PTS,1),o10=tr(TH.RT_MIN_PTS),o9=tr(TH.RT_MIN_PTS-1);
+  check(`v130 route: a route needs ${TH.RT_MIN_PTS} points with a position`,a9&&!a9.has.gps&&a10&&a10.has.gps&&a10.pts.filter(p=>p.la!=null).length===TH.RT_MIN_PTS,`${a9&&a9.has.gps} · ${a10&&a10.has.gps}`);
+  check('v130 route: a trace with only a route is still read (no heart rate, height, speed, power or cadence); with too few positions it is none',o10&&o10.has.gps&&!o10.has.hr&&!o10.has.spd&&o9===null,J(o10&&o10.has));
+  check('v130 route: each point holds the mean position of its moment, to 5 decimals',a10.pts[0].la===10&&a10.pts[0].lo===Math.round(rtLoop(40,2)[0][1]*1e5)/1e5&&a10.pts[TH.RT_MIN_PTS].la===null,J(a10.pts.slice(0,2)));
+  // marks: 1 km apart, thinned to 2, 5, 10 ... so there are never more than TH.RT_KM_MAX
+  const line=(km,n=400,dist=true)=>({pts:[...Array(n).keys()].map(i=>({la:10+i/(n-1)*km/111.195,lo:20,km:dist?Math.round(i/(n-1)*km*100)/100:null}))});
+  const g=[7.7,12,25,40,130].map(k=>wkRtGeo(line(k)));
+  check(`v130 route: a mark every 1 km, else 2, 5 or 10 km, never more than ${TH.RT_KM_MAX}`,J(g.map(x=>[x.st,x.M.length]))==='[[1,7],[1,11],[2,12],[5,7],[20,6]]'&&g.every(x=>x.M.length<=TH.RT_KM_MAX&&x.M.every((m,i)=>m.d===(i+1)*x.st&&x.Q[m.j].km>=m.d)),J(g.map(x=>[x.st,x.M.length])));
+  const nd=wkRtGeo(line(11.12,400,false));
+  check('v130 route: without a recorded distance the marks follow the distance measured along the route',Math.abs(nd.tot-11.12)<0.05&&nd.M.length===11,`${nd.tot.toFixed(3)} km, ${nd.M.length} marks`);
+  const ys=g[0].Q.map(q=>q.y),xs=g[0].Q.map(q=>q.x);
+  check('v130 route: the route is fitted inside the drawing with a margin, north up, and centred',Math.min(...ys)===18&&Math.max(...ys)===178&&g[0].Q[0].y>g[0].Q[399].y&&xs.every(x=>x===146),`${Math.min(...ys)}–${Math.max(...ys)}, x ${xs[0]}`);
+  // colour: heart rate against your zones, a run's pace against threshold pace, power from a real meter against FTP, else plain
+  const thr={run:{lthr:170,pace:4},ride:{ftp:250,lthr:165}},B=[{lo:0,hi:151,cls:'easy'},{lo:151,hi:160,cls:'steady'},{lo:160,hi:null,cls:'hard'}];
+  const pts=[{hr:130,spd:10,pw:150},{hr:155,spd:13.5,pw:200},{hr:170,spd:14.4,pw:240},{hr:null,spd:0.2,pw:null}];
+  const cl=(m,type,o={})=>{const K=wkRtCls({m,a:{has:{hr:true}},w:{type},B,thr,pm:true,...o});return[K.by,...pts.map(K.at)].join();};
+  check('v130 route: coloured by heart rate, by a run\'s pace against threshold pace, and by power from a real meter against FTP',
+    cl('hr','Run')==='heart rate,easy,steady,hard,'&&cl('spd','Run')==='pace,easy,steady,hard,'&&cl('pw','Cycle')==='power,easy,steady,hard,',[cl('hr','Run'),cl('spd','Run'),cl('pw','Cycle')].join(' | '));
+  check('v130 route: one plain line for a ride\'s speed, cadence, power without a real meter or FTP, a run without threshold pace and heart rate without zones',
+    [cl('spd','Cycle'),cl('cad','Run'),cl('pw','Cycle',{pm:false}),cl('pw','Cycle',{thr:{ride:{}}}),cl('spd','Run',{thr:{run:{lthr:170}}}),cl('hr','Run',{B:[]})].every(x=>x===',,,,'),
+    [cl('spd','Cycle'),cl('pw','Cycle',{pm:false}),cl('hr','Run',{B:[]})].join(' | '));
+});
+seq('v130 route sheet',async()=>{
+  const box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';
+  box.innerHTML='<div class="modal-ov" id="dtModal"><div class="modal"><div class="modal-title" id="dtTitle">Detail <button>×</button></div><div id="dtBody"></div></div></div>';
+  document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={},had={},stub={refreshAll:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const wait=async id=>{const p=_wkPend.get(id);if(p)await p;await new Promise(r=>setTimeout(r,0));};
+  // a made-up 36-minute run: easy, steady, then hard (heart rate and pace), once round a loop, cadence throughout
+  const N=2160,tt=[...Array(N).keys()],ph=s=>s<720?0:s<1440?1:2,v=tt.map(s=>[2.78,3.75,4.1][ph(s)]),D=[];let d0=0;v.forEach(x=>{D.push(Math.round(d0));d0+=x;});
+  const P=rtLoop(N,d0/1000),gps=[{type:'time',data:tt},{type:'heartrate',data:tt.map(s=>[130,155,170][ph(s)])},{type:'velocity_smooth',data:v},
+    {type:'cadence',data:tt.map(()=>85)},{type:'distance',data:D},{type:'latlng',data:P.map(q=>q[0]),data2:P.map(q=>q[1])}];
+  const R=x=>new Response(JSON.stringify(x),{status:200}),cnt={st:0,other:0};
+  window.fetch=async u=>{if(/icu-?r1\/streams/.test(u)||/\/r1\/streams/.test(u)){cnt.st++;return R(gps);}if(/\/r2\/streams/.test(u)){cnt.st++;return R(gps.slice(0,5));}cnt.other++;return new Response('',{status:404});};
+  const col=c=>{const e=document.createElement('i');e.style.color=c;box.appendChild(e);const x=getComputedStyle(e).color;e.remove();return x;};
+  try{
+    base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1',icuThr:{run:{lthr:170,maxHr:190,pace:4},at:td()}});_wkSt.clear();_wkDup=null;
+    const run=(id,o={})=>({id,date:td(),type:'Run',durMin:36,distKm:Math.round(d0/10)/100,rpe:null,notes:'',sets:[],sub:{icu:{hr:150,lt:170,t:'07:00',...o}}});
+    _s.workouts=[run('icu-r1',{gps:1}),run('icu-r2',{t:'12:00'})];const pend0=Object.keys(_s.pending).length,w=_s.workouts[0];
+    openDetail('wk:icu-r1');await wait('icu-r1');
+    const body=$('dtBody'),host=$('wkRt'),sv=host&&host.querySelector('svg'),sec=[...body.querySelectorAll('.dt-sec')].find(x=>/^Route/.test(x.textContent));
+    const grid=body.querySelector('.wk-grid'),tr=$('wkTr'),af=(a,b)=>!!(a&&b&&a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);
+    check('v130 route sheet: a GPS workout has a Route section with its distance, after the numbers and before the trace',!!sv&&sec&&sec.textContent==='Route'+fmtDist(w)&&af(grid,host)&&af(host,tr),`${sec&&sec.textContent} · ${!!sv}`);
+    const lg=()=>[...$('wkRtLg').children].map(x=>x.textContent).join(','),cls=()=>[...new Set([...host.querySelectorAll('.rt-l')].map(x=>x.getAttribute('class')))].sort().join();
+    const km=[...host.querySelectorAll('.wk-km')].map(x=>x.textContent).join();
+    check('v130 route sheet: coloured by heart rate, start and finish marks, a mark every km, and a legend that says so',
+      sv.getAttribute('aria-label')===`Route, ${fmtDist(w)}, coloured by heart rate`&&cls()==='rt-l easy,rt-l hard,rt-l steady'&&host.querySelectorAll('.rt-s').length===1&&host.querySelectorAll('.rt-f').length===1&&km==='1,2,3,4,5,6,7'&&lg()==='By heart rate,Easy,Steady,Hard,Start,Finish,Every km',
+      `${sv.getAttribute('aria-label')} · ${cls()} · ${km} · ${lg()}`);
+    const chip=m=>tr.querySelector(`.wk-ch[data-m="${m}"]`);chip('spd').click();
+    const lp=lg(),cp=cls(),ap=host.querySelector('svg').getAttribute('aria-label');chip('cad').click();
+    check('v130 route sheet: the route follows the chip: pace colours a run against threshold pace; cadence is one plain line with no judgement',
+      /coloured by pace$/.test(ap)&&cp==='rt-l easy,rt-l hard,rt-l steady'&&lp==='By pace,Easy,Steady,Hard,Start,Finish,Every km'&&cls()==='rt-l'&&lg()==='Start,Finish,Every km'&&!/coloured/.test(host.querySelector('svg').getAttribute('aria-label')),`${ap} · ${cp} · ${lp} | ${cls()} · ${lg()}`);
+    chip('hr').click();
+    // the route to the trace: a tap on the route picks that moment; a tap away from it clears
+    const g=_wkC.rt,q=g.Q[Math.floor(g.Q.length*0.6)],s1=host.querySelector('svg'),r=s1.getBoundingClientRect();
+    const tap=(x,y)=>s1.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:r.left+x/292*r.width,clientY:r.top+y/196*r.height}));
+    tap(q.x,q.y);const hv=host.querySelector('.rt-hv'),ro=body.querySelector('.wk-ro').textContent;
+    check('v130 route sheet: tapping the route picks the nearest moment, rings it, and the trace reads that moment',_wkC.hov!=null&&Math.abs(_wkC.hov-q.i)<=3&&!hv.hasAttribute('visibility')&&hv.getAttribute('transform')===`translate(${wkRtAt(g.Q,_wkC.hov).x} ${wkRtAt(g.Q,_wkC.hov).y})`&&ro.includes(wkTm(_wkC.a.pts[_wkC.hov].t,false)),`${_wkC.hov} vs ${q.i} · ${hv.getAttribute('transform')} · ${ro}`);
+    _wkC.hov=Math.floor(_wkC.a.pts.length*0.25);wkDraw();const q2=wkRtAt(g.Q,_wkC.hov);
+    check('v130 route sheet: a moment picked on the trace moves the ring on the route',hv.getAttribute('transform')===`translate(${q2.x} ${q2.y})`&&q2.i===_wkC.hov,hv.getAttribute('transform'));
+    tap(1,1);
+    check('v130 route sheet: a tap away from the route clears the moment',_wkC.hov===null&&hv.getAttribute('visibility')==='hidden'&&/whole session/.test(body.querySelector('.wk-ro').textContent),body.querySelector('.wk-ro').textContent);
+    const sc=x=>getComputedStyle(host.querySelector(x)),gold=[...host.querySelectorAll('*')].some(e=>{const c=getComputedStyle(e);return[c.stroke,c.fill].includes(col('var(--gold)'));});
+    check('v130 route sheet: easy, steady and hard in the trace colours, marks in the text colour, never the accent',sc('.rt-l.easy').stroke===col('var(--green)')&&sc('.rt-l.steady').stroke===col('var(--amber)')&&sc('.rt-l.hard').stroke===col('var(--red)')&&sc('.rt-s').fill===col('var(--text)')&&!gold,`${sc('.rt-l.easy').stroke} · gold ${gold}`);
+    check('v130 route sheet: fits 360px with nothing wider',s1.getBoundingClientRect().width<=360&&body.scrollWidth<=body.clientWidth,`${Math.round(s1.getBoundingClientRect().width)} · ${body.scrollWidth}/${body.clientWidth}`);
+    const txt=JSON.stringify(_s);
+    check('v130 route sheet: the route stays in memory: nothing written, no position in the app\'s data',Object.keys(_s.pending).length===pend0&&![P[100],P[900]].flat().some(x=>txt.includes(String(x))||txt.includes(String(Math.round(x*1e5)/1e5)))&&!/"la"|"ll"/.test(txt)&&_wkSt.get('icu-r1').a.has.gps,`${Object.keys(_s.pending).length - pend0} written`);
+    refreshDetail();
+    check('v130 route sheet: a refresh keeps the route and the chip',!!$('wkRt').querySelector('svg')&&$('wkRt').dataset.m==='hr',$('wkRt').dataset.m);
+    openDetail('wk:icu-r2');await wait('icu-r2');
+    const b2=$('dtBody');
+    check('v130 route sheet: no Route section for a workout without positions; its trace still shows',!$('wkRt')&&![...b2.querySelectorAll('.dt-sec')].some(x=>/^Route/.test(x.textContent))&&!!$('wkTr'),[...b2.querySelectorAll('.dt-sec')].map(x=>x.textContent).join(', '));
+    check('v130 route sheet: names no app or device',!/polar|intervals|garmin|strava/i.test(body.textContent+b2.textContent),'');
+  }finally{closeDetail();box.remove();css.remove();_wkSt.clear();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
+});
+// ── v130: Show map, with a stand-in for the map code (the real one and the map server are never reached from here) ──────────
+// the stand-in records what the app asks for and draws each line and dot as an svg path with its class, so the colours can be read
+const fakeLf=()=>{
+  const lg={maps:[],tiles:[],groups:[],removed:0,inv:0,fit:null,prefix:undefined},NS='http://www.w3.org/2000/svg';
+  const draw=(it,m)=>{
+    if(it.el||!/^(line|dot|marker)$/.test(it.kind))return;
+    if(it.kind==='marker'){const d=document.createElement('div');d.className=it.o.icon.o.className;d.innerHTML=it.o.icon.o.html;m.c.appendChild(d);it.el=d;return;}
+    const p=document.createElementNS(NS,'path');p.setAttribute('class',it.o.className||'');p.setAttribute('d','M10 10L60 60');m.svg.appendChild(p);it.el=p;
+  };
+  const part=(kind,ll,o={})=>{const it={kind,ll,o,el:null,host:null,rm:0,
+    addTo(t){it.host=t;t._add(it);return it;},
+    remove(){it.rm=1;if(it.el){it.el.remove();it.el=null;}if(it.host)it.host._del(it);it.host=null;return it;},
+    setLatLng(x){it.ll=x;return it;}};return it;};
+  const L={
+    map(c,opts){
+      const pane=document.createElement('div');pane.className='leaflet-tile-pane';c.appendChild(pane);
+      const svg=document.createElementNS(NS,'svg');svg.setAttribute('width','120');svg.setAttribute('height','120');c.appendChild(svg);
+      const m={c,opts,svg,items:new Set(),h:{},z:0,gone:0,
+        attributionControl:{setPrefix(p){lg.prefix=p;}},
+        fitBounds(b,o){lg.fit={b,o};},zoomIn(){m.z++;},zoomOut(){m.z--;},on(ev,fn){m.h[ev]=fn;},
+        latLngToContainerPoint([la,lo]){return{x:(lo-20)*1e4,y:(10-la)*1e4};},
+        invalidateSize(){lg.inv++;},remove(){lg.removed++;m.gone=1;},
+        _add(it){m.items.add(it);if(it.kind==='group')it.items.forEach(x=>draw(x,m));else draw(it,m);},
+        _del(it){m.items.delete(it);if(it.kind==='group')it.items.forEach(x=>{if(x.el){x.el.remove();x.el=null;}});}};
+      lg.maps.push(m);return m;
+    },
+    tileLayer(url,o){const t=part('tile',null,o);t.url=url;lg.tiles.push(t);return t;},
+    layerGroup(){const g=part('group');g.items=[];g._add=it=>g.items.push(it);g._del=it=>{g.items=g.items.filter(x=>x!==it);};lg.groups.push(g);return g;},
+    polyline:(ll,o)=>part('line',ll,o),circleMarker:(ll,o)=>part('dot',ll,o),marker:(ll,o)=>part('marker',ll,o),divIcon:o=>({o})
+  };
+  return{L,lg};
+};
+seq('v130 map',async()=>{
+  const box=document.createElement('div');box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';
+  box.innerHTML='<div class="modal-ov" id="dtModal"><div class="modal"><div class="modal-title" id="dtTitle">Detail <button>×</button></div><div id="dtBody"></div></div></div>';
+  document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={},had={},stub={refreshAll:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const wait=async id=>{const p=_wkPend.get(id);if(p)await p;await new Promise(r=>setTimeout(r,0));},tick=()=>new Promise(r=>setTimeout(r,0));
+  const N=1200,tt=[...Array(N).keys()],ph=s=>s<400?0:s<800?1:2,v=tt.map(s=>[2.78,3.75,4.1][ph(s)]),D=[];let d0=0;v.forEach(x=>{D.push(Math.round(d0));d0+=x;});
+  const P=rtLoop(N,d0/1000),gps=[{type:'time',data:tt},{type:'heartrate',data:tt.map(s=>[130,155,170][ph(s)])},{type:'velocity_smooth',data:v},
+    {type:'cadence',data:tt.map(()=>85)},{type:'distance',data:D},{type:'latlng',data:P.map(q=>q[0]),data2:P.map(q=>q[1])}];
+  const R=x=>new Response(JSON.stringify(x),{status:200}),cnt={other:0,u:[]};
+  window.fetch=async u=>{if(/\/m[12]\/streams/.test(u))return R(gps);cnt.other++;cnt.u.push(String(u).replace(/\?.*/,''));return new Response('',{status:404});};
+  // what the sheet adds to the page head is caught here and never loaded
+  const inj=[],hd=document.head;hd.appendChild=function(e){if(e&&e.dataset&&e.dataset.lf){inj.push(e);return e;}return Node.prototype.appendChild.call(this,e);};
+  const theme=document.documentElement.getAttribute('data-theme');
+  const col=c=>{const e=document.createElement('i');e.style.color=c;box.appendChild(e);const x=getComputedStyle(e).color;e.remove();return x;};
+  const res0=performance.getEntriesByType('resource').length;
+  try{
+    base();Object.assign(_s,{intervalsKey:'k',intervalsID:'i1',icuThr:{run:{lthr:170,maxHr:190,pace:4},at:td()}});_wkSt.clear();_wkDup=null;wkMapOff();
+    const run=(id,t)=>({id,date:td(),type:'Run',durMin:20,distKm:Math.round(d0/10)/100,rpe:null,notes:'',sets:[],sub:{icu:{hr:150,lt:170,t,gps:1}}});
+    _s.workouts=[run('icu-m1','07:00'),run('icu-m2','17:00')];const pend0=Object.keys(_s.pending).length;
+    openDetail('wk:icu-m1');await wait('icu-m1');
+    const B=()=>$('wkMapB'),N2=()=>$('wkMapN').textContent,bt=()=>B().textContent.trim(),rb=B().getBoundingClientRect();
+    check('v130 map: a route has Show map (44px, closed); nothing of the map is in the page or asked for before the tap',
+      bt()==='Show map'&&B().getAttribute('aria-expanded')==='false'&&rb.height>=44&&!inj.length&&!('L' in window)&&!document.querySelector('script[data-lf],link[data-lf],.wk-mpw')&&N2()==='',`${bt()} · ${rb.height} · ${inj.length} · ${'L' in window}`);
+    // offline: a note, the route shape stays, nothing asked for
+    Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>false});
+    try{B().click();}finally{delete navigator.onLine;}
+    check('v130 map: offline the tap says the map needs a connection, keeps the route shape and asks for nothing',N2()==='The map needs a connection.'&&!inj.length&&!!$('wkRt').querySelector('svg.wk-rt')&&bt()==='Show map'&&navigator.onLine===true,`${N2()} · ${inj.length}`);
+    // the map code does not load: the same note, and the next tap tries again
+    B().click();
+    const s1=inj.find(e=>e.tagName==='SCRIPT'),l1=inj.find(e=>e.tagName==='LINK'),ld=bt(),dis=B().disabled;
+    check('v130 map: the tap adds the map code from the app\'s own vendor folder (script and styles), once, and the button waits',
+      !!s1&&!!l1&&s1.src===new URL('../vendor/leaflet/leaflet.js',location.href).href&&l1.href===new URL('../vendor/leaflet/leaflet.css',location.href).href&&l1.rel==='stylesheet'&&ld==='Loading the map…'&&dis&&inj.length===2,`${s1&&s1.src} · ${l1&&l1.href} · ${ld} · ${dis}`);
+    B().click();const again=inj.length;
+    s1.onerror();await tick();
+    check('v130 map: a second tap while it loads does nothing; when the code fails to load the note shows and the route shape stays',again===2&&N2()==='The map needs a connection.'&&bt()==='Show map'&&!B().disabled&&!!$('wkRt').querySelector('svg.wk-rt')&&!_wkMap,`${again} · ${N2()} · ${bt()}`);
+    const{L,lg}=fakeLf();
+    B().click();const s2=inj.filter(e=>e.tagName==='SCRIPT')[1];
+    window.L=L;s2.onload();await tick();
+    const C=_wkC,m=lg.maps[0],t=lg.tiles[0],gp=lg.groups[0],Q=C.rt.Q;
+    check('v130 map: tried again it loads; the map sits in the Route card, with Hide map (open) and no note',
+      inj.filter(e=>e.tagName==='SCRIPT').length===2&&lg.maps.length===1&&m.c.classList.contains('wk-mp')&&$('wkRt').contains(m.c)&&$('wkRt').dataset.m==='map'&&!$('wkRt').querySelector('svg.wk-rt')&&bt()==='Hide map'&&B().getAttribute('aria-expanded')==='true'&&N2()==='',`${lg.maps.length} · ${bt()} · ${N2()}`);
+    check(`v130 map: street tiles from OpenStreetMap, closest zoom ${TH.MAP_ZMAX}, its credit kept and nothing else in the corner; no scroll-wheel zoom`,
+      t&&t.url==='https://tile.openstreetmap.org/{z}/{x}/{y}.png'&&t.o.maxZoom===TH.MAP_ZMAX&&/© .*OpenStreetMap.* contributors/.test(t.o.attribution)&&t.host===m&&lg.prefix===false&&m.opts.zoomControl===false&&m.opts.scrollWheelZoom===false,JSON.stringify(t&&t.o)+' · '+lg.prefix);
+    const J=x=>JSON.stringify(x),lines=()=>lg.groups[lg.groups.length-1].items.filter(x=>x.kind==='line').map(x=>x.o.className);
+    const dots=c=>lg.groups[lg.groups.length-1].items.filter(x=>x.kind==='dot'&&x.o.className===c),mk=lg.groups[lg.groups.length-1].items.filter(x=>x.kind==='marker');
+    check('v130 map: fitted to the route; the same coloured line, start, finish and km marks as the shape, none of them tappable',
+      lg.fit&&lg.fit.b.length===Q.length&&J(lg.fit.b[0])===J([Q[0].la,Q[0].lo])&&J(lg.fit.o.padding)==='[24,24]'&&lines()[0]==='rt-cs'&&J([...new Set(lines().slice(1))].sort())==='["rt-l easy","rt-l hard","rt-l steady"]'&&
+      dots('rt-s').length===1&&J(dots('rt-s')[0].ll)===J([Q[0].la,Q[0].lo])&&dots('rt-f').length===1&&J(dots('rt-f')[0].ll)===J([Q[Q.length-1].la,Q[Q.length-1].lo])&&dots('rt-k').length===C.rt.M.length&&
+      mk.map(x=>x.o.icon.o.html).join()===C.rt.M.map(x=>x.d).join()&&mk.every(x=>x.o.icon.o.className==='wk-mk')&&lg.groups[0].items.every(x=>x.o.interactive===false)&&$('wkRtLg').textContent.startsWith('By heart rate'),
+      `${lg.fit&&lg.fit.b.length}/${Q.length} · ${J([...new Set(lines())])} · km ${mk.map(x=>x.o.icon.o.html).join()}`);
+    const sc=x=>getComputedStyle(m.c.querySelector(x)),gold=col('var(--gold)'),allc=[...box.querySelectorAll('.wk-mpw, .wk-mpw *')].some(e=>{const c=getComputedStyle(e);return[c.stroke,c.fill,c.color,c.backgroundColor].includes(gold);});
+    check('v130 map: on the map easy, steady and hard keep the trace colours and the marks the text colour, never the accent',
+      sc('path.rt-l.easy').stroke===col('var(--green)')&&sc('path.rt-l.steady').stroke===col('var(--amber)')&&sc('path.rt-l.hard').stroke===col('var(--red)')&&sc('path.rt-s').fill===col('var(--text)')&&sc('path.rt-l.easy').fill==='none'&&!allc,`${sc('path.rt-l.easy').stroke} · gold ${allc}`);
+    const zb=[...m.c.parentNode.querySelectorAll('.wk-zm button')],zr=zb.map(b=>b.getBoundingClientRect()),wr=m.c.parentNode.getBoundingClientRect();
+    zb[0].click();zb[0].click();zb[1].click();
+    check('v130 map: zoom in and out buttons, 44px, labelled; the map fits 360px with nothing wider',
+      zb.map(b=>b.getAttribute('aria-label')).join()==='Zoom in,Zoom out'&&zr.every(r=>r.width>=44&&r.height>=44)&&m.z===1&&wr.width<=360&&Math.round(wr.height)===300&&$('dtBody').scrollWidth<=$('dtBody').clientWidth,`${zr.map(r=>r.width+'x'+r.height).join()} · ${wr.width}x${wr.height} · z ${m.z}`);
+    // linked both ways: a tap on the map picks the nearest moment; a moment on the trace puts the dot on the map
+    const q=Q[Math.floor(Q.length*0.4)],pt=m.latLngToContainerPoint([q.la,q.lo]);m.h.click({containerPoint:pt});
+    const hd2=()=>[...m.items].filter(x=>/^rt-h/.test(x.o&&x.o.className||'')),ro=$('dtBody').querySelector('.wk-ro').textContent;
+    check('v130 map: a tap on the map picks the nearest moment, the trace reads it and the map rings it',
+      C.hov!=null&&Math.abs(C.hov-q.i)<=3&&ro.includes(wkTm(C.a.pts[C.hov].t,false))&&hd2().map(x=>x.o.className).join()==='rt-h1,rt-h2'&&hd2().every(x=>J(x.ll)===J([wkRtAt(Q,C.hov).la,wkRtAt(Q,C.hov).lo])),`${C.hov} vs ${q.i} · ${ro}`);
+    C.hov=Math.floor(C.a.pts.length*0.8);wkDraw();const q2=wkRtAt(Q,C.hov);
+    check('v130 map: a moment picked on the trace moves the ring on the map',hd2().length===2&&hd2().every(x=>J(x.ll)===J([q2.la,q2.lo])),J(hd2().map(x=>x.ll)));
+    m.h.click({containerPoint:{x:-5000,y:-5000}});
+    check('v130 map: a tap away from the route clears the moment and the ring',C.hov===null&&!hd2().length&&/whole session/.test($('dtBody').querySelector('.wk-ro').textContent),`${C.hov} · ${hd2().length}`);
+    // the chip colours the map as it does the shape
+    const chip=k=>$('wkTr').querySelector(`.wk-ch[data-m="${k}"]`);chip('spd').click();
+    const lp=J([...new Set(lines().slice(1))].sort()),gp1=lg.groups.length,old=gp.rm,lgP=$('wkRtLg').textContent;chip('cad').click();
+    check('v130 map: the chip redraws the route on the map: pace against threshold pace, cadence one plain line, the old lines taken off',
+      gp1===2&&old===1&&lp==='["rt-l easy","rt-l hard","rt-l steady"]'&&lgP.startsWith('By pace')&&J([...new Set(lines().slice(1))])==='["rt-l"]'&&lg.groups[1].rm===1&&!$('wkRtLg').textContent.startsWith('By')&&lg.maps.length===1,`${gp1} · ${lp} · ${J([...new Set(lines())])}`);
+    chip('hr').click();
+    // a refresh gives the same map back, sized again, not a new one
+    const el0=m.c.parentNode;refreshDetail();
+    check('v130 map: a refresh of the sheet keeps the same map open (no new map, nothing removed) and the button says Hide map',
+      lg.maps.length===1&&lg.removed===0&&$('wkRt').firstChild===el0&&lg.inv>=1&&bt()==='Hide map'&&B().getAttribute('aria-expanded')==='true'&&$('wkRtLg').textContent.startsWith('By heart rate'),`${lg.maps.length} · ${lg.removed} · ${lg.inv} · ${bt()}`);
+    // the tiles are dimmed in dark mode only
+    const tp=()=>getComputedStyle(m.c.querySelector('.leaflet-tile-pane')).filter;
+    document.documentElement.setAttribute('data-theme','light');const fl=tp();document.documentElement.setAttribute('data-theme','dark');const fd=tp();
+    if(theme==null)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',theme);
+    check('v130 map: the street tiles are dimmed in dark mode, untouched in light',fl==='none'&&/brightness\(0\.7\)/.test(fd)&&/saturate\(0\.8\)/.test(fd),`${fl} · ${fd}`);
+    check('v130 map: names no app or device (the map\'s own credit aside)',!/polar|intervals|garmin|strava/i.test($('dtBody').textContent),'');
+    // Hide map: the map goes and the shape is back; Show map again needs no new download
+    B().click();
+    check('v130 map: Hide map takes the map down and puts the route shape back',lg.removed===1&&m.gone===1&&!_wkMap&&!!$('wkRt').querySelector('svg.wk-rt')&&!$('wkRt').querySelector('.wk-mpw')&&bt()==='Show map'&&B().getAttribute('aria-expanded')==='false'&&$('wkRtLg').textContent.startsWith('By heart rate'),`${lg.removed} · ${bt()}`);
+    B().click();await tick();
+    check('v130 map: Show map again draws a new map without adding the code again',lg.maps.length===2&&inj.filter(e=>e.tagName==='SCRIPT').length===2&&bt()==='Hide map',`${lg.maps.length} · ${inj.length}`);
+    // another workout, another sheet, or closing: the map is taken down
+    openDetail('wk:icu-m2');await wait('icu-m2');
+    const r2=lg.removed,b2=bt();
+    openDetail('wk:icu-m1');await wait('icu-m1');B().click();await tick();openDetail('strain');
+    const r3=lg.removed;openDetail('wk:icu-m1');await wait('icu-m1');B().click();await tick();closeDetail();
+    check('v130 map: another workout, another sheet and closing each take the map down; the next workout opens on its route shape',
+      r2===2&&b2==='Show map'&&r3===3&&lg.removed===4&&lg.maps.length===4&&!_wkMap,`${r2} · ${b2} · ${r3} · ${lg.removed}`);
+    const net=performance.getEntriesByType('resource').slice(res0).filter(e=>/tile\.openstreetmap\.org|\/vendor\/leaflet\//.test(e.name));
+    check('v130 map: nothing was fetched from the map server or the vendor folder (only the workout\'s own details), and the route stayed in memory',!net.length&&cnt.u.every(u=>/^https:\/\/intervals\.icu\/api\/v1\/activity\/m[12]$/.test(u))&&Object.keys(_s.pending).length===pend0&&!/"la"|"ll"/.test(JSON.stringify(_s)),`${net.length} · ${cnt.other} ${cnt.u.join(' ')}`);
+    const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),csp=(html.match(/Content-Security-Policy" content="([^"]*)"/)||[])[1]||'';
+    const dir=k=>(csp.split(';').map(x=>x.trim()).find(x=>x.startsWith(k+' '))||'');
+    check('v130 map: the page allows images from the map server only, and nothing else of it (no scripts, no requests)',
+      dir('img-src').split(/\s+/).includes('https://tile.openstreetmap.org')&&!/openstreetmap/.test(dir('connect-src')+dir('script-src')+dir('style-src'))&&dir('script-src')==="script-src 'self' 'unsafe-inline'",dir('img-src'));
+  }finally{
+    wkMapOff();closeDetail();delete hd.appendChild;delete window.L;inj.forEach(e=>e.remove());
+    if(theme==null)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',theme);
+    box.remove();css.remove();_wkSt.clear();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});
+  }
 });
 
 Promise.all(later).then(()=>{

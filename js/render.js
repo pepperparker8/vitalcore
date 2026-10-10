@@ -131,7 +131,7 @@ function renderTLoad(){
 }
 // v129: the workouts of the last 7 days, the total time in the header; Edit and Delete live in Log
 function renderActList(){
-  const d=S(),ws=d.workouts.filter(w=>daysAgo(w.date)>=0&&daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(wIcu(b).t||'')>(wIcu(a).t||'')?1:-1);
+  const d=S(),ws=wkOn().filter(w=>daysAgo(w.date)>=0&&daysAgo(w.date)<7).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(wIcu(b).t||'')>(wIcu(a).t||'')?1:-1);
   const tot=ws.reduce((a,w)=>a+(+w.durMin||0),0),te=$('actTot');if(te)te.textContent=tot?fmtDur(tot):'';
   $('actList').innerHTML=dupHTML()+(ws.length?ws.map(w=>wkRow(w,{plain:1})).join(''):`<div class="empty-state"><div class="empty-title">Nothing logged in the last 7 days</div><div class="empty-sub">Workouts from your watch show here, or add one yourself.</div><button class="empty-btn" onclick="logGo('lWorkout')">Log a workout</button></div>`);
   renderWkLog();
@@ -360,7 +360,7 @@ function renderCalendar(){
   for(let i=0;i<first;i++)html+='<div></div>';
   for(let day=1;day<=days;day++){
     const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const sl=d.sleepLogs.find(s=>s.date===date&&s.score),ci=d.checkins.find(c=>c.date===date),wk=d.workouts.find(w=>w.date===date);
+    const sl=d.sleepLogs.find(s=>s.date===date&&s.score),ci=d.checkins.find(c=>c.date===date),wk=wkOn().find(w=>w.date===date);
     let score=0;
     if(ciFull(ci))score=(ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100;else if(sl)score=sl.score;else if(wk||ci?.mindfulMin)score=60;
     if(score||ci||wk)active++;
@@ -375,7 +375,7 @@ function renderCalendar(){
 function calPrev(){_calDate.setDate(1);_calDate.setMonth(_calDate.getMonth()-1);renderCalendar();}
 function calNext(){_calDate.setDate(1);_calDate.setMonth(_calDate.getMonth()+1);renderCalendar();}
 function openDay(date){
-  const d=S(),sl=d.sleepLogs.find(s=>s.date===date),ci=d.checkins.find(c=>c.date===date),ws=d.workouts.filter(w=>w.date===date);
+  const d=S(),sl=d.sleepLogs.find(s=>s.date===date),ci=d.checkins.find(c=>c.date===date),ws=wkOn().filter(w=>w.date===date);
   $('dayPT').textContent=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
   const row=(l,v)=>`<div class="day-row"><span class="day-lbl">${l}</span><span class="day-val">${v}</span></div>`;
   let html='';
@@ -393,18 +393,18 @@ function closeDayPanel(){$('dayPanel').classList.remove('open');}
 function renderBests(){
   const d=S(),out=[];
   ['Run','Cycle','Swim','Hike'].forEach(t=>{
-    const ws=d.workouts.filter(w=>w.type===t&&w.distKm>0&&!wkEb(w));if(!ws.length)return;
+    const ws=wkOn().filter(w=>w.type===t&&w.distKm>0&&!wkEb(w));if(!ws.length)return;
     const b=ws.reduce((a,w)=>w.distKm>a.distKm?w:a);
     out.push([ICON[t],`Longest ${t==='Cycle'?'ride':t.toLowerCase()}`,b.date,fmtDist(b)]);
   });
   strBests().forEach(r=>out.push(r));
-  const lw=d.workouts.filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push([UI.clock,'Longest session',b.date,fmtDur(b.durMin)]);}
+  const lw=wkOn().filter(w=>w.durMin>0&&!w.sets);if(lw.length){const b=lw.reduce((a,w)=>w.durMin>a.durMin?w:a);out.push([UI.clock,'Longest session',b.date,fmtDur(b.durMin)]);}
   const bm=d.checkins.filter(c=>c.mindfulMin>0);if(bm.length){const b=bm.reduce((a,c)=>c.mindfulMin>a.mindfulMin?c:a);out.push([UI.lotus,'Longest mindfulness day',b.date,fmtDur(b.mindfulMin)]);}
   const bs=bestStreak();if(bs>1)out.push([UI.flame,'Best streak','',`${bs} days`]);
   $('prList').innerHTML=out.length?out.map(([i,t,dt,v])=>`<div class="act-item"><div class="act-icon past">${i}</div><div style="flex:1"><div class="act-name">${t}</div><div class="act-meta">${fmtD(dt)}</div></div><div class="best-v">${v}</div></div>`).join(''):`<div class="empty-state"><div class="empty-title">No records yet</div><div class="empty-sub">Log a few workouts and your personal bests show up here.</div><button class="empty-btn" onclick="logGo('lWorkout')">Log a workout</button></div>`;
 }
 function renderWeekSum(){
-  const d=S(),tw=d.workouts.filter(w=>daysAgo(w.date)<7),lw=d.workouts.filter(w=>{const x=daysAgo(w.date);return x>=7&&x<14;});
+  const d=S(),tw=wkOn().filter(w=>daysAgo(w.date)<7),lw=wkOn().filter(w=>{const x=daysAgo(w.date);return x>=7&&x<14;});
   const dist=tw.reduce((a,w)=>a+(w.distKm||0),0),dur=tw.reduce((a,w)=>a+(w.durMin||0),0);
   const sl=d.sleepLogs.filter(s=>s.score).slice(-7),avg=sl.length?Math.round(sl.reduce((a,s)=>a+s.score,0)/sl.length):0;
   const delta=tw.length-lw.length,ds=delta>0?` ↑ +${delta} vs last week`:delta<0?` ↓ ${Math.abs(delta)} vs last week`:' = same as last week';

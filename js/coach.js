@@ -24,7 +24,7 @@ function coachVerdict(){
   return{lvl,head,sc,body:bodyLive(),ill};
 }
 // true when today's prescription is rest and nothing has been logged
-function restToday(){try{const s=typeof strategy==='function'?strategy():null,d0=s&&s.days&&s.days[0];return !!(d0&&d0.role==='rest'&&!S().workouts.some(w=>w.date===td()));}catch(e){return false;}}
+function restToday(){try{const s=typeof strategy==='function'?strategy():null,d0=s&&s.days&&s.days[0];return !!(d0&&d0.role==='rest'&&!wkOn().some(w=>w.date===td()));}catch(e){return false;}}
 function renderCoach(){
   const el=$('coachCard');if(!el)return;
   const d=S(),sc=heroScore();
@@ -45,11 +45,11 @@ function renderCoach(){
 
 function isExampleOnly(){
   const d=S(),real=a=>(a||[]).some(x=>!x.isEx);
-  return !(real(d.checkins)||real(d.sleepLogs)||real(d.workouts)||real(d.measurements)||real(d.bloodLogs))&&!Object.keys(d.wellness||{}).length;
+  return !(real(d.checkins)||real(d.sleepLogs)||real(wkOn())||real(d.measurements)||real(d.bloodLogs))&&!Object.keys(d.wellness||{}).length;
 }
 function daysLogged(n){
   const d=S(),set=new Set();
-  [d.checkins,d.sleepLogs,d.workouts,d.measurements].forEach(a=>(a||[]).forEach(x=>{if(!x.isEx&&daysAgo(x.date)<n)set.add(x.date);}));
+  [d.checkins,d.sleepLogs,wkOn(),d.measurements].forEach(a=>(a||[]).forEach(x=>{if(!x.isEx&&daysAgo(x.date)<n)set.add(x.date);}));
   Object.keys(d.wellness||{}).forEach(k=>{if(daysAgo(k)<n)set.add(k);});
   return set.size;
 }

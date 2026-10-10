@@ -77,7 +77,7 @@ const SESS_EQ={
 // ── thresholds ──
 // Max heart rate estimate: the 98th percentile of recorded workout maxima (needs TH.HRMAX_N)
 function hrMaxEst(){
-  const v=S().workouts.map(w=>w.sub&&w.sub.icu&&w.sub.icu.hrMax).filter(x=>x>=120&&x<=230).sort((a,b)=>a-b);
+  const v=wkOn().map(w=>w.sub&&w.sub.icu&&w.sub.icu.hrMax).filter(x=>x>=120&&x<=230).sort((a,b)=>a-b);
   return v.length>=TH.HRMAX_N?v[Math.min(v.length-1,Math.floor(v.length*TH.HRMAX_PCT))]:null;
 }
 // {run:{lthr, maxHr, pace, ref, est}, ride:{ftp, lthr, maxHr, ref, est}}: imported values first (ref 'lthr' or 'max'),
@@ -97,7 +97,7 @@ function stThr(){
 // A power meter is in use when TH.PM_RIDES rides in the last 42 days recorded power from a device (v122: e-bike rides never count)
 function pmOn(){
   const from=dAgo(42);
-  return S().workouts.filter(w=>w.type==='Cycle'&&w.date>=from&&w.sub&&w.sub.icu&&w.sub.icu.dw&&w.sub.icu.pw&&!w.sub.icu.eb).length>=TH.PM_RIDES;
+  return wkOn().filter(w=>w.type==='Cycle'&&w.date>=from&&w.sub&&w.sub.icu&&w.sub.icu.dw&&w.sub.icu.pw&&!w.sub.icu.eb).length>=TH.PM_RIDES;
 }
 // how targets are given for a sport: 'pace' | 'hr' | 'pw' | 'eff' (effort words) | null (strength, yoga)
 function sessKind(type,thr){
@@ -109,7 +109,7 @@ function sessKind(type,thr){
 }
 // minutes per 100 m from the last swims with a distance, else SW_PACE
 function swPace(){
-  const v=S().workouts.filter(w=>w.type==='Swim'&&w.distKm>0&&w.durMin>0).slice(-10).map(w=>w.durMin/(w.distKm*10)).filter(p=>p>=1.2&&p<=5);
+  const v=wkOn().filter(w=>w.type==='Swim'&&w.distKm>0&&w.durMin>0).slice(-10).map(w=>w.durMin/(w.distKm*10)).filter(p=>p>=1.2&&p<=5);
   return v.length>=3?v.sort((a,b)=>a-b)[Math.floor(v.length/2)]:SW_PACE;
 }
 

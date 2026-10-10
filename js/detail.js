@@ -464,7 +464,7 @@ const snSteps=t=>{const p=dayOn(t),a=p&&p.data||{};return a.steps??((S().wellnes
 // each workout and the time on your feet, with its share of the day's strain
 function snSrc(t){
   const tot=strainLoad(t);if(!tot)return'';
-  const thr=stThr(),ac=actLoad(t),it=S().workouts.filter(w=>w.date===t).map(w=>{
+  const thr=stThr(),ac=actLoad(t),it=wkOn().filter(w=>w.date===t).map(w=>{
     const e=wkEffOf(w,thr);
     return{ic:ICON[w.type]||ICON.Other,l:esc(wkLabel(w)),m:[wIcu(w).t,w.durMin?fmtDur(w.durMin):'',e?STR_EW[e.e]:''].filter(Boolean).join(' · '),v:wLoad(w),c:'--text'};
   });
@@ -665,7 +665,7 @@ function dtSpec(k){
   }
   if(k==='strain'){
     // v129: the aim, where the strain came from, heart rate zones all day, your day, the heart rate line and this week, then the 30-day chart
-    const load=strainLoad(t),st=strainOf(load),ref=strainRef(),hard=strainOf(ref),tg=now?strainTarget():null,nav=dtDayNav(),ws=d.workouts.filter(w=>w.date===t);
+    const load=strainLoad(t),st=strainOf(load),ref=strainRef(),hard=strainOf(ref),tg=now?strainTarget():null,nav=dtDayNav(),ws=wkOn().filter(w=>w.date===t);
     if(!now&&!load&&!dayOn(t))return{title:'Strain',nav,missing:'Nothing was recorded for this day.'};
     const rest=now&&restToday()&&!ws.length;
     return{title:'Strain',nav,
@@ -714,7 +714,7 @@ function openDetail(k,again){
   _dtCh=null;chUnmount('dtChart');
   const wk=/^wk:/.test(k);
   if(wk&&!again)wkOpen(k.slice(3));
-  if(!wk){_wkC=null;_wkRes=null;}
+  if(!wk){_wkC=null;_wkRes=null;wkMapOff();}
   const sp=dtSpec(k),el=$('dtModal');if(!sp||!el)return;
   _dtKey=k;$('dtTitle').firstChild.textContent=sp.title+' ';
   // v122: a sheet that builds its own body (the workout sheet); open notes and the chart's focus survive a re-render
@@ -742,5 +742,5 @@ function openDetail(k,again){
   if(_dtCh&&$('dtChart'))mountChart('dtChart',{key:'dt'+k,at:_dtDay,..._dtCh});
   if(md)md.scrollTop=sy;
 }
-function closeDetail(){_dtKey=null;_dtDate=null;_dtShown=null;_dtDay=null;_dtCh=null;_wkC=null;_wkRes=null;chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
+function closeDetail(){_dtKey=null;_dtDate=null;_dtShown=null;_dtDay=null;_dtCh=null;_wkC=null;_wkRes=null;wkMapOff();chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
 function refreshDetail(){if(_dtKey)openDetail(_dtKey,1);}

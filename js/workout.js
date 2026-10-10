@@ -60,6 +60,72 @@ const wkEb=w=>!!wIcu(w).eb;
 // for sentences: "e-bike ride", "ride", "run" ...; "today's", "yesterday's", "Saturday's"
 const wkNoun=w=>wkEb(w)?'e-bike ride':({Run:'run',Cycle:'ride',Swim:'swim',Hike:'hike',Walk:'walk',Yoga:'yoga'})[w.type]||'session';
 const wkWhen=dt=>dt===td()?"today's":dt===dAgo(1)?"yesterday's":new Date(dt+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'})+"'s";
+// ── v130 ONE COPY OF EACH WORKOUT ────────────────────────────────────────────
+// The same session can arrive twice (the watch and the band, both through the import). Two imported workouts on one date, each with a
+// start time and a duration, overlapping by TH.DUP_OVERLAP of the shorter one, are one session, whatever sport each names. In a cluster
+// the most detailed copy counts (wkDetScore, then the longer, then the id); the others are hidden on the fly, never deleted, unless the
+// copy carries sub.both (Show both). Hand-logged doubles keep the "logged twice" strip in Log (findDups). wkOn() in core.js reads this.
+const WK_DET={gps:4,dw:2,z:1,cad:1,dist:1,elev:1,hr:1};
+const wkDetScore=w=>{const i=wIcu(w);return(i.gps?WK_DET.gps:0)+(i.dw?WK_DET.dw:0)+(Array.isArray(i.z)&&i.z.some(x=>x>0)?WK_DET.z:0)+(i.cad>0?WK_DET.cad:0)+(w.distKm>0?WK_DET.dist:0)+(i.elev>0?WK_DET.elev:0)+(i.hr>0?WK_DET.hr:0);};
+const wkBoth=w=>!!(w&&w.sub&&w.sub.both);
+const wkT0=w=>{const m=/^(\d{1,2}):(\d{2})/.exec(wIcu(w).t||'');return m?+m[1]*60+ +m[2]:null;};
+const wkKeepCmp=(x,y)=>wkDetScore(y)-wkDetScore(x)||(y.durMin||0)-(x.durMin||0)||(x.id<y.id?-1:x.id>y.id?1:0);
+// worked out again only when the list, a time stamp, a duration or a Show both changes (put() stamps ts)
+let _wkDup=null;
+function wkDupScan(){
+  const a=S().workouts||[];let ts=0,du=0,b=0;
+  for(const w of a){ts+=w.ts||0;du+=w.durMin||0;if(wkBoth(w))b++;}
+  const key=a.length+'|'+ts+'|'+du+'|'+b;
+  if(_wkDup&&_wkDup.a===a&&_wkDup.key===key)return _wkDup;
+  const by={},hid=new Set(),cl=new Map();
+  a.forEach(w=>{if(w.isEx||!/^icu-/.test(String(w.id))||!(w.durMin>0))return;const st=wkT0(w);if(st==null)return;(by[w.date]=by[w.date]||[]).push({w,st,en:st+w.durMin});});
+  Object.values(by).forEach(L=>{
+    if(L.length<2)return;
+    const p=L.map((_,i)=>i),f=i=>p[i]===i?i:(p[i]=f(p[i]));
+    for(let i=0;i<L.length;i++)for(let j=i+1;j<L.length;j++){
+      const x=L[i],y=L[j],o=Math.min(x.en,y.en)-Math.max(x.st,y.st);
+      if(o>0&&o>=TH.DUP_OVERLAP*Math.min(x.w.durMin,y.w.durMin))p[f(j)]=f(i);
+    }
+    const g={};L.forEach((x,i)=>(g[f(i)]=g[f(i)]||[]).push(x.w));
+    Object.values(g).forEach(ws=>{
+      if(ws.length<2)return;
+      ws.sort(wkKeepCmp);
+      const c={keep:ws[0].id,ids:ws.map(w=>w.id),hid:ws.slice(1).filter(w=>!wkBoth(w)).map(w=>w.id)};
+      c.hid.forEach(id=>hid.add(id));c.ids.forEach(id=>cl.set(id,c));
+    });
+  });
+  return _wkDup={a,key,hid,cl};
+}
+const wkHid=()=>wkDupScan().hid;
+// the cluster a workout sits in, null without a copy: {keep id, ids (best first), hid (the hidden ones)}
+const wkDupOf=id=>wkDupScan().cl.get(id)||null;
+// typed values on a hidden copy fill empty fields of the copy that counts: effort, sets, pain, pool and stroke (never the note).
+// Writes only when something changes, so it runs after every pull and at start.
+function dupFill(){
+  const d=S(),seen=new Set();let n=0;
+  wkDupScan().cl.forEach(c=>{
+    if(seen.has(c)||!c.hid.length)return;seen.add(c);
+    const k=d.workouts.find(w=>w.id===c.keep);if(!k)return;
+    const rec={...k,sub:{...(k.sub||{})}};let ch=false;
+    c.hid.forEach(id=>{
+      const h=d.workouts.find(w=>w.id===id);if(!h)return;const hs=h.sub||{};
+      if(rec.rpe==null&&h.rpe!=null){rec.rpe=h.rpe;ch=true;}
+      if(!(rec.sets&&rec.sets.length)&&h.sets&&h.sets.length){rec.sets=JSON.parse(JSON.stringify(h.sets));ch=true;}
+      ['pain','pool','stroke'].forEach(f=>{if(rec.sub[f]==null&&hs[f]!=null){rec.sub[f]=hs[f];ch=true;}});
+    });
+    if(ch){put('workouts',rec);n++;}
+  });
+  return n;
+}
+// Show both (on) or Hide the copy (off): the choice sits on every copy of the session (sub.both, synced inside sub)
+function wkBothSet(id,on){
+  const c=wkDupOf(id);if(!c)return;
+  const was=c.ids.map(i=>S().workouts.find(x=>x.id===i)).filter(Boolean).map(w=>[w.id,wkBoth(w)]);
+  const set=(i,v)=>{const w=S().workouts.find(x=>x.id===i);if(!w||wkBoth(w)===v)return;const sub={...(w.sub||{})};if(v)sub.both=1;else delete sub.both;put('workouts',{...w,sub});};
+  const after=()=>{refreshAll();if(_dtKey==='wk:'+id&&wkHid().has(id))openDetail('wk:'+c.keep);else refreshDetail();};
+  c.ids.forEach(i=>set(i,on));after();
+  showToast(on?'Both copies count':'Copy hidden',{label:'Undo',fn:()=>{was.forEach(([i,v])=>set(i,v));after();}});
+}
 // v127: your own bounce-back days. For each hard session (effort 4+) of the last TH.BB_DAYS with no other hard one in the
 // TH.BB_FREE_D days after it: the first morning, 1 to TH.BB_MAX days later, with HRV at least its usual less TH.BB_HRV_SD SD and
 // resting heart rate at most its usual plus TH.BB_RHR_SD SD (each against the 28 days before the session, resting heart rate from one
@@ -67,7 +133,7 @@ const wkWhen=dt=>dt===td()?"today's":dt===dAgo(1)?"yesterday's":new Date(dt+'T12
 // the median of a class once it has TH.BB_MIN_N readings, else of both together, else null (the TH.REC_* defaults); 1 to TH.BB_CAP,
 // very hard never shorter than hard. Worked out on every call, never stored.
 function bounceDays(thr){
-  const t=td(),hard=S().workouts.filter(w=>!w.isEx&&w.date<t&&daysAgo(w.date)<=TH.BB_DAYS).map(w=>({w,e:wkEff(w,thr)||0})).filter(x=>x.e>=4);
+  const t=td(),hard=wkOn().filter(w=>!w.isEx&&w.date<t&&daysAgo(w.date)<=TH.BB_DAYS).map(w=>({w,e:wkEff(w,thr)||0})).filter(x=>x.e>=4);
   const by={4:[],5:[]},before=(d0,dt)=>{const a=daysAgoBetween(dt,d0);return a>=1&&a<=28;};
   hard.forEach(({w,e})=>{
     if(stAdd(w.date,TH.BB_MAX)>t||hard.some(x=>x.w.date>w.date&&daysAgoBetween(w.date,x.w.date)<=TH.BB_FREE_D))return;
@@ -114,7 +180,7 @@ function wkRec(w,thr){
 // ── the trace: second by second heart rate, altitude, speed, power, cadence and distance of an imported workout. Fetched only
 // when its sheet opens, worked out once, kept in memory only (newest 10; localStorage is close to full), never stored or synced ──
 const _wkSt=new Map(),_wkPend=new Map();
-const WK_TYPES=['time','heartrate','altitude','velocity_smooth','watts','cadence','distance'];
+const WK_TYPES=['time','heartrate','altitude','velocity_smooth','watts','cadence','distance','latlng'];
 const wkActUrl=w=>'https://intervals.icu/api/v1/activity/'+encodeURIComponent(String(w.id).slice(4));
 const wkStUrl=w=>wkActUrl(w)+'/streams.json?'+WK_TYPES.map(t=>'types='+t).join('&');
 // the trace already worked out for this workout, without asking the network (re-renders use this); null when none yet
@@ -156,12 +222,22 @@ async function wkDetFill(w,H){
     if(Object.keys(add).length)put('workouts',{...cur,sub:{...(cur.sub||{}),icu:{...oi,...add}}});
   }catch(e){}
 }
-// the answer is a list of {type, data}; an object keyed by type is read too
+// the answer is a list of {type, data}; an object keyed by type is read too. The route (latlng) becomes ll, kept in memory only
 function wkStParse(j){
   const K={time:'t',heartrate:'hr',altitude:'alt',velocity_smooth:'spd',watts:'pw',cadence:'cad',distance:'dist'},o={};
-  const L=Array.isArray(j)?j:j&&typeof j==='object'?Object.entries(j).map(([type,v])=>({type,data:Array.isArray(v)?v:v&&v.data})):[];
-  L.forEach(s=>{const k=s&&K[s.type];if(k&&Array.isArray(s.data))o[k]=s.data;});
+  const L=Array.isArray(j)?j:j&&typeof j==='object'?Object.entries(j).map(([type,v])=>({type,data:Array.isArray(v)?v:v&&v.data,data2:v&&!Array.isArray(v)?v.data2:null})):[];
+  L.forEach(s=>{
+    if(s&&s.type==='latlng'){const ll=wkLL(s.data,s.data2);if(ll&&ll.some(Boolean))o.ll=ll;return;}
+    const k=s&&K[s.type];if(k&&Array.isArray(s.data))o[k]=s.data;
+  });
   return o;
+}
+// v130: a route as [[lat, lng] | null]: data holds the latitudes and data2 the longitudes, or data holds [lat, lng] pairs.
+// A point off the globe or at 0,0 (no fix) is null
+function wkLL(a,b){
+  if(!Array.isArray(a))return null;
+  const ok=(la,lo)=>typeof la==='number'&&typeof lo==='number'&&isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180&&(la!==0||lo!==0)?[la,lo]:null;
+  return a.map((x,i)=>Array.isArray(x)?ok(x[0],x[1]):Array.isArray(b)?ok(x,b[i]):null);
 }
 // time-weighted mean of v over the samples [j, k); each sample counts for the seconds to the next one (at most 10, so a pause adds nothing)
 const wkDt=(t,i)=>i<t.length-1?Math.min(Math.max(t[i+1]-t[i],0),10):1;
@@ -195,9 +271,9 @@ function wkClimb(A){
   return best.g>=TH.CLIMB_MIN?best:null;
 }
 // everything the sheet reads from a trace, worked out once on the full trace; the chart keeps at most TH.WK_PTS points.
-// {T (seconds), has{hr, alt, spd, pw, cad, dist}, pts[{t, hr, alt, spd (km/h), pw, cad, km, g (a break before it)}], b5, b20, climb}; null without data
+// {T (seconds), has{hr, alt, spd, pw, cad, dist, gps}, pts[{t, hr, alt, spd (km/h), pw, cad, km, g (a break before it), la, lo (with a route)}], b5, b20, climb}; null without data
 function wkAnalyse(s){
-  const n=Math.max(0,...['hr','alt','spd','pw','cad','dist'].map(k=>Array.isArray(s[k])?s[k].length:0));
+  const n=Math.max(0,...['hr','alt','spd','pw','cad','dist','ll'].map(k=>Array.isArray(s[k])?s[k].length:0));
   if(n<2)return null;
   const t0=Array.isArray(s.t)&&s.t.length===n?s.t:Array.from({length:n},(_,i)=>i),T0=t0[0]||0,t=t0.map(x=>(x||0)-T0);
   const num=(a,lo,hi)=>Array.from({length:n},(_,i)=>{const v=a&&a[i];return typeof v==='number'&&isFinite(v)&&v>=lo&&v<=hi?v:null;});
@@ -212,8 +288,9 @@ function wkAnalyse(s){
     A=a.map((_,i)=>{const lo=Math.max(0,i-h),hi=Math.min(n-1,i+h);return(P[hi+1]-P[lo])/(hi-lo+1);});
     let mn=Infinity,mx=-Infinity;A.forEach(x=>{if(x<mn)mn=x;if(x>mx)mx=x;});if(mx-mn<1)A=null;
   }
-  const has={hr:any(hr),alt:!!A,spd:any(spd),pw:any(pw),cad:any(cad),dist:any(dist)};
-  if(!has.hr&&!has.alt&&!has.spd&&!has.pw&&!has.cad)return null;
+  const ll=Array.isArray(s.ll)?s.ll:null,nll=ll?ll.reduce((c,q)=>c+(Array.isArray(q)?1:0),0):0;
+  const has={hr:any(hr),alt:!!A,spd:any(spd),pw:any(pw),cad:any(cad),dist:any(dist),gps:false};
+  if(!has.hr&&!has.alt&&!has.spd&&!has.pw&&!has.cad&&nll<TH.RT_MIN_PTS)return null;
   const T=t[n-1],B=Math.max(1,(T+1)/TH.WK_PTS),bk=[];
   for(let i=0;i<n;i++){const b=Math.floor(t[i]/B);(bk[b]=bk[b]||[]).push(i);}
   const r1=v=>v==null?null:Math.round(v*10)/10,rd=v=>v==null?null:Math.round(v);
@@ -221,9 +298,14 @@ function wkAnalyse(s){
   bk.forEach(ix=>{if(!ix)return;
     const j=ix[0],k=ix[ix.length-1]+1,dl=[...ix].reverse().find(i=>dist[i]!=null);
     const v=has.spd?wkMeanIn(t,spd,j,k):null;
-    pts.push({t:Math.round(wkMeanIn(t,t,j,k)),hr:rd(wkMeanIn(t,hr,j,k)),alt:A?r1(wkMeanIn(t,A,j,k)):null,spd:v==null?null:r1(v*3.6),
-      pw:has.pw?rd(wkMeanIn(t,pw,j,k)):null,cad:has.cad?rd(wkMeanIn(t,cad,j,k)):null,km:dl!=null?Math.round(dist[dl]/10)/100:null,g:last!=null&&t[j]-t[last]>Math.max(60,3*B)?1:0});
-    last=k-1;});
+    const o={t:Math.round(wkMeanIn(t,t,j,k)),hr:rd(wkMeanIn(t,hr,j,k)),alt:A?r1(wkMeanIn(t,A,j,k)):null,spd:v==null?null:r1(v*3.6),
+      pw:has.pw?rd(wkMeanIn(t,pw,j,k)):null,cad:has.cad?rd(wkMeanIn(t,cad,j,k)):null,km:dl!=null?Math.round(dist[dl]/10)/100:null,g:last!=null&&t[j]-t[last]>Math.max(60,3*B)?1:0};
+    // the route: the mean position of the bucket, 5 decimals (about a metre)
+    if(ll){let a=0,b=0,c=0;ix.forEach(i=>{const q=ll[i];if(Array.isArray(q)){a+=q[0];b+=q[1];c++;}});
+      o.la=c?Math.round(a/c*1e5)/1e5:null;o.lo=c?Math.round(b/c*1e5)/1e5:null;}
+    pts.push(o);last=k-1;});
+  has.gps=!!ll&&pts.filter(p=>p.la!=null).length>=TH.RT_MIN_PTS;
+  if(!has.gps&&!has.hr&&!has.alt&&!has.spd&&!has.pw&&!has.cad)return null;
   const best=W=>{const b=has.hr&&wkBest(t,hr,W);if(!b)return null;
     const o={hr:Math.round(b.v),at:t[b.j],to:t[b.k-1]};
     if(has.pw){const p=wkMeanIn(t,pw,b.j,b.k);if(p)o.pw=Math.round(p);}
@@ -327,6 +409,12 @@ function wkNote(w,g){
   const d=S();if(!d.intervalsKey||!d.intervalsID)return'The heart rate trace shows on the phone where the connection is set up in Settings.';
   return _wkPend.has(w.id)?null:'The heart rate trace is not available for this workout.';
 }
+// v130: the line under the summary when the session was recorded twice. A copy hidden: Show both; both shown: Hide the copy
+function wkDupLine(w){
+  const c=wkDupOf(w.id);if(!c)return'';
+  const[t,b,on]=c.hid.length?['Also recorded by another device. Hidden so it counts once.','Show both',1]:wkBoth(w)?['Recorded twice; both count.','Hide the copy',0]:[];
+  return t?`<div class="wk-dup2">${UI.copy}<p>${t}</p><button type="button" onclick="wkBothSet('${esc(w.id)}',${on})">${b}</button></div>`:'';
+}
 // {title, html} for the detail sheet (openDetail renders html as it is)
 function wkSpec(id){
   const w=S().workouts.find(x=>x.id===id);
@@ -346,11 +434,13 @@ function wkSpec(id){
   if(painOf(w)!=null)cell('Pain',painOf(w)+' of 10','');
   if(w.type==='Swim'&&w.sub&&w.sub.pool)cell('Where',w.sub.pool==='open'?'Open water':'Pool','');
   if(w.type==='Swim'&&w.sub&&w.sub.stroke)cell('Stroke',w.sub.stroke,'');
-  let h=`<div class="dt-sub">${esc(sum)}</div>`+(C.length?`<div class="wk-grid">${C.join('')}</div>`:'');
+  let h=`<div class="dt-sub">${esc(sum)}</div>`+wkDupLine(w)+(C.length?`<div class="wk-grid">${C.join('')}</div>`:'');
   if(a){
     if(!_wkC||_wkC.id!==id)_wkC={id,m:'hr',hov:null};
     Object.assign(_wkC,{a,w,B,thr,pm});
-    h+=`<div class="dt-sec">${a.has.hr?'Heart rate during the session':'During the session'}</div><div id="wkTr" class="wk-tr"></div>`;
+    const ms=_wkC.ms=wkMets(_wkC);if(!ms.some(([k])=>k===_wkC.m))_wkC.m=ms.length?ms[0][0]:'hr';
+    if(a.has.gps)h+=wkRtSec(_wkC);
+    if(ms.length)h+=`<div class="dt-sec">${a.has.hr?'Heart rate during the session':'During the session'}</div><div class="dt-card"><div id="wkTr" class="wk-tr"></div></div>`;
   }else{
     _wkC=null;const n=wkNote(w,g);
     h+=n==null?'<div class="wk-load">Loading the heart rate trace…</div>':n?`<div class="dt-note">${n}</div>`:'';
@@ -358,10 +448,10 @@ function wkSpec(id){
   const Z=wkZones(w,thr),zt=Z.reduce((s,z)=>s+z.min,0);
   if(zt>0){
     const m=wkMix(w,thr);
-    h+='<div class="dt-sec">Time in heart rate zones</div>';
+    h+='<div class="dt-sec">Time in heart rate zones</div><div class="dt-card">';
     if(m)h+=`<div class="wk-mix"><span class="easy">${wkMin(m.easy)} easy</span><span class="steady">${wkMin(m.steady)} steady</span><span class="hard">${wkMin(m.hard)} hard</span></div>`;
     h+='<div class="wk-zns">'+Z.map((z,k)=>{const r=k===0?`up to ${z.hi}`:z.hi==null?`over ${z.lo}`:`${z.lo+1}–${z.hi}`;
-      return`<div class="wk-zn"><span class="wk-zl">Zone ${k+1}<small>${r} bpm</small></span><span class="wk-zb"><i class="${z.cls||''}" style="width:${Math.round(z.min/zt*100)}%"></i></span><b>${wkMin(z.min)}</b></div>`;}).join('')+'</div>';
+      return`<div class="wk-zn"><span class="wk-zl">Zone ${k+1}<small>${r} bpm</small></span><span class="wk-zb"><i class="${z.cls||''}" style="width:${Math.round(z.min/zt*100)}%"></i></span><b>${wkMin(z.min)}</b></div>`;}).join('')+'</div></div>';
   }
   const ins=wkIns(w,a,thr,B,pm);
   if(ins.length)h+=`<div class="dt-sec">What it shows</div><ul class="wk-in">${ins.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
@@ -376,6 +466,7 @@ function wkSpec(id){
 // the sheet opened (not a re-render): ask for the trace once when it is not here yet; the answer re-renders the sheet if it is still open
 function wkOpen(id){
   if(_wkC&&_wkC.id!==id)_wkC=null;
+  if(_wkMap&&_wkMap.id!==id)wkMapOff();
   _wkRes=null;
   const d=S(),w=d.workouts.find(x=>x.id===id);
   if(!w||!/^icu-/.test(id)||!d.intervalsKey||!d.intervalsID||_wkSt.has(id))return;
@@ -388,8 +479,9 @@ function wkMets(C){
   return ms;
 }
 function wkMount(){
-  const C=_wkC,host=$('wkTr');if(!C||!host)return;
-  const ms=C.ms=wkMets(C);if(!ms.some(([k])=>k===C.m))C.m=ms.length?ms[0][0]:'hr';
+  const C=_wkC;if(!C)return;
+  const host=$('wkTr'),ms=C.ms;C.cv=C.ro=null;
+  if(!host){wkDraw();return;}
   host.innerHTML=(ms.length>1?`<div class="wk-chs" role="group" aria-label="Show on the chart">${ms.map(([k,l])=>`<button type="button" class="wk-ch" data-m="${k}" aria-pressed="${k===C.m}">${l}</button>`).join('')}</div>`:'')+
     `<div class="vc-ro wk-ro"></div><canvas class="vc-cv wk-cv" tabindex="0" role="img" style="width:100%;height:${WK_H}px;display:block"></canvas>`;
   host.querySelectorAll('.wk-ch').forEach(b=>b.onclick=()=>{C.m=b.dataset.m;host.querySelectorAll('.wk-ch').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));wkDraw();});
@@ -450,7 +542,9 @@ function wkRo(C){
   C.cv.setAttribute('aria-label',`${nm} over the session${cells.length?': '+cells.filter(c=>c[1]).map(c=>c[0].toLowerCase()+' '+c[1]).join(', '):''}`);
 }
 function wkDraw(){
-  const C=_wkC;if(!C||!C.cv||!C.cv.isConnected)return;
+  const C=_wkC;if(!C)return;
+  wkRtDraw(C);
+  if(!C.cv||!C.cv.isConnected)return;
   const c=C.cv,P=C.a.pts,m=C.m,H=WK_H,W=c.parentElement.clientWidth||300,r=window.devicePixelRatio||1;
   c.width=W*r;c.height=H*r;const ctx=c.getContext('2d');ctx.scale(r,r);
   const L=C.L=34,R=C.R=10,T=10,Bm=22,TT=Math.max(1,C.a.T),X=t=>L+t/TT*(W-L-R);
@@ -502,3 +596,193 @@ function wkDraw(){
   wkRo(C);
 }
 window.addEventListener('resize',()=>wkDraw());
+
+// ── v130: the route of a GPS workout, drawn from the trace (in memory only, never stored or sent anywhere). Coloured like the
+// chip in view when it can be judged, start and finish marks, a mark every 1, 2, 5 or 10 km, and a dot linked to the trace ──
+const RT_W=292,RT_H=196,RT_PAD=18;
+// distance in km between two {la, lo}
+function wkHav(a,b){
+  const r=Math.PI/180,x=Math.sin((b.la-a.la)*r/2),y=Math.sin((b.lo-a.lo)*r/2);
+  return 2*6371*Math.asin(Math.min(1,Math.sqrt(x*x+Math.cos(a.la*r)*Math.cos(b.la*r)*y*y)));
+}
+// the route projected onto the drawing (flat, east-west scaled by the latitude, fitted with a margin):
+// {a, Q[{i (index in pts), la, lo, x, y, km}], tot (km), st (km between marks), M[{j, d}], cx, cy}
+function wkRtGeo(a){
+  const P=a.pts,Q=[];P.forEach((p,i)=>{if(p.la!=null)Q.push({i,la:p.la,lo:p.lo});});
+  const k=Math.cos(avg(Q.map(q=>q.la))*Math.PI/180);
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  Q.forEach(q=>{const x=q.lo*k,y=-q.la;q.x=x;q.y=y;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;});
+  const dx=x1-x0,dy=y1-y0,sc=Math.min((RT_W-2*RT_PAD)/(dx||1e-9),(RT_H-2*RT_PAD)/(dy||1e-9)),ox=(RT_W-dx*sc)/2,oy=(RT_H-dy*sc)/2;
+  // the distance from the recorded distance where there is one, else measured along the route
+  const byD=Q.some(q=>P[q.i].km!=null),r1=v=>Math.round(v*10)/10;let c=0,lst=0,cx=0,cy=0;
+  Q.forEach((q,j)=>{
+    q.x=r1(ox+(q.x-x0)*sc);q.y=r1(oy+(q.y-y0)*sc);cx+=q.x;cy+=q.y;
+    if(byD){const v=P[q.i].km;if(v!=null)lst=v;q.km=lst;}else{if(j)c+=wkHav(Q[j-1],q);q.km=c;}
+  });
+  cx/=Q.length||1;cy/=Q.length||1;
+  const tot=Q.length?Q[Q.length-1].km:0,st=[1,2,5,10,20,50,100].find(s=>Math.floor(tot/s)<=TH.RT_KM_MAX)||100,M=[];
+  for(let d=st,j=0;d<tot;d+=st){while(j<Q.length&&Q[j].km<d)j++;if(j<Q.length)M.push({j,d});}
+  return{a,Q,tot,st,M,cx,cy};
+}
+// what colours the route: heart rate against your zones, a run's pace against your threshold pace, power from a real meter
+// against your FTP (the easy, steady and hard cuts of the session zones); anything else is one plain line. {by, at(p)}
+function wkRtCls(C){
+  const t=C.thr||{},run=t.run||{},ride=t.ride||{};
+  const cut=(v,z)=>v<z.z3[0]?'easy':v<z.z4[0]?'steady':'hard';
+  if(C.m==='hr'&&C.a.has.hr&&C.B.length)return{by:'heart rate',at:p=>wkClsAt(C.B,p.hr)};
+  if(C.m==='spd'&&C.w.type==='Run'&&run.pace>0)return{by:'pace',at:p=>p.spd==null||p.spd<0.5?null:cut(p.spd/3.6/run.pace*100,ZN.pace)};
+  if(C.m==='pw'&&C.pm&&ride.ftp>0)return{by:'power',at:p=>p.pw==null?null:cut(p.pw/ride.ftp*100,ZN.pw)};
+  return{by:null,at:()=>null};
+}
+// the distance said above the route: the recorded one, else measured along it
+const wkRtKm=C=>C.w.distKm?fmtDist(C.w):C.rt&&C.rt.tot>0?Math.round(C.rt.tot*10)/10+' km':'';
+function wkRtSec(C){
+  if(!C.rt||C.rt.a!==C.a)C.rt=wkRtGeo(C.a);
+  const km=wkRtKm(C);
+  return`<div class="dt-sec">Route${km?`<em>${esc(km)}</em>`:''}</div><div class="dt-card wk-rtc"><div id="wkRt"></div><div class="wk-lg" id="wkRtLg"></div>`+
+    `<button type="button" class="wk-bo" id="wkMapB" onclick="wkMapTog()"${C.mapL?' disabled':''} aria-expanded="${!!wkMapIs(C)}">${UI.map}<span>${wkMapLbl(C)}</span></button><p class="wk-mpn" id="wkMapN" role="status">${esc(C.mapN||'')}</p></div>`;
+}
+// the route cut into runs of one colour for the chip in view, each starting where the last one ended, so the line has no gaps:
+// [{c, p[route points]}]; sets C.rtBy (what it is coloured by, null for a plain line)
+function wkRtRuns(C){
+  const Q=C.rt.Q,K=wkRtCls(C),cs=Q.map(q=>K.at(C.a.pts[q.i]));
+  // a moment with no reading keeps the colour before it (the first ones take the first known)
+  let f=cs.find(Boolean)||null;for(let j=0;j<cs.length;j++){if(cs[j])f=cs[j];else cs[j]=f;}
+  const by=C.rtBy=f?K.by:null,S=[];let cur=null;
+  Q.forEach((q,j)=>{const c=by?cs[j]:'';if(cur&&cur.c===c){cur.p.push(q);return;}const pv=cur&&cur.p[cur.p.length-1];cur={c,p:pv?[pv,q]:[q,q]};S.push(cur);});
+  return S;
+}
+// the svg for the chip in view
+function wkRtSvg(C){
+  const g=C.rt,Q=g.Q,S=wkRtRuns(C),by=C.rtBy,pth=pp=>'M'+pp.map(q=>q.x+' '+q.y).join('L');
+  const cl=(v,lo,hi)=>Math.round(Math.min(hi,Math.max(lo,v))*10)/10;
+  const km=g.M.map(({j,d})=>{
+    const q=Q[j],a=Q[Math.max(0,j-2)],b=Q[Math.min(Q.length-1,j+2)],tx=b.x-a.x,ty=b.y-a.y,l=Math.hypot(tx,ty)||1;
+    let nx=-ty/l,ny=tx/l;if((q.x-g.cx)*nx+(q.y-g.cy)*ny<0){nx=-nx;ny=-ny;}
+    return`<circle class="rt-k" cx="${q.x}" cy="${q.y}" r="2.6"/><text class="wk-km" x="${cl(q.x+nx*9,8,RT_W-8)}" y="${cl(q.y+ny*9+3.5,10,RT_H-3)}">${d}</text>`;
+  }).join('');
+  const s=Q[0],e=Q[Q.length-1],km0=wkRtKm(C);
+  return`<svg class="wk-rt" viewBox="0 0 ${RT_W} ${RT_H}" role="img" aria-label="Route${km0?', '+esc(km0):''}${by?', coloured by '+by:''}">`+
+    `<path class="rt-cs" d="${pth(Q)}"/>`+S.map(x=>`<path class="rt-l${x.c?' '+x.c:''}" d="${pth(x.p)}"/>`).join('')+km+
+    `<circle class="rt-f" cx="${e.x}" cy="${e.y}" r="4.6"/><circle class="rt-s" cx="${s.x}" cy="${s.y}" r="5"/>`+
+    `<g class="rt-hv" visibility="hidden"><circle class="rt-h1" r="11"/><circle class="rt-h2" r="5.5"/></g></svg>`;
+}
+function wkRtLg(C){
+  const g=C.rt,by=C.rtBy;
+  return(by?`<span class="by">By ${by}</span>`+['easy','steady','hard'].map(c=>`<span><i class="${c}"></i>${cap(c)}</span>`).join(''):'')+
+    `<span><i class="s"></i>Start</span><span><i class="f"></i>Finish</span>`+(g.M.length?`<span><i class="k"></i>${g.st===1?'Every km':`Every ${g.st} km`}</span>`:'');
+}
+// the route point nearest to a trace point (the route skips moments without a position)
+function wkRtAt(Q,i){
+  if(!Q.length)return null;let lo=0,hi=Q.length-1;
+  while(hi-lo>1){const m=(lo+hi)>>1;if(Q[m].i<i)lo=m;else hi=m;}
+  return Math.abs(Q[hi].i-i)<Math.abs(Q[lo].i-i)?Q[hi]:Q[lo];
+}
+// drawn again when the chip changes (the colour follows it); the dot follows the moment picked on the trace or the route
+function wkRtDraw(C){
+  const host=$('wkRt');if(!host||!C.a||!C.a.has.gps)return;
+  if(!C.rt||C.rt.a!==C.a)C.rt=wkRtGeo(C.a);
+  if(wkMapIs(C)){wkMapDraw(C,host);return;}
+  if(host.dataset.m!==C.m||!host.querySelector('svg.wk-rt')){
+    host.innerHTML=wkRtSvg(C);host.dataset.m=C.m;
+    const lg=$('wkRtLg');if(lg)lg.innerHTML=wkRtLg(C);
+    wkRtBind(C,host.firstChild);
+  }
+  const hv=host.querySelector('.rt-hv'),q=C.hov!=null&&C.a.pts[C.hov]?wkRtAt(C.rt.Q,C.hov):null;
+  if(!hv)return;
+  if(!q){hv.setAttribute('visibility','hidden');return;}
+  hv.setAttribute('transform',`translate(${q.x} ${q.y})`);hv.removeAttribute('visibility');
+}
+// tap the route to read that moment on the trace (a tap away from it clears); a mouse reads as it moves
+function wkRtBind(C,sv){
+  if(!sv)return;
+  const pick=e=>{
+    const r=sv.getBoundingClientRect();if(!r.width||!C.rt)return null;
+    const x=(e.clientX-r.left)/r.width*RT_W,y=(e.clientY-r.top)/r.height*RT_H;let b=null,bd=Infinity;
+    C.rt.Q.forEach(q=>{const d=(q.x-x)*(q.x-x)+(q.y-y)*(q.y-y);if(d<bd){bd=d;b=q;}});
+    return bd<=24*24?b:null;
+  };
+  sv.addEventListener('click',e=>{const q=pick(e);C.hov=q?q.i:null;wkDraw();});
+  sv.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const q=pick(e);if(q){C.hov=q.i;wkDraw();}});
+  sv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'){C.hov=null;wkDraw();}});
+}
+
+// ── v130: the same route on a street map, only after Show map. Leaflet is in vendor/leaflet (loaded once, on that tap);
+// tiles come from OpenStreetMap and are never cached; the map is taken down when the sheet closes or another workout opens ──
+const WK_VEND=new URL('../vendor/leaflet/',document.currentScript&&document.currentScript.src||location.href).href;
+const WK_TILES='https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+let _wkMap=null,_wkLf=null;
+const wkMapIs=C=>!!(C&&_wkMap&&_wkMap.id===C.id);
+const wkMapLbl=C=>wkMapIs(C)?'Hide map':C.mapL?'Loading the map…':'Show map';
+// the map code, added to the page once; a failed load can be tried again
+function wkLeaflet(){
+  if(window.L&&window.L.map)return Promise.resolve();
+  if(_wkLf)return _wkLf;
+  return _wkLf=new Promise((ok,no)=>{
+    if(!document.querySelector('link[data-lf]')){const l=document.createElement('link');l.rel='stylesheet';l.href=WK_VEND+'leaflet.css';l.dataset.lf='1';document.head.appendChild(l);}
+    const s=document.createElement('script');s.src=WK_VEND+'leaflet.js';s.dataset.lf='1';
+    s.onload=()=>window.L&&window.L.map?ok():no(new Error('leaflet'));
+    s.onerror=()=>{s.remove();no(new Error('leaflet'));};
+    document.head.appendChild(s);
+  }).catch(e=>{_wkLf=null;throw e;});
+}
+function wkMapUi(C){
+  const b=$('wkMapB'),n=$('wkMapN');
+  if(b){b.lastChild.textContent=wkMapLbl(C);b.disabled=!!C.mapL;b.setAttribute('aria-expanded',String(wkMapIs(C)));}
+  if(n)n.textContent=C.mapN||'';
+}
+// Show map / Hide map; offline or when the map code does not load, a note and the route shape stays
+function wkMapTog(){
+  const C=_wkC;if(!C||!C.rt)return;
+  if(wkMapIs(C)){wkMapOff();const h=$('wkRt');if(h){h.innerHTML='';h.dataset.m='';}C.mapN='';wkMapUi(C);wkDraw();return;}
+  if(C.mapL)return;
+  if(!navigator.onLine){C.mapN='The map needs a connection.';wkMapUi(C);return;}
+  C.mapL=1;C.mapN='';wkMapUi(C);
+  wkLeaflet().then(()=>{C.mapL=0;if(_wkC!==C||_dtKey!=='wk:'+C.id)return;wkMapOn(C);wkMapUi(C);},
+    ()=>{C.mapL=0;C.mapN='The map needs a connection.';if(_wkC===C)wkMapUi(C);});
+}
+function wkMapOn(C){
+  const host=$('wkRt');if(!host)return;
+  const el=document.createElement('div');el.className='wk-mpw';
+  el.innerHTML=`<div class="wk-mp" role="region" aria-label="Route on a street map"></div><div class="wk-zm"><button type="button" aria-label="Zoom in">${UI.plus}</button><button type="button" aria-label="Zoom out">${UI.minus}</button></div>`;
+  host.innerHTML='';host.appendChild(el);host.dataset.m='map';
+  try{
+    const map=L.map(el.firstChild,{zoomControl:false,scrollWheelZoom:false});
+    _wkMap={id:C.id,map,el,m:null,rt:null,ly:null,hv:null};
+    map.attributionControl.setPrefix(false);
+    L.tileLayer(WK_TILES,{maxZoom:TH.MAP_ZMAX,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(map);
+    map.fitBounds(C.rt.Q.map(q=>[q.la,q.lo]),{padding:[24,24]});
+    const[zi,zo]=el.querySelectorAll('.wk-zm button');zi.onclick=()=>map.zoomIn();zo.onclick=()=>map.zoomOut();
+    // a tap near the route reads that moment on the trace; a tap away from it clears
+    map.on('click',e=>{
+      const K=_wkC;if(!K||!wkMapIs(K)||!K.rt)return;const pt=e.containerPoint;let b=null,bd=Infinity;
+      K.rt.Q.forEach(q=>{const p=map.latLngToContainerPoint([q.la,q.lo]),d=(p.x-pt.x)*(p.x-pt.x)+(p.y-pt.y)*(p.y-pt.y);if(d<bd){bd=d;b=q;}});
+      K.hov=b&&bd<=24*24?b.i:null;wkDraw();
+    });
+  }catch(_){wkMapOff();host.innerHTML='';host.dataset.m='';}
+  wkDraw();
+}
+// the route, marks and the linked dot on the map; a re-rendered sheet gets the same map back
+function wkMapDraw(C,host){
+  const M=_wkMap,map=M.map,lg=$('wkRtLg'),ll=q=>[q.la,q.lo];
+  if(M.el.parentNode!==host){host.innerHTML='';host.appendChild(M.el);host.dataset.m='map';map.invalidateSize();}
+  if(M.m!==C.m||M.rt!==C.rt||!M.ly){
+    if(M.ly)M.ly.remove();
+    const g=C.rt,Q=g.Q,S=wkRtRuns(C),ly=M.ly=L.layerGroup(),o=c=>({className:c,interactive:false});
+    L.polyline(Q.map(ll),o('rt-cs')).addTo(ly);
+    S.forEach(x=>L.polyline(x.p.map(ll),o('rt-l'+(x.c?' '+x.c:''))).addTo(ly));
+    g.M.forEach(({j,d})=>{
+      L.circleMarker(ll(Q[j]),Object.assign(o('rt-k'),{radius:3})).addTo(ly);
+      L.marker(ll(Q[j]),{icon:L.divIcon({className:'wk-mk',html:String(d),iconSize:[28,14],iconAnchor:[-5,7]}),interactive:false,keyboard:false}).addTo(ly);
+    });
+    L.circleMarker(ll(Q[Q.length-1]),Object.assign(o('rt-f'),{radius:5.5})).addTo(ly);
+    L.circleMarker(ll(Q[0]),Object.assign(o('rt-s'),{radius:6})).addTo(ly);
+    ly.addTo(map);M.m=C.m;M.rt=C.rt;
+    if(lg)lg.innerHTML=wkRtLg(C);
+  }else if(lg&&!lg.firstChild)lg.innerHTML=wkRtLg(C);
+  const q=C.hov!=null&&C.a.pts[C.hov]?wkRtAt(C.rt.Q,C.hov):null;
+  if(!q){if(M.hv){M.hv.forEach(x=>x.remove());M.hv=null;}return;}
+  if(M.hv)M.hv.forEach(x=>x.setLatLng(ll(q)));
+  else M.hv=[['rt-h1',11],['rt-h2',5.5]].map(([c,r])=>L.circleMarker(ll(q),{className:c,radius:r,interactive:false}).addTo(map));
+}
+function wkMapOff(){const M=_wkMap;_wkMap=null;if(M&&M.map)try{M.map.remove();}catch(_){}}

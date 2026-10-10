@@ -1335,3 +1335,66 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .wk-menu button.del,.wk-menu button.del .ui-i{color:var(--red)}
 #mindCard .chip{display:inline-flex;align-items:center;gap:6px}
 #mindCard .chip .ui-i{width:16px;height:16px}
+
+/* ── v130: the workout sheet: the line on a session recorded twice, number tiles and sections as cards, the route and the map ── */
+.wk-dup2{display:flex;align-items:center;gap:12px;margin-top:14px;padding:8px 8px 8px 14px;background:var(--sur);border-radius:14px;box-shadow:var(--sh)}
+.wk-dup2 .ui-i{flex:none;width:20px;height:20px;color:var(--t2)}
+.wk-dup2 p{flex:1;margin:0;font-size:13px;line-height:1.4;color:var(--t2)}
+.wk-dup2 button{flex:none;min-height:44px;padding:0 12px;border:1px solid var(--bdr);border-radius:10px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+.wk-dup2 button:focus-visible{outline:2px solid var(--t3);outline-offset:1px}
+.wk-grid>div{background:var(--sur);box-shadow:var(--sh)}
+.wk-mix{margin-bottom:10px}
+.wk-zns{gap:8px}
+.dt-sec em{font-style:normal;font-weight:500;color:var(--t3);margin-left:6px}
+.wk-rt{display:block;width:100%;height:auto;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wk-rt path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.wk-rt .rt-cs{stroke:var(--sur);stroke-width:7}
+.wk-rt .rt-l{stroke:var(--text);stroke-width:3.6}
+.wk-rt .rt-l.easy{stroke:var(--green)}
+.wk-rt .rt-l.steady{stroke:var(--amber)}
+.wk-rt .rt-l.hard{stroke:var(--red)}
+.wk-rt .rt-k{fill:var(--sur);stroke:var(--t2);stroke-width:1.4}
+.wk-km{font-size:10px;font-weight:500;fill:var(--t2);text-anchor:middle;paint-order:stroke;stroke:var(--sur);stroke-width:3px;stroke-linejoin:round}
+.wk-rt .rt-f{fill:var(--sur);stroke:var(--text);stroke-width:2.2}
+.wk-rt .rt-s{fill:var(--text);stroke:var(--sur);stroke-width:2}
+.wk-rt .rt-h1{fill:var(--text);opacity:.14}
+.wk-rt .rt-h2{fill:var(--text);stroke:var(--sur);stroke-width:2}
+.wk-lg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--t2)}
+.wk-lg span{display:inline-flex;align-items:center;gap:6px}
+.wk-lg i{width:14px;height:4px;border-radius:2px;background:var(--text)}
+.wk-lg i.easy{background:var(--green)}
+.wk-lg i.steady{background:var(--amber)}
+.wk-lg i.hard{background:var(--red)}
+.wk-lg i.s{width:10px;height:10px;border-radius:50%;background:var(--text)}
+.wk-lg i.f{width:10px;height:10px;border-radius:50%;background:transparent;border:2px solid var(--text);box-sizing:border-box}
+.wk-lg i.k{width:8px;height:8px;border-radius:50%;background:transparent;border:1.4px solid var(--t2);box-sizing:border-box}
+.wk-lg .by{color:var(--t3)}
+.wk-bo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-top:12px;border:1px solid var(--bdr);border-radius:12px;background:transparent;font:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer}
+.wk-bo .ui-i{width:20px;height:20px}
+.wk-bo:disabled{color:var(--t3);cursor:default}
+.wk-bo:focus-visible{outline:2px solid var(--t3);outline-offset:1px}
+.wk-mpn{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--t3)}
+.wk-mpn:empty{display:none}
+.wk-mpw{position:relative;border-radius:10px;overflow:hidden;transform:translateZ(0)}
+.wk-mpw .wk-mp{height:300px;background:var(--sur2);font-family:inherit}
+.wk-zm{position:absolute;left:8px;top:8px;z-index:1000;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.wk-zm button{width:44px;height:44px;padding:0;border:0;background:#FFFFFF;display:grid;place-items:center;cursor:pointer}
+.wk-zm button+button{border-top:1px solid #D5D8DD}
+.wk-zm .ui-i{width:20px;height:20px;color:#14171C}
+.wk-zm button:focus-visible{outline:2px solid #14171C;outline-offset:-2px}
+.wk-mpw .wk-mp .leaflet-control-attribution{background:rgba(255,255,255,.82);color:#333;font-size:10px;line-height:16px;padding:0 6px;border-top-left-radius:6px}
+.wk-mpw .wk-mp .leaflet-control-attribution a{color:#333;text-decoration:underline}
+.wk-mp path{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1}
+.wk-mp path.rt-cs{stroke:var(--sur);stroke-width:7}
+.wk-mp path.rt-l{stroke:var(--text);stroke-width:3.6}
+.wk-mp path.rt-l.easy{stroke:var(--green)}
+.wk-mp path.rt-l.steady{stroke:var(--amber)}
+.wk-mp path.rt-l.hard{stroke:var(--red)}
+.wk-mp path.rt-k{fill:var(--sur);fill-opacity:1;stroke:var(--t2);stroke-width:1.4}
+.wk-mp path.rt-f{fill:var(--sur);fill-opacity:1;stroke:var(--text);stroke-width:2.2}
+.wk-mp path.rt-s{fill:var(--text);fill-opacity:1;stroke:var(--sur);stroke-width:2}
+.wk-mp path.rt-h1{fill:var(--text);fill-opacity:.14;stroke:none}
+.wk-mp path.rt-h2{fill:var(--text);fill-opacity:1;stroke:var(--sur);stroke-width:2}
+.wk-mk{font-size:10px;line-height:14px;font-weight:500;color:#3D434C;white-space:nowrap;text-shadow:0 0 2px #FFFFFF,0 0 2px #FFFFFF,0 0 3px #FFFFFF}
+:root[data-theme="dark"] .wk-mp .leaflet-tile-pane{filter:brightness(.7) saturate(.8)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wk-mp .leaflet-tile-pane{filter:brightness(.7) saturate(.8)}}

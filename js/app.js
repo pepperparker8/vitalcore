@@ -53,6 +53,7 @@ function initUI(){
 async function init(){
   await persistLoad();
   loadAuth();ownData();
+  try{dupFill();}catch(e){}
   initUI();
   setTimeout(()=>$('splash').classList.add('gone'),700);
   if(!navigator.onLine)$('offlineBar').classList.add('show');

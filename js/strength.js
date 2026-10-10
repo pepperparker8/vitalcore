@@ -61,7 +61,7 @@ function gymCard(it,i){
 const blankSet=()=>({kg:'',reps:'',secs:'',rir:null,kind:'work'});
 
 function lastTime(ex){
-  const ws=S().workouts;
+  const ws=wkOn();
   for(let i=ws.length-1;i>=0;i--){
     const s=(ws[i].sets||[]).filter(x=>x.ex===ex&&isWork(x));
     if(s.length)return{date:ws[i].date,sets:s};
@@ -70,7 +70,7 @@ function lastTime(ex){
 }
 function recentEx(type){
   const seen=[],names=new Set(exList(type).map(e=>e.name));
-  const ws=S().workouts;
+  const ws=wkOn();
   for(let i=ws.length-1;i>=0&&seen.length<6;i--)(ws[i].sets||[]).forEach(s=>{if(names.has(s.ex)&&!seen.includes(s.ex))seen.push(s.ex);});
   return seen;
 }
@@ -184,7 +184,7 @@ const setsText=w=>setsByEx(w).map(([ex,a])=>`${ex} ${a.map(fmtSet).join(', ')}`)
 // ---- history, personal bests ----
 function exHistory(){
   const h=new Map();
-  S().workouts.forEach(w=>{
+  wkOn().forEach(w=>{
     const byEx=new Map();
     (w.sets||[]).filter(isWork).forEach(s=>{if(!byEx.has(s.ex))byEx.set(s.ex,[]);byEx.get(s.ex).push(s);});
     byEx.forEach((a,ex)=>{
@@ -229,7 +229,7 @@ function strBests(){
 // hard sets per muscle from one date to another
 function strSetsIn(from,to){
   const c=Object.fromEntries(MUSCLES.map(m=>[m,0]));
-  S().workouts.forEach(w=>{if(w.date>=from&&w.date<=to)(w.sets||[]).filter(isWork).forEach(s=>{if(c[s.muscle]!==undefined)c[s.muscle]++;});});
+  wkOn().forEach(w=>{if(w.date>=from&&w.date<=to)(w.sets||[]).filter(isWork).forEach(s=>{if(c[s.muscle]!==undefined)c[s.muscle]++;});});
   return c;
 }
 // per muscle over the days up to end (default today); over 7 days the mean week
@@ -274,7 +274,7 @@ function renderStrMuscles(){
     return`<div class="mu-row"><span class="mu-n">${m}</span><span class="mu-bar"><span class="mu-fill" style="display:block;width:${Math.min(100,n/hi*100)}%;background:${col}"></span></span><span class="mu-v" style="color:${col}">${n} · ${lbl}</span></div>`;
   }).join('')+`<div class="vc-mean">${grp.high.length?`Over ${hi} sets: ${grp.high.join(', ')}. Fewer, harder sets work as well.`:grp.low.length?`Under ${lo} sets: ${grp.low.join(', ')}.`:grp.on.length?'On target for every muscle you trained.':''}</div>`;
   // the window before counts only once there are sets from before it
-  const first=S().workouts.filter(w=>(w.sets||[]).some(isWork)).reduce((m,w)=>!m||w.date<m?w.date:m,null),before=first&&DN(first)<=DN(pfrom)+days/2;
+  const first=wkOn().filter(w=>(w.sets||[]).some(isWork)).reduce((m,w)=>!m||w.date<m?w.date:m,null),before=first&&DN(first)<=DN(pfrom)+days/2;
   const nT=grp.on.length+grp.low.length+grp.high.length,on=grp.on.length;
   const rv=days>7?pw(tot(raw)):nT,pv=before?(days>7?pw(tot(prv)):Object.values(prv).filter(v=>v>0).length):null,dv=pv==null?null:rv-pv;
   const now=to===td(),lab=now?`Last ${days} days`:`${fmtD(from)} to ${fmtD(to)}`;
