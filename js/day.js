@@ -29,6 +29,31 @@ function dyNight(day,prev){
   }
   return null;
 }
+// v131: the naps of a date as [{a, b (ms), min}]. A band sleep stretch (plAct sl) counts only when every check holds:
+// NAP_MIN to NAP_MAX minutes; starting NAP_GAP after the night that ended that morning and ending NAP_GAP before the next one
+// (before midnight when that night is not known); NAP_STEPS steps or fewer; no timed workout across it; heart rate in NAP_HR_COV
+// of its 5-minute slots, their median within NAP_HR_UP of that night's sleeping level (plSleepLvl). No night or no level, no naps.
+// Worked out on demand, never stored: only the sleep debt and Your day read it.
+function napsOn(date){
+  const r=dayOn(date),sl=r&&r.data&&r.data.sl;if(!Array.isArray(sl)||!sl.length)return[];
+  const prev=dAgo(daysAgo(date)+1),next=dAgo(daysAgo(date)-1),n0=dyNight(date,prev),pn=polarOn(date),lvl=pn?plSleepLvl(pn):null;
+  if(!n0||lvl==null)return[];
+  const n1=dyNight(next,date),m0=plT(date+'T00:00:00'),gap=TH.NAP_GAP*DY_MIN,dt=TH.DAY_HR_DT*1000;
+  const end=(n1?n1.a:plT(next+'T00:00:00'))-gap,pts=dyPts(date);
+  const wks=wkOn().filter(w=>(w.date===date||w.date===prev)&&w.durMin>0&&/^\d\d:\d\d$/.test(wIcu(w).t||''))
+    .map(w=>{const t=plT(w.date+'T'+wIcu(w).t+':00');return[t,t+w.durMin*DY_MIN];}).filter(k=>k[0]!=null);
+  const out=[];
+  for(const z of sl){
+    if(!Array.isArray(z)||z.length<3)continue;
+    const a=m0+z[0]*DY_MIN,b=m0+z[1]*DY_MIN,min=z[1]-z[0];
+    if(min<TH.NAP_MIN||min>TH.NAP_MAX||a<n0.b+gap||b>end||!(z[2]<=TH.NAP_STEPS))continue;
+    if(wks.some(([p,q])=>p<b&&q>a))continue;
+    const v=pts.filter(p=>p[0]>=a&&p[0]<b).map(p=>p[1]);
+    if(v.length<TH.NAP_HR_COV*Math.max(1,Math.round((b-a)/dt))||dyMed(v)>lvl+TH.NAP_HR_UP)continue;
+    out.push({a,b,min});
+  }
+  return out;
+}
 // cal (v129, the Strain sheet): the calendar day instead, midnight to midnight, today to now with no "Now" line,
 // with the night that starts that evening as sleep2
 function dyDay(day,cal){
@@ -41,6 +66,8 @@ function dyDay(day,cal){
   const pts=[...dyPts(prev),...dyPts(day)].filter(p=>p[0]>=a&&p[0]<=end).sort((x,y)=>x[0]-y[0]);
   const clip=x=>x&&x.b>a&&x.a<end?{a:Math.max(a,x.a),b:Math.min(end,x.b),min:x.min}:null;
   const sleep=clip(dyNight(day,prev)),sleep2=cal&&day!==td()?clip(dyNight(next,day)):null;
+  // v131: naps, drawn as asleep and left out of daytime
+  const naps=[...napsOn(prev),...napsOn(day)].map(clip).filter(Boolean);
   const wks=wkOn().filter(w=>(w.date===prev||w.date===day)&&w.durMin>0&&/^\d\d:\d\d$/.test(wIcu(w).t||''))
     .map(w=>{const s=plT(w.date+'T'+wIcu(w).t+':00');return{a:s,b:s+w.durMin*DY_MIN,name:wkLabel(w),w};})
     .filter(k=>k.a!=null&&k.b>a&&k.a<end).map(k=>({...k,a:Math.max(a,k.a),b:Math.min(end,k.b)})).sort((x,y)=>x.a-y.a);
@@ -52,12 +79,12 @@ function dyDay(day,cal){
     if(day!==td()&&dyHasHr(rD)&&end-pts[pts.length-1][0]>=gap)raw.push([pts[pts.length-1][0]+dt,end]);
   }
   const cut=(g,z)=>z?g.flatMap(([p,q])=>[[p,Math.min(q,z.a)],[Math.max(p,z.b),q]]):g;
-  cut(cut(raw,sleep),sleep2).forEach(([p,q])=>{if(q-p>=gap)off.push([p,q]);});
-  const inW=t=>wks.find(k=>t>=k.a&&t<=k.b)||null,inS=t=>!!sleep&&t>=sleep.a&&t<=sleep.b,inS2=t=>!!sleep2&&t>=sleep2.a&&t<=sleep2.b;
+  naps.reduce((g,z)=>cut(g,z),cut(cut(raw,sleep),sleep2)).forEach(([p,q])=>{if(q-p>=gap)off.push([p,q]);});
+  const inW=t=>wks.find(k=>t>=k.a&&t<=k.b)||null,inS=t=>!!sleep&&t>=sleep.a&&t<=sleep.b,inS2=t=>!!sleep2&&t>=sleep2.a&&t<=sleep2.b,inN=t=>naps.some(z=>t>=z.a&&t<=z.b);
   let lo=null,hi=null;for(const[t,v]of pts){if(!lo||v<lo.v)lo={v,t};if(!hi||v>hi.v)hi={v,t};}
   if(hi)hi.w=(inW(hi.t)||{}).w||null;
-  const awake=sleep?pts.filter(p=>p[0]>sleep.b&&!inS2(p[0])&&!inW(p[0])).map(p=>p[1]):[],night=sleep?pts.filter(p=>inS(p[0])).map(p=>p[1]):[];
-  return{day,prev,a,b,now,last,cal:!!cal,pts,sleep,sleep2,wks,off,lo,hi,
+  const awake=sleep?pts.filter(p=>p[0]>sleep.b&&!inS2(p[0])&&!inW(p[0])&&!inN(p[0])).map(p=>p[1]):[],night=sleep?pts.filter(p=>inS(p[0])).map(p=>p[1]):[];
+  return{day,prev,a,b,now,last,cal:!!cal,pts,sleep,sleep2,naps,wks,off,lo,hi,
     dayMean:awake.length*TH.DAY_HR_DT/60>=TH.DAY_MEAN_MIN?awake.reduce((s,v)=>s+v,0)/awake.length:null,
     nightLo:night.length?Math.min(...night):null};
 }
@@ -95,6 +122,14 @@ function dayMeaning(D,U){
   if(set)return`Your heart rate ${set}.`;
   return U.n<TH.DAY_USUAL_MIN?`Your usual builds after ${TH.DAY_USUAL_MIN} days with your band.`:'A steady day.';
 }
+// v131: the line, plus the day's nap when it paid back sleep debt and the whole still fits the v123 limit
+function dayLine(D,U){
+  const t=dayMeaning(D,U),own=D.naps.filter(z=>z.a>=plT(D.day+'T00:00:00'));if(!own.length)return t;
+  const Q=sleepDebt(D.day),i=Q?Q.nights.findIndex(x=>x.date===D.day):-1,x=i>=0?Q.nights[i]:null;
+  if(!x||x.diff==null||!x.nap||!(i&&Q.nights[i-1].bal>0))return t;
+  const add=own.length>1?' The naps count toward paying back your sleep debt.':` The ${own[0].min}-minute nap counts toward paying back your sleep debt.`;
+  return(t+add).length<=140?t+add:t;
+}
 // the chart, shared with the Strain sheet; id keeps the hatch pattern apart. Colours are CSS variables, so it follows the theme.
 function dyHrSvg(D,id,W,H){
   W=W||328;H=H||160;
@@ -105,7 +140,7 @@ function dyHrSvg(D,id,W,H){
   const lbl=D.lo?`Heart rate, lowest ${D.lo.v} at ${dyHm(D.lo.t)}, highest ${D.hi.v}`:'No heart rate recorded';
   let s=`<svg class="dy-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${lbl}"><defs><pattern id="hx${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.2" height="5" style="fill:var(--t3);opacity:.5"/></pattern></defs>`;
   const band=(a,b,css)=>`<rect x="${f(X(a))}" y="${y0}" width="${f(Math.max(1,X(b)-X(a)))}" height="${y1-y0}" style="${css}"/>`;
-  [D.sleep,D.sleep2].forEach(z=>{if(z)s+=band(z.a,z.b,'fill:var(--teal-l)');});
+  [D.sleep,D.sleep2,...(D.naps||[])].forEach(z=>{if(z)s+=band(z.a,z.b,'fill:var(--teal-l)');});
   D.wks.forEach(k=>s+=band(k.a,k.b,'fill:var(--sur2)'));
   D.off.forEach(([a,b])=>s+=band(a,b,`fill:url(#hx${id})`));
   [TH.DAY_GRID_LO,TH.DAY_GRID_HI].forEach(v=>{const y=Y(v);s+=`<line x1="0" x2="${P}" y1="${f(y)}" y2="${f(y)}" style="stroke:var(--bdr);stroke-dasharray:2 3"/><text x="${W}" y="${f(y+3)}" text-anchor="end" style="font-size:9px;fill:var(--t3)">${v}</text>`;});
@@ -119,6 +154,7 @@ function dyHrSvg(D,id,W,H){
   const want=[];
   if(D.sleep)want.push([D.cal?'Asleep':`Asleep ${fmtDur(D.sleep.min)}`,(D.sleep.a+D.sleep.b)/2,'fill:var(--teal);font-weight:600']);
   if(D.sleep2)want.push(['Asleep',(D.sleep2.a+D.sleep2.b)/2,'fill:var(--teal);font-weight:600']);
+  (D.naps||[]).forEach(z=>want.push(['Nap',(z.a+z.b)/2,'fill:var(--teal);font-weight:600']));
   [...D.wks].sort((x,y)=>(y.b-y.a)-(x.b-x.a)).forEach(k=>want.push([k.name,(k.a+k.b)/2,'fill:var(--text);font-weight:600']));
   if(D.now)want.push(['Now',D.now,'fill:var(--t2)']);
   D.off.forEach(([a,b])=>want.push(['Band off',(a+b)/2,'fill:var(--t2)']));
@@ -137,7 +173,7 @@ function dyHrSvg(D,id,W,H){
 function dyLegend(D){
   const p=[];
   if(D.pts.length)p.push('<span><i class="ln"></i>Heart rate</span>');
-  if(D.sleep)p.push('<span><i class="sl"></i>Asleep</span>');
+  if(D.sleep||(D.naps||[]).length)p.push('<span><i class="sl"></i>Asleep</span>');
   if(D.off.length)p.push('<span><i class="bo"></i>Band off</span>');
   return p.length?`<div class="dy-lg">${p.join('')}</div>`:'';
 }
@@ -163,5 +199,5 @@ function renderYourDay(){
   const draw=D.pts.length||D.sleep||D.wks.length;
   el.style.display='';
   el.innerHTML=`<div class="dy-h"><b>Your day</b><span>${sub}</span><i class="dy-go">${UI.chev}</i></div>`+
-    (draw?dyHrSvg(D,'yd')+dyLegend(D):'')+`<div class="dy-m">${dayMeaning(D,U)}</div>`+dyTiles(D,U);
+    (draw?dyHrSvg(D,'yd')+dyLegend(D):'')+`<div class="dy-m">${dayLine(D,U)}</div>`+dyTiles(D,U);
 }

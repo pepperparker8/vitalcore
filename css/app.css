@@ -1398,3 +1398,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .wk-mk{font-size:10px;line-height:14px;font-weight:500;color:#3D434C;white-space:nowrap;text-shadow:0 0 2px #FFFFFF,0 0 2px #FFFFFF,0 0 3px #FFFFFF}
 :root[data-theme="dark"] .wk-mp .leaflet-tile-pane{filter:brightness(.7) saturate(.8)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wk-mp .leaflet-tile-pane{filter:brightness(.7) saturate(.8)}}
+/* v131: sleep debt, naps, daily activity from one source */
+.sn-tl b.sn-nr,.sn-src b.sn-nr{color:var(--t2);font-weight:500}
+.sn-set{width:auto;padding:0 18px;margin-top:12px;min-height:44px}
+.sn-why{margin-top:8px}
+.da{display:block;background:var(--sur);border-left:3px solid var(--amber);border-radius:0 14px 14px 0;box-shadow:var(--sh);padding:10px 14px 14px;margin:12px 0;cursor:pointer}
+.da.bad{border-left-color:var(--red)}.da.ok{border-left-color:var(--green)}
+.da:focus-visible{outline:2px solid var(--t3);outline-offset:2px}
+.dah{display:grid;grid-template-columns:24px minmax(0,1fr) auto 18px;column-gap:12px;align-items:center;min-height:44px}
+.dah .dai{width:22px;height:22px;color:var(--amber)}
+.da.bad .dai{color:var(--red)}.da.ok .dai{color:var(--green)}
+.dah .l{font-size:15px;font-weight:500}
+.dah .da-go{width:18px;height:18px;color:var(--t3)}
+.da .rf-g{color:var(--amber)}.da.bad .rf-g{color:var(--red)}.da.ok .rf-g{color:var(--green)}
+.da p{font-size:14px;line-height:1.4;color:var(--t2);margin-top:4px}
+.g-num.sm{font-size:19px}
+.dbh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.dbh b{display:block;font-size:24px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+.dbh small{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--t2);margin-top:2px}
+.dbh small i{font-style:normal;font-size:9px}
+.dbh .r{text-align:right}.dbh .r span{display:block;font-size:12px;color:var(--t2)}
+.dbh .r em{display:block;font-style:normal;font-size:15px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+#dtDebt svg{display:block;width:100%;height:auto;touch-action:manipulation;cursor:pointer}
+#dtDebt svg text{font-size:10px;font-variant-numeric:tabular-nums}
+.dlg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--t2);margin-top:8px}
+.dlg span{display:flex;align-items:center;gap:5px}.dlg i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.dlg i.dn{width:7px;height:7px;border-radius:50%;background:var(--sur);border:1.5px solid var(--t2)}
+.db-rd{font-size:13px;color:var(--t2);min-height:20px;margin-top:6px;font-variant-numeric:tabular-nums}

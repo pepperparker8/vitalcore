@@ -516,11 +516,23 @@ function plUsual(date){
   const v=(S().polarNights||[]).filter(x=>x.date<date&&daysAgo(x.date)-daysAgo(date)<=14&&x.data.span).map(plKept).sort((a,b)=>a-b);
   return v.length>=TH.TRIM_N?v[Math.floor(v.length/2)]:null;
 }
+// the night's sleeping level: the median of its heart rate in the second half (hs seconds from the start, hv bpm);
+// null with under TRIM_GAP minutes of it
+function plLvl(hs,hv,tot){
+  const lv=hv.filter((v,i)=>hs[i]>=tot/2).sort((a,b)=>a-b);
+  return lv.length*TH.DAY_HR_DT<TH.TRIM_GAP*60?null:lv[Math.floor(lv.length/2)];
+}
+// v131: the same level for a stored night, from the band's 24/7 heart rate (napsOn compares a nap with it)
+function plSleepLvl(n){
+  const x=n&&n.data,t0=x?plT(x.start):null,tot=x?plTot(x):0;if(t0==null||!tot)return null;
+  const hr=plHrIn(t0,t0+tot*1000);
+  return hr&&hr.length?plLvl(hr.map(p=>Math.round((p[0]-t0)/1000)),hr.map(p=>p[1]),tot):null;
+}
 // when the heart rate settles, in seconds from the night's start: the start of the first TRIM_HR_WIN minutes whose mean is within
-// TRIM_HR_UP of the night's sleeping level (median of its second half); null without enough heart rate in the second half
+// TRIM_HR_UP of the night's sleeping level (plLvl); null without enough heart rate in the second half
 function plHrSet(hs,hv,tot){
-  const lv=hv.filter((v,i)=>hs[i]>=tot/2).sort((a,b)=>a-b);if(!hs.length||lv.length*TH.DAY_HR_DT<TH.TRIM_GAP*60)return null;
-  const lvl=lv[Math.floor(lv.length/2)],W=TH.TRIM_HR_WIN*60;
+  const lvl=hs.length?plLvl(hs,hv,tot):null;if(lvl==null)return null;
+  const W=TH.TRIM_HR_WIN*60;
   for(let m=hs[0];m+W<=tot;m+=TH.DAY_HR_DT){
     const v=hv.filter((x,i)=>hs[i]>=m&&hs[i]<m+W);
     if(v.length&&v.reduce((a,b)=>a+b,0)/v.length<=lvl+TH.TRIM_HR_UP)return m;
@@ -683,6 +695,7 @@ const plClock=t=>typeof t==='string'&&/^\d\d:\d\d/.test(t)?+t.slice(0,2)*3600+ +
 // activityInfos [{activityClass, time}] (the moments the class changes)}]. The device with the most steps counts.
 // act = minutes in a moderate or vigorous class (from METs at ACT_MET+ when the day has no classes), sit = sedentary minutes,
 // met = MET-hours (about kcal per kg of body weight), sitMax = the longest sitting stretch in minutes (v129). Null when the answer holds no samples.
+// sl (v131) = the band's sleep stretches [startMin, endMin, steps] from midnight, joined across NAP_JOIN, those of NAP_MIN or more (napsOn reads them)
 function plAct(a){
   const devs=[];
   const walk=(o,dp)=>{
@@ -694,7 +707,7 @@ function plAct(a){
   walk(a,0);
   let best=null;
   for(const list of devs){
-    const r={steps:0,act:0,sit:0,met:0,n:0};let cls=0,hiMet=0,sr=0,sMax=0;
+    const r={steps:0,act:0,sit:0,met:0,n:0},sl=[];let cls=0,hiMet=0,sr=0,sMax=0;
     for(const x of list){
       const st=x&&x.stepSamples||{},me=x&&x.metSamples||{};
       const sv=Array.isArray(st.steps)?st.steps:[],mv=Array.isArray(me.mets)?me.mets:[];
@@ -705,14 +718,20 @@ function plAct(a){
       // a class lasts until the next change, the last one until the samples end (at most midnight)
       const end=Math.min(86400,Math.max(sv.length?s0+sv.length*si/1000:0,mv.length?m0+mv.length*mi/1000:0));
       const ch=(x&&x.activityInfos||[]).map(c=>[plClock(c&&c.time),String(c&&c.activityClass||'')]).filter(c=>c[0]!=null).sort((p,q)=>p[0]-q[0]);
+      const zz=[];
       ch.forEach((c,i)=>{const to=i+1<ch.length?ch[i+1][0]:end,d=to-c[0];if(d<=0)return;cls++;
         if(/MODERATE|VIGOROUS/.test(c[1]))r.act+=d;else if(/SEDENTARY/.test(c[1]))r.sit+=d;
         // v129: the longest stretch sitting; sedentary changes in a row are one stretch
-        if(/SEDENTARY/.test(c[1]))sr+=d;else{sMax=Math.max(sMax,sr);sr=0;}});
+        if(/SEDENTARY/.test(c[1]))sr+=d;else{sMax=Math.max(sMax,sr);sr=0;}
+        // v131: sleep stretches, a gap of NAP_JOIN minutes or less joined
+        if(/SLEEP/.test(c[1])){const l=last(zz);if(l&&c[0]-l[1]<=TH.NAP_JOIN*60)l[1]=Math.max(l[1],to);else zz.push([c[0],to]);}});
       sMax=Math.max(sMax,sr);sr=0;
+      zz.forEach(([p,q])=>{if(q-p<TH.NAP_MIN*60)return;let k=0;
+        sv.forEach((v,i)=>{const t=s0+i*si/1000;if(typeof v==='number'&&v>=0&&t>=p&&t<q)k+=v;});
+        sl.push([Math.round(p/60),Math.round(q/60),k]);});
     }
     if(!r.n&&!cls)continue;
-    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,sitMax:cls?Math.round(sMax/60):null,met:r.met?Math.round(r.met*10)/10:null};
+    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,sitMax:cls?Math.round(sMax/60):null,met:r.met?Math.round(r.met*10)/10:null,sl:sl.length?sl:null};
     if(!best||(out.steps||0)>(best.steps||0))best=out;
   }
   return best;
@@ -737,8 +756,10 @@ function polarDay(raw){
 async function pullPolarDay(){
   const d=S();if(!d.polarKey)return{n:0};
   d.polarDays=d.polarDays||[];
-  // first time the last 28 days; after that from two days before the newest stored day, so today refreshes on every sync
-  const newest=last(d.polarDays),from=newest?dAgo(Math.min(28,Math.max(0,daysAgo(newest.date))+2)):dAgo(28);
+  // first time the last 28 days; after that from two days before the newest stored day, so today refreshes on every sync.
+  // v131: once, at least the last NAP_BACK days, because days stored before v131 hold no sleep stretches (napBack, local only)
+  const newest=last(d.polarDays);let from=newest?dAgo(Math.min(28,Math.max(0,daysAgo(newest.date))+2)):dAgo(28);
+  if(!d.napBack&&daysAgo(from)<TH.NAP_BACK)from=dAgo(TH.NAP_BACK);
   const j=await polarFetch(`/polar-day?from=${from}&to=${dAgo(-1)}`);
   let n=0;
   for(const raw of j.days||[]){
@@ -750,6 +771,7 @@ async function pullPolarDay(){
   if(d.polarDays.length>TBL.pday.lim)d.polarDays=d.polarDays.slice(-TBL.pday.lim);
   // the heart rate shows when the band was off, so the nights next to these days are cut again (from the evening before)
   if(n)plRetrim(ymd(new Date(new Date(from+'T12:00:00').getTime()-864e5)));
+  if(!d.napBack)d.napBack=td();
   d.polarDayAt=Date.now();save(d);
   return{n};
 }

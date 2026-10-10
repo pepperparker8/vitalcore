@@ -208,9 +208,14 @@ function insPolar(date,short){
     overnight:{heartRateBpm:bpm(rc.rri),heartRateUsualBpm:bpm(rc.baseRri),hrvUsualMs:rc.baseRmssd??null,breathingPerMin:br(rc.resp)??(mb?Math.round(mb*10)/10:null),breathingUsualPerMin:br(rc.baseResp)}};
 }
 // v127: the day's steps and active minutes (null without them); strain already counts the active time outside workouts
+// v131: the sleep debt as the screens show it (never part of a score; left out of recoveryDrivers here, peakMin only when it differs); null under TH.DEBT_MIN_N nights
+function insDebt(){
+  const D=sleepDebt();if(!D)return null;const nap=D.nights.reduce((a,x)=>a+(x.diff!=null?x.nap:0),0);
+  return{min:D.min,state:D.state,nightsToClear:D.toClear||undefined,peakMin:D.peak&&D.peak.min!==D.min?D.peak.min:undefined,clearedOn:D.clearedOn||undefined,napMin14:nap||undefined};
+}
 function insAct(date){
-  const p=dayOn(date),a=p&&p.data||{},st=a.steps??((S().wellness||{})[date]||{}).steps;
-  return st==null&&a.act==null?null:{steps:st??null,activeMin:a.act??null};
+  const d=dayAct(date);
+  return d.src?{steps:d.steps,activeMin:d.actEst?null:d.act}:null;
 }
 // drop empty fields so the snapshot stays short (null, '', empty objects; a missing field means not measured). false, 0 and [] stay.
 function insPrune(v){
@@ -247,7 +252,7 @@ function insightRaw(){
       checkin:ci?{energy:ci.energy??null,mood:ci.mood??null,stress:ci.stress??null,motivation:ci.motivation??null,soreness:ci.soreness??null,soreArea:ci.soreArea||null,bodyFeel1to5:ci.bodyFeel??null,symptoms:ci.symptoms!=null?EM.symptoms[ci.symptoms]:null,coffeeCups:ci.coffee??null,coffeeLate:ci.coffeeLate??null,mindfulMin:ci.mindfulMin||0,grateful:insClip(ci.gratitude,200),reflection:insRefl(ci)}:null,
       hrv:wl.hrv??null,restingHr:rhrOn(t)?.v??null,restingHrSource:rhrOn(t)?(rhrOn(t).src==="icu"?"watch":"manual"):null,breathingPerMin:wl.resp??null,
       workoutsDone:wT.map(wo),planned:pl&&pl.type?{type:pl.type,note:pl.note||undefined}:null,prescription:sg?{title:sg.title,why:sg.why}:null,
-      recoveryDrivers:recoveryDrivers().map(x=>({k:x.k,now:x.val,vs:x.base,status:x.st})),burnoutScore0to100:bn.score},
+      sleepDebt:insDebt(),recoveryDrivers:recoveryDrivers().filter(x=>x.k!=='debt').map(x=>({k:x.k,now:x.val,vs:x.base,status:x.st})),burnoutScore0to100:bn.score},
     strategy:insStrategy(),
     training:insTraining(),
     nutrition:insNutrition(),
@@ -279,6 +284,7 @@ Rules:
 - week.workouts[].ebike marks an e-bike ride: the motor helps, so its speed and distance say little about fitness. Judge it by time and heart rate only and never compare its speed or distance with other rides.
 - training.fitnessMarker is the watch's own aerobic fitness estimate now and daysApart earlier (four weeks or more). It is a progress marker, not a target: mention it only when it changed, in one sentence.
 - today.strain0to21 counts training plus the time on your feet outside it; today.activity holds the day's steps and active minutes so far. Mention them only when they explain the strain or tonight's sleep, never as a daily target.
+- today.sleepDebt is the sleep owed against the sleep goal over the last ${TH.DEBT_DAYS} nights: a short night adds what it fell short, a longer night or a nap pays back up to ${TH.DEBT_REPAY} minutes a day, and it never goes below zero; a missing or battery night adds nothing. state is building, paying (paying back), steady, cleared (on clearedOn) or none; nightsToClear assumes an extra ${TH.DEBT_EXTRA} minutes a night; napMin14 is the minutes napped that counted. It never lowers the recovery score: never say it does. Mention it when it is building, nearly cleared or just cleared, with what to do tonight. A nap is never part of the night's sleep.
 - nutrition holds the app's protein, carbs and fat targets for today in grams, computed from body weight, today's training and the person's food goal. Use these numbers for food questions and turn them into everyday foods and portions (rice, chicken, eggs, tempeh, tofu, fish, fruit). nutrition.eatenToday and lastWeekLogged are what the person logged, often a rough guess and often incomplete for today; estimatedUseKcal is an estimate without all-day activity data, so speak of both as approximate. nutrition.nextSession holds the app's advice for eating before and during the next session; repeat it rather than inventing other amounts. Never prescribe a diet to treat a blood result; for that, advise a doctor or dietitian.
 - today.lastNight.night and week.sleep[].night hold the detailed night from the sleep tracker when there is one: sleep stages in minutes, awake breaks, efficiency, the tracker's own sleep score with its three parts (amount of sleep, solidity, regeneration), and overnight heart rate, heart rate variability and breathing against the tracker's usual (its 28-night baseline). Use them to say how the night went in everyday words (deep sleep, dreaming sleep for REM, time awake, how broken the night was). The tracker's sleep score is its own scale, not the app's recovery score. One pattern across several nights matters more than one night. Never diagnose a sleep disorder from them.
 - Never name an app, a device brand or a data source. Say "your watch" or "your scale" only when where a number came from matters.

@@ -950,7 +950,7 @@ run('v123 text',()=>{
     check('v123 text: the outline has no footnote or How this is worked out, and no reason twice',!/How this is worked out|Worked out again|Tap a day/.test(sc.textContent)&&new Set(ws).size===ws.length&&ws.length>0,ws.join(' | '));
     base();_s.sleepLogs.forEach(x=>{if(daysAgo(x.date)<7)x.durMin=390;});renderCoach();const cc=$('coachCard'),fl=[...cc.querySelectorAll('.cc-f')].map(e=>e.textContent);
     const debt=fl.find(x=>/^Sleep debt/.test(x))||'';
-    check('v123 text: the coach card drops "Based on" with enough days, and a flag gives the fact once and the action once',!/Based on/.test(cc.textContent)&&/^Sleep debt: 7h this week\s*A few earlier nights will clear it\.$/.test(debt),fl.join(' | '));
+    check('v123 text: the coach card drops "Based on" with enough days, and a flag gives the fact once and the action once',!/Based on/.test(cc.textContent)&&/^Sleep debt: 7h\s*An extra hour a night clears it in about 7 nights\.$/.test(debt),fl.join(' | '));
     base();_s.workouts=[wk1(dAgo(1),1,'Run',40,3),wk1(dAgo(9),1,'Run',40,3)];_s.checkins=[ci({date:dAgo(1)})];renderDigest();
     check('v123 text: the week summary has no What stood out',!/What stood out/.test($('digestCard').textContent)&&/Your week in numbers/.test($('digestCard').textContent),$('digestCard').textContent.slice(-120));
   }finally{box.remove();_stOpen.clear();}
@@ -1351,7 +1351,7 @@ seq('v127 battery',async()=>{
     const B=calcBody(),ms=B.missing.find(m=>m.k==='sleep');
     check('v127 battery: Body lists sleep as missing with the reason, still scores from HRV and resting heart rate, confidence low',B.score!=null&&B.parts.sleep===null&&B.parts.hrv&&B.parts.rhr&&B.conf==='low'&&ms&&ms.why==='your band ran out of battery during the night',JSON.stringify(B.missing));
     const R=recoveryDrivers(),db=R.find(x=>x.k==='debt');
-    check('v127 battery: no short-night driver and no sleep debt from it',!R.some(x=>x.k==='sleep')&&db&&db.val==='none'&&db.base==='6 nights logged',JSON.stringify(db));
+    check('v127 battery: no short-night driver and no sleep debt from it',!R.some(x=>x.k==='sleep')&&db&&db.val==='none'&&db.base==='13 nights logged',JSON.stringify(db));
     check('v127 battery: tonight\'s need ignores it (no extra 45 min for a short night)',sleepNeed(0,dAgo(-1))===450,sleepNeed(0,dAgo(-1)));
     const pts=Array.from({length:13},(_,i)=>({d:dAgo(13-i),v:7.5})),ml=sleepMeaning({pts,avg:7.5,from:dAgo(13),to:y},450);
     check('v127 battery: the sleep chart line reads no debt from it',ml==='On your goal on average.',ml);
@@ -1405,11 +1405,11 @@ seq('v127 strain',async()=>{
     check('v127 strain: an ordinary 4200 steps adds nothing',actMin(t)===0&&actLoad(t)===0&&strainLoad(t)===0);
     _s.wellness[t].steps=13000;_s.workouts=[run40];
     check('v127 strain: workout minutes come off the active time, so a session is not counted twice',actLoad(t)===40*TH.ACT_K&&strainLoad(t)===120+60,`${strainLoad(t)}`);
-    _s.polarDays=[{id:'pd-'+t,date:t,data:{steps:9000,act:50}}];
-    check('v127 strain: the band\'s active minutes win over steps when the band gives them',actMin(t)===50&&actLoad(t)===10*TH.ACT_K,`${actMin(t)} min`);
+    _s.polarDays=[{id:'pd-'+t,date:t,data:{steps:14000,act:50}}];
+    check('v127 strain: the band\'s active minutes win over steps when the band gives them (v131: and counted more steps)',actMin(t)===50&&actLoad(t)===10*TH.ACT_K,`${actMin(t)} min`);
     _s.polarDays=[{id:'pd-'+t,date:t,data:{steps:9000}}];
-    check('v127 strain: the band\'s steps win over the other copy when it has no active minutes',actMin(t)===40&&actLoad(t)===0);
-    _s.polarDays=[{id:'pd-'+t,date:t,data:{act:30}}];
+    check('v127 strain: v131 the other device\'s steps count when they are more than the band\'s',actMin(t)===80&&actLoad(t)===40*TH.ACT_K&&dayAct(t).src==='other',`${actMin(t)} min`);
+    _s.polarDays=[{id:'pd-'+t,date:t,data:{act:30}}];delete _s.wellness[t].steps;
     check('v127 strain: a short session longer than the active time adds nothing more',actLoad(t)===0&&strainLoad(t)===dayLoad(t));
     // the rules that judge training stay on workouts only
     _s.polarDays=[];base();_s.workouts=[];for(let i=0;i<30;i++)_s.wellness[dAgo(i)].steps=15000;
@@ -1428,7 +1428,7 @@ seq('v127 strain',async()=>{
     const r1=dtSpec('strain');window.restToday=rt;
     const r2=dtSpec('strain');_s.workouts=[run40,{...run40,id:'w-st2',date:dAgo(3)}];_s.wellness[y].steps=13000;const r3=dtSpec('strain');delete _s.wellness[t].steps;delete _s.wellness[y].steps;const r4=dtSpec('strain');
     const src=r=>[...new DOMParser().parseFromString(r.body,'text/html').querySelectorAll('.sn-src')].map(x=>x.querySelector('.sn-l').firstChild.textContent+' '+x.querySelector('b').textContent).join(', ');
-    check('v127 strain: the sheet says where the strain came from (v129: each source with its share)',/Rest day: keep it to everyday moving/.test(r1.head)&&src(r1)==='On your feet 100%'&&!/Rest day/.test(r2.head)&&src(r3)==='Run 67%, On your feet 33%'&&src(r4)==='Run 100%'&&r3.head.includes('>'+strainOf(180).toFixed(1)+'<'),[src(r1),src(r2),src(r3),src(r4)].join(' / '));
+    check('v127 strain: the sheet says where the strain came from (v129: each source with its share)',/Rest day: keep it to everyday moving/.test(r1.head)&&src(r1)==='On your feet 100%'&&!/Rest day/.test(r2.head)&&src(r3)==='Run 67%, On your feet 33%'&&src(r4)==='Run 100%, On your feet –'&&r3.head.includes('>'+strainOf(180).toFixed(1)+'<'),[src(r1),src(r2),src(r3),src(r4)].join(' / '));
     check('v127 strain: no app or device names on the sheet',noNames(r1.head+r1.body+r2.body+r3.head+r3.body));
   }finally{box.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
@@ -2064,7 +2064,7 @@ seq('v129 sleep sheet',async()=>{
         bed:row('Bedtime'),wake:row('Wake-up'),eff:row('Time asleep in bed'),lo:row('Lowest heart rate'),loC:(B().querySelector('.dt-row b small i')||{}).outerHTML,
         wn:[...B().querySelectorAll('.sl-win rect.wn')].map(r=>[r.getAttribute('data-d'),r.style.opacity]),wl:txt(B().querySelector('.sl-win .dy-m')),
         nav:[txt(B().querySelector('.dt-dbar .dt b')),B().querySelectorAll('.dt-dbar .db')[1].disabled],ch:_dtCh,cv:!!B().querySelector('#dtChart'),all:B().textContent,wk:!!B().querySelector('.dt-wake input')};});
-    check('v129 sleep sheet: in order: stages, details, the sleep window, the effect, then Tonight; no 30-day chart',J(A.s)===J(['Stages','Details','Sleep window, 14 nights','Effect on recovery','Tonight'])&&A.ch===null&&!A.cv&&A.wk,J(A.s));
+    check('v129 sleep sheet: in order: stages, details, the sleep window, the sleep debt (v131), the effect, then Tonight; no 30-day chart',J(A.s)===J(['Stages','Details','Sleep window, 14 nights','Sleep debt, 14 nights','Effect on recovery','Tonight'])&&A.ch===null&&!A.cv&&A.wk,J(A.s));
     check('v129 sleep sheet: the headline and the need bar use the need Body uses',A.sub===`asleep, ${A.pct}% of the ${fmtDur(A.P.need)} you needed`&&A.aria===`${A.pct}% of what you needed`&&A.w===Math.min(A.pct,100)+'%',A.sub+' / '+A.aria+' / '+A.w);
     check('v129 sleep sheet: the ring shows deep, dreaming and light from the log, no awake row, time asleep in the middle',J(A.ring)===J([fmtDur(90),fmtDur(90),fmtDur(270),''])&&A.dc===fmtDur(450),J(A.ring)+' '+A.dc);
     check('v129 sleep sheet: bedtime and wake-up against your usual, time asleep in bed',A.bed==='23:00usual 23:00'&&A.wake==='06:30usual 06:30'&&A.eff==='100%',[A.bed,A.wake,A.eff].join(' / '));
@@ -2091,7 +2091,7 @@ seq('v129 sleep sheet',async()=>{
     base();_s.sleepLogs.forEach(r=>{r.bed='23:00';r.wake='06:30';});_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==t);_s.polarDays=[];
     _s.polarNights=[{id:'pn-'+t,...polarNight(rawNight(t,y+'T22:50:00',t+'T03:12:00',[[0,1],[3600,2],[7200,1],[10800,3],[13200,1]],{batt:true,hrvT:y+'T22:55:00'}))}];plRetrim(dAgo(2));
     openDetail('sleep');const nr=B().querySelector('.dt-hyp .dt-nr'),ax=[...B().querySelectorAll('.dt-hy svg > text')].map(txt);
-    check('v129 sleep sheet: a battery night: the night, details and On Today, no ring, need bar, window or effect',J(secs())===J(['The night','Details','On Today','Tonight'])&&!B().querySelector('.sl-ring')&&!B().querySelector('.sl-need')&&_dtCh===null&&txt(B().querySelector('.dt-sub'))==='recorded, from 22:50 until the battery ran out',J(secs()));
+    check('v129 sleep sheet: a battery night: the night, details, On Today and the sleep debt (v131), no ring, need bar, window or effect',J(secs())===J(['The night','Details','On Today','Sleep debt, 14 nights','Tonight'])&&!B().querySelector('.sl-ring')&&!B().querySelector('.sl-need')&&_dtCh===null&&txt(B().querySelector('.dt-sub'))==='recorded, from 22:50 until the battery ran out',J(secs()));
     check('v129 sleep sheet: the battery night\'s details',row('Asleep from')==='22:50usual 23:00'&&row('Recorded until')==='03:12battery ran out'&&row('Recovery that day')==='HRV and resting heart ratesleep left out'&&row('Sleep debt')==='Nothing added'&&txt(B().querySelector('.rf.none .rf-v'))==='Not counted',[row('Asleep from'),row('Recorded until'),row('Recovery that day'),row('Sleep debt')].join(' / '));
     check('v129 sleep sheet: the battery night runs on to your usual wake-up as Not recorded',nr&&txt(nr)==='Not recorded'&&nr.getAttribute('data-s')==='15720'&&nr.getAttribute('data-e')==='27600'&&ax.includes('usual wake 06:30')&&noNames(B().textContent),nr&&nr.outerHTML.slice(0,80)+' '+J(ax));
     closeDetail();
@@ -2633,6 +2633,328 @@ seq('v130 map',async()=>{
     if(theme==null)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',theme);
     box.remove();css.remove();_wkSt.clear();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});
   }
+});
+
+// v131: sleep debt against your goal over 14 nights; a longer night or a nap pays back at most 2 hours a day, never below 0;
+// missing and battery nights add and pay nothing; an alert only, never part of Body, the gauge, the need or the old readiness
+const PIN131={body:68,ready:74,need:495};   // v130's values on the pin fixture (Body, the old readiness, tonight's need)
+// dn(a): base(), then the 14 nights from 13 days ago to today set to a (minutes; null = no night; 'b' = a battery night of 390)
+function dn(a){
+  base();a.forEach((v,i)=>{const dt=dAgo(13-i),r=_s.sleepLogs.find(x=>x.date===dt);
+    if(v===null)_s.sleepLogs=_s.sleepLogs.filter(x=>x!==r);
+    else if(v==='b'){r.durMin=390;r.bed='22:50';r.wake='05:20';r.src={wake:'polar'};_s.polarNights.push({id:'pn-'+dt,...polarNight(rawNight(dt,dAgo(14-i)+'T22:50:00',dt+'T05:20:00',[[0,1],[3600,2],[7200,1]],{batt:true}))});}
+    else r.durMin=v;});
+}
+const G7=Array(7).fill(450),gN=n=>Array(n).fill(450);
+const JS=x=>JSON.stringify(x),nNum=t=>(t.match(/\d+h(?: \d+min)?|\d+min|\d+/g)||[]).length,nSen=t=>(t.match(/[.!?](?=\s|$)/g)||[]).length;
+run('v131 debt',()=>{
+  dn([...G7,...Array(7).fill(390)]);let D=sleepDebt();
+  check('v131 debt: seven nights an hour short build 7h, Building, about 7 nights to clear, from the first short night',D&&D.min===420&&D.state==='building'&&D.trend==='up'&&D.toClear===7&&D.n===14&&D.since===dAgo(6)&&D.nights.length===14&&D.nights[13].bal===420,JSON.stringify(D&&{min:D.min,state:D.state,toClear:D.toClear,n:D.n,since:D.since}));
+  check('v131 debt: the line says short every night since that day and an extra hour a night clears it',debtLine(D)===`Short every night since ${dayWord(dAgo(6))}. An extra hour a night clears it in about 7 nights.`,debtLine(D));
+  dn([...gN(10),300,300,750,450]);D=sleepDebt();
+  check('v131 debt: a long night pays back at most 2 hours, and a night on the goal holds it (Steady)',D.min===180&&D.nights[12].bal===180&&D.state==='steady'&&debtWhy(D)==='Holding: the last night was right on your goal.',`${D.min} ${D.state} ${debtWhy(D)}`);
+  dn([...gN(11),600,600,600]);D=sleepDebt();
+  check('v131 debt: never below 0, so longer nights cannot be banked ahead',D.min===0&&D.state==='none'&&D.nights.every(x=>x.bal===0)&&debtLine(D)==='No sleep debt.',`${D.min} ${D.state} ${debtLine(D)}`);
+  dn([...G7,390,null,390,'b',390,390,390]);D=sleepDebt();
+  check('v131 debt: a missing night and a battery night add and pay nothing and are marked',D.min===300&&D.n===12&&D.nights[8].skip==='none'&&D.nights[10].skip==='batt'&&D.nights[10].diff==null&&D.nights[10].bal===D.nights[9].bal,`${D.min} n ${D.n} ${D.nights.map(x=>x.skip||'.').join(' ')}`);
+  base();for(let i=14;i<=20;i++)_s.sleepLogs.find(x=>x.date===dAgo(i)).durMin=300;
+  const Dn=sleepDebt(),Dp=sleepDebt(dAgo(7));
+  check('v131 debt: short nights older than 14 days drop out; read as of an earlier day they still count',Dn.min===0&&Dn.n===14&&Dp.min===1050&&Dp.date===dAgo(7)&&Dp.nights[13].date===dAgo(7)&&Dp.nights[0].date===dAgo(20),`today ${Dn.min}, as of ${dAgo(7)} ${Dp.min}`);
+  base();_s.sleepLogs=_s.sleepLogs.filter(x=>daysAgo(x.date)>=14||daysAgo(x.date)<3);D=sleepDebt();_s.sleepLogs=_s.sleepLogs.filter(x=>x.date!==td());const D2=sleepDebt();
+  check('v131 debt: needs 3 counted nights in the 14; with fewer there is no debt and no flag',D&&D.n===3&&D2===null&&!recoveryDrivers().some(x=>x.k==='debt'),`${D&&D.n} then ${D2}`);
+});
+run('v131 debt naps',()=>{
+  const had='napsOn' in window,keep=window.napsOn;
+  try{
+    window.napsOn=dt=>dt===td()?[{a:840,b:900,min:60}]:[];
+    dn([...gN(10),390,390,390,450]);const D=sleepDebt();
+    check('v131 debt: a nap pays back like a longer night (an hour off 3h), and the day shows it; the state is Paying back',D.min===120&&D.nights[13].nap===60&&D.nights[13].diff===60&&D.state==='paying'&&D.peak.min===180&&debtWhy(D)==='Paying back: down from 3h.',`${D.min} ${D.state} ${debtWhy(D)}`);
+    dn([...gN(10),390,390,390,null]);const E=sleepDebt();
+    check('v131 debt: a nap on a day with no night counted pays nothing',E.min===180&&E.nights[13].skip==='none',`${E.min}`);
+    dn([...gN(9),330,330,570,450,450]);window.napsOn=dt=>dt===dAgo(1)||dt===td()?[{a:840,b:900,min:60}]:[];const C=sleepDebt();
+    check('v131 debt: cleared by a night and two naps, counted in the cleared line',C.state==='cleared'&&C.clearedOn===td()&&C.payN===1&&C.payNaps===2&&/^Paid back in one night and 2 naps\./.test(debtWhy(C)),debtWhy(C));
+  }finally{if(had)window.napsOn=keep;else delete window.napsOn;}
+});
+run('v131 debt cleared',()=>{
+  dn([...gN(10),330,330,570,570]);let D=sleepDebt();
+  check('v131 debt: cleared this morning after 4h: the peak, the date, two nights, and HRV and resting heart rate back',D.state==='cleared'&&D.min===0&&D.clearedOn===td()&&D.peak.min===240&&D.peak.date===dAgo(2)&&D.payN===2&&D.toClear===0&&debtLine(D)==='Paid back over 2 nights. HRV and resting heart rate are back to usual.',debtLine(D));
+  for(let i=0;i<7;i++)_s.wellness[dAgo(i)].hrv=48;_s.wellness[td()].rhr=55;
+  check('v131 debt: the cleared line says which one is not back yet',debtLine(sleepDebt())==='Paid back over 2 nights. HRV and resting heart rate are not back to usual yet.',debtLine(sleepDebt()));
+  dn([...gN(10),330,330,570,570]);_s.wellness[td()].rhr=55;
+  check('v131 debt: only resting heart rate still up',/Resting heart rate is still above usual\.$/.test(debtLine(sleepDebt())),debtLine(sleepDebt()));
+  dn([...gN(9),330,330,570,570,450]);D=sleepDebt();
+  check('v131 debt: a day later it says when it cleared, and the debt rising again to 30 min forgets it',D.state==='cleared'&&D.clearedOn===dAgo(1)&&debtWhy(D)===`Cleared on ${dayWord(dAgo(1))}.`&&(dn([...gN(9),330,330,570,570,420]),sleepDebt().state==='building'&&sleepDebt().clearedOn===null),debtWhy(D));
+  dn([...gN(11),400,400,550]);D=sleepDebt();
+  check('v131 debt: a debt that never reached 2 hours clears without a cleared word (it never had an alert)',D.state==='none'&&D.min===0&&D.clearedOn===null,`${D.state} ${D.min}`);
+});
+run('v131 debt cuts',()=>{
+  const at=m=>{dn([...gN(13),450-m]);return sleepDebt();},st=m=>recoveryDrivers().find(x=>x.k==='debt').st;
+  const r=[29,30,119,120,299,300].map(m=>{const D=at(m);return[m,D.state,st(m)];});
+  check('v131 debt: the cuts: under 30 min no debt, from 30 Building; the flag is ok under 2h, warn from 2h, bad from 5h',JS(r.map(x=>x.slice(1)))===JS([['none','ok'],['building','ok'],['building','ok'],['building','warn'],['building','warn'],['building','bad']]),JS(r));
+  const D1=at(50),D2=at(120);
+  check('v131 debt: one short night says so; under an hour clears tonight, two hours in about 2 nights',debtLine(D1)==='Last night was short. An extra hour tonight clears it.'&&debtLine(D2)==='Last night was short. An extra hour a night clears it in about 2 nights.'&&D1.toClear===1&&D2.toClear===2,[debtLine(D1),debtLine(D2)].join(' | '));
+  const lines=[];
+  const fx=[[...G7,...Array(7).fill(390)],[...G7,390,450,390,450,390,390,450],[...gN(7),300,300,300,300,300,300,300],[...gN(10),300,300,750,450],[...gN(10),330,330,570,570],[...gN(10),390,390,600,450]];
+  fx.forEach(a=>{dn(a);const D=sleepDebt();lines.push(debtLine(D));});
+  const bad=lines.filter(t=>!t||t.length>140||nSen(t)>2||nNum(t)>2);
+  check('v131 debt: every debt line is at most 2 sentences, 140 characters and two numbers',!bad.length,bad.join(' | ')||lines.join(' | '));
+});
+run('v131 debt readers',()=>{
+  dn([...G7,...Array(7).fill(390)]);const R=recoveryDrivers().find(x=>x.k==='debt');
+  check('v131 debt: the flag is the same number: Sleep debt 7h, 14 nights logged, the fact and the action',R.label==='Sleep debt'&&R.val==='7h'&&R.base==='14 nights logged'&&R.st==='bad'&&R.ft==='Sleep debt: 7h'&&R.txt==='An extra hour a night clears it in about 7 nights.'&&R.delta===-420,JSON.stringify(R));
+  const pts=Array.from({length:14},(_,i)=>({d:dAgo(13-i),v:7.5})),ml=sleepMeaning({pts,avg:7.5,from:dAgo(13),to:td()},450),old=sleepMeaning({pts,avg:7.5,from:dAgo(40),to:dAgo(20)},450);
+  check('v131 debt: the Trends sleep line reads the same debt, and only when the chart ends now',ml==='7h of sleep debt. An extra hour a night clears it in about 7 nights.'&&old==='On your goal on average.',[ml,old].join(' | '));
+  dn([...gN(13),390]);const ml2=sleepMeaning({pts:Array.from({length:14},(_,i)=>({d:dAgo(13-i),v:7.5})),avg:7.5,from:dAgo(13),to:td()},450);
+  check('v131 debt: under 2 hours the Trends line keeps the average',ml2==='On your goal on average.',ml2);
+  dn([...G7,...Array(7).fill(390)]);const I=insightRaw().today.sleepDebt,txt=JSON.stringify(insightData());
+  check('v131 debt: the briefing gets the debt, its state and the nights to clear it, and stays under 16,000 characters',I&&I.min===420&&I.state==='building'&&I.nightsToClear===7&&I.peakMin===undefined&&!/"k":"debt"/.test(txt)&&txt.length<16000,JSON.stringify(I)+' '+txt.length);
+  check('v131 debt: the briefing rules say the debt never lowers the score, explain napMin14 and name no source',/today\.sleepDebt/.test(INS_COMMON)&&/never lowers the recovery score/.test(INS_COMMON)&&/napMin14/.test(INS_COMMON)&&!/Polar|Intervals|Garmin/.test(INS_COMMON.split('today.sleepDebt')[1].split('\n')[0]),'');
+  dn([...gN(6),...Array(7).fill(390),570]);const I2=insightRaw().today.sleepDebt;
+  check('v131 debt: paying back, the briefing also gets the peak it came down from',I2&&I2.min===300&&I2.state==='paying'&&I2.peakMin===420,JSON.stringify(I2));
+});
+run('v131 debt pin',()=>{
+  // the debt never lowers Body, the gauge, tonight's need or the old readiness: the same values with any debt
+  const snap=()=>JS([calcBody().score,calcBody(dAgo(1)).score,calcReadiness(),sleepNeed(0,dAgo(-1)),sleepNeed(5),needOf(slOf(dAgo(1)))]);
+  const fx=[[...G7,...Array(7).fill(390)],[...gN(10),300,300,750,450],[...gN(14)]],keep=window.sleepDebt;
+  const r=fx.map(a=>{dn(a);const x=snap();window.sleepDebt=()=>({date:td(),goal:450,min:900,state:'building',trend:'up',nights:[],peak:{min:900,date:td()},clearedOn:null,since:dAgo(6),n:14,toClear:15,payN:0,payNaps:0});
+    const y=snap();window.sleepDebt=keep;return[x,y];});
+  const src=[calcBody,sleepNeed,calcReadiness,bodyNight].map(f=>f.toString()).join('');
+  check('v131 debt pin: Body, the old readiness and the sleep need are the same with any debt, and never read it',r.every(([x,y])=>x===y)&&!/sleepDebt|DEBT_/.test(src),JS(r));
+  dn([...G7,...Array(7).fill(390)]);
+  check('v131 debt pin: Body on the fixture is as before v131 (pinned)',calcBody().score===PIN131.body&&calcReadiness()===PIN131.ready&&sleepNeed(0,dAgo(-1))===PIN131.need,JS([calcBody().score,calcReadiness(),sleepNeed(0,dAgo(-1))]));
+});
+
+// v131: naps. A sleep stretch on the band's day counts only under the strict rule (length, gaps to the nights, steps, no workout,
+// heart rate near the night's sleeping level). napFx(sl, o): last night 23:00 to 07:00 at a sleeping level of 50; the band's heart
+// rate 70 by day and o.v (55) inside each stretch, o.holes 5-minute slots left empty at the start of the first; o.next: tonight's
+// bedtime known (23:00). Synthetic days only.
+function napFx(sl,o={}){
+  base();const y=dAgo(1),p=dAgo(2),nv=o.v??55;
+  _s.polarNights=[{id:'pn-'+y,...polarNight(rawNight(y,p+'T23:00:00',y+'T07:00:00',[[0,1],[7200,2],[14400,3],[21600,1]]))}];
+  const inZ=m=>sl.some(z=>m>=z[0]&&m<z[1]),hole=m=>o.holes&&m>=sl[0][0]&&m<sl[0][0]+5*o.holes;
+  const vy=Array.from({length:288},(_,i)=>{const m=5*i;return m<420?50:inZ(m)?(hole(m)?null:nv):70;});
+  _s.polarDays=[{id:'pd-'+p,date:p,data:{hr:[{t:p+'T18:00:00',dt:300,v:Array.from({length:72},(_,i)=>i<60?70:50)}]}},
+    {id:'pd-'+y,date:y,data:{hr:[{t:y+'T00:00:00',dt:300,v:vy}],sl}}];
+  if(o.next){const r=slOf(td());r.bed='23:00';r.wake='06:30';}
+}
+run('v131 naps',()=>{
+  const y=dAgo(1),N=(sl,o)=>{napFx(sl,o);return napsOn(y);},k=(sl,o)=>N(sl,o).length;
+  const A=N([[0,420,0],[780,825,10],[1380,1440,0]]);
+  check('v131 naps: a 45-minute stretch after lunch with few steps and the heart rate near the night\'s level is a nap; the night and the evening stretch are not',
+    A.length===1&&A[0].min===45&&A[0].a===plT(y+'T13:00:00')&&A[0].b===plT(y+'T13:45:00'),JS(A));
+  const len=[k([[780,799,0]]),k([[780,800,0]]),k([[780,870,0]]),k([[780,871,0]])];
+  check('v131 naps: 20 to 90 minutes: 19 no, 20 yes, 90 yes, 91 no',len.join()==='0,1,1,0',len.join());
+  const gap=[k([[539,560,0]]),k([[540,560,0]]),k([[1300,1320,0]]),k([[1301,1321,0]]),k([[1240,1260,0]],{next:1}),k([[1241,1261,0]],{next:1}),k([[1300,1320,0]],{next:1})];
+  check('v131 naps: from 2 hours after waking (09:00) to 2 hours before the next night (21:00 with a bedtime of 23:00, else 22:00)',gap.join()==='0,1,1,0,1,0,0',gap.join());
+  const st=[k([[780,825,30]]),k([[780,825,31]])],cov=[k([[780,820,0]],{holes:4}),k([[780,820,0]],{holes:5})],hr=[k([[780,825,0]],{v:60}),k([[780,825,0]],{v:61})];
+  check('v131 naps: 30 steps yes, 31 no; heart rate in 4 of 8 slots yes, 3 of 8 no; 10 bpm over the night\'s level yes, 11 no',
+    [...st,...cov,...hr].join()==='1,0,1,0,1,0',[st,cov,hr].map(x=>x.join()).join(' | '));
+  napFx([[780,825,0]]);_s.workouts=[{id:'w-nap',date:y,type:'Run',durMin:20,sub:{icu:{t:'13:30'}}}];const w1=napsOn(y).length;
+  _s.workouts[0].sub.icu.t='12:40';const w2=napsOn(y).length;
+  check('v131 naps: a workout across the stretch rules it out; one that ends as it starts does not',w1===0&&w2===1,`${w1} ${w2}`);
+  napFx([[780,825,0]]);_s.polarNights=[];const n1=napsOn(y).length;
+  napFx([[780,825,0]]);_s.polarNights=[];Object.assign(slOf(y),{bed:'23:00',wake:'07:00'});const n2=napsOn(y).length;
+  napFx([[780,825,0]]);_s.polarDays=_s.polarDays.filter(x=>x.date===y);const n3=napsOn(y).length;
+  napFx([[780,825,0]]);delete dayOn(y).data.sl;const n4=napsOn(y).length;
+  check('v131 naps: no naps without a night, without the night\'s heart rate (no sleeping level) or without sleep stretches',n1+n2+n3+n4===0,`${n1} ${n2} ${n3} ${n4}`);
+  // the band's day as the V4 answer sends it: sleep stretches joined across 10 minutes, the short ones dropped, steps counted inside
+  const steps=Array.from({length:1440},(_,i)=>i===801||i===802?3:0),mets=Array(2880).fill(1);
+  const infos=[v4Cls('00:00:00','SLEEP'),v4Cls('07:00:00','SEDENTARY'),v4Cls('13:00:00','SLEEP'),v4Cls('13:20:00','LIGHT'),v4Cls('13:25:00','SLEEP'),v4Cls('13:50:00','SEDENTARY'),
+    v4Cls('15:00:00','SLEEP'),v4Cls('15:19:00','LIGHT'),v4Cls('16:00:00','SLEEP'),v4Cls('16:20:00','LIGHT'),v4Cls('23:00:00','SLEEP')];
+  const P=polarDay({date:y,activity:{date:y,activitiesPerDevice:[v4Dev(steps,mets,infos)]},hr:null}),sl=P&&P.data.sl;
+  check('v131 naps: the band\'s day keeps its sleep stretches in minutes with their steps: a 5-minute break joined, 19 minutes dropped, 20 kept',
+    JS(sl)===JS([[0,420,0],[780,830,6],[960,980,0],[1380,1440,0]])&&P.data.steps===6,JS(sl));
+  const Q=polarDay({date:y,activity:{date:y,activitiesPerDevice:[v4Dev(steps,mets,[v4Cls('00:00:00','LIGHT')])]},hr:null});
+  check('v131 naps: a day with no sleep stretch stores none',Q&&!('sl' in Q.data),JS(Q&&Q.data));
+});
+run('v131 naps day',()=>{
+  const y=dAgo(1);napFx([[0,420,0],[780,825,10],[1380,1440,0]]);
+  const D=dyDay(y),U=dyUsual(y),svg=dyHrSvg(D,'tn'),t0=dayLine(D,U);
+  check('v131 naps: Your day draws the nap as asleep with its label and leaves it out of the daytime heart rate',
+    D.naps.length===1&&D.naps[0].min===45&&D.dayMean===70&&/>Nap<\/text>/.test(svg)&&/Asleep/.test(dyLegend(D))&&!D.off.length&&t0===dayMeaning(D,U),`naps ${D.naps.length}, daytime ${D.dayMean}, off ${D.off.length}; ${t0}`);
+  slOf(dAgo(3)).durMin=330;slOf(dAgo(2)).durMin=330;
+  const Q=sleepDebt(y),x=Q&&Q.nights.find(n=>n.date===y),t=dayLine(D,U);
+  check('v131 naps: the sleep debt counts the nap on its day (4h less 45 min), and Your day says the nap paid some back',
+    x&&x.nap===45&&x.diff===45&&Q.min===195&&t===dayMeaning(D,U)+' The 45-minute nap counts toward paying back your sleep debt.'&&t.length<=140&&nSen(t)<=2,`${Q&&Q.min} · ${t}`);
+  const B=calcBody(y).score,nd=needOf(slOf(y));_s.polarDays.find(d=>d.date===y).data.sl=[];
+  check('v131 naps: a nap never changes Body or the night\'s need',calcBody(y).score===B&&needOf(slOf(y))===nd&&sleepDebt(y).min===240,`${B} ${calcBody(y).score}`);
+});
+seq('v131 nap re-read',async()=>{
+  const keep=window.download,hadT='showToast' in window,keepT=window.showToast;
+  try{window.showToast=()=>{};
+    base();_s.polarKey='pk-test';_s.pending={};const y=dAgo(1),dt=td();
+    _s.polarDays=[{id:'pd-'+dt,date:dt,data:{steps:100}}];   // a day stored before v131: no sleep stretches
+    const urls=[];let days=[];
+    window.fetch=async u=>{urls.push(u);return new Response('{"error":"x"}',{status:500});};
+    try{await pullPolarDay();}catch(e){}
+    const f0=(urls[0]||'').includes('from='+dAgo(TH.NAP_BACK)+'&')&&!_s.napBack;
+    const steps=Array(1440).fill(0),mets=Array(2880).fill(1);
+    days=[{date:y,activity:{date:y,activitiesPerDevice:[v4Dev(steps,mets,[v4Cls('00:00:00','SLEEP'),v4Cls('07:00:00','LIGHT'),v4Cls('13:00:00','SLEEP'),v4Cls('13:45:00','LIGHT')])]},hr:null}];
+    window.fetch=async u=>{urls.push(u);return new Response(JSON.stringify({from:'x',to:'y',days,errors:[]}),{status:200});};
+    const a=await pullPolarDay(),b=await pullPolarDay();
+    check('v131 nap re-read: the first sync on v131 downloads the last 14 days once (again after a failure), then from two days before the newest',
+      f0&&a.n===1&&(urls[1]||'').includes('from='+dAgo(TH.NAP_BACK)+'&')&&_s.napBack===dt&&b.n===0&&(urls[2]||'').includes('from='+dAgo(2)+'&')&&JS(dayOn(y).data.sl)===JS([[0,420,0],[780,825,0]]),urls.map(u=>u.replace(POLAR_API,'')).join(' '));
+    let got='';window.download=(n,t,s)=>{got=s;};backupJSON();
+    check('v131 nap re-read: the flag stays on this phone (not in a backup)',got&&!('napBack' in JSON.parse(got))&&'polarDays' in JSON.parse(got));
+    const sw=await(await realFetch('../sw.js',{cache:'no-store'})).text(),files=[...sw.matchAll(/\.\/(js\/[\w-]+\.js)/g)].map(m=>m[1]),who=[];
+    for(const f of files){const s=await(await realFetch('../'+f,{cache:'no-store'})).text();if(/\bnapsOn\(/.test(s))who.push(f);}
+    check('v131 naps: only the sleep debt and Your day read naps (never Body, the gauge, the sleep log or Trends)',JS(who)===JS(['js/recovery.js','js/day.js']),who.join(', '));
+  }finally{window.download=keep;if(hadT)window.showToast=keepT;else delete window.showToast;}
+});
+
+// v131: a day's activity from one source, the one that counted more steps (the band on a tie): the band's day (steps, active,
+// sitting, MET-hours) or another device's steps (daily wellness), never a mix. Steps from another device: active time from steps,
+// calories from steps and your weight, sitting needs the band. Synthetic days only.
+seq('v131 activity',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';box.innerHTML=doc.getElementById('dtModal').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const t=td(),y=dAgo(1),J=x=>JSON.stringify(x),txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',noNames=x=>!/Polar|Intervals|Garmin|Strava|Google/i.test(x);
+  const tl=h=>[...new DOMParser().parseFromString(h,'text/html').querySelectorAll('.sn-tl')].map(r=>[txt(r.querySelector('small')),txt(r.querySelector('b')),txt(r.querySelector('span'))]);
+  const why=h=>txt(new DOMParser().parseFromString(h,'text/html').querySelector('.sn-why'));
+  const run30={id:'w-ac1',date:y,type:'Run',durMin:30,rpe:3,sets:[],sub:{}};
+  try{
+    base();_s.workouts=[];_s.polarKey='';_s.polarDays=[];_s.measurements=[{id:'m-ac',date:dAgo(5),weight:70}];
+    // which source
+    _s.polarDays=[{id:'pd-'+y,date:y,data:{steps:9000,act:50,sit:400,sitMax:90,met:30}}];_s.wellness[y].steps=9000;const a=dayAct(y);
+    _s.wellness[y].steps=9001;const b=dayAct(y);_s.wellness[y].steps=8999;const c=dayAct(y);
+    check('v131 activity: one source a day, the one that counted more steps, the band on a tie; nothing from the other one is mixed in',
+      a.src==='band'&&a.steps===9000&&a.act===50&&!a.actEst&&a.sit===400&&b.src==='other'&&b.steps===9001&&b.act===40.01&&b.actEst&&b.sit===null&&b.sitMax===null&&c.src==='band'&&c.act===50,J([a,b,c]));
+    _s.polarDays=[{id:'pd-'+y,date:y,data:{steps:12000}}];delete _s.wellness[y].steps;const d=dayAct(y);
+    _s.polarDays=[];const n=dayAct(y);
+    check('v131 activity: a band day without active time estimates it from its steps; no band day and no steps is not recorded',d.src==='band'&&d.act===70&&d.actEst&&n.src===null&&n.steps===null&&n.act===null&&actMin(y)===null,J([d,n]));
+    // calories from another device's steps: resting use x 1.2 for the whole day, plus the steps' share up to x 1.75, plus workouts
+    _s.wellness[y].steps=15000;_s.workouts=[run30];
+    const e=dayAct(y),bm=fuBmr(70),ex=bm*TH.LIVE_K+bm*Math.min(TH.LIVE_MAX-TH.LIVE_K,15000/TH.LIVE_STEPS)+fuWk(run30,70);
+    _s.wellness[y].steps=40000;const e2=dayAct(y),ex2=bm*TH.LIVE_MAX+fuWk(run30,70);_s.wellness[y].steps=15000;
+    _s.wellness[t].steps=15000;const f=atDay(t,()=>dayAct(t)),exT=bm*TH.LIVE_K*9/24+bm*Math.min(TH.LIVE_MAX-TH.LIVE_K,15000/TH.LIVE_STEPS);delete _s.wellness[t].steps;
+    _s.measurements=[];const g=dayAct(y);_s.measurements=[{id:'m-ac',date:dAgo(5),weight:70}];
+    check('v131 activity: calories from steps are resting use for the day, the steps\' share capped, and the day\'s workouts; today only so far; none without a weight',
+      e.src==='other'&&e.kcalBy==='steps'&&Math.abs(e.kcal-ex)<1e-6&&Math.abs(e2.kcal-ex2)<1e-6&&Math.abs(f.kcal-exT)<1e-6&&g.kcal===null&&g.act===100,J([e.kcal,ex,e2.kcal,ex2,f.kcal,exT,g.kcal]));
+    check('v131 activity: the Fuel daily-living factor is unchanged (1.2 + steps / 25000, at most 1.75)',fuAct.toString().includes('TH.LIVE_K')&&(()=>{const p=_s.profile.useSteps;_s.profile.useSteps=true;const r=[(_s.wellness[y].steps=10000,fuAct(y)),(_s.wellness[y].steps=40000,fuAct(y))];_s.profile.useSteps=p;_s.wellness[y].steps=15000;return r[0]===1.2+10000/25000&&r[1]===1.75;})());
+    // strain: the phone's steps count when the band saw little
+    _s.workouts=[];_s.polarDays=[{id:'pd-'+y,date:y,data:{steps:2000,act:5}}];const s1=strainLoad(y);
+    delete _s.wellness[y].steps;const s0=strainLoad(y);_s.wellness[y].steps=15000;
+    check('v131 activity: a day the band was mostly off counts the other device\'s steps in strain',s0===5*TH.ACT_K&&s1===100*TH.ACT_K&&dayAct(y).src==='other',`${s0} → ${s1}`);
+    // the briefing gets steps, and active minutes only when measured
+    const i1=insAct(y);_s.polarDays=[{id:'pd-'+y,date:y,data:{steps:16000,act:75}}];const i2=insAct(y);_s.polarDays=[];delete _s.wellness[y].steps;const i3=insAct(y);_s.wellness[y].steps=15000;
+    check('v131 activity: the briefing gets the steps, and active minutes only when the band measured them',J(i1)===J({steps:15000,activeMin:null})&&J(i2)===J({steps:16000,activeMin:75})&&i3===null,J([i1,i2,i3]));
+    // the tiles: steps from another device, without and with a band
+    _s.workouts=[run30];const T1=tl(snTiles(y)),W1=why(snTiles(y)),kc=fuN(dayAct(y).kcal);
+    check('v131 activity: steps from another device without a band: steps, active estimated from steps, calories about from steps; no sitting and no note',
+      J(T1)===J([['Steps','15,000',''],['Active',fmtDur(100),'estimated from steps'],['Calories burned',kc+'kcal','about, from steps']])&&W1==='',J(T1));
+    _s.polarKey='pk-test';const T2=tl(snTiles(y)),W2=why(snTiles(y)),T3=tl(snTiles(t)),W3=why(snTiles(t));
+    _s.wellness[t].steps=15000;const T4=atDay(t,()=>tl(snTiles(t))),W4=atDay(t,()=>why(snTiles(t)));delete _s.wellness[t].steps;
+    check('v131 activity: with a band, sitting needs the band and one line says the steps came from another device',
+      J(T2.slice(-1))===J([['Sitting','–','needs your band']])&&W2==='Steps came from another device that day, so active time and calories are estimated.'&&W4==='Steps came from another device today, so active time and calories are estimated.'&&T4[2][2]==='about, from steps so far',J([T2,W2,T4,W4]));
+    check('v131 activity: a day with no steps from anywhere says how to get them, with the band first when you have one',
+      /Daily activity not recorded\. Wear your band, or connect your phone's steps in Settings\./.test(txt(new DOMParser().parseFromString(snTiles(dAgo(40)),'text/html').body))&&
+      (_s.polarKey='',/Daily activity not recorded\. Connect your phone's steps in Settings\./.test(snTiles(dAgo(40))))&&/class="btn-out sn-set"[^>]*>Open Settings</.test(snTiles(dAgo(40)))&&!T3.length&&W3==='',snTiles(dAgo(40)));
+    // the band's own day keeps its usual against usual from band days and day estimates only where measured
+    for(let i=2;i<=8;i++)_s.polarDays.push({id:'pd-'+dAgo(i),date:dAgo(i),data:{steps:6000,act:40}});
+    _s.polarDays.push({id:'pd-'+y,date:y,data:{steps:16000,act:60}});
+    const T5=tl(snTiles(y));
+    check('v131 activity: the band\'s day reads against your usual from the days before, measured active time only',T5[0][2]==='▲10,000 over usual'&&T5[1][2]==='▲20min over usual',J(T5));
+    _s.polarDays=_s.polarDays.filter(x=>x.date!==y);
+    // where the strain came from
+    const sr=h=>[...new DOMParser().parseFromString(h,'text/html').querySelectorAll('.sn-src')].map(x=>txt(x.querySelector('.sn-l'))+' '+txt(x.querySelector('b')));
+    const R1=sr(snSrc(y));delete _s.wellness[y].steps;const R2=sr(snSrc(y));_s.wellness[y].steps=15000;
+    check('v131 activity: where it came from shows the steps from another device; with nothing recorded, a dash',R1.length===2&&R1[1].startsWith('On your feet'+fuN(15000)+' steps')&&/\d+%$/.test(R1[1])&&J(R2.slice(1))===J(['On your feetnot recorded –']),J([R1,R2]));
+    // the sheet: a past day with only another device's steps is not empty, fits 360px, names no source
+    _s.workouts=[];_s.polarKey='pk-test';_s.polarDays=[{id:'pd-'+dAgo(3),date:dAgo(3),data:{steps:6000,act:40}}];
+    const S1=atDay(t,()=>{_dtDay=null;openDetail('strain');dtDayGo(-1);const bd=$('dtBody');return{d:_dtDay,miss:txt(bd.querySelector('.dt-miss')),tl:[...bd.querySelectorAll('.sn-tl')].map(x=>txt(x.querySelector('small'))),why:txt(bd.querySelector('.sn-why')),all:bd.textContent};});
+    const m=box.querySelector('.modal'),R0=box.getBoundingClientRect().right,wide=[...$('dtBody').querySelectorAll('*')].filter(x=>x.getBoundingClientRect().width>0&&x.getBoundingClientRect().right>R0+0.5);
+    const nr=[...$('dtBody').querySelectorAll('.sn-tl')].map(x=>x.getBoundingClientRect().height);
+    check('v131 activity: the Strain sheet opens yesterday from the other device\'s steps alone, with the four tiles and the note',S1.d===y&&!S1.miss&&J(S1.tl)===J(['Steps','Active','Calories burned','Sitting'])&&/another device that day/.test(S1.why),J(S1));
+    check('v131 activity: the sheet names no app or device and fits 360px',noNames(S1.all)&&!/NaN|undefined/.test(S1.all)&&m.getBoundingClientRect().width<=360&&m.scrollWidth<=m.clientWidth&&!wide.length&&nr.every(h=>h>0),wide.map(x=>x.tagName+'.'+x.className).join(' '));
+    closeDetail();
+    const src=[snTiles,snSrc,dayAct].map(x=>x.toString()).join('');
+    check('v131 activity: no source names in the code that writes these screens',noNames(src.replace(/polarDays|polarKey/g,'')));
+  }finally{closeDetail();box.remove();css.remove();}
+});
+
+// v131: the Today alert (hidden under 2h, amber, red from 5h, green on the morning it clears; follows the day bar; opens the Sleep
+// sheet at its debt section) and the sheet's "Sleep debt, 14 nights" section (head, 14 nights, legend, tap and ← → readout, the note)
+seq('v131 screens',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';
+  box.innerHTML=['dayBar','debtAlert','dtModal'].map(id=>doc.getElementById(id).outerHTML).join('')+doc.querySelector('.hero-card').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const t=td(),y=dAgo(1),keep={},had={},stub={recalc:()=>{},refreshActive:()=>{},showToast:()=>{}};
+  Object.keys(stub).forEach(k=>{had[k]=k in window;keep[k]=window[k];window[k]=stub[k];});
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',noNames=x=>!/Polar|Intervals|Garmin|Strava|Google/i.test(x),A=()=>$('debtAlert'),B=()=>$('dtBody');
+  const shown=()=>A().style.display!=='none'&&!!A().innerHTML,al=()=>[A().className,txt(A().querySelector('.rf-v')),txt(A().querySelector('.rf-n')),txt(A().querySelector('p'))];
+  const secs=()=>[...B().querySelectorAll('.dt-sec')].map(txt),md=()=>box.querySelector('#dtModal .modal');
+  const col=v=>{const p=document.createElement('i');p.style.color=`var(${v})`;box.appendChild(p);const c=getComputedStyle(p).color;p.remove();return c;};
+  const at=a=>{dn(a);_tdView=null;renderGauges();return sleepDebt();};
+  try{
+    // hidden: under 2 hours, no debt worked out
+    at([...gN(13),390]);const h1=shown();_s.sleepLogs=[];_tdView=null;renderGauges();const h2=shown()||sleepDebt()!==null;
+    check('v131 screens: the alert is hidden under 2 hours and with too few nights',!h1&&!h2,`${h1} ${h2}`);
+    // amber from 2h, red from 5h; the value, the word and the line
+    let D=at([...gN(13),330]);const a2=al(),c2=getComputedStyle(A()).borderLeftColor;
+    D=at([...gN(13),150]);const a5=al(),c5=getComputedStyle(A()).borderLeftColor;
+    check('v131 screens: amber at 2h, red from 5h, the left rule in the state colour',a2[0]==='da'&&a2[1]==='2h'&&a2[2]==='▲Building'&&c2===col('--amber')&&a5[0]==='da bad'&&a5[1]==='5h'&&c5===col('--red'),JSON.stringify([a2,a5]));
+    D=at([...G7,...Array(7).fill(390)]);const b7=al();
+    check('v131 screens: building to 7h: the value, ▲ Building and the debt line',b7[1]==='7h'&&b7[2]==='▲Building'&&b7[3]===debtLine(D)&&A().querySelector('.dah .l').textContent==='Sleep debt',JSON.stringify(b7));
+    D=at([...gN(6),...Array(7).fill(390),570]);const bp=al();
+    D=at([...gN(10),300,300,750,450]);const bs=al();
+    check('v131 screens: paying back and steady',bp[1]===fmtDur(300)&&bp[2]==='▼Paying back'&&bs[1]===fmtDur(180)&&bs[2]==='●Steady'&&bs[3]===debtLine(D),JSON.stringify([bp,bs]));
+    D=at([...gN(10),330,330,570,570]);const bc=al(),cc=getComputedStyle(A()).borderLeftColor;
+    check('v131 screens: green on the morning it clears: Cleared, from the peak, and whether HRV and resting heart rate are back',bc[0]==='da ok'&&bc[1]==='Cleared'&&bc[2]==='●from 4h'&&bc[3]===debtLine(D)&&cc===col('--green'),JSON.stringify(bc));
+    // the day bar moves it: cleared yesterday shows on yesterday only
+    at([...gN(9),330,330,570,570,450]);const t0=shown();_tdView=y;renderGauges();const y0=al(),ys=shown();_tdView=null;renderGauges();
+    check('v131 screens: the alert follows the day bar: a debt cleared yesterday shows on yesterday, not today',!t0&&ys&&y0[0]==='da ok'&&y0[1]==='Cleared',`${t0} ${ys} ${JSON.stringify(y0)}`);
+    // 44px, 360px, no source names, never the accent
+    D=at([...G7,...Array(7).fill(390)]);
+    const R0=box.getBoundingClientRect().right,wa=[...A().querySelectorAll('*')].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().right>R0+0.5);
+    check('v131 screens: the alert is at least 44px tall, nothing wider than 360px, no source names, no accent',A().getBoundingClientRect().height>=44&&A().querySelector('.dah').getBoundingClientRect().height>=44&&!wa.length&&noNames(A().textContent)&&!/gold/.test(A().outerHTML)&&getComputedStyle(A()).borderLeftColor!==col('--gold'),A().getBoundingClientRect().height+' '+wa.map(e=>e.tagName).join());
+    // the sleep gauge number shrinks when it needs four characters
+    dn([...gN(13),600]);renderGauges();const s1=[$('slpNum').textContent,$('slpNum').classList.contains('sm')];
+    dn([...gN(13),330]);renderGauges();const s2=[$('slpNum').textContent,$('slpNum').classList.contains('sm')];
+    check('v131 screens: the sleep gauge number is smaller at four characters (100%) only',s1[0].length>3&&s1[1]&&s2[0].length<=3&&!s2[1],JSON.stringify([s1,s2]));
+    // a tap opens the Sleep sheet at the debt section; a gauge tap still opens at the top
+    D=at([...G7,...Array(7).fill(390)]);
+    A().click();const m=md(),hd=$('dtDebt')&&$('dtDebt').previousElementSibling,off=hd?hd.getBoundingClientRect().top-m.getBoundingClientRect().top:null,top1=m.scrollTop;
+    check('v131 screens: the alert opens the Sleep sheet scrolled to Sleep debt, then forgets the place',_dtKey==='sleep'&&top1>0&&hd&&txt(hd)==='Sleep debt, 14 nights'&&(Math.abs(off-12)<2||Math.abs(top1-(m.scrollHeight-m.clientHeight))<2)&&_dtAt===null,`${_dtKey} ${top1} ${off}`);
+    refreshDetail();const top2=m.scrollTop;closeDetail();tdOpen('sleep');const top3=md().scrollTop;closeDetail();
+    check('v131 screens: a refresh keeps the place; the sleep gauge opens the sheet at its top',top2===top1&&top3===0,`${top2} ${top3}`);
+    // the section in the normal sheet
+    _tdView=null;tdOpen('sleep');const S1=secs(),c=$('dtDebt'),hdT=[txt(c.querySelector('.dbh b')),txt(c.querySelector('.dbh small')),txt(c.querySelector('.dbh .r span')),txt(c.querySelector('.dbh .r em'))];
+    const lgd=[...c.querySelectorAll('.dlg span')].map(txt),cols=c.querySelectorAll('rect.db-c').length,ln=txt(c.nextElementSibling),nt=txt(c.nextElementSibling.nextElementSibling);
+    const iW=S1.indexOf('Sleep window, 14 nights'),iD=S1.indexOf('Sleep debt, 14 nights');
+    check('v131 screens: the section sits after the sleep window (when shown), right before the effect and Tonight',iD>=0&&(iW<0||iD===iW+1)&&['Effect on recovery','Tonight'].includes(S1[iD+1])&&S1.indexOf('Tonight')>iD,JSON.stringify(S1));
+    check('v131 screens: the head says 7h, ▲ Building and about 7 nights to clear',JSON.stringify(hdT)===JSON.stringify(['7h','▲Building','To clear','about 7 nights']),JSON.stringify(hdT));
+    check('v131 screens: 14 nights, the legend for the parts present, the line and the note',cols===14&&JSON.stringify(lgd)===JSON.stringify(['Debt','Under'])&&ln===debtLine(D)&&nt==='Does not change your recovery score.',JSON.stringify([cols,lgd,ln,nt]));
+    // tap and ← → read one night
+    const rd=()=>txt(c.querySelector('.db-rd')),d12=dAgo(1),d11=dAgo(2),hlx=()=>c.querySelector('.db-hl').getAttribute('x');
+    c.querySelector('rect.db-c[data-i="12"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));const r12=rd(),x12=hlx();
+    const sv=c.querySelector('svg'),key=k=>sv.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true}));
+    key('ArrowLeft');const r11=rd();key('ArrowRight');const rB=rd();key('Escape');const rE=rd();
+    check('v131 screens: a tap reads that night and moves the highlight; ← → step; Esc clears',r12===`${dayWd(d12)} ${fmtD(d12)}: ${fmtDur(390)} asleep, ${fmtDur(60)} under your goal. Debt ${fmtDur(360)}.`&&x12===(12*268/14).toFixed(1)&&r11===`${dayWd(d11)} ${fmtD(d11)}: ${fmtDur(390)} asleep, ${fmtDur(60)} under your goal. Debt ${fmtDur(300)}.`&&rB===r12&&rE==='',JSON.stringify([r12,r11,rB,rE]));
+    const R1=box.getBoundingClientRect().right,ws=[...B().querySelectorAll('*')].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().right>R1+0.5);
+    check('v131 screens: the sheet is no wider than 360px, no source names, no accent in the section',!ws.length&&noNames(B().textContent)&&!/gold/.test(c.outerHTML),ws.map(e=>e.tagName+'.'+(e.className.baseVal??e.className)).join(' '));
+    closeDetail();
+    check('v131 screens: closing forgets the nights on show',_dbN===null&&_dtAt===null,'');
+    // missing and battery nights, a nap: rings, the No night and Nap legend, their readouts
+    const hn='napsOn' in window,kn=window.napsOn;
+    try{
+      window.napsOn=dt=>dt===y?[{a:840,b:900,min:60}]:[];
+      dn([...G7,390,null,390,'b',390,390,390]);_tdView=null;tdOpen('sleep');const c2=$('dtDebt'),rd2=i=>{c2.querySelector(`rect.db-c[data-i="${i}"]`).dispatchEvent(new MouseEvent('click',{bubbles:true}));return txt(c2.querySelector('.db-rd'));};
+      const lg2=[...c2.querySelectorAll('.dlg span')].map(txt),rings=c2.querySelectorAll('svg circle').length,teal=[...c2.querySelectorAll('svg rect')].filter(r=>/--teal/.test(r.getAttribute('style')||'')).length;
+      const m8=rd2(8),m10=rd2(10),n12=rd2(12),D2=sleepDebt();
+      check('v131 screens: a missing and a battery night are rings, a nap is teal on its night, each in the legend',rings===2&&teal===1&&JSON.stringify(lg2)===JSON.stringify(['Debt','Under','Nap','No night']),JSON.stringify([rings,teal,lg2]));
+      check('v131 screens: their readouts',m8===`${dayWd(dAgo(5))} ${fmtD(dAgo(5))}: no night recorded. Debt ${fmtDur(D2.nights[8].bal)}.`&&m10===`${dayWd(dAgo(3))} ${fmtD(dAgo(3))}: battery ran out, not counted. Debt ${fmtDur(D2.nights[10].bal)}.`&&n12===`${dayWd(y)} ${fmtD(y)}: ${fmtDur(390)} asleep and a ${fmtDur(60)} nap, on your goal. Debt ${fmtDur(D2.nights[12].bal)}.`,JSON.stringify([m8,m10,n12]));
+      closeDetail();
+    }finally{if(hn)window.napsOn=kn;else delete window.napsOn;}
+    // a battery night last night: the sheet keeps "Sleep debt · Nothing added" and has the section before Tonight
+    dn([...G7,...Array(6).fill(390),'b']);_tdView=null;tdOpen('sleep');const S2=secs(),nb=[...B().querySelectorAll('.dt-row')].find(r=>r.firstElementChild&&r.firstElementChild.textContent==='Sleep debt');
+    check('v131 screens: a battery night: the section after the details, before Tonight; the row says nothing added',S2.includes('Sleep debt, 14 nights')&&S2.indexOf('Sleep debt, 14 nights')>S2.indexOf('Details')&&S2.indexOf('Tonight')>S2.indexOf('Sleep debt, 14 nights')&&nb&&nb.lastElementChild.textContent==='Nothing added'&&$('dtDebt').querySelectorAll('rect.db-c').length===14,JSON.stringify(S2));
+    closeDetail();
+    // no debt worked out: no section
+    dn([...gN(14)]);_s.sleepLogs=_s.sleepLogs.filter(x=>daysAgo(x.date)<2);tdOpen('sleep');const S3=secs();closeDetail();
+    check('v131 screens: with too few nights there is no section',!S3.includes('Sleep debt, 14 nights')&&sleepDebt()===null,JSON.stringify(S3));
+  }finally{_tdView=null;closeDetail();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
 
 Promise.all(later).then(()=>{

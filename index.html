@@ -88,6 +88,7 @@
     <div class="g-base" id="baseNote" style="display:none"></div>
   </div>
 
+  <div class="da" id="debtAlert" role="button" tabindex="0" aria-label="Sleep debt, opens sleep" onclick="_dtAt='debt';tdOpen('sleep')" style="display:none"></div>
   <div class="card dy-card" id="yourDay" role="button" tabindex="0" aria-label="Your day, opens strain" onclick="tdOpen('strain')" style="display:none"></div>
 
   <details class="more-today" id="moreToday"><summary>Plan and training</summary>
@@ -367,6 +368,7 @@
         <div class="set-note">Intervals.icu → Settings → Developer Settings. Stays on this phone only.</div>
         <div class="api-test-row"><button class="api-test-btn" onclick="testIntervals()">Test connection</button><span class="api-test-res" id="icuTestRes"></span></div>
         <div class="set-note">To get planned sessions on your watch, turn on Upload planned workouts in Intervals.icu (Settings, under your watch's connection). Insights then has Send to watch on today's session.</div>
+        <div class="set-note">Daily steps in Intervals.icu wellness, from your watch or phone if connected there, count in Strain on any day your band counted fewer.</div>
       </div>
       <div class="fg"><div class="fl">POLAR APP KEY</div><input type="password" class="inp" id="sPolarKey" placeholder="APP_TOKEN of your VitalCore backend" autocomplete="off">
         <div class="set-note">Brings each night in detail from your Polar Loop 2: sleep stages, score, heart rate variability and breathing while asleep. The key is the APP_TOKEN of your VitalCore backend on Vercel. Stays on this phone only.</div>

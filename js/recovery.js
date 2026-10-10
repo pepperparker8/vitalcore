@@ -46,15 +46,99 @@ function loadK(){
 }
 const wLoad=w=>wIcu(w).load>0?wIcu(w).load*loadK():(w.durMin||30)*(w.rpe||3);
 const dayLoad=date=>wkOn().filter(w=>w.date===date).reduce((a,w)=>a+wLoad(w),0);
-// v127: minutes on your feet outside workouts count in strain. The band's active time, else from steps (over STEP_BASE,
-// one minute per STEP_RATE); null with neither. Workout minutes come off, so a session is never counted twice.
-function actMin(date){
-  const p=dayOn(date),a=p&&p.data||{},st=a.steps??((S().wellness||{})[date]||{}).steps;
-  return a.act!=null?a.act:st!=null?Math.max(0,st-TH.STEP_BASE)/TH.STEP_RATE:null;
+// v131: a day's activity from one source, the one that counted more steps (the band on a tie): the band's day, else the steps another
+// device counted (wellness). src null = not recorded. Active time from steps (over STEP_BASE, one minute per STEP_RATE) and calories
+// from steps (resting use x the daily-living factor, plus that day's workouts; today the resting part so far) are estimates; sitting needs the band.
+const actEst=st=>Math.max(0,st-TH.STEP_BASE)/TH.STEP_RATE;
+function wtOn(t){
+  const ex=isExampleOnly();
+  return last(S().measurements.filter(x=>x.date<=t&&x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort((x,y)=>x.date<y.date?-1:1));
 }
+function dayAct(date){
+  const p=dayOn(date),a=p&&p.data||{},ws=((S().wellness||{})[date]||{}).steps,os=ws>0?ws:null,bs=a.steps??(a.act!=null?0:null);
+  const o={src:null,steps:null,act:null,actEst:false,sit:null,sitMax:null,kcal:null,kcalBy:null};
+  if(bs==null&&os==null)return o;
+  const wt=wtOn(date);
+  if(bs!=null&&(os==null||bs>=os)){
+    o.src='band';o.steps=a.steps??null;o.sit=a.sit??null;o.sitMax=a.sitMax??null;
+    if(a.act!=null)o.act=a.act;else if(a.steps!=null){o.act=actEst(a.steps);o.actEst=true;}
+    if(a.kcal!=null)o.kcal=a.kcal;else if(a.met&&wt){o.kcal=a.met*wt.weight;o.kcalBy='met';}
+    return o;
+  }
+  o.src='other';o.steps=os;o.act=actEst(os);o.actEst=true;
+  if(wt){
+    const fr=date===td()?Math.max(0,Math.min(1,(Date.now()-new Date(date+'T00:00').getTime())/864e5)):1,b=fuBmr(wt.weight);
+    o.kcal=b*TH.LIVE_K*fr+b*Math.min(TH.LIVE_MAX-TH.LIVE_K,os/TH.LIVE_STEPS)+wkOn().filter(w=>w.date===date).reduce((x,w)=>x+fuWk(w,wt.weight),0);o.kcalBy='steps';
+  }
+  return o;
+}
+// v127: minutes on your feet outside workouts count in strain; null when the day has no activity. Workout minutes come off, so a session is never counted twice.
+const actMin=date=>dayAct(date).act;
 const actLoad=date=>{const m=actMin(date);if(!m)return 0;const wm=wkOn().filter(w=>w.date===date).reduce((a,w)=>a+(w.durMin||0),0);return Math.max(0,m-wm)*TH.ACT_K;};
 // strain, sleep need and the strain sheet read this; training rules (hard days, drivers, briefing pairs) stay on dayLoad
 const strainLoad=date=>dayLoad(date)+actLoad(date);
+// ── v131 SLEEP DEBT: against your sleep goal over the last TH.DEBT_DAYS nights. A short night adds what it fell short; a longer night or a nap
+// pays back at most TH.DEBT_REPAY a day; never below 0, so sleep cannot be banked ahead. Missing and battery nights add and pay nothing.
+// An alert only: never part of Body, the gauge or sleepNeed. Worked out on demand, never stored (like bounceDays). Null under TH.DEBT_MIN_N nights.
+function sleepDebt(date=td()){
+  const d=S(),goal=Math.round((d.profile.sleepGoal||7.5)*60),o=daysAgo(date),nights=[];
+  let bal=0,n=0,trend='flat',cur=null,hi=false,clearedOn=null,clPeak=null,since=null;
+  for(let i=TH.DEBT_DAYS-1;i>=0;i--){
+    const dt=dAgo(o+i),s=last(d.sleepLogs.filter(x=>x.date===dt&&x.durMin>0)),nap=typeof napsOn==='function'?napsOn(dt).reduce((a,x)=>a+x.min,0):0;
+    if(!s||!slCounts(s)){nights.push({date:dt,slept:null,nap,diff:null,bal,skip:s?'batt':'none'});continue;}
+    const diff=s.durMin+nap-goal,b0=bal;n++;
+    bal=diff<0?bal-diff:Math.max(0,bal-Math.min(diff,TH.DEBT_REPAY));
+    trend=bal>b0?'up':bal<b0?'down':'flat';
+    if(bal===0)since=null;else if(since==null)since=dt;
+    if(bal>=TH.DEBT_OK){if(!cur||bal>cur.min)cur={min:bal,date:dt};if(bal>=TH.DEBT_WARN)hi=true;clearedOn=null;clPeak=null;}
+    else{if(hi){clearedOn=dt;clPeak=cur;hi=false;}cur=null;}
+    nights.push({date:dt,slept:s.durMin,nap,diff,bal,skip:null});
+  }
+  if(n<TH.DEBT_MIN_N)return null;
+  const state=bal>=TH.DEBT_OK?(trend==='up'?'building':trend==='down'?'paying':'steady'):clearedOn?'cleared':'none';
+  const peak=bal>=TH.DEBT_OK?cur:clPeak;
+  // the nights and naps that paid it back, from the peak to the morning it cleared
+  const pay=clearedOn&&clPeak?nights.filter(x=>x.date>clPeak.date&&x.date<=clearedOn&&x.diff!=null):[];
+  return{date,goal,min:bal,state,trend,nights,peak,clearedOn,since,n,toClear:bal>0?Math.ceil(bal/TH.DEBT_EXTRA):0,
+    payN:pay.filter(x=>x.slept>goal).length,payNaps:pay.filter(x=>x.nap>0).length};
+}
+// HRV and resting heart rate inside your usual range on a day: the same tests as the Recovery sheet's rows (HRV band mean − SD/√7, resting HR mean + SD)
+function debtBodyBack(date=td()){
+  const P=calcBody(date).parts;
+  return{hrv:P.hrv?P.hrv.v7>=P.hrv.m-P.hrv.sd/TH.HRV_SE:null,rhr:P.rhr?P.rhr.v<=P.rhr.m+P.rhr.sd:null};
+}
+// the line on the morning it clears: HRV and resting heart rate back, or which one is not yet
+function debtBackLine(date){
+  const b=debtBodyBack(date);
+  if(b.hrv===false&&b.rhr===false)return'HRV and resting heart rate are not back to usual yet.';
+  if(b.hrv===false)return'HRV is still under usual.';
+  if(b.rhr===false)return'Resting heart rate is still above usual.';
+  return b.hrv&&b.rhr?'HRV and resting heart rate are back to usual.':b.hrv?'HRV is back to usual.':b.rhr?'Resting heart rate is back to usual.':'';
+}
+// the fact (why) and the action (do); debtLine joins them: the v123 rule, at most 2 sentences, 140 characters and two numbers
+function debtWhy(D){
+  if(!D)return'';
+  if(D.state==='none')return'No sleep debt.';
+  if(D.state==='cleared'){
+    if(D.clearedOn!==D.date)return`Cleared on ${dayWord(D.clearedOn)}.`;
+    const nn=D.payN,np=D.payNaps,naps=np?(np===1?'a nap':`${np} naps`):'';
+    const how=nn>1?`over ${nn} nights`+(naps?` and ${naps}`:''):nn===1?'in one night'+(naps?` and ${naps}`:''):naps?`with ${naps}`:'';
+    const bk=debtBackLine(D.date);
+    return(how?`Paid back ${how}.`:'Paid back.')+(bk?' '+bk:'');
+  }
+  if(D.state==='paying')return`Paying back: down from ${fmtDur(D.peak.min)}.`;
+  if(D.state==='steady')return'Holding: the last night was right on your goal.';
+  const run=D.nights.filter(x=>D.since&&x.date>=D.since&&x.diff!=null),sh=run.filter(x=>x.diff<0).length;
+  if(run.length<2)return`${dayWord(D.since,true)} was short.`;
+  const when=dayWord(D.since);
+  return sh===run.length?`Short every night since ${when}.`:sh*2>=run.length&&run.length>2?`Short most nights since ${when}.`:`Built up since ${when}.`;
+}
+function debtDo(D){
+  if(!D||D.min<TH.DEBT_OK)return'';
+  const ex=TH.DEBT_EXTRA===60?'an extra hour':`an extra ${fmtDur(TH.DEBT_EXTRA)}`;
+  return D.toClear<=1?`${cap(ex)} tonight clears it.`:`${cap(ex)} a night clears it in about ${D.toClear} nights.`;
+}
+const debtLine=D=>[debtWhy(D),debtDo(D)].filter(Boolean).join(' ');
 function recoveryDrivers(){
   const d=S(),out=[];
   const hv=latestOf('hrv'),hb=wSeries('hrv');
@@ -81,11 +165,11 @@ function recoveryDrivers(){
     out.push({k:'sleep',label:'Last night',val:fmtDur(sl.durMin),base:`goal ${fmtDur(goal)}`,delta:df,st:df>=-20?'ok':df>=-60?'warn':'bad',
       ft:`Short night: ${fmtDur(-df)} under your goal`,txt:'An earlier night tonight helps.'});
   }
-  const wk=d.sleepLogs.filter(s=>s.durMin&&daysAgo(s.date)<7&&slCounts(s));
-  if(wk.length>=3){
-    const debt=wk.reduce((a,s)=>a+(goal-s.durMin),0);
-    out.push({k:'debt',label:'Sleep debt, 7 nights',val:debt>0?fmtDur(debt):'none',base:`${wk.length} nights logged`,delta:-debt,st:debt<=60?'ok':debt<=180?'warn':'bad',
-      ft:`Sleep debt: ${fmtDur(debt)} this week`,txt:'A few earlier nights will clear it.'});
+  // v131: the one sleep debt (sleepDebt, 14 nights, paid back by longer nights and naps); a flag from TH.DEBT_WARN, never part of a score
+  const D=sleepDebt();
+  if(D){
+    out.push({k:'debt',label:'Sleep debt',val:D.min>0?fmtDur(D.min):'none',base:`${D.n} nights logged`,delta:-D.min,st:D.min<TH.DEBT_WARN?'ok':D.min<TH.DEBT_BAD?'warn':'bad',
+      ft:`Sleep debt: ${fmtDur(D.min)}`,txt:debtDo(D)||debtWhy(D)});
   }
   const yl=dayLoad(dAgo(1));
   const base=[];for(let i=2;i<=29;i++)base.push(dayLoad(dAgo(i)));

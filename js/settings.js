@@ -33,7 +33,7 @@ function saveSettings(){
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function backupJSON(){
-  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;
+  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;
   download(`vitalcore-backup-${td()}.json`,'application/json',JSON.stringify(d));
   showToast('Backup downloaded');
 }

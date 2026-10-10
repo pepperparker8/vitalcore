@@ -25,11 +25,13 @@ function fuWeight(){
 // steps for a day from Intervals.icu wellness (Polar), when the watch counted them
 const fuSteps=dt=>{const w=(S().wellness||{})[dt];return w&&w.steps>0?w.steps:null;};
 // daily-living factor: 1.35 flat, or from the day's steps once the user allowed it (about 1.2 at rest, 1.6 at 10,000 steps)
-function fuAct(dt){const st=S().profile.useSteps&&dt?fuSteps(dt):null;return st?Math.max(1.2,Math.min(1.75,1.2+st/25000)):1.35;}
-function fuRest(kg,dt){
+function fuAct(dt){const st=S().profile.useSteps&&dt?fuSteps(dt):null;return st?Math.max(TH.LIVE_K,Math.min(TH.LIVE_MAX,TH.LIVE_K+st/TH.LIVE_STEPS)):1.35;}
+// resting use (Mifflin-St Jeor; sex unset = the average of the two)
+function fuBmr(kg){
   const p=S().profile,sx=p.sex==='m'?5:p.sex==='f'?-161:-78;
-  return(p.height>=120&&p.age>=14?10*kg+6.25*p.height-5*p.age+sx:23*kg)*fuAct(dt);
+  return p.height>=120&&p.age>=14?10*kg+6.25*p.height-5*p.age+sx:23*kg;
 }
+const fuRest=(kg,dt)=>fuBmr(kg)*fuAct(dt);
 const fuSess=(type,mins,rpe,kg)=>((FU_MET[type]||FU_MET.Cycle)[Math.max(1,Math.min(5,Math.round(rpe)||3))-1]-1)*kg*mins/60;
 // strength workouts have no duration field: about 3 minutes a set
 const fuMin=w=>w.durMin||(IS_STR(w.type)?Math.min(90,(w.sets||[]).length*3)||30:0);

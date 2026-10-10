@@ -32,8 +32,24 @@ function renderGauges(){
   else if(sl){const pc=Math.min(100,Math.round(sl.durMin/needOf(sl)*100));
     setGauge('slpFill','slpNum',pc/100,pc+'%');$('gSlpSub').textContent=fmtDur(sl.durMin);}
   else{setGauge('slpFill','slpNum',0,'—');$('gSlpSub').textContent=now?'Log sleep':'Not logged';}
+  $('slpNum').classList.toggle('sm',$('slpNum').textContent.length>3);
   renderFactors();if(typeof refreshDetail==='function')refreshDetail();const sc=dayScore(dt);const n=daysLogged(30),bn=$('baseNote');if(bn){const b=now&&!isExampleOnly()&&n<TH.MIN_BASE_DAYS;bn.style.display=b?'block':'none';bn.textContent=b?`Building your baseline: ${n} of ${TH.MIN_BASE_DAYS} days logged. Scores and usual ranges get more personal after two weeks of data.`:'';}
   $('gRecSub').textContent=sc==null&&!now?'No data':scoreWord(sc);
+  renderDebtAlert();
+}
+// v131: the sleep debt alert under the factor rows, for the day in view: from TH.DEBT_WARN, and on the morning it clears.
+// Amber, red from TH.DEBT_BAD, green when cleared; never --gold. Opens the Sleep sheet at its debt section.
+function renderDebtAlert(){
+  const el=$('debtAlert');if(!el)return;
+  const D=sleepDebt(tdDay()),clr=D&&D.state==='cleared'&&D.clearedOn===D.date;
+  if(!D||!(D.min>=TH.DEBT_WARN||clr)){el.style.display='none';el.innerHTML='';return;}
+  el.className='da'+(clr?' ok':D.min>=TH.DEBT_BAD?' bad':'');
+  const mk=clr?'●':D.state==='building'?'▲':D.state==='paying'?'▼':'●',
+    wd=clr?`from ${fmtDur(D.peak.min)}`:D.state==='building'?'Building':D.state==='paying'?'Paying back':'Steady';
+  el.innerHTML=`<div class="dah">${UI.zzz.replace('ui-i','ui-i dai')}<span class="l">Sleep debt</span>`+
+    `<div class="rf-r"><span class="rf-v">${clr?'Cleared':fmtDur(D.min)}</span><span class="rf-n"><i class="rf-g" aria-hidden="true">${mk}</i>${wd}</span></div>`+
+    `${UI.chev.replace('ui-i','ui-i da-go')}</div><p>${esc(debtLine(D))}</p>`;
+  el.style.display='block';
 }
 // v129: any day on Today (default today). Order as the approved mockup: sleep, HRV, resting heart rate, breathing, check-in, form;
 // soreness and late coffee from that day's check-in; injuries only on today.
@@ -166,15 +182,14 @@ function renderTrends(){
 }
 // bedtime as minutes from noon, so 23:30 and 00:30 sit an hour apart
 const bedMin=t=>{const[h,m]=t.split(':').map(Number);return(h<12?h+24:h)*60+m-720;};
-// v123: one line. Short nights in a row now lead, then this week's debt, then the average against the goal;
+// v123: one line. Short nights in a row now lead, then the sleep debt, then the average against the goal;
 // a second sentence only when bedtime moves around a lot
 function sleepMeaning(info,goal){
   const gH=goal/60,P=info.pts,l=last(P),r5=m=>Math.max(5,Math.round(m/5)*5);let k=0;for(let i=P.length-1;i>=0&&P[i].v<gH-1;i--)k++;
   if(k>=2&&daysAgo(l.d)<=1)return`Short ${k} nights in a row. An early night helps.`;
-  const wk=S().sleepLogs.filter(x=>x.durMin&&daysAgo(x.date)<7&&slCounts(x)),debt=wk.reduce((a,x)=>a+(goal-x.durMin),0),diff=Math.round(info.avg*60-goal);
-  if(info.to>=dAgo(1)&&wk.length>=3&&debt>=60){
-    const sn=wk.reduce((m,x)=>!m||x.durMin<m.durMin?x:m,null);
-    return`${fmtDur(r5(debt))} short of your goal this week.`+(sn.durMin<=goal-60?` ${dayWord(sn.date,true)} was the short night.`:'');}
+  // v131: the one sleep debt (sleepDebt in recovery.js), from TH.DEBT_WARN
+  const D=info.to>=dAgo(1)?sleepDebt():null,diff=Math.round(info.avg*60-goal);
+  if(D&&D.min>=TH.DEBT_WARN)return`${fmtDur(r5(D.min))} of sleep debt. ${debtDo(D)}`;
   let t=Math.abs(diff)<10?'On your goal on average.':`About ${fmtDur(r5(Math.abs(diff)))} ${diff<0?'under':'over'} your goal on average.`;
   const beds=S().sleepLogs.filter(x=>x.bed&&x.date>=info.from&&x.date<=info.to).map(x=>bedMin(x.bed));
   if(beds.length>=5){const m=avg(beds),sd=Math.sqrt(avg(beds.map(x=>(x-m)**2)));if(sd>=45)t+=` Bedtime varies by about ${fmtDur(r5(sd))}.`;}
