@@ -696,6 +696,7 @@ const plClock=t=>typeof t==='string'&&/^\d\d:\d\d/.test(t)?+t.slice(0,2)*3600+ +
 // act = minutes in a moderate or vigorous class (from METs at ACT_MET+ when the day has no classes), sit = sedentary minutes,
 // met = MET-hours (about kcal per kg of body weight), sitMax = the longest sitting stretch in minutes (v129). Null when the answer holds no samples.
 // sl (v131) = the band's sleep stretches [startMin, endMin, steps] from midnight, joined across NAP_JOIN, those of NAP_MIN or more (napsOn reads them)
+// s5 (v133) = steps per 5 minutes from midnight, 288 slots, null where the band sent none
 function plAct(a){
   const devs=[];
   const walk=(o,dp)=>{
@@ -707,13 +708,13 @@ function plAct(a){
   walk(a,0);
   let best=null;
   for(const list of devs){
-    const r={steps:0,act:0,sit:0,met:0,n:0},sl=[];let cls=0,hiMet=0,sr=0,sMax=0;
+    const r={steps:0,act:0,sit:0,met:0,n:0},sl=[],s5=Array(288).fill(null);let cls=0,hiMet=0,sr=0,sMax=0;
     for(const x of list){
       const st=x&&x.stepSamples||{},me=x&&x.metSamples||{};
       const sv=Array.isArray(st.steps)?st.steps:[],mv=Array.isArray(me.mets)?me.mets:[];
       const si=+st.interval>0?+st.interval:60000,mi=+me.interval>0?+me.interval:30000;
       const s0=plClock(st.startTime)??0,m0=plClock(me.startTime)??0;
-      sv.forEach(v=>{if(typeof v==='number'&&v>=0){r.steps+=v;r.n++;}});
+      sv.forEach((v,i)=>{if(typeof v==='number'&&v>=0){r.steps+=v;r.n++;const k=Math.floor((s0+i*si/1000)/300);if(k>=0&&k<288)s5[k]=(s5[k]||0)+v;}});
       mv.forEach(v=>{if(typeof v==='number'&&v>=0){r.met+=v*mi/3.6e6;r.n++;if(v>=TH.ACT_MET)hiMet+=mi;}});
       // a class lasts until the next change, the last one until the samples end (at most midnight)
       const end=Math.min(86400,Math.max(sv.length?s0+sv.length*si/1000:0,mv.length?m0+mv.length*mi/1000:0));
@@ -731,7 +732,7 @@ function plAct(a){
         sl.push([Math.round(p/60),Math.round(q/60),k]);});
     }
     if(!r.n&&!cls)continue;
-    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,sitMax:cls?Math.round(sMax/60):null,met:r.met?Math.round(r.met*10)/10:null,sl:sl.length?sl:null};
+    const out={steps:r.n?r.steps:null,act:cls?Math.round(r.act/60):r.met?Math.round(hiMet/60000):null,sit:cls?Math.round(r.sit/60):null,sitMax:cls?Math.round(sMax/60):null,met:r.met?Math.round(r.met*10)/10:null,sl:sl.length?sl:null,s5:s5.some(v=>v!=null)?s5:null};
     if(!best||(out.steps||0)>(best.steps||0))best=out;
   }
   return best;
@@ -758,8 +759,9 @@ async function pullPolarDay(){
   d.polarDays=d.polarDays||[];
   // first time the last 28 days; after that from two days before the newest stored day, so today refreshes on every sync.
   // v131: once, at least the last NAP_BACK days, because days stored before v131 hold no sleep stretches (napBack, local only)
-  const newest=last(d.polarDays);let from=newest?dAgo(Math.min(28,Math.max(0,daysAgo(newest.date))+2)):dAgo(28);
-  if(!d.napBack&&daysAgo(from)<TH.NAP_BACK)from=dAgo(TH.NAP_BACK);
+  // v133: once more for each NAP_S5_V, because days stored before v133 hold no steps per 5 minutes (napBackV, local only)
+  const newest=last(d.polarDays),again=!d.napBack||(d.napBackV||0)<TH.NAP_S5_V;let from=newest?dAgo(Math.min(28,Math.max(0,daysAgo(newest.date))+2)):dAgo(28);
+  if(again&&daysAgo(from)<TH.NAP_BACK)from=dAgo(TH.NAP_BACK);
   const j=await polarFetch(`/polar-day?from=${from}&to=${dAgo(-1)}`);
   let n=0;
   for(const raw of j.days||[]){
@@ -771,7 +773,7 @@ async function pullPolarDay(){
   if(d.polarDays.length>TBL.pday.lim)d.polarDays=d.polarDays.slice(-TBL.pday.lim);
   // the heart rate shows when the band was off, so the nights next to these days are cut again (from the evening before)
   if(n)plRetrim(ymd(new Date(new Date(from+'T12:00:00').getTime()-864e5)));
-  if(!d.napBack)d.napBack=td();
+  if(again){d.napBack=td();d.napBackV=TH.NAP_S5_V;}
   d.polarDayAt=Date.now();save(d);
   return{n};
 }

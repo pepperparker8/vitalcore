@@ -152,7 +152,6 @@ const TH={
   DAY_BACK:14,                           // days Today can go back (the band keeps its day about that long)
   DAY_FROM:18,                           // the Your day window runs from this hour the day before to this hour on the day
   DAY_GAP:30,                            // minutes with no heart rate outside sleep that read as band off
-  DAY_GRID_LO:60,DAY_GRID_HI:120,        // dashed heart rate gridlines on the Your day chart (bpm)
   DAY_SETTLE_UP:10,DAY_SETTLE_MIN:30,    // after a workout, back within 10 bpm of the daytime usual inside 30 minutes reads as a quick settle
   DAY_USUAL_N:14,                        // days (or nights) before that make every "usual" on these screens
   DAY_USUAL_MIN:5,                       // a usual needs at least this many of those days
@@ -160,7 +159,6 @@ const TH={
   ZN_EASY_LO:0.65,                       // all-day zones: easy starts at 65 % of threshold heart rate
   WIN_OK:30,                             // bedtimes within 30 minutes of your usual most nights read as steady
   REC_STEP:2,                            // Recovery sheet: a part that moves the score 2 points or more lifted or lowered it
-  DAY_TICK3:12,                          // a heart rate chart of 12 hours or less marks every 3 hours (else every 6)
   WK_ON:0.9,                             // Strain sheet: this week reaches 90 % of its target or more with what is planned = on track
   REFL_FROM:18,                          // the evening reflection opens at this hour
   SL_TICK:2,                             // the night chart on the Sleep sheet marks every 2 hours
@@ -172,7 +170,7 @@ const TH={
   MAP_ZMAX:18,                           // closest street map zoom
   // v131 sleep debt and naps: the debt never lowers Body or the gauge; it is an alert
   DEBT_DAYS:14,                          // nights the sleep debt covers
-  DEBT_MIN_N:3,                          // counted nights needed before a debt is shown
+  DEBT_MIN_N:5,                          // v133: counted nights of the 14 needed before a debt is shown (was 3)
   DEBT_REPAY:120,                        // most minutes a longer night or a nap pays back in one day
   DEBT_WARN:120,                         // the alert shows from 2 hours of debt (amber)
   DEBT_BAD:300,                          // red from 5 hours
@@ -219,7 +217,15 @@ const TH={
   BM_WATCH_D:365,                       // a blood result older than a year no longer shows in Things to watch
   RG_DAYS:90,                            // the race guide reads runs of the last 90 days
   RG_PACE_MIN:150,                       // seconds per km: a run faster than this is a wrong distance or time, left out of the race guide
-  HAB_DAYS:30,HAB_MIND:10                // C3: habits over the last 30 nights; 10+ minutes of mindfulness
+  HAB_DAYS:30,HAB_MIND:10,               // C3: habits over the last 30 nights; 10+ minutes of mindfulness
+  // v133 (docs/research-v132.md R7.6, R7.7): the debt fades; naps you add; Your day as a chart you can read
+  DEBT_HALF:7,                           // R7.6: nights until an old shortfall counts half (the app's choice; no study gives one)
+  DEBT_LOOK:42,                          // nights the fading debt reads (an old shortfall is under 2 % of itself by then)
+  NAP_KEEP:42,                           // days your nap answers are kept
+  NAP_TYPE_MIN:10,NAP_TYPE_MAX:180,      // a nap you add: 10 minutes to 3 hours
+  NAP_S5_V:1,                            // version of the 5-minute steps on the band's day (read again once when it changes)
+  DY_SPAN_MID:360,DY_SPAN_MIN:60,        // Your day chips 6h and 1h (minutes); 1h is the closest zoom
+  DY_STEP:5                              // minutes per arrow key on Your day
 };
 const zL=(v,t)=>{
   if(t==='atl')return v>70?'High':v>45?'Moderate':'Low';
@@ -229,7 +235,7 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe'],bodyFeel:['','Wrecked','Tired','Okay','Good','Strong'],symptoms:['None','Above the neck','Below the neck'],soreArea:{legs:'Legs',hips:'Hips',back:'Back',upper:'Shoulders and arms',core:'Core'}};
-const APP_VER=132; // keep in step with the cache name in sw.js
+const APP_VER=133; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
 const POLAR_API='https://vitalcore-backend.vercel.app/api'; // the owner's Vercel functions; they hold the Polar tokens, the app sends its app key
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M19 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 19l0 -4l-3 -3l5 -4l2 3l3 0"/><path d="M17 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M6 11l4 -2l3.5 3l-1.5 2"/><path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1 -.25"/></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2"/><path d="M22 12h-1"/></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M13 21l1 -9l7 -6"/><path d="M3 11h6l5 1"/><path d="M11.5 8.5l4.5 -3.5"/></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l2 -4"/><path d="M13 21v-4l-3 -3l1 -6l3 4l3 2"/><path d="M10 14l-1.827 -1.218a2 2 0 0 1 -.831 -2.15l.28 -1.117a2 2 0 0 1 1.939 -1.515h1.439l4 1l3 -2"/><path d="M17 12v9"/><path d="M16 20h2"/></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l3 -4"/><path d="M16 21l-2 -4l-3 -3l1 -6"/><path d="M6 12l2 -3l4 -1l3 3l3 1"/></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 20h4l1.5 -3"/><path d="M17 20l-1 -5h-5l1 -7"/><path d="M4 10l4 -1l4 -1l4 1.5l4 1.5"/></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>']];
@@ -326,6 +332,15 @@ function migrate(){
       });
       if(ch){keep.ts=Date.now();d.pending['sleep|'+keep.id]=keep.ts;}
     });
+  }
+  // v133: nap answers older than TH.NAP_KEEP days, or not a list, are dropped (local; the cloud copy follows on the next profile change)
+  {
+    const N=d.profile&&d.profile.naps;
+    if(N&&typeof N==='object'){
+      const keep={};let ch=false;
+      for(const[k,v]of Object.entries(N)){if(/^\d{4}-\d\d-\d\d$/.test(k)&&Array.isArray(v)&&v.length&&daysAgo(k)<=TH.NAP_KEEP)keep[k]=v;else ch=true;}
+      if(ch)d.profile.naps=keep;
+    }else if(N!=null&&d.profile)delete d.profile.naps;
   }
   delete d.streak;delete d.exDismissed;delete d.hasRealData;delete d.lastInsight;
 }

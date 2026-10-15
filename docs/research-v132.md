@@ -358,6 +358,15 @@ The consensus gives no fixed number of days. It is expert consensus, not trial r
 - Extending sleep by about 2 hours a night helped a small group of basketball players (Mah 2011, 11 people).
 - A systematic review of naps (Lastella 2021) supports naps of 20 to 90 minutes taken between about 13:00 and 16:00.
 
+**Sleep debt over time.**
+
+- Debt keeps building while nights stay short. Over 14 days at 4 or 6 hours in bed, performance fell steadily with no plateau, while how sleepy people felt levelled off (Van Dongen 2003). Feeling used to it is not a sign the debt has gone.
+- One recovery night is not enough. One night of up to 10 hours in bed after five short nights did not bring performance back (Banks 2010). After four recovery nights of 12 hours in bed, some deficits were still there (Yamazaki 2021).
+- Extra sleep comes mostly on the first recovery night and then falls off (Klerman & Dijk 2005). In Kitamura 2016 the first long night ran about 2 hours over the person's need and sleep was back near need by the fourth night; the authors put recovery from about 1 hour of debt at about 4 days.
+- A week of extra time in bed before a stretch of short nights softened the drop (Rupp 2009, a small lab study). No study shows it cancels later short nights.
+- Naps restored some of the body's stress markers after a short night (Faraut 2015, a small lab study).
+- How long an old shortfall keeps mattering is not known. Models of sleep loss work in days to weeks with no time constant fit for an individual (McCauley 2013). One ring maker counts 14 days, weights recent days more and needs 5 of them (Oura help pages, not peer reviewed).
+
 **Caffeine.**
 
 - A meta-analysis (Gardiner 2023) found caffeine cut total sleep by about 45 minutes and deep sleep by about 11 minutes. To avoid that, a cup of coffee should come at least 8.8 hours before bed, and a high-dose pre-workout product at least 13.2 hours before.
@@ -385,7 +394,10 @@ The consensus gives no fixed number of days. It is expert consensus, not trial r
 | Regularity | Weak for any threshold |
 | Device sleep stages | Low accuracy, so stage minutes are description only |
 | Heart rate falls in sleep, also by day | Moderate for the direction, no usable size |
-| Naps found from stillness and heart rate | Weak: no validation for consumer bands, so the app asks when unsure |
+| Naps found from stillness and heart rate | Weak: no validation for consumer bands, so the app neither counts nor asks; naps are added by hand |
+| Debt keeps building on short nights | Moderate (lab studies) |
+| Paying back takes several nights | Moderate (lab studies) |
+| How long old debt matters | Not known: the half-life is the app's choice |
 
 ### Rules the app could use
 
@@ -396,8 +408,9 @@ The consensus gives no fixed number of days. It is expert consensus, not trial r
 > - **R7.3 Caffeine cut-off.** Last coffee at least 8.8 hours before the usual bedtime (median `bed` over 14 nights). For pre-workout products, at least 13 hours. The app's "after 14:00" matches a bedtime near 23:00; working it out from the person's own bedtime is better. *Reads:* `checkins[].coffeeLate`, `sleepLogs[].bed`. *Source:* Gardiner 2023; Drake 2013. Moderate.
 > - **R7.4 Regularity is description.** Show how much bed and wake times vary over 14 nights, and mention it only when it is clearly above your usual. No fixed cut-off. *Source:* Windred 2024. Weak.
 > - **R7.5 Stages are description.** Describe deep and dreaming sleep but never judge them as too low. *Source:* Chinoy 2021. Strong (for the caution).
-> - **R7.6 Sleep debt informs, it does not score.** Count debt only over nights that count (`slCounts`). It shapes advice and never lowers Body, as already decided for v132. *Source:* Walsh 2021 (individual need). Weak.
-> - **R7.7 Naps from daytime heart rate.** A daytime stretch of 20 to 90 minutes away from the nights, with no steps, movement no higher than the band records while you sleep that night, and no workout across it, is a candidate. Its heart rate is placed between your quiet-awake level (the middle of still, awake 5-minute readings within 3 hours either side) and that night's sleeping level: closer to sleep counts, in between asks "Looks like a nap. Count it?", nearer awake is nothing. A rise at the end, the band's own sleep mark and the 13:00 to 16:00 window add weight; none counts alone. A nap you add or answer always wins. Naps pay back sleep debt and show in Your day only. *Reads:* the band's 5-minute steps, movement and heart rate, `polarNights`, `wkOn()`. *Source:* Burgess 1999; Carrington 2003; Souabni 2024; Marino 2013; Walch 2019; Sargent 2018; Lastella 2021 (length and window). Weak: the cut-offs are the app's, set on the person's own days.
+> - **R7.6 Sleep debt informs, it does not score.** Count debt only over nights that count (`slCounts`), against the person's sleep goal. It fades: what was there before halves every 7 nights, read over the last 42 nights, so no night drops out all at once. A short night adds its shortfall. A longer night or a nap pays back at most 2 hours. It never goes below zero. A missing night adds and pays nothing, and the old debt only fades. Show it from 5 counted nights of the last 14. It shapes advice and never lowers Body, as already decided for v132. The half-life is the app's choice; no study gives one. *Reads:* `sleepLogs[]`, `profile.sleepGoal`, naps from `napsOn`. *Source:* Van Dongen 2003 (no plateau); Banks 2010, Yamazaki 2021, Kitamura 2016, Klerman & Dijk 2005 (payback over several nights, most on the first); Rupp 2009 (no banking); Faraut 2015 (naps); McCauley 2013 (no time constant); Walsh 2021 (individual need). Moderate for building and slow payback, weak for the fade.
+> - **R7.7 Naps from daytime heart rate.** A daytime stretch of 20 to 90 minutes away from the nights, with no steps, movement no higher than the band records while you sleep that night, and no workout across it, is a candidate. Its heart rate is placed between your quiet-awake level (the middle of still, awake 5-minute readings within 3 hours either side) and that night's sleeping level: closer to sleep counts, in between asks "Looks like a nap. Count it?", nearer awake is nothing. A rise at the end, the band's own sleep mark and the 13:00 to 16:00 window add weight; none counts alone. A nap you add or answer always wins. Naps pay back sleep debt and show in Your day only. *Reads:* the band's 5-minute steps, movement and heart rate, `polarNights`, `wkOn()`. *Source:* Burgess 1999; Carrington 2003; Souabni 2024; Marino 2013; Walch 2019; Sargent 2018 (6 of 20 naps found); Lastella 2021 (length and window). Weak: the cut-offs are the app's, set on the person's own days.
+>   *v133:* not built as a question. On the person's own days, heart rate alone could not tell a known nap from sitting still: any cut-off that found the nap also asked on quiet afternoons without one, and the 5-minute steps were not stored yet. The app does not ask. A nap is added by hand in Log > Sleep, and the band's own sleep mark still counts only under the strict v131 rule. Look again once 5-minute steps have been stored for a few weeks.
 
 > **Do not claim**
 >
@@ -783,6 +796,7 @@ Things the evidence does not settle, or that the app cannot measure:
 | 7. Sleep loss | Craven 2022 | Meta-analysis | Moderate |
 | 7. Caffeine | Gardiner 2023 | Meta-analysis | Moderate |
 | 7. Devices | Chinoy 2021 | Validation study | Moderate |
+| 7. Sleep debt | Van Dongen 2003; Banks 2010; Kitamura 2016 | Lab trials | Moderate (building, slow payback), none (half-life) |
 | 8. Watch VO2max | Molina-Garcia 2022 | Meta-analysis | Strong |
 | 8. Race prediction | Vickers 2016 | Large observational | Moderate |
 | 8. Critical power | Poole 2016 | Review | Strong |
@@ -808,7 +822,7 @@ Things the evidence does not settle, or that the app cannot measure:
 
 ## References
 
-Every DOI and PubMed number below was checked against Crossref or PubMed (11 Oct 2026). Items marked **unverified** could not be confirmed. No DOI was guessed; where none is given, none exists or none was found.
+Every DOI and PubMed number below was checked against Crossref or PubMed (11 Oct 2026; 93 to 100 on 15 Oct 2026). Items marked **unverified** could not be confirmed. No DOI was guessed; where none is given, none exists or none was found.
 
 1. American Diabetes Association Professional Practice Committee. 2. Diagnosis and classification of diabetes: Standards of Care in Diabetes 2026. *Diabetes Care* 2026;49(Suppl 1):S27-S49. doi:10.2337/dc26-S002
 2. Banister EW, Calvert TW, Savage MV, Bach T. A systems model of training for athletic performance. *Aust J Sports Med* 1975;7:57-61. **Unverified**: not indexed in Crossref or PubMed; details from later citations. Rules cite Calvert 1976.
@@ -903,3 +917,12 @@ Every DOI and PubMed number below was checked against Crossref or PubMed (11 Oct
 90. Sargent C, Lastella M, Romyn G, Versey N, Miller DJ, Roach GD. How well does a commercially available wearable device measure sleep in young athletes? *Chronobiol Int* 2018;35(6):754-758. doi:10.1080/07420528.2018.1466800
 91. Souabni M, Souabni MJ, Hidouri S, et al. Napping and heart rate variability in elite athletes. *Biol Sport* 2024;41(3):213-221. doi:10.5114/biolsport.2024.132983. PMID 38952899.
 92. Walch O, Huang Y, Forger D, Goldstein C. Sleep stage prediction with raw acceleration and photoplethysmography heart rate data derived from a consumer wearable device. *Sleep* 2019;42(12):zsz180. doi:10.1093/sleep/zsz180
+93. Van Dongen HPA, Maislin G, Mullington JM, Dinges DF. The cumulative cost of additional wakefulness: dose-response effects on neurobehavioral functions and sleep physiology from chronic sleep restriction and total sleep deprivation. *Sleep* 2003;26(2):117-126. doi:10.1093/sleep/26.2.117. PMID 12683469.
+94. Banks S, Van Dongen HPA, Maislin G, Dinges DF. Neurobehavioral dynamics following chronic sleep restriction: dose-response effects of one night for recovery. *Sleep* 2010;33(8):1013-1026. doi:10.1093/sleep/33.8.1013
+95. Kitamura S, Katayose Y, Nakazaki K, et al. Estimating individual optimal sleep duration and potential sleep debt. *Sci Rep* 2016;6:35812. doi:10.1038/srep35812
+96. Klerman EB, Dijk DJ. Interindividual variation in sleep duration and its association with sleep debt in young adults. *Sleep* 2005;28(10):1253-1259. doi:10.1093/sleep/28.10.1253
+97. Yamazaki EM, Antler CA, Lasek CR, Goel N. Residual, differential neurobehavioral deficits linger after multiple recovery nights following chronic sleep restriction or acute total sleep deprivation. *Sleep* 2021;44(4):zsaa224. doi:10.1093/sleep/zsaa224
+98. Rupp TL, Wesensten NJ, Bliese PD, Balkin TJ. Banking sleep: realization of benefits during subsequent sleep restriction and recovery. *Sleep* 2009;32(3):311-321. doi:10.1093/sleep/32.3.311. PMID 19294951.
+99. Faraut B, Nakib S, Drogou C, et al. Napping reverses the salivary interleukin-6 and urinary norepinephrine changes induced by sleep restriction. *J Clin Endocrinol Metab* 2015;100(3):E416-E426. doi:10.1210/jc.2014-2566
+100. McCauley P, Kalachev LV, Mollicone DJ, Banks S, Dinges DF, Van Dongen HPA. Dynamic circadian modulation in a biomathematical model for the effects of sleep and sleep loss on waking neurobehavioral performance. *Sleep* 2013;36(12):1987-1997. doi:10.5665/sleep.3246
+101. Oura Health. Sleep debt. Help article, read 15 Oct 2026. Product documentation, not peer reviewed; no DOI.

@@ -158,7 +158,40 @@ function loadSleepFor(date){
   document.querySelectorAll('#lSleep .ci-btn').forEach((b,i)=>b.classList.toggle('sel',x?.rested===i+1));
   $('slDel').style.display=x?'':'none';
   const w=slWhy(x);
+  renderSlNaps(date);
   $('slNote').innerHTML=!x?'Nothing saved for this night yet.':w?esc(w.nt)+(w.ask?'<button type="button" class="sl-chk" onclick="adjOpen($(\'slDate\').value)">Check the night</button>':''):slIcu(x)?'Recorded automatically. Anything you change here is kept.':'';
+}
+// v133: the day's naps under the night (the date the night ended on), from napList: the band's under the strict rule and the ones
+// you added. × on yours removes it, × on the band's stores a 'no' so it stops counting; Undo puts the list back as it was.
+const slNapDate=()=>$('slDate').value||td();
+function renderSlNaps(date){
+  const el=$('slNaps');if(!el)return;
+  const L=napList(date||slNapDate());
+  el.innerHTML=L.length?L.map((z,i)=>`<div class="sl-nap">${UI.zzz}<div class="t"><b>${slHM(z.a)} to ${slHM(z.b)}</b><small>${fmtDur(z.min)}</small></div><button type="button" class="sl-nx" aria-label="Remove nap" onclick="rmNap(${i})">${UI.x}</button></div>`).join('')
+    :'<div class="set-note">No naps on this day.</div>';
+}
+function napUndo(date,keep,msg){
+  showToast(msg,{label:'Undo',fn:()=>{napPut(date,keep);renderSlNaps(date);refreshAll();showToast('Nap restored');}});
+}
+function addNap(){
+  const date=slNapDate(),A=$('napA'),B=$('napB'),m=s=>{const[h,n]=s.split(':').map(Number);return h*60+n;};
+  if(date>td()){showToast('That date is in the future');return;}
+  if(!A.value||!B.value){showToast('Enter when the nap started and ended');return;}
+  const a=m(A.value),b=m(B.value),m0=plT(date+'T00:00:00');
+  if(b<=a){showToast('The nap has to end after it starts');return;}
+  if(b-a<TH.NAP_TYPE_MIN||b-a>TH.NAP_TYPE_MAX){showToast(`A nap is ${TH.NAP_TYPE_MIN} minutes to ${TH.NAP_TYPE_MAX/60} hours`);return;}
+  if(m0==null||m0+b*DY_MIN>Date.now()){showToast('That nap ends in the future');return;}
+  const n0=dyNight(date,dAgo(daysAgo(date)+1)),n1=dyNight(dAgo(daysAgo(date)-1),date);
+  if((n0&&m0+a*DY_MIN<n0.b)||(n1&&m0+b*DY_MIN>n1.a)){showToast('That overlaps the night\'s sleep');return;}
+  if(napList(date).some(z=>z.a<b&&z.b>a)){showToast('That overlaps a nap already here');return;}
+  const keep=napUser(date);napSet(date,a,b);A.value='';B.value='';
+  renderSlNaps(date);refreshAll();napUndo(date,keep,'Nap added');
+}
+function rmNap(i){
+  const date=slNapDate(),z=napList(date)[i];if(!z)return;
+  const keep=napUser(date);
+  if(z.by==='you')napPut(date,keep.filter(u=>!(u.by==='you'&&u.a===z.a&&u.b===z.b)));else napNo(date,z.a,z.b);
+  renderSlNaps(date);refreshAll();napUndo(date,keep,'Nap removed');
 }
 // soft guardrail: unusual but possible values get a friendly confirm instead of a block
 const sane=m=>confirm(m+'\n\nSave it anyway?');

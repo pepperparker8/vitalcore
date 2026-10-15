@@ -81,25 +81,33 @@ const strainLoad=date=>dayLoad(date)+actLoad(date);
 // pays back at most TH.DEBT_REPAY a day; never below 0, so sleep cannot be banked ahead. Missing and battery nights add and pay nothing.
 // An alert only: never part of Body, the gauge or sleepNeed. Worked out on demand, never stored (like bounceDays). Null under TH.DEBT_MIN_N nights.
 function sleepDebt(date=td()){
-  const d=S(),goal=Math.round((d.profile.sleepGoal||7.5)*60),o=daysAgo(date),nights=[];
+  // v133 (R7.6): the debt fades with a half-life of DEBT_HALF nights over DEBT_LOOK nights, so an old night never drops out at once;
+  // a short night adds its shortfall, a longer one pays back at most DEBT_REPAY, never below 0; a missing or battery night only fades.
+  // The nights, the peak, the day it cleared and "since" are read over the last DEBT_DAYS nights.
+  const d=S(),goal=Math.round((d.profile.sleepGoal||7.5)*60),o=daysAgo(date),f=Math.pow(0.5,1/TH.DEBT_HALF),nights=[];
   let bal=0,n=0,trend='flat',cur=null,hi=false,clearedOn=null,clPeak=null,since=null;
-  for(let i=TH.DEBT_DAYS-1;i>=0;i--){
-    const dt=dAgo(o+i),s=last(d.sleepLogs.filter(x=>x.date===dt&&x.durMin>0)),nap=typeof napsOn==='function'?napsOn(dt).reduce((a,x)=>a+x.min,0):0;
-    if(!s||!slCounts(s)){nights.push({date:dt,slept:null,nap,diff:null,bal,skip:s?'batt':'none'});continue;}
-    const diff=s.durMin+nap-goal,b0=bal;n++;
-    bal=diff<0?bal-diff:Math.max(0,bal-Math.min(diff,TH.DEBT_REPAY));
-    trend=bal>b0?'up':bal<b0?'down':'flat';
-    if(bal===0)since=null;else if(since==null)since=dt;
-    if(bal>=TH.DEBT_OK){if(!cur||bal>cur.min)cur={min:bal,date:dt};if(bal>=TH.DEBT_WARN)hi=true;clearedOn=null;clPeak=null;}
+  for(let i=TH.DEBT_LOOK-1;i>=0;i--){
+    const dt=dAgo(o+i),win=i<TH.DEBT_DAYS,s=last(d.sleepLogs.filter(x=>x.date===dt&&x.durMin>0));
+    const ok=s&&slCounts(s),nap=win||ok?(typeof napsOn==='function'?napsOn(dt).reduce((a,x)=>a+x.min,0):0):0,diff=ok?s.durMin+nap-goal:null;
+    bal=diff==null?bal*f:diff<0?bal*f-diff:Math.max(0,bal*f-Math.min(diff,TH.DEBT_REPAY));
+    if(!win)continue;
+    const r=Math.round(bal);
+    if(diff!=null){n++;trend=diff<0?'up':diff>0?'down':'flat';}
+    if(r<TH.DEBT_OK)since=null;else if(since==null)since=dt;
+    if(r>=TH.DEBT_OK){if(!cur||r>cur.min)cur={min:r,date:dt};if(r>=TH.DEBT_WARN)hi=true;clearedOn=null;clPeak=null;}
     else{if(hi){clearedOn=dt;clPeak=cur;hi=false;}cur=null;}
-    nights.push({date:dt,slept:s.durMin,nap,diff,bal,skip:null});
+    nights.push({date:dt,slept:ok?s.durMin:null,nap,diff,bal:r,skip:ok?null:s?'batt':'none'});
   }
   if(n<TH.DEBT_MIN_N)return null;
-  const state=bal>=TH.DEBT_OK?(trend==='up'?'building':trend==='down'?'paying':'steady'):clearedOn?'cleared':'none';
-  const peak=bal>=TH.DEBT_OK?cur:clPeak;
+  const min=Math.round(bal);
+  const state=min>=TH.DEBT_OK?(trend==='up'?'building':trend==='down'?'paying':'steady'):clearedOn?'cleared':'none';
+  const peak=min>=TH.DEBT_OK?cur:clPeak;
   // the nights and naps that paid it back, from the peak to the morning it cleared
   const pay=clearedOn&&clPeak?nights.filter(x=>x.date>clPeak.date&&x.date<=clearedOn&&x.diff!=null):[];
-  return{date,goal,min:bal,state,trend,nights,peak,clearedOn,since,n,toClear:bal>0?Math.ceil(bal/TH.DEBT_EXTRA):0,
+  // nights at your goal plus DEBT_EXTRA until it is under DEBT_OK, with the same fade
+  let b=bal,toClear=0;
+  while(Math.round(b)>=TH.DEBT_OK&&toClear<TH.DEBT_LOOK){b=Math.max(0,b*f-Math.min(TH.DEBT_EXTRA,TH.DEBT_REPAY));toClear++;}
+  return{date,goal,min,state,trend,nights,peak,clearedOn,since,n,toClear,
     payN:pay.filter(x=>x.slept>goal).length,payNaps:pay.filter(x=>x.nap>0).length};
 }
 // HRV and resting heart rate inside your usual range on a day: the same tests as the Recovery sheet's rows (HRV band mean − SD/√7, resting HR mean + SD)
@@ -126,7 +134,7 @@ function debtWhy(D){
     const bk=debtBackLine(D.date);
     return(how?`Paid back ${how}.`:'Paid back.')+(bk?' '+bk:'');
   }
-  if(D.state==='paying')return`Paying back: down from ${fmtDur(D.peak.min)}.`;
+  if(D.state==='paying')return debtPayBack(D)?'Paying back. HRV and resting heart rate are already back to usual.':`Paying back: down from ${fmtDur(D.peak.min)}.`;
   if(D.state==='steady')return'Holding: the last night was right on your goal.';
   const run=D.nights.filter(x=>D.since&&x.date>=D.since&&x.diff!=null),sh=run.filter(x=>x.diff<0).length;
   if(run.length<2)return`${dayWord(D.since,true)} was short.`;
@@ -138,7 +146,9 @@ function debtDo(D){
   const ex=TH.DEBT_EXTRA===60?'an extra hour':`an extra ${fmtDur(TH.DEBT_EXTRA)}`;
   return D.toClear<=1?`${cap(ex)} tonight clears it.`:`${cap(ex)} a night clears it in about ${D.toClear} nights.`;
 }
-const debtLine=D=>[debtWhy(D),debtDo(D)].filter(Boolean).join(' ');
+// v133: paying back with HRV and resting heart rate already at usual is the whole line (two sentences, no action needed)
+function debtPayBack(D){if(!D||D.state!=='paying')return false;const b=debtBodyBack(D.date);return!!(b.hrv&&b.rhr);}
+const debtLine=D=>debtPayBack(D)?debtWhy(D):[debtWhy(D),debtDo(D)].filter(Boolean).join(' ');
 function recoveryDrivers(){
   const d=S(),out=[];
   const hv=latestOf('hrv'),hb=wSeries('hrv');

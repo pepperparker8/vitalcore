@@ -1074,12 +1074,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .g-ring{width:88px;height:88px}
 .g-num{font-size:24px}
 /* ── v129: Your day (heart rate around the clock) ── */
-.dy-card{cursor:pointer}
 .dy-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .dy-h b{flex:1;font-size:15px;font-weight:600;color:var(--text)}
 .dy-h span{font-size:12px;color:var(--t2)}
-.dy-go{display:flex;font-style:normal}.dy-go svg{width:18px;height:18px;fill:none;stroke:var(--t3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.dy-svg{display:block;width:100%;height:auto;overflow:visible}
+.dy-go{min-width:44px;min-height:44px;margin:-12px -12px -12px 0;padding:0;border:0;background:transparent;display:grid;place-items:center;flex:none;cursor:pointer}
+.dy-go:focus-visible{outline:2px solid var(--t3);outline-offset:-4px;border-radius:12px}
+.dy-go svg{width:18px;height:18px;fill:none;stroke:var(--t3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .dy-lg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:12px;color:var(--t2)}
 .dy-lg span{display:flex;align-items:center;gap:6px}
 .dy-lg i{display:inline-block}
@@ -1552,3 +1552,25 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 #pg-insights .ins-rx .ins-hi-prev{display:none}
 #pg-insights .ins-rx .ins-hi-body{padding:0 0 12px;border-top:0}
 #pg-insights .ins-rx .ins-hi-text{font-size:14px;color:var(--text);line-height:1.45}
+/* v133: naps in Log > Sleep */
+#pg-log .sl-nh{font-size:13px;font-weight:600;color:var(--t2);margin:4px 0 2px}
+#pg-log .sl-nap{display:grid;grid-template-columns:24px minmax(0,1fr) 44px;column-gap:14px;align-items:center;min-height:60px;border-top:1px solid var(--bdr)}
+#pg-log .sl-nh+div>.sl-nap:first-child{border-top:0}
+#pg-log .sl-nap>.ui-i{width:22px;height:22px;stroke:var(--t2)}
+#pg-log .sl-nap b{display:block;font-size:15px;font-weight:600;line-height:20px}
+#pg-log .sl-nap small{display:block;font-size:13px;color:var(--t2);line-height:18px}
+#pg-log .sl-nx{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--t2);padding:0;cursor:pointer}
+#pg-log .sl-nx .ui-i{width:20px;height:20px}
+#pg-log .sl-naps>.fl{margin-top:12px}
+#pg-log .sl-nadd{margin-top:8px}
+/* ── v133: Your day chart ── */
+.dy-nav{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.dy-nav[hidden]{display:none}
+.dy-nav .wk-chs{margin:0;flex-wrap:nowrap}
+.dy-nav .wk-ch{min-width:44px}
+.dy-pg{display:flex;gap:8px;margin-left:auto}
+.dy-pg[hidden]{display:none}
+.dy-sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.dy-sw.sl{background:var(--teal-l);border:1px solid var(--teal)}
+.dy-sw.wo{background:var(--sur2);border:1px solid var(--bdr)}
+.dy-sw.bo{background:repeating-linear-gradient(45deg,var(--t3) 0 1px,transparent 1px 4px);border:1px solid var(--bdr)}

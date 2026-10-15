@@ -589,8 +589,8 @@ function snSettleLine(st){
 }
 function snHr(t){
   const D=dyDay(t,1);if(!D.pts.length)return'';
-  const n=daysAgo(t),ln=snSettleLine(daySettle(D,dyUsual(t)));
-  return`<div class="dt-sec">${!n?'Heart rate today':n===1?'Heart rate yesterday':'Heart rate on '+dayWords(t)[0]}</div><div class="dt-card">${dyHrSvg(D,'st')}${dyLegend(D)}${ln?`<div class="dy-m">${ln}</div>`:''}</div>`;
+  const n=daysAgo(t),ln=snSettleLine(daySettle(D,dyUsual(t)));_dyQ.st=D;
+  return`<div class="dt-sec">${!n?'Heart rate today':n===1?'Heart rate yesterday':'Heart rate on '+dayWords(t)[0]}</div><div class="dt-card"><div id="dyHost_st"></div>${dyLegend(D)}${ln?`<div class="dy-m">${ln}</div>`:''}</div>`;
 }
 // training time since Monday against the outline's target for the week, with what is still planned this week
 function snWeekInfo(){
@@ -776,7 +776,7 @@ function dtSpec(k){
 function openDetail(k,again){
   const md=document.querySelector('#dtModal .modal'),sy=again&&md?md.scrollTop:0;   // a refresh keeps the place (read before the chart comes down); a new sheet starts at its top
   if(k!==_dtKey)_dtDate=null;           // a new sheet starts on last night
-  _dtCh=null;chUnmount('dtChart');
+  _dtCh=null;chUnmount('dtChart');_dyQ.st=null;
   const wk=/^wk:/.test(k);
   if(wk&&!again)wkOpen(k.slice(3));
   if(!wk){_wkC=null;_wkRes=null;wkMapOff();}
@@ -788,7 +788,7 @@ function openDetail(k,again){
     const fc=again&&document.activeElement&&document.activeElement.classList.contains('wk-cv');
     b.innerHTML=sp.html;
     el.classList.add('open');
-    wkMount();
+    wkMount();dyOff('st');
     op.forEach(x=>{const e=b.querySelector(`details[data-k="${x}"]`);if(e)e.open=true;});
     if(fc){const c=b.querySelector('.wk-cv');if(c)c.focus({preventScroll:true});}
     if(md)md.scrollTop=sy;               // set after open and after the body is complete: a hidden or half-built sheet clamps it
@@ -802,13 +802,17 @@ function openDetail(k,again){
   if(sp.effect)h+=`<div class="dt-sec">Effect on recovery</div><div class="dt-eff">${sp.effect}</div>`;
   h+=sp.extra||'';
   if(sp.link)h+=`<button class="btn-out dt-link" onclick="closeDetail();${sp.link[1]}">${sp.link[0]}</button>`;
+  const dfc=again&&document.activeElement&&document.activeElement.classList.contains('dy-cv');
   $('dtBody').innerHTML=h;
   el.classList.add('open');
   if(_dtCh&&$('dtChart'))mountChart('dtChart',{key:'dt'+k,at:_dtDay,..._dtCh});
+  // v133: the Strain sheet's heart rate chart mounts once it is in the page, and keeps the keyboard on a refresh
+  if(_dyQ.st&&$('dyHost_st'))dyMount($('dyHost_st'),_dyQ.st,'st');else dyOff('st');_dyQ.st=null;
+  if(dfc){const c=document.querySelector('#dyHost_st .dy-cv');if(c)c.focus({preventScroll:true});}
   if(md)md.scrollTop=sy;
   // v131: opened from the Today alert, a new sheet starts at its debt section (a refresh keeps the place)
   if(!again&&_dtAt){const a=$('dt'+cap(_dtAt)),hd=a&&a.previousElementSibling||a;if(md&&hd)md.scrollTop=Math.max(0,hd.getBoundingClientRect().top-md.getBoundingClientRect().top+md.scrollTop-12);}
   _dtAt=null;
 }
-function closeDetail(){_dtAt=null;_dbN=null;_dtKey=null;_dtDate=null;_dtShown=null;_dtDay=null;_dtCh=null;_wkC=null;_wkRes=null;wkMapOff();chUnmount('dtChart');const el=$('dtModal');if(el)el.classList.remove('open');}
+function closeDetail(){_dtAt=null;_dbN=null;_dtKey=null;_dtDate=null;_dtShown=null;_dtDay=null;_dtCh=null;_wkC=null;_wkRes=null;wkMapOff();chUnmount('dtChart');dyOff('st');const el=$('dtModal');if(el)el.classList.remove('open');}
 function refreshDetail(){if(_dtKey)openDetail(_dtKey,1);}

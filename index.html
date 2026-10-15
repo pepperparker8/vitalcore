@@ -89,7 +89,7 @@
   </div>
 
   <div class="da" id="debtAlert" role="button" tabindex="0" aria-label="Sleep debt, opens sleep" onclick="_dtAt='debt';tdOpen('sleep')" style="display:none"></div>
-  <div class="card dy-card" id="yourDay" role="button" tabindex="0" aria-label="Your day, opens strain" onclick="tdOpen('strain')" style="display:none"></div>
+  <div class="card dy-card" id="yourDay" style="display:none"></div>
 
   <details class="more-today" id="moreToday"><summary>Plan and training</summary>
 
@@ -201,6 +201,9 @@
     <div class="log-body">
       <div class="fg"><div class="fl">NIGHT ENDING ON</div><input type="date" class="inp" id="slDate" onchange="loadSleepFor(this.value)"><div class="set-note" id="slNote"></div></div>
       <div class="fg"><div class="fl">BEDTIME AND WAKE-UP</div><div class="fr"><input type="time" class="inp" id="slBed" oninput="slCalc('bed')" aria-label="Fell asleep at"><span class="inp-unit">to</span><input type="time" class="inp" id="slWake" oninput="slCalc('wake')" aria-label="Woke up at"></div><div class="set-note" id="slDur">Enter when you fell asleep and woke up.</div></div>
+      <div class="fg sl-naps"><div class="sl-nh">Naps</div><div id="slNaps"></div>
+      <div class="fl">ADD A NAP</div><div class="fr"><input type="time" class="inp" id="napA" aria-label="Nap started at"><span class="inp-unit">to</span><input type="time" class="inp" id="napB" aria-label="Nap ended at"></div>
+      <button type="button" class="btn-out sl-nadd" onclick="addNap()">Add nap</button></div>
       <details class="sl-more" id="slMore"><summary>Sleep details<small>Optional</small></summary>
       <div class="fg"><div class="fl">SLEEP SCORE</div><div class="fr"><input type="number" class="inp inp-sm" id="slScore" placeholder="74" min="0" max="100"><span class="inp-unit">/ 100</span></div></div>
       <div class="fg"><div class="fl">DEEP SLEEP</div><div class="fr"><input type="number" class="inp inp-sm" id="slDH" placeholder="1" min="0" max="5"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="slDM" placeholder="32" min="0" max="59"><span class="inp-unit">min</span></div></div>

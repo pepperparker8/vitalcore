@@ -2,7 +2,7 @@
 // One window: TH.DAY_FROM the day before to TH.DAY_FROM on the day. Today runs to that hour with a "Now" line, or after it
 // the 24 hours ending now. Heart rate is the band's 5-minute means of both days. TH.DAY_GAP minutes or more with no heart
 // rate outside sleep reads as band off (never at the end of today: the last download can lag, and never before a day that
-// was not downloaded). Daytime = awake after the night, outside workouts. Tapping the card opens the Strain sheet for the day.
+// was not downloaded). Daytime = awake after the night, outside workouts. The chart reads, pans and zooms; the button in its title opens the Strain sheet for the day.
 const DY_MIN=60000,DY_HR=3600000;
 const dyMed=a=>{const x=[...a].sort((p,q)=>p-q),m=Math.floor(x.length/2);return x.length?(x.length%2?x[m]:(x[m-1]+x[m])/2):null;};
 const dyHasHr=r=>!!(r&&r.data&&Array.isArray(r.data.hr)&&r.data.hr.length);
@@ -33,8 +33,8 @@ function dyNight(day,prev){
 // NAP_MIN to NAP_MAX minutes; starting NAP_GAP after the night that ended that morning and ending NAP_GAP before the next one
 // (before midnight when that night is not known); NAP_STEPS steps or fewer; no timed workout across it; heart rate in NAP_HR_COV
 // of its 5-minute slots, their median within NAP_HR_UP of that night's sleeping level (plSleepLvl). No night or no level, no naps.
-// Worked out on demand, never stored: only the sleep debt and Your day read it.
-function napsOn(date){
+// Worked out on demand, never stored. v133: these are the band's naps (by 'band'); napsOn adds yours.
+function napsBand(date){
   const r=dayOn(date),sl=r&&r.data&&r.data.sl;if(!Array.isArray(sl)||!sl.length)return[];
   const prev=dAgo(daysAgo(date)+1),next=dAgo(daysAgo(date)-1),n0=dyNight(date,prev),pn=polarOn(date),lvl=pn?plSleepLvl(pn):null;
   if(!n0||lvl==null)return[];
@@ -50,10 +50,34 @@ function napsOn(date){
     if(wks.some(([p,q])=>p<b&&q>a))continue;
     const v=pts.filter(p=>p[0]>=a&&p[0]<b).map(p=>p[1]);
     if(v.length<TH.NAP_HR_COV*Math.max(1,Math.round((b-a)/dt))||dyMed(v)>lvl+TH.NAP_HR_UP)continue;
-    out.push({a,b,min});
+    out.push({a,b,min,by:'band'});
   }
   return out;
 }
+// v133: your naps, in profile.naps {date:[{a, b (minutes from midnight), by}]}: 'you' a nap you added, 'no' a band nap you took
+// off. Synced inside the profile, kept TH.NAP_KEEP days (migrate). Your entry always wins over the band's.
+function napUser(date){
+  const N=(S().profile||{}).naps,L=N&&N[date];
+  return Array.isArray(L)?L.filter(z=>z&&Number.isInteger(z.a)&&Number.isInteger(z.b)&&z.a>=0&&z.b<=1440&&z.a<z.b&&(z.by==='you'||z.by==='no')):[];
+}
+function napPut(date,L){
+  const d=S(),p=d.profile=d.profile||{},N={...(p.naps||{})};
+  if(L.length)N[date]=[...L].sort((x,y)=>x.a-y.a);else delete N[date];
+  p.naps=N;markProfile();
+}
+// a new entry replaces any of yours it overlaps
+const napAdd=(date,a,b,by)=>napPut(date,[...napUser(date).filter(z=>!(z.a<b&&z.b>a)),{a,b,by}]);
+const napSet=(date,a,b)=>napAdd(date,a,b,'you');
+const napNo=(date,a,b)=>napAdd(date,a,b,'no');
+// the naps that count on a date as [{a, b (ms), min, by 'band'|'you'}]: the band's, less any you took off or overlapped, plus yours.
+// Only the sleep debt, Your day and the Naps list in Log > Sleep (napList) read them; never Body, the gauge, the night or Trends.
+function napsOn(date){
+  const U=napUser(date),m0=plT(date+'T00:00:00');if(m0==null)return[];
+  const band=napsBand(date).filter(z=>!U.some(u=>z.a<m0+u.b*DY_MIN&&z.b>m0+u.a*DY_MIN));
+  return[...band,...U.filter(u=>u.by==='you').map(u=>({a:m0+u.a*DY_MIN,b:m0+u.b*DY_MIN,min:u.b-u.a,by:'you'}))].sort((x,y)=>x.a-y.a);
+}
+// for Log > Sleep: the date's naps in minutes from midnight
+const napList=date=>{const m0=plT(date+'T00:00:00');return napsOn(date).map(z=>({a:Math.round((z.a-m0)/DY_MIN),b:Math.round((z.b-m0)/DY_MIN),min:z.min,by:z.by}));};
 // cal (v129, the Strain sheet): the calendar day instead, midnight to midnight, today to now with no "Now" line,
 // with the night that starts that evening as sleep2
 function dyDay(day,cal){
@@ -130,46 +154,224 @@ function dayLine(D,U){
   const add=own.length>1?' The naps count toward paying back your sleep debt.':` The ${own[0].min}-minute nap counts toward paying back your sleep debt.`;
   return(t+add).length<=140?t+add:t;
 }
-// the chart, shared with the Strain sheet; id keeps the hatch pattern apart. Colours are CSS variables, so it follows the theme.
-function dyHrSvg(D,id,W,H){
-  W=W||328;H=H||160;
-  // the plot leaves a gutter on the right for the gridline numbers
-  const P=W-24,y0=16,y1=H-22,span=(D.b-D.a)||1,X=t=>(t-D.a)/span*P,f=v=>(+v).toFixed(1);
-  const vs=D.pts.map(p=>p[1]),vmin=Math.min(TH.DAY_GRID_LO,...vs),vmax=Math.max(TH.DAY_GRID_HI,...vs);
-  const yb=y1-20,yt=y0+6,Y=v=>yb-(v-vmin)/((vmax-vmin)||1)*(yb-yt);
-  const lbl=D.lo?`Heart rate, lowest ${D.lo.v} at ${dyHm(D.lo.t)}, highest ${D.hi.v}`:'No heart rate recorded';
-  let s=`<svg class="dy-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${lbl}"><defs><pattern id="hx${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.2" height="5" style="fill:var(--t3);opacity:.5"/></pattern></defs>`;
-  const band=(a,b,css)=>`<rect x="${f(X(a))}" y="${y0}" width="${f(Math.max(1,X(b)-X(a)))}" height="${y1-y0}" style="${css}"/>`;
-  [D.sleep,D.sleep2,...(D.naps||[])].forEach(z=>{if(z)s+=band(z.a,z.b,'fill:var(--teal-l)');});
-  D.wks.forEach(k=>s+=band(k.a,k.b,'fill:var(--sur2)'));
-  D.off.forEach(([a,b])=>s+=band(a,b,`fill:url(#hx${id})`));
-  [TH.DAY_GRID_LO,TH.DAY_GRID_HI].forEach(v=>{const y=Y(v);s+=`<line x1="0" x2="${P}" y1="${f(y)}" y2="${f(y)}" style="stroke:var(--bdr);stroke-dasharray:2 3"/><text x="${W}" y="${f(y+3)}" text-anchor="end" style="font-size:9px;fill:var(--t3)">${v}</text>`;});
-  s+=`<line x1="0" x2="${P}" y1="${y1}" y2="${y1}" style="stroke:var(--bdr)"/>`;
-  // the line, broken where the band was off
-  const segs=[];let g=[];D.pts.forEach((p,i)=>{if(i&&p[0]-D.pts[i-1][0]>=TH.DAY_GAP*DY_MIN){segs.push(g);g=[];}g.push(p);});if(g.length)segs.push(g);
-  segs.forEach(q=>s+=`<polyline points="${q.map(p=>f(X(p[0]))+','+f(Y(p[1]))).join(' ')}" style="fill:none;stroke:var(--text);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round"/>`);
-  if(D.lo){const cx=X(D.lo.t),cy=Y(D.lo.v),tx=Math.min(P-10,Math.max(10,cx));s+=`<circle cx="${f(cx)}" cy="${f(cy)}" r="3.5" style="fill:var(--text);stroke:var(--sur);stroke-width:1.5"/><text x="${f(tx)}" y="${f(cy+15)}" text-anchor="middle" style="font-size:10px;font-weight:600;fill:var(--text)">${D.lo.v}</text>`;}
-  if(D.now)s+=`<line x1="${f(X(D.now))}" x2="${f(X(D.now))}" y1="${y0}" y2="${y1}" style="stroke:var(--t3);stroke-dasharray:3 3"/>`;
-  // labels on top, in order of importance, never overlapping
-  const want=[];
-  if(D.sleep)want.push([D.cal?'Asleep':`Asleep ${fmtDur(D.sleep.min)}`,(D.sleep.a+D.sleep.b)/2,'fill:var(--teal);font-weight:600']);
-  if(D.sleep2)want.push(['Asleep',(D.sleep2.a+D.sleep2.b)/2,'fill:var(--teal);font-weight:600']);
-  (D.naps||[]).forEach(z=>want.push(['Nap',(z.a+z.b)/2,'fill:var(--teal);font-weight:600']));
-  [...D.wks].sort((x,y)=>(y.b-y.a)-(x.b-x.a)).forEach(k=>want.push([k.name,(k.a+k.b)/2,'fill:var(--text);font-weight:600']));
-  if(D.now)want.push(['Now',D.now,'fill:var(--t2)']);
-  D.off.forEach(([a,b])=>want.push(['Band off',(a+b)/2,'fill:var(--t2)']));
-  const put=[];
-  for(const[t,at,css]of want){
-    const w=t.length*5.5,x=Math.min(W-w/2,Math.max(w/2,X(at)));
-    if(put.some(([p,q])=>x-w/2<q+4&&x+w/2>p-4))continue;
-    put.push([x-w/2,x+w/2]);s+=`<text x="${f(x)}" y="10" text-anchor="middle" style="font-size:10px;${css}">${esc(t)}</text>`;
-  }
-  // hours that are multiples of 6 (of 3 on a window of TH.DAY_TICK3 hours or less, today early on)
-  const k=span<=TH.DAY_TICK3*DY_HR?3:6;
-  let t=Math.ceil(D.a/DY_HR)*DY_HR;while(new Date(t).getHours()%k)t+=DY_HR;
-  for(;t<=D.b;t+=k*DY_HR){const x=X(t),an=x<12?'start':x>W-12?'end':'middle';s+=`<text x="${f(x)}" y="${H-7}" text-anchor="${an}" style="font-size:10px;fill:var(--t2)">${String(new Date(t).getHours()).padStart(2,'0')}:00</text>`;}
-  return s+'</svg>';
+// ── v133: the chart reads, pans and zooms, like the workout trace (wkMount, wkBind, wkDraw). One per id ('yd' Today, 'st' the
+// Strain sheet) in _dyC; _dyQ holds the day the Strain sheet mounts once it is in the page. C.st records what was drawn (tests).
+// Colours come from cssv, so a theme change redraws it (chRedrawAll). The heart rate numbers sit in a gutter on the right.
+const _dyC={},_dyQ={},DY_H=170,DY_R=28;
+function dyOff(id){const C=_dyC[id];if(!C)return;if(C.ob)C.ob.disconnect();delete _dyC[id];}
+// the span chips: the whole window, then TH.DY_SPAN_MID and TH.DY_SPAN_MIN minutes when shorter
+function dySpans(D){
+  const full=Math.max(DY_MIN,D.b-D.a),out=[[full,full>=24*DY_HR-DY_MIN?'24h':Math.max(1,Math.round(full/DY_HR))+'h']];
+  [TH.DY_SPAN_MID,TH.DY_SPAN_MIN].forEach(m=>{const l=m/60+'h';if(m*DY_MIN<full-DY_MIN&&!out.some(o=>o[1]===l))out.push([m*DY_MIN,l]);});
+  return out;
 }
+function dyMount(host,D,id){
+  if(!host)return;
+  const o=_dyC[id];if(o&&o.ob)o.ob.disconnect();
+  const C={id,host,D,v0:D.a,s:D.b-D.a,hov:null,st:{},w:0};
+  // a re-render of the same day keeps a zoomed view and the reading
+  if(o&&o.D.day===D.day&&o.D.cal===D.cal&&o.D.last===D.last){
+    if(o.s<o.D.b-o.D.a-DY_MIN){C.s=o.s;C.v0=o.v0;}
+    if(o.hov!=null&&o.hov>=D.a&&o.hov<=(D.now||D.b))C.hov=o.hov;
+  }
+  dyClamp(C);
+  const sp=dySpans(D),chev=d=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d<0?'M15 6l-6 6l6 6':'M9 6l6 6l-6 6'}"/></svg>`;
+  host.innerHTML=`<div class="dy-nav">${sp.length>1?`<div class="wk-chs" role="group" aria-label="Time shown">${sp.map(([s,l])=>`<button type="button" class="wk-ch" data-s="${s}" aria-pressed="false">${l}</button>`).join('')}</div>`:''}<div class="dy-pg" hidden><button type="button" class="db" data-d="-1" aria-label="Earlier">${chev(-1)}</button><button type="button" class="db" data-d="1" aria-label="Later">${chev(1)}</button></div></div><div class="vc-ro dy-ro" aria-live="polite"></div><canvas class="vc-cv dy-cv" tabindex="0" role="img" style="width:100%;height:${DY_H}px;display:block"></canvas>`;
+  host.querySelectorAll('.wk-ch').forEach(b=>b.onclick=()=>dyChip(C,+b.dataset.s));
+  host.querySelectorAll('.dy-pg .db').forEach(b=>b.onclick=()=>dyShift(C,+b.dataset.d));
+  C.cv=host.querySelector('.dy-cv');C.ro=host.querySelector('.dy-ro');C.pg=host.querySelector('.dy-pg');C.nav=host.querySelector('.dy-nav');
+  dyBind(C);_dyC[id]=C;
+  if(typeof ResizeObserver==='function'){C.ob=new ResizeObserver(()=>{if(_dyC[id]===C&&host.clientWidth&&host.clientWidth!==C.w)dyDraw(id);});C.ob.observe(host);}
+  dyDraw(id);
+}
+// the view: from TH.DY_SPAN_MIN minutes to the whole window, never outside it
+function dyClamp(C){const D=C.D,full=Math.max(DY_MIN,D.b-D.a),mn=Math.min(full,TH.DY_SPAN_MIN*DY_MIN);C.s=Math.min(full,Math.max(mn,C.s||full));C.v0=Math.min(D.a+full-C.s,Math.max(D.a,C.v0));}
+// zoom to span ns keeping the time m where it is on the screen
+function dyZoom(C,ns,m){if(m==null)m=C.v0+C.s/2;const s0=C.s,a0=C.v0;C.s=ns;dyClamp(C);C.v0=m-(m-a0)*C.s/s0;dyClamp(C);dyDraw(C.id);}
+// a chip centres on the reading, else on the view when zoomed, else ends at now (or the last reading)
+function dyChip(C,ns){const D=C.D,zoomed=C.s<D.b-D.a-DY_MIN,lp=D.pts.length?D.pts[D.pts.length-1][0]:null,m=C.hov!=null?C.hov:zoomed?C.v0+C.s/2:null;C.s=ns;C.v0=m!=null?m-ns/2:(D.now||lp||D.b)-ns;dyClamp(C);dyDraw(C.id);}
+function dyShift(C,dir){C.v0+=dir*C.s;dyClamp(C);dyDraw(C.id);}
+function dyIdx(P,t){let lo=0,hi=P.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(P[m][0]<t)lo=m;else hi=m;}return Math.abs(P[hi][0]-t)<Math.abs(P[lo][0]-t)?hi:lo;}
+// a reading snaps to the nearest 5-minute mean within tol, else to the minute (band off, before the first reading)
+function dySnap(C,t,tol){const D=C.D,P=D.pts,e=D.now||D.b;t=Math.min(e,Math.max(D.a,t));tol=tol==null?TH.DAY_HR_DT*1000:tol;if(P.length){const p=P[dyIdx(P,t)];if(Math.abs(p[0]-t)<=tol)return p[0];}return Math.min(e,Math.max(D.a,Math.round(t/DY_MIN)*DY_MIN));}
+// what the moment t shows: the heart rate when a mean sits there, and the state (Nap, Asleep, the workout, Band off)
+function dyAt(C,t){
+  const D=C.D,P=D.pts,i=P.length?dyIdx(P,t):-1,v=i>=0&&P[i][0]===t?P[i][1]:null,inn=z=>z&&t>=z.a&&t<=z.b;
+  let st=null;
+  if((D.naps||[]).some(inn))st=['Nap','sl'];
+  else if(inn(D.sleep)||inn(D.sleep2))st=['Asleep','sl'];
+  else{const k=D.wks.find(inn);if(k)st=[k.name,'wo'];else if(D.off.some(([a,b])=>t>=a&&t<=b))st=['Band off','bo'];}
+  return{v,word:st?st[0]:null,cls:st?st[1]:null};
+}
+// the readout over the chart: the reading, else the latest heart rate ("Now" while it is recent today)
+function dyRo(C){
+  const D=C.D,P=D.pts;
+  if(!P.length&&C.hov==null){C.ro.innerHTML='';C.st.ro='';return;}
+  const t=C.hov!=null?C.hov:P[P.length-1][0],a=dyAt(C,t);
+  const lab=C.hov==null&&D.day===td()&&Date.now()-t<=TH.DAY_GAP*DY_MIN?'Now':dyHm(t);
+  const cells=[];
+  if(a.v!=null)cells.push(`<div class="vc-v"><span class="vc-n">Heart rate</span><span class="vc-x">${a.v} bpm</span></div>`);
+  if(a.word)cells.push(`<div class="vc-v"><span class="vc-x"><i class="dy-sw ${a.cls}" aria-hidden="true"></i>${esc(a.word)}</span></div>`);
+  if(!cells.length)cells.push('<div class="vc-v"><span class="vc-x">No reading</span></div>');
+  C.ro.innerHTML=`<div class="vc-date">${lab}</div><div class="vc-vals">${cells.join('')}</div>`;
+  C.st.ro=[lab,a.v!=null?a.v+' bpm':null,a.word||(a.v==null?'No reading':null)].filter(Boolean).join(' · ');
+}
+function dyDraw(id){
+  if(id==null){Object.keys(_dyC).forEach(k=>dyDraw(k));return;}
+  const C=_dyC[id];if(!C||!C.cv||!C.cv.isConnected)return;
+  const D=C.D,P=D.pts,v0=C.v0,s=C.s,v1=v0+s,c=C.cv;
+  if(C.hov!=null&&(C.hov<v0||C.hov>v1))C.hov=null;
+  const W=C.host.clientWidth||300,H=DY_H,r=window.devicePixelRatio||1,PW=W-DY_R,X=t=>(t-v0)/s*PW;
+  c.width=Math.round(W*r);c.height=Math.round(H*r);
+  const x=c.getContext('2d');x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,W,H);x.font='500 10px Inter,sans-serif';
+  const y0=18,y1=H-22,yt=y0+8,yb=y1-18,st={labels:[],ticks:[],yl:[],segs:0,now:false,lo:false,bands:{sl:0,wo:0,bo:0},view:[v0,v1],hov:C.hov};
+  // the heart rate range: the readings in view, else all of them; numbers on steps of 1, 2 or 5 x 10^n
+  const inV=P.filter(p=>p[0]>=v0&&p[0]<=v1),vs=(inV.length?inV:P).map(p=>p[1]);
+  let mn=vs.length?Math.min(...vs):0,mx=vs.length?Math.max(...vs):1;
+  if(mx-mn<10){const m=(mx+mn)/2;mn=m-5;mx=m+5;}
+  const pd=(mx-mn)*.08;mn-=pd;mx+=pd;
+  const Y=v=>yb-(v-mn)/(mx-mn)*(yb-yt);
+  const vis=(a,b)=>b>=v0&&a<=v1;
+  x.save();x.beginPath();x.rect(0,0,PW,H);x.clip();
+  // asleep and naps, workouts, band off (hatched)
+  [D.sleep,D.sleep2,...(D.naps||[])].forEach(z=>{if(z&&vis(z.a,z.b)){x.fillStyle=cssv('--teal-l');x.fillRect(X(z.a),y0,Math.max(1,X(z.b)-X(z.a)),y1-y0);st.bands.sl++;}});
+  D.wks.forEach(k=>{if(vis(k.a,k.b)){x.fillStyle=cssv('--sur2');x.fillRect(X(k.a),y0,Math.max(1,X(k.b)-X(k.a)),y1-y0);st.bands.wo++;}});
+  D.off.forEach(([a,b])=>{
+    if(!vis(a,b))return;st.bands.bo++;
+    const l=X(a),w=Math.max(1,X(b)-X(a));
+    x.save();x.beginPath();x.rect(l,y0,w,y1-y0);x.clip();x.strokeStyle=cssv('--t3');x.globalAlpha=.5;x.lineWidth=1.2;x.beginPath();
+    for(let q=l-(y1-y0);q<l+w;q+=5){x.moveTo(q,y1);x.lineTo(q+(y1-y0),y0);}
+    x.stroke();x.restore();
+  });
+  // gridlines with their numbers in the gutter
+  if(vs.length){
+    const rg=mx-mn,mag=Math.pow(10,Math.floor(Math.log10(rg/4))),cand=[1,2,5,10].map(k=>k*mag),stp=cand.filter(k=>rg/k>=3).pop()||cand[0];
+    x.strokeStyle=cssv('--bdr');x.lineWidth=1;x.globalAlpha=.6;x.beginPath();
+    for(let v=Math.ceil(mn/stp)*stp;v<=mx;v+=stp){const y=Math.round(Y(v))+.5;x.moveTo(0,y);x.lineTo(PW,y);st.yl.push(String(Math.round(v)));}
+    x.stroke();x.globalAlpha=1;
+  }
+  x.strokeStyle=cssv('--bdr');x.lineWidth=1;x.beginPath();x.moveTo(0,y1+.5);x.lineTo(PW,y1+.5);x.stroke();
+  // the line, broken where there is no heart rate for TH.DAY_GAP minutes
+  const segs=[];let g=[];P.forEach((p,i)=>{if(i&&p[0]-P[i-1][0]>=TH.DAY_GAP*DY_MIN){segs.push(g);g=[];}g.push(p);});if(g.length)segs.push(g);
+  x.strokeStyle=cssv('--text');x.fillStyle=cssv('--text');x.lineWidth=1.6;x.lineJoin='round';x.lineCap='round';
+  segs.forEach(q=>{
+    if(!vis(q[0][0],q[q.length-1][0]))return;st.segs++;
+    if(q.length===1){x.beginPath();x.arc(X(q[0][0]),Y(q[0][1]),1.2,0,Math.PI*2);x.fill();return;}
+    x.beginPath();q.forEach((p,i)=>i?x.lineTo(X(p[0]),Y(p[1])):x.moveTo(X(p[0]),Y(p[1])));x.stroke();
+  });
+  // the lowest of the day
+  if(D.lo&&D.lo.t>=v0&&D.lo.t<=v1){
+    const cx=X(D.lo.t),cy=Y(D.lo.v);st.lo=true;
+    x.beginPath();x.arc(cx,cy,3.5,0,Math.PI*2);x.fillStyle=cssv('--text');x.fill();x.lineWidth=1.5;x.strokeStyle=cssv('--sur');x.stroke();
+    x.font='600 10px Inter,sans-serif';x.textAlign='center';x.textBaseline='alphabetic';x.fillText(String(D.lo.v),Math.min(PW-10,Math.max(10,cx)),cy+15);x.font='500 10px Inter,sans-serif';
+  }
+  if(D.now&&D.now>=v0&&D.now<=v1){const nx=Math.round(X(D.now))+.5;x.strokeStyle=cssv('--t3');x.lineWidth=1;x.setLineDash([3,3]);x.beginPath();x.moveTo(nx,y0);x.lineTo(nx,y1);x.stroke();x.setLineDash([]);st.now=true;}
+  // the reading
+  const rd=C.hov!=null?dyAt(C,C.hov):null;
+  if(rd){
+    const hx=Math.round(X(C.hov))+.5;x.strokeStyle=cssv('--t2');x.lineWidth=1;x.setLineDash([3,3]);x.beginPath();x.moveTo(hx,y0);x.lineTo(hx,y1);x.stroke();x.setLineDash([]);
+    if(rd.v!=null){x.beginPath();x.arc(X(C.hov),Y(rd.v),4.5,0,Math.PI*2);x.fillStyle=cssv('--text');x.fill();x.lineWidth=2;x.strokeStyle=cssv('--sur');x.stroke();}
+  }
+  x.restore();
+  // labels on top, on the part in view, in order of importance, never overlapping
+  const mid=(a,b)=>(Math.max(a,v0)+Math.min(b,v1))/2,want=[];
+  if(D.sleep&&vis(D.sleep.a,D.sleep.b))want.push([D.cal?'Asleep':'Asleep '+fmtDur(D.sleep.min),mid(D.sleep.a,D.sleep.b),'--teal',600]);
+  if(D.sleep2&&vis(D.sleep2.a,D.sleep2.b))want.push(['Asleep',mid(D.sleep2.a,D.sleep2.b),'--teal',600]);
+  (D.naps||[]).forEach(z=>{if(vis(z.a,z.b))want.push(['Nap',mid(z.a,z.b),'--teal',600]);});
+  [...D.wks].sort((p,q)=>(q.b-q.a)-(p.b-p.a)).forEach(k=>{if(vis(k.a,k.b))want.push([k.name,mid(k.a,k.b),'--text',600]);});
+  if(st.now)want.push(['Now',D.now,'--t2',500]);
+  D.off.forEach(([a,b])=>{if(vis(a,b))want.push(['Band off',mid(a,b),'--t2',500]);});
+  const put=[];x.textAlign='center';x.textBaseline='alphabetic';
+  for(const[t,at,col,wt]of want){
+    x.font=`${wt} 10px Inter,sans-serif`;
+    const w=x.measureText(t).width,lx=Math.min(W-w/2,Math.max(w/2,X(at)));
+    if(put.some(([p,q])=>lx-w/2<q+4&&lx+w/2>p-4))continue;
+    put.push([lx-w/2,lx+w/2]);x.fillStyle=cssv(col);x.fillText(t,lx,10);st.labels.push(t);
+  }
+  x.font='500 10px Inter,sans-serif';
+  // heart rate numbers on the right
+  if(st.yl.length){x.fillStyle=cssv('--t3');x.textAlign='right';x.textBaseline='middle';st.yl.forEach(v=>x.fillText(v,W-2,Y(+v)));}
+  // clock times: every 15 or 30 minutes, 1, 2, 3 or 6 hours, about 52px apart, on the local clock
+  const mxT=Math.max(2,Math.floor(PW/52)),tk=([15,30,60,120,180,360].find(m=>s/(m*DY_MIN)<=mxT)||360)*DY_MIN;
+  const m0=new Date(v0);m0.setHours(0,0,0,0);
+  x.fillStyle=cssv('--t2');x.textBaseline='alphabetic';
+  for(let t=m0.getTime()+Math.ceil((v0-m0.getTime())/tk)*tk;t<=v1;t+=tk){
+    const tx=X(t),l=dyHm(t);x.textAlign=tx<12?'left':tx>W-12?'right':'center';x.fillText(l,tx,H-6);st.ticks.push(l);
+  }
+  c.setAttribute('aria-label',(P.length?`Heart rate from ${dyHm(v0)} to ${dyHm(v1)}`:'No heart rate recorded')+(rd?`. Read at ${dyHm(C.hov)}: ${[rd.v!=null?rd.v+' bpm':null,rd.word?rd.word.toLowerCase():null].filter(Boolean).join(', ')||'no reading'}.`:''));
+  C.st=st;dyRo(C);
+  // the chips, and ‹ › while zoomed in
+  const full=C.s>=D.b-D.a-DY_MIN;
+  C.host.querySelectorAll('.wk-ch').forEach(b=>b.setAttribute('aria-pressed',String(Math.abs(+b.dataset.s-C.s)<=DY_MIN)));
+  C.pg.hidden=full;
+  C.host.querySelectorAll('.dy-pg .db').forEach(b=>{const off=+b.dataset.d<0?C.v0<=D.a+1:C.v0+C.s>=D.a+Math.max(DY_MIN,D.b-D.a)-1;b.disabled=off;b.classList.toggle('off',off);});
+  C.nav.hidden=!C.host.querySelector('.wk-ch')&&full;
+  C.w=W;
+}
+// tap or drag reads (drag pans once zoomed in), pinch and the wheel zoom, ← → step TH.DY_STEP minutes, + − zoom, Esc clears
+function dyBind(C){
+  const c=C.cv,ptr=new Map();let dn=null,pz=null;
+  c.style.touchAction='pan-y';
+  const pw=()=>(c.getBoundingClientRect().width-DY_R)||1;
+  const tAt=cx=>{const b=c.getBoundingClientRect();return C.v0+Math.min(1,Math.max(0,(cx-b.left)/pw()))*C.s;};
+  const read=cx=>{C.hov=dySnap(C,tAt(cx));dyDraw(C.id);};
+  const full=()=>C.s>=C.D.b-C.D.a-DY_MIN;
+  c.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse'&&e.button)return;
+    ptr.set(e.pointerId,e.clientX);
+    try{c.setPointerCapture(e.pointerId);}catch(_){}
+    if(ptr.size===2){const[a,b]=[...ptr.values()];pz={d:Math.abs(a-b)||1,s:C.s,v0:C.v0,m:tAt((a+b)/2)};dn=null;return;}
+    if(ptr.size>2)return;
+    dn={x:e.clientX,v:C.v0,h:C.hov,m:0,mouse:e.pointerType==='mouse',id:e.pointerId,pan:!full()};
+    if(!dn.pan)read(e.clientX);
+  });
+  c.addEventListener('pointermove',e=>{
+    if(ptr.has(e.pointerId))ptr.set(e.pointerId,e.clientX);
+    if(pz&&ptr.size===2){const[a,b]=[...ptr.values()];C.s=pz.s*pz.d/(Math.abs(a-b)||1);dyClamp(C);C.v0=pz.m-(pz.m-pz.v0)*C.s/pz.s;dyClamp(C);dyDraw(C.id);return;}
+    if(dn&&dn.id===e.pointerId){
+      if(!dn.m&&Math.abs(e.clientX-dn.x)>7)dn.m=1;
+      if(!dn.pan)read(e.clientX);
+      else if(dn.m){C.v0=dn.v-(e.clientX-dn.x)/pw()*C.s;dyClamp(C);dyDraw(C.id);}
+      return;
+    }
+    if(!dn&&e.pointerType==='mouse'&&!e.buttons)read(e.clientX);
+  });
+  const up=e=>{
+    if(!ptr.has(e.pointerId))return;
+    ptr.delete(e.pointerId);
+    if(pz){
+      if(ptr.size<2){pz=null;dn=null;if(ptr.size===1){const[[id,px]]=[...ptr.entries()];dn={x:px,v:C.v0,h:C.hov,m:1,mouse:false,id,pan:!full()};}}
+      return;
+    }
+    if(!dn||dn.id!==e.pointerId)return;
+    const d=dn;dn=null;
+    if(e.type==='pointercancel'||d.m)return;
+    // a second tap on the reading clears it
+    if(!d.mouse&&d.h!=null){const b=c.getBoundingClientRect();if(Math.abs(b.left+(d.h-C.v0)/C.s*pw()-e.clientX)<=12){C.hov=null;dyDraw(C.id);return;}}
+    read(e.clientX);
+  };
+  c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
+  c.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!dn&&C.hov!=null){C.hov=null;dyDraw(C.id);}});
+  c.addEventListener('wheel',e=>{
+    const ns=C.s*(e.deltaY>0?1.2:1/1.2),D=C.D,full=Math.max(DY_MIN,D.b-D.a),mn=Math.min(full,TH.DY_SPAN_MIN*DY_MIN);
+    if(Math.min(full,Math.max(mn,ns))===C.s)return;
+    e.preventDefault();dyZoom(C,ns,tAt(e.clientX));
+  },{passive:false});
+  c.addEventListener('keydown',e=>{
+    const k=e.key,P=C.D.pts;
+    if(k==='ArrowRight'||k==='ArrowLeft'){
+      e.preventDefault();const dir=k==='ArrowRight'?1:-1,v1=C.v0+C.s;let t;
+      if(C.hov==null){const q=P.filter(p=>p[0]>=C.v0&&p[0]<=v1);t=q.length?(dir>0?q[0][0]:q[q.length-1][0]):(dir>0?C.v0:v1);}
+      else t=C.hov+dir*TH.DY_STEP*DY_MIN;
+      C.hov=dySnap(C,t,TH.DAY_HR_DT*1000/2);
+      if(C.hov<C.v0)C.v0=C.hov;else if(C.hov>C.v0+C.s)C.v0=C.hov-C.s;
+      dyClamp(C);dyDraw(C.id);
+    }else if(k==='+'||k==='='){e.preventDefault();dyZoom(C,C.s/1.5,C.hov);}
+    else if(k==='-'||k==='_'){e.preventDefault();dyZoom(C,C.s*1.5,C.hov);}
+    else if(k==='Escape'&&C.hov!=null){e.preventDefault();e.stopPropagation();C.hov=null;dyDraw(C.id);}
+  });
+}
+window.addEventListener('resize',()=>dyDraw());
 function dyLegend(D){
   const p=[];
   if(D.pts.length)p.push('<span><i class="ln"></i>Heart rate</span>');
@@ -193,11 +395,15 @@ function dyTiles(D,U){
 // the card on Today: hidden until the band has sent a day with heart rate in the last TH.DAY_BACK days
 function renderYourDay(){
   const el=$('yourDay');if(!el)return;
-  if(!(S().polarDays||[]).some(r=>dyHasHr(r)&&daysAgo(r.date)>=0&&daysAgo(r.date)<=TH.DAY_BACK)){el.style.display='none';el.innerHTML='';return;}
+  if(!(S().polarDays||[]).some(r=>dyHasHr(r)&&daysAgo(r.date)>=0&&daysAgo(r.date)<=TH.DAY_BACK)){el.style.display='none';el.innerHTML='';dyOff('yd');return;}
   const D=dyDay(tdDay()),U=dyUsual(D.day),hh=String(TH.DAY_FROM).padStart(2,'0')+':00';
   const sub=D.last?'Last 24 hours':D.day===td()?`Since ${hh} yesterday`:`${hh} ${dayWd(D.prev)} to ${hh} ${dayWd(D.day)}`;
   const draw=D.pts.length||D.sleep||D.wks.length;
+  // a re-render keeps the keyboard on the chart
+  const ae=document.activeElement,fc=!!(ae&&el.contains(ae)&&ae.classList.contains('dy-cv'));
   el.style.display='';
-  el.innerHTML=`<div class="dy-h"><b>Your day</b><span>${sub}</span><i class="dy-go">${UI.chev}</i></div>`+
-    (draw?dyHrSvg(D,'yd')+dyLegend(D):'')+`<div class="dy-m">${dayLine(D,U)}</div>`+dyTiles(D,U);
+  el.innerHTML=`<div class="dy-h"><b>Your day</b><span>${sub}</span><button type="button" class="dy-go" aria-label="Open strain" onclick="tdOpen('strain')">${UI.chev}</button></div>`+
+    (draw?'<div id="dyHost_yd"></div>'+dyLegend(D):'')+`<div class="dy-m">${dayLine(D,U)}</div>`+dyTiles(D,U);
+  if(draw)dyMount($('dyHost_yd'),D,'yd');else dyOff('yd');
+  if(fc){const c=el.querySelector('.dy-cv');if(c)c.focus({preventScroll:true});}
 }

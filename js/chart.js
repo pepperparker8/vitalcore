@@ -87,7 +87,7 @@ function mountChart(id,cfg){
 }
 function chUnmount(id){const st=_ch[id];if(st&&st.host)st.host.innerHTML='';delete _ch[id];}
 // redraw every mounted chart (theme switch, resize): canvas colours are read from the CSS variables at draw time
-function chRedrawAll(){Object.keys(_ch).forEach(id=>{const st=_ch[id];if(st.on&&st.cv&&st.cv.isConnected)chDraw(id);});if(typeof wkDraw==='function')wkDraw();}
+function chRedrawAll(){Object.keys(_ch).forEach(id=>{const st=_ch[id];if(st.on&&st.cv&&st.cv.isConnected)chDraw(id);});if(typeof wkDraw==='function')wkDraw();if(typeof dyDraw==='function')dyDraw();}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>setTimeout(chRedrawAll,0));}catch(e){}
 // days kept free either side of the data (bare charts: a twentieth of the data's span, so the first and last dots stay whole)
 const chPad=st=>st.cfg&&st.cfg.bare?Math.max(2,Math.round((st.dmax-st.dmin)/20)):2;
