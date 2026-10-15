@@ -240,13 +240,13 @@ function renderWtChart(){
     head:x=>{
       const R=trRight(raw,x,{f:v=>[s1(v),'kg'],r:r1});if(!x.p)return{...R,v:null};
       const v=x.p.v,g=goal?r1(v-goal):null;
-      return{...R,v:s1(v),u:'kg',...(g==null?{}:Math.abs(g)<0.5?{st:'At your goal',cls:'good'}:{st:`${f1(Math.abs(g))} ${g>0?'over':'under'} your goal`,sa:g>0?'▲':'▼'})};},
+      return{...R,v:s1(v),u:'kg',...(g==null?{}:Math.abs(g)<TH.WT_GOAL_NEAR?{st:'At your goal',cls:'good'}:{st:`${f1(Math.abs(g))} ${g>0?'over':'under'} your goal`,sa:g>0?'▲':'▼'})};},
     means:info=>{
       const v=sm.filter(p=>p.d>=info.from&&p.d<=info.to);if(v.length<2)return'';
       const a=v[0],b=last(v),wks=Math.max(1,(DN(b.d)-DN(a.d))/7),ch=b.v-a.v,rate=ch/wks;
       let t=f1(b.v)+(Math.abs(ch)<0.3?', steady':`, ${ch<0?'down':'up'} ${f1(Math.abs(ch))} since ${dayWord(a.d).replace('Today','today')}`);
       if(Math.abs(rate)>b.v*TH.WT_RATE)return t+(rate<0?'. That is fast; eat enough on training days.':'. That is fast.');
-      if(goal)t+=Math.abs(b.v-goal)<0.5?': at your goal':Math.abs(ch)<0.3?`; your goal is ${goal} kg`:`: ${Math.sign(ch)===Math.sign(goal-b.v)?'towards':'away from'} your ${goal} kg goal`;
+      if(goal)t+=Math.abs(b.v-goal)<TH.WT_GOAL_NEAR?': at your goal':Math.abs(ch)<TH.WT_STEADY?`; your goal is ${goal} kg`:`: ${Math.sign(ch)===Math.sign(goal-b.v)?'towards':'away from'} your ${goal} kg goal`;
       return t+'.';}});
   gl.textContent='';
 }

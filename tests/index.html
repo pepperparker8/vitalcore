@@ -53,6 +53,7 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <script src="../js/health.js"></script>
 <script src="../js/digest.js"></script>
 <script src="../js/insights.js"></script>
+<script src="../js/coachpage.js"></script>
 <script>
 // app.js is left out: it starts the app (init) and would load and save real data
 save=function(d){_s=d;};persistSave=function(){};flushSave=function(){};queuePush=function(){};updSyncStatus=function(){};
@@ -129,10 +130,100 @@ run('Illness',()=>{
   check('Illness: above the neck → mild, verdict capped at Hold steady',(illness()||{}).lvl==='mild'&&coachVerdict().lvl==='warn',`illness ${(illness()||{}).lvl}, Body ${calcBody().score}, verdict ${coachVerdict().lvl}`);
   _s.checkins=[ci({symptoms:0})];
   check('Illness: no symptoms and normal nights → no gate',illness()===null&&coachVerdict().lvl==='ok',`illness ${illness()}, verdict ${coachVerdict().lvl}`);
+  // v132 (R6.3): one night of body signs keeps the day easy; two in a row, or one with symptoms above the neck, mean rest
   base();for(let i=0;i<35;i++)_s.wellness[dAgo(i)].resp=i===0?15.6:(i%2?14.0:14.4);_s.wellness[td()].rhr=55;
-  check('Illness: breathing up 1+ and resting HR z ≥ 1.5 → systemic',(illness()||{}).lvl==='systemic',(illness()||{}).why||'no gate');
-  _s.wellness[td()].rhr=50;
+  let I=illness()||{};
+  check('Illness: one night of breathing up 1+ and resting HR z ≥ 1.5 → mild, kept easy',I.lvl==='mild'&&I.kind==='body'&&I.nights===1&&coachVerdict().lvl==='warn'&&/fighting something/.test(I.why),`${I.lvl} ${I.why||'no gate'}; verdict ${coachVerdict().lvl}`);
+  _s.wellness[dAgo(1)].resp=15.6;_s.wellness[dAgo(1)].rhr=55;I=illness()||{};
+  check('Illness: two nights in a row → systemic, verdict Rest',I.lvl==='systemic'&&I.nights===2&&coachVerdict().lvl==='bad'&&/2 nights running/.test(I.fact),`${I.lvl}, ${I.nights} nights; ${I.fact||''}`);
+  _s.wellness[dAgo(1)].resp=14.0;_s.wellness[dAgo(1)].rhr=49;_s.checkins=[ci({symptoms:1})];I=illness()||{};
+  check('Illness: one night with symptoms above the neck → systemic',I.lvl==='systemic'&&I.kind==='body'&&/above the neck/.test(I.why),`${I.lvl}: ${I.why||''}`);
+  _s.checkins=[];_s.wellness[td()].rhr=50;
   check('Illness: breathing up alone → no gate',illness()===null,`illness ${illness()}`);
+  // the night is read on its own date: yesterday's breathing with yesterday's resting heart rate
+  _s.wellness[td()].resp=null;_s.wellness[dAgo(1)].resp=15.6;_s.wellness[dAgo(1)].rhr=55;I=illness()||{};
+  check('Illness: last night\'s breathing missing → the night before is read with its own resting HR',I.lvl==='mild'&&I.nights===1,`${I.lvl||'none'}`);
+  const F=coachFlags()[0]||{};
+  check('Illness flag: mild body signs → "Your body may be fighting something", the fact and keep it easy',F.st==='warn'&&F.t==='Your body may be fighting something'&&/^Breathing \d/.test(F.a)&&/easy and short/.test(F.a)&&!/Polar|Intervals|Garmin/.test(F.t+F.a),`${F.t}: ${F.a}`);
+});
+// v132 (R6.4, R6.5): coming back after illness, and when to see a doctor
+run('Illness return',()=>{
+  base();const thr=stThr();
+  _s.checkins=[ci({id:'ci-'+dAgo(2),date:dAgo(2),symptoms:1}),ci({id:'ci-'+dAgo(1),date:dAgo(1),symptoms:0})];
+  let B=illBack()||{};
+  check('Return: symptoms above the neck 2 days ago, nothing trained since → first session, hard from day 3 after',B.first===true&&B.last===dAgo(2)&&B.hardFrom===stAdd(dAgo(2),TH.ILL_FREE_D+1)&&!B.below,JSON.stringify(B));
+  _s.workouts=[{id:'w1',date:dAgo(1),type:'Run',durMin:30,distKm:5,rpe:2,sets:[]}];B=illBack()||{};
+  check('Return: one session done → no longer the first; hard days still wait',B.first===false&&B.hardFrom>td(),JSON.stringify(B));
+  _s.checkins=[ci({id:'ci-'+dAgo(5),date:dAgo(5),symptoms:1})];
+  check('Return: over once trained and the clear days have passed',illBack()===null,JSON.stringify(illBack()));
+  _s.workouts=[];_s.checkins=[ci({id:'ci-'+dAgo(5),date:dAgo(5),symptoms:2})];B=illBack()||{};
+  check('Return: symptoms below the neck → hard days wait TH.ILL_BELOW_D days',B.below===true&&B.hardFrom===stAdd(dAgo(5),TH.ILL_BELOW_D+1),JSON.stringify(B));
+  _s.checkins=[ci({symptoms:1})];
+  check('Return: still ill today → the gate handles the day, not the return',illBack()===null,'');
+  // doctor: symptoms on 10 days, a missed check-in or two inside the stretch does not break it
+  const mk=n=>{_s.checkins=[];for(let i=0;i<n;i++)if(i!==3)_s.checkins.push(ci({id:'ci-'+dAgo(i),date:dAgo(i),symptoms:1}));};
+  mk(TH.ILL_DOC_D);let D=illDoc();
+  check('Doctor: symptoms over 10 days (one check-in missed) → see a doctor',D&&D.days===TH.ILL_DOC_D&&D.since===dAgo(TH.ILL_DOC_D-1),JSON.stringify(D));
+  mk(TH.ILL_DOC_D-1);
+  check('Doctor: 9 days → not yet',illDoc()===null,JSON.stringify(illDoc()));
+  mk(TH.ILL_DOC_D);_s.checkins.push(ci({id:'ci-x',date:dAgo(4),symptoms:0}));_s.checkins=_s.checkins.filter(c=>!(c.date===dAgo(4)&&c.symptoms===1));
+  check('Doctor: a clear check-in inside the stretch ends it',illDoc()===null,JSON.stringify(illDoc()));
+});
+// v132 (R1.3, R1.5, R5, R2.2, R3.1, C3): the signals the coach reads
+run('Signals',()=>{
+  base();_s.checkins=[ci({energy:1,mood:1,stress:4,motivation:1})];
+  check('Feel: strained check-in → feelLow mind',(feelLow()||{}).k==='mind','');
+  _s.checkins=[ci({energy:2,soreness:3})];
+  check('Feel: low energy and sore → feelLow sore',(feelLow()||{}).k==='sore','');
+  _s.checkins=[ci({energy:3,soreness:3})];
+  check('Feel: sore with fair energy → nothing',feelLow()===null,'');
+  base();for(let i=0;i<7;i++)_s.wellness[dAgo(i)].hrv=56;
+  let W=warnDays();
+  check('Warn days: a week of HRV under usual counts each day',W.n>=1&&W.days.every(x=>x.why.includes('hrv')),`${W.n} days`);
+  base();W=warnDays();
+  check('Warn days: a steady week → none',W.n===0,`${W.n}`);
+  _s.checkins=[ci({energy:1,mood:1,stress:4,motivation:1})];W=warnDays();
+  check('Warn days: one low check-in → 1, under TH.WARN_N',W.n===1&&W.n<TH.WARN_N,`${W.n}`);
+  // rCrit
+  check('rCrit: 0.53 at 14 days, 0.36 at 30',Math.abs(rCrit(14)-0.531)<0.002&&Math.abs(rCrit(30)-0.360)<0.002,`${rCrit(14).toFixed(3)} / ${rCrit(30).toFixed(3)}`);
+  // monotony: the same load every day in a week over the 4-week mean
+  base();_s.workouts=[];for(let i=0;i<35;i++){if(i<7||i%3===0)_s.workouts.push({id:'m'+i,date:dAgo(i),type:'Run',durMin:i<7?60:40,distKm:8,rpe:3,sets:[]});}
+  let M=monotony();
+  check('Monotony: the same session every day of a bigger week → on',M.on&&M.wk>M.base,JSON.stringify(M));
+  _s.workouts=_s.workouts.filter(w=>!(daysAgo(w.date)<7&&daysAgo(w.date)%2));M=monotony();
+  check('Monotony: rest days between → off',!M.on,JSON.stringify(M));
+  // the session mix: 10 sessions in 28 days, 3 hard (70% easy) vs 4 hard (60%)
+  const mix=h=>{const H=[0,4,8,9].slice(0,h);_s.workouts=[];for(let i=0;i<10;i++)_s.workouts.push({id:'x'+i,date:dAgo(i*2+1),type:'Run',durMin:45,distKm:8,rpe:H.includes(i)?5:2,sets:[]});return sessMix28();};
+  let X=mix(3);
+  check('Mix: 70% easy → fine',!X.on&&Math.abs(X.easyShare-0.7)<1e-9,JSON.stringify(X));
+  X=mix(4);
+  check('Mix: 60% easy → on',X.on&&X.easyShare<TH.EASY_SHARE,JSON.stringify(X));
+});
+// v132 (R5.1, R5.2): overreaching needs Mind down, harder sessions (or heart rate up at pace) and more load, for TH.OVR_DAYS days
+run('Overreach',()=>{
+  // harder than planned on days 0 to n, so n windows of 7 days hold two of them; Mind low and load up throughout unless told otherwise
+  const setup=(n,o={})=>{
+    base();_s.checkins=[];_s.workouts=[];_s.planHist={};
+    for(let i=0;i<60;i++){
+      const dt=dAgo(i),low=i<=n+6&&!o.mindOk,hard=i<=n&&!o.easyOk;
+      _s.checkins.push(ci({id:'ci-'+dt,date:dt,...(low?{energy:2,mood:2,stress:3,motivation:2}:{energy:i%5?3:4,mood:3,stress:2,motivation:3})}));
+      _s.workouts.push({id:'o'+i,date:dt,type:'Run',durMin:hard&&o.loadOk?24:40,distKm:8,rpe:hard?5:3,sets:[]});
+      _s.planHist[dt]={fam:'runEasy',lvl:3,type:'Run',role:'easy',effort:3,lo:30,hi:45,kind:'easy'};
+    }
+    return overreach();
+  };
+  let O=setup(6);
+  check('Overreach: 6 days → not yet',!O.on&&O.days===6,JSON.stringify(O));
+  O=setup(7);
+  check('Overreach: 7 days → on',O.on&&O.days===7&&!O.doc,JSON.stringify(O));
+  O=setup(14);
+  check('Overreach: 14 days → see a doctor',O.on&&O.doc,JSON.stringify(O));
+  O=setup(10,{mindOk:true});
+  check('Overreach: Mind at usual → off',!O.on,JSON.stringify(O));
+  O=setup(10,{easyOk:true});
+  check('Overreach: sessions as planned → off',!O.on,JSON.stringify(O));
+  O=setup(10,{loadOk:true});
+  check('Overreach: load at the 4-week mean → off',!O.on,JSON.stringify(O));
 });
 // Parallel run (A6): the old readiness leads until Body has 14 recorded days
 run('Parallel',()=>{
@@ -221,7 +312,7 @@ run('Stream partial',()=>{
   check('Stream: a half-arrived escape is held back',b.o.overall==='Line one\nline two é and '&&b.live==='overall',JSON.stringify(b));
   const c=insPartial('{"overall":"Done.","questions":["Why?"]}');
   check('Stream: a finished reply has nothing live',c.o.overall==='Done.'&&c.live===null,JSON.stringify(c));
-  const h=insLive('{"archetype":"Steady builder","overall":"Short <b>version</b>","day":"Today');
+  const h=insLive('{"archetype":"Steady builder","overall":"Short <b>version</b>","today":"Today');
   check('Stream: the live view escapes text and marks the section being written',/Short &lt;b&gt;version/.test(h)&&(h.match(/ins-caret/g)||[]).length===1&&/Today<span class="ins-caret">/.test(h),h.replace(/<svg[\s\S]*?<\/svg>/g,'').slice(0,240));
 });
 // a canned stream through askClaudeStream, with fetch replaced (no network)
@@ -268,7 +359,7 @@ run('Briefing data',()=>{
   s.insightLog=[0,1,2].map(i=>({date:dAgo(i+1),time:'07:00',ts:Date.now()-i,archetype:'Steady builder',...Object.fromEntries(INS_KEYS.map(k=>[k,long])),qa:[{q:'Why?',a:long,ts:1}]}));
   const D=insightData(),J=JSON.stringify(D);window.HEAVY=D;
   // v121: 16,000 (was 15,000): v120 sent 14,928 for this month; the training plan detail adds about 600 (main sets, targets, comeback, pain, fitness estimate)
-  check('Briefing data: a heavy month stays under 16,000 characters',J.length<16000,`${J.length} characters`);
+  check('Briefing data: a heavy month stays under 16,000 characters',J.length<16000,`${J.length} characters (${Object.entries(D).map(([k,v])=>k+' '+JSON.stringify(v).length).join(', ')}; coach ${Object.entries(D.coach||{}).map(([k,v])=>k+' '+JSON.stringify(v).length).join(', ')})`);
   // v122: imported sessions usually have no typed effort, so each also carries effort read from heart rate
   const rp=s.workouts.map(w=>w.rpe);s.workouts.forEach(w=>{w.rpe=null;});const J2=JSON.stringify(insightData());s.workouts.forEach((w,i)=>{w.rpe=rp[i];});
   check('Briefing data: the same month with no typed effort also stays under 16,000',J2.length<16000&&/"effortFrom":"hr"/.test(J2),`${J2.length} characters`);
@@ -526,6 +617,275 @@ run('Outline v122',()=>{
   const seedOf=Z=>{base();_s.icuThr=JSON.parse(JSON.stringify(THR_FULL));_s.planHist={};_s.workouts=[20,17,14,11,8,5].map(n=>zw(dAgo(n),'Cycle',60,Z));return progAll().lv.rideTempo;};
   const sH=seedOf(Z_HARD),sE=seedOf(Z_EASY),big=zw(td(),'Cycle',60,Z_EASY,{load:400});
   check('Outline: hard rides read from heart rate seed the hard-ride level; an easy ride with a big load is not a hard day',sH===4&&sE===1&&!stHard(td(),[big]),`hard zones: level ${sH}, easy zones: level ${sE}, easy with a big load hard: ${stHard(td(),[big])}`);
+});
+// v132: today's caps in their order (illness, hard yesterday, HRV, a short night, feeling low, sore, the verdict), the nap line, lighter
+// weeks, the aims, the weeks ahead and the first session after being unwell. All easy training, nothing this calendar week, today a tempo
+run('Coach v132',()=>{
+  const EZ={1:['Run',50,2],2:['Run',45,2],3:['Cycle',60,2],5:['Run',100,2],6:['Run',45,2]};
+  const kc=o=>{o=o||{};trn({pat:EZ,skip:(dt,wd,i)=>noLong3(dt,wd)||inCal(dt,0)||(o.skip2&&i<=2)});_s.profile.plan={[wdOf(td())]:{type:'Run',note:'tempo'}};if(o.fn)o.fn(_s);return strategy();};
+  const hz=z=>()=>({part:{pts:80,v7:60,m:60,sd:4,z,n7:7,nBase:28},why:null});
+  const keepH=window.bodyHrvPart,keepO=window.overreach,keepB=window.illBack;
+  const night=gap=>s=>{const sl=s.sleepLogs.find(x=>x.date===td());sl.durMin=needOf(sl)-gap;};
+  try{
+    const D0=kc().days[0];
+    check('Coach: the fixture plans a hard tempo today when nothing holds it back',D0.role==='hard'&&/recovered enough/.test(D0.why),`${D0.role}: ${D0.why}`);
+    window.bodyHrvPart=hz(-1.3);const H=kc().days[0];window.bodyHrvPart=hz(-1.29);const H2=kc().days[0];window.bodyHrvPart=keepH;
+    check('Coach: the 7-night HRV at the cut keeps today easy and names the plan; just above it does not',H.role==='easy'&&H.bent&&/^Your HRV is under your usual this week\. Keep it easy and short\./.test(H.why)&&/Plan: Run, tempo\./.test(H.why)&&!/HRV/.test(H2.why)&&H2.role==='hard',`${H.role}: ${H.why} | ${H2.role}: ${H2.why}`);
+    const N=kc({fn:night(TH.SHORT_NIGHT)}).days[0],N2=kc({fn:night(TH.SHORT_NIGHT-1)}).days[0];
+    const napTxt=`A ${TH.NAP_MIN} to ${TH.NAP_MAX} minute nap between ${TH.NAP_SUG_FROM}:00 and ${TH.NAP_SUG_TO}:00 helps.`;
+    check('Coach: a night 2 hours under your need keeps today easy, later in the day, with a nap; a minute less short does not',N.role==='easy'&&N.why.startsWith('Last night was 2h under your need. Keep it easy, later in the day if you can. '+napTxt)&&!/under your need|nap/.test(N2.why),`${N.why} | ${N2.why}`);
+    const yHard=s=>{s.workouts.push(wk1(dAgo(1),5,'Run',60,5));};
+    window.bodyHrvPart=hz(-1.3);const Y=kc({fn:yHard}).days[0],HN=kc({fn:night(TH.SHORT_NIGHT)}).days[0];window.bodyHrvPart=keepH;
+    check('Coach: a hard day yesterday comes before HRV, and HRV before a short night (no nap line then)',Y.role==='easy'&&Y.why.startsWith('You trained hard yesterday.')&&HN.why.startsWith('Your HRV is under your usual')&&!/nap/.test(HN.why),`${Y.why} | ${HN.why}`);
+    const F=kc({fn:s=>{s.checkins=[ci({energy:1,mood:1,stress:4,motivation:1})];}}).days[0];
+    check('Coach: a strained check-in keeps today easy',F.role==='easy'&&F.why.startsWith('Your check-in reads strained.'),F.why);
+    // lighter weeks: two or more warning days last week, or overreaching (this week and next)
+    kc();const mon=stMon(td());window.bodyHrvPart=t=>hz(t<mon?-1.3:0.5)();const WL=stWeek(progAll());window.bodyHrvPart=keepH;
+    check('Coach: two or more warning days last week make this week lighter',WL.mode==='lighter'&&WL.f===TH.LIGHT_F&&WL.warnLast>=TH.WARN_N&&WL.label===ST_MODE.lighter[0],`${WL.mode} ${WL.f}, warn days ${WL.warnLast}`);
+    window.overreach=()=>({on:true,days:7,doc:false});const WO=stWeek(progAll());window.overreach=keepO;const W0=stWeek(progAll());
+    check('Coach: overreaching makes this week and next lighter; without it the week is not lighter',WO.mode==='lighter'&&WO.lightNext&&WO.nextF<=TH.LIGHT_F&&W0.mode!=='lighter'&&!W0.lightNext,`${WO.mode} next ${WO.nextF} | ${W0.mode} next ${W0.nextF}`);
+    // the aim: maintain and weight hold the usual week, improve builds as before
+    const A=['maintain','weight','improve'].map(a=>{kc();_s.profile.aim=a;return stWeek(progAll());});
+    check('Coach: the aims maintain and weight hold your usual week; improve does not',A[0].mode==='maintain'&&A[0].f===1&&A[1].mode==='weight'&&A[1].f===1&&A[2].mode!=='maintain'&&A[2].mode!=='weight'&&A[2].aim==='improve',A.map(w=>`${w.aim}: ${w.mode} ${w.f}`).join(', '));
+    // the weeks ahead
+    kc();const R0=stWeeks();kc({fn:s=>{s.profile.goalDate=dAgo(-20);}});const RR=stWeeks();base();const R1=stWeeks();
+    check('Coach: the weeks ahead run 4 rows without a race, to race week with one, 1 row without a usual week',R0.length===TH.WKS_AHEAD&&R0[0].from===stMon(td())&&R0.every((r,k)=>r.from===stAdd(stMon(td()),k*7)&&r.min>0&&r.word)&&last(RR).word==='Race week'&&RR.some(r=>r.word==='Taper')&&R1.length===1,`${R0.map(r=>r.word+' '+r.min).join(', ')} | ${RR.map(r=>r.word).join(', ')} | ${R1.length}`);
+    // the first session after being unwell: short and easy; hard days wait for the clear days
+    const sick=s=>{s.checkins=[ci({id:'ci-'+dAgo(2),date:dAgo(2),symptoms:1}),ci({id:'ci-'+dAgo(1),date:dAgo(1),symptoms:0})];};
+    const B=kc({skip2:1,fn:sick}).days[0],ib=illBack();
+    window.illBack=(...a)=>{const x=keepB(...a);return x&&{...x,first:false};};const B2=kc({skip2:1,fn:sick}).days[0];window.illBack=keepB;
+    check('Coach: the first session after being unwell is easy and about 0.65 of an easy day',ib&&ib.first&&B.role==='easy'&&B.back&&B.why==='First session back after being unwell. Short and easy.'&&B2.role==='easy'&&!B2.back&&B.hi<B2.hi&&B.hi<=B2.hi*TH.ILL_BACK_F+5,`${JSON.stringify(ib)}; ${B.role} ${B.lo}-${B.hi}: ${B.why} | ${B2.role} ${B2.lo}-${B2.hi}`);
+    const tr1=s=>{sick(s);s.workouts.push(wk1(dAgo(1),5,'Run',30,2));};
+    const K=kc({skip2:1,fn:tr1}),K0=K.days[0];
+    check('Coach: after a session back, a planned hard day still waits for 2 clear days and says so; the day after is not held by it',K0.role==='easy'&&!K0.back&&K0.why===`Plan says hard. Kept easy: hard sessions wait until you have been well for ${TH.ILL_FREE_D} days.`&&!/been well/.test(K.days[1].why),`${K0.role}: ${K0.why} | ${K.days[1].why}`);
+  }finally{window.bodyHrvPart=keepH;window.overreach=keepO;window.illBack=keepB;}
+});
+// v132 fuel: carbs on very long days and the evening before, carbs and drink during by length, protein per meal, the day as foods,
+// the last coffee from your own bedtime and caffeine only when it fits before it; habits that go with your sleep
+run('Fuel v132',()=>{
+  const keepS=window.strategy,KG=72.4;
+  const D=(role,type,lo,hi,name)=>({role,type,lo,hi,effort:role==='hard'?4:2,name:name||type});
+  const fp=(days,o={})=>{base();_s.measurements=[{id:'m1',date:dAgo(1),weight:KG}];if(o.goal)_s.profile.nutGoal=o.goal;if(o.done)_s.workouts=[wk1(td(),0,'Run',o.done,2)];
+    window.strategy=()=>({days});return fuelPlan();};
+  try{
+    const R=[59,60,119,120,179,180].map(m=>fuRate('Run',m));
+    check('Fuel: carbs an hour during a session: none under 1 hour, 30 g to 2 hours, 60 g to 3 hours, 90 g from 3 hours, none for strength',R.join()===`0,${TH.FUEL_G1},${TH.FUEL_G1},${TH.FUEL_G2},${TH.FUEL_G2},${TH.FUEL_G3}`&&fuRate('Weights',120)===0,R.join());
+    const n3=fuNext({days:[D('long','Cycle',175,185)]},KG,false),n2=fuNext({days:[D('long','Cycle',145,155)]},KG,false);
+    check('Fuel: from 3 hours the carbs during come from mixed sugars; the drink line keeps the loss under 2 % of body weight',n3.rate===TH.FUEL_G3&&n3.mixed&&/mixed sugars/.test(n3.during)&&!n2.mixed&&!/mixed/.test(n2.during)&&n3.sweat===1.4&&n3.drink==='About 500 ml an hour, more in the heat. Lose less than 1.4 kg.',`${n3.during} | ${n3.drink} | ${n2.during}`);
+    const z=fuNext({days:[D('easy','Run',30,40),D('easy','Run',30,40)]},KG,false);
+    check('Fuel: a short easy session needs no carbs during and no drink line',z.simple&&z.rate===0&&!z.drink&&!z.eve,JSON.stringify(z));
+    const P=fp([D('easy','Run',30,40),D('long','Run',95,105,'Long run')]),N=P.next;
+    check('Fuel: an easy day before a long run adds 1 g/kg of carbs, with an extra serving at dinner',P.level==='easy'&&P.ck===4+TH.CARB_EVE&&P.c===fuR5(5*KG)&&N.tom&&N.eve===70&&N.night==='An extra 250 g cooked rice at dinner, about 70 g of carbs.'&&N.before.startsWith('About 70 g of carbs 2 to 3 hours before'),`${P.level} ${P.ck} g/kg ${P.c} g; ${N.night} | ${N.before}`);
+    const c179=fp([D('done','Run',0,0),D('rest','Run',0,0)],{done:179}),c180=fp([D('done','Run',0,0),D('rest','Run',0,0)],{done:180});
+    check('Fuel: 3 hours of training raises carbs to 10 g/kg; a minute less stays at 8',c179.level==='big'&&c179.ck===8&&c180.level==='huge'&&c180.ck===TH.CARB_LONG&&c180.c===fuR5(TH.CARB_LONG*KG)&&c180.after.c===fuR5(KG),`179 min: ${c179.level} ${c179.ck}; 180 min: ${c180.level} ${c180.ck} ${c180.c} g`);
+    const pm=fp([D('easy','Run',30,40)]),pl=fp([D('easy','Run',30,40)],{goal:'lose'});
+    check('Fuel: protein per meal is 0.25 g/kg with two foods; losing weight lifts protein to 2.2 g/kg',pm.per.meal===18&&pm.per.mealEx.join()==='60 g cooked chicken breast,3 eggs'&&pl.pk===TH.PRO_LOSE&&pl.p===fuR5(TH.PRO_LOSE*KG),`${pm.per.meal} g: ${pm.per.mealEx.join(' or ')}; losing ${pl.p} g`);
+    const fP=fuMix(130,'p'),fC=fuMix(360,'c');
+    check('Fuel: the day as foods: weighed foods to 10 g (50 g from 100 g), pieces whole, the total from the rounded parts',fP.g===128&&fP.items.map(x=>x.txt).join()==='200 g cooked chicken breast,3 eggs,150 g tempeh,150 g firm tofu'&&fC.g===355&&fC.items.map(x=>x.txt).join()==='700 g cooked rice,80 g dry oats,2 bananas,4 slices of bread'&&pm.foods.p.items.length===4,`${fP.g}: ${fP.items.map(x=>x.txt+' '+x.g).join(', ')} | ${fC.g}: ${fC.items.map(x=>x.txt+' '+x.g).join(', ')}`);
+    // the last coffee: the median bedtime of the newest 14 nights minus 8.8 hours, down to the half hour
+    const cut=(bed,n=TH.CAF_BED_N)=>{base();_s.sleepLogs.forEach(r=>{if(daysAgo(r.date)<n)r.bed=bed;});return cafCut();};
+    const C=['22:50','23:30','00:30'].map(b=>cut(b)),c4=cut('22:50',TH.CAF_MIN_N-1),c5=cut('22:50',TH.CAF_MIN_N);
+    check('Fuel: the last coffee is 8.8 hours before your usual bedtime, down to the half hour, past midnight too; none under 5 nights',C.map(x=>x&&x.cut).join()==='14:00,14:30,15:30'&&C[0].bed==='22:50'&&C[0].gapH===9&&c4===null&&c5&&c5.n===TH.CAF_MIN_N,`${C.map(x=>x&&x.cut+' from '+x.bed).join(', ')}; 4 nights ${JSON.stringify(c4)}`);
+    // caffeine before a hard session only when an hour before it is by the cut-off
+    const cf=st=>{cut('22:50');if(st)for(let i=1;i<=TH.CAF_MIN_N;i++)_s.workouts.push(wk1(dAgo(i),0,'Run',40,2,{sub:{icu:{t:st}}}));};
+    cf();const e0=cafPre(KG,{hard:false}),u=cafPre(KG,{hard:true});cf('17:00');const late=cafPre(KG,{hard:true});cf('07:00');const early=cafPre(KG,{hard:true});
+    check('Fuel: caffeine 3 mg/kg an hour before a hard session only: not on an easy day, not when you usually start after the cut-off, "if it starts by" when unknown',e0===null&&u&&u.mg===215&&u.cups===2&&u.by==='15:00'&&u.txt==='2 cups of coffee, about 215 mg of caffeine, an hour before the session, if it starts by 15:00.'&&late===null&&early&&early.by===null&&early.start==='07:00',`${u&&u.txt} | late ${JSON.stringify(late)} | early ${early&&early.txt}`);
+    const fz=fp([D('hard','Run',50,60,'Tempo run')]);
+    check('Fuel: the plan carries the cut-off and the caffeine line; none without bedtimes',fz.caf===null&&(cut('22:50'),_s.measurements=[{id:'m1',date:dAgo(1),weight:KG}],window.strategy=()=>({days:[D('hard','Run',50,60)]}),fuelPlan().caf.pre.cups===2),JSON.stringify(fz.caf));
+    // the briefing gets the same numbers
+    cut('22:50');_s.measurements=[{id:'m1',date:dAgo(1),weight:KG}];window.strategy=()=>({days:[D('hard','Run',90,100)]});const I=insNutrition();
+    check('Fuel: the briefing gets protein per meal, the drink line, the last coffee and caffeine before',I.proteinPerMealG===18&&/Lose less than 1\.4 kg/.test(I.nextSession.drink)&&I.coffeeCutoff.lastCupBy==='14:00'&&I.coffeeCutoff.usualBedtime==='22:50'&&I.caffeineBefore.cups===2&&I.caffeineBefore.ifStartsBy==='15:00',JSON.stringify([I.proteinPerMealG,I.nextSession,I.coffeeCutoff,I.caffeineBefore]));
+  }finally{window.strategy=keepS;}
+  // habits: nights after a habit against nights without it, 5+ on each side, r at least the cut for that many nights
+  const H=(k,f)=>{base();_s.checkins=[];for(let i=0;i<TH.HAB_DAYS;i++){const n=_s.sleepLogs.find(r=>r.date===dAgo(i));f(i,n);}return habitSleep();};
+  const bed=H('bed',(i,n)=>{n.bed=i%2?'22:30':'23:30';n.durMin=i%2?480:420;});
+  check('Habits: an earlier bedtime than your usual goes with an hour more sleep',bed.length===1&&bed[0].k==='bed'&&bed[0].label==='Bed before 23:00'&&bed[0].diffMin===60&&bed[0].n===TH.HAB_DAYS,JSON.stringify(bed));
+  const mind=k=>H('mind',(i,n)=>{_s.checkins.push(ci({id:'ci-'+dAgo(i+1),date:dAgo(i+1),mindfulMin:i<k?TH.HAB_MIND:0}));n.durMin=i<k?490:450;});
+  const m4=mind(TH.CORR_GRP-1),m5=mind(TH.CORR_GRP);
+  check('Habits: mindfulness counts from the check-in the day before, with 5 or more nights on each side',m4.length===0&&m5.length===1&&m5[0].k==='mind'&&m5[0].label==='10 min or more of mindfulness'&&m5[0].diffMin===40,`4 nights: ${JSON.stringify(m4)}; 5 nights: ${JSON.stringify(m5)}`);
+  const flat=H('mind',(i,n)=>{_s.checkins.push(ci({id:'ci-'+dAgo(i+1),date:dAgo(i+1),mindfulMin:i<10?TH.HAB_MIND:0}));n.durMin=[440,460][i%2]+(i<10&&i===0?2:0);});
+  const cof=H('coffee',(i,n)=>{_s.checkins.push(ci({id:'ci-'+dAgo(i+1),date:dAgo(i+1),coffee:i<6?2:i<20?1:undefined,coffeeLate:i<6}));n.durMin=i<6?400:450;});
+  check('Habits: no habit under the cut for the number of nights; late coffee goes with less sleep; a check-in without coffee is left out',flat.length===0&&cof.length===1&&cof[0].k==='coffee'&&cof[0].diffMin===-50&&cof[0].n===20,`${JSON.stringify(flat)} | ${JSON.stringify(cof)}`);
+});
+// v132 body and health: blood edges and their words, blood pressure bands from 2+ readings on 2+ days, the watch's VO2max 28+ days
+// apart, weight over 4 weeks and fast for 2 weeks, the signs of not eating enough (each must last), the race guide from your best run
+run('Health v132',()=>{
+  const J=x=>JSON.stringify(x);
+  const sc=(k,vs)=>vs.map(v=>scoreBM(v,k).status).join();
+  check('Health v132: glucose under 100 in range, 100 to 125 raised, 126 high; uric acid from 6.8; cholesterol 200 and 240 (upper edges exclusive)',
+    sc('glucose',[69,70,99,100,125,126])==='bad,ok,ok,warn,warn,bad'&&sc('uric',[3.4,3.5,6.7,6.8,7.9,8])==='bad,ok,ok,warn,warn,bad'&&sc('chol',[199,200,239,240])==='ok,warn,warn,bad',
+    [sc('glucose',[69,70,99,100,125,126]),sc('uric',[3.4,3.5,6.7,6.8,7.9,8]),sc('chol',[199,200,239,240])].join(' | '));
+  const W=[['glucose',99],['glucose',100],['glucose',125],['glucose',126],['uric',6.8],['uric',3.1],['chol',200],['chol',240]].map(([k,v])=>bmWord(k,v));
+  check('Health v132: what a result is worth doing, in plain words, never a disease name',J(W)===J(['In range','In the range doctors call prediabetes','In the range doctors call prediabetes','Worth a repeat test and a doctor','Worth a mention to your doctor','Low','Borderline','High: worth a mention to your doctor'])&&!W.some(w=>/diabetes |gout|hyperuric|cholesterolemia/i.test(w)),J(W));
+  // blood pressure
+  const bp=rows=>{base();_s.measurements=rows.map(([d,sy,di],i)=>({id:'bp'+i,date:dAgo(d),bpSys:sy,bpDia:di}));return bpBand();};
+  const one=bp([[0,150,95]]),same=bp([[0,150,95],[0,150,95]]),none=bp([]);
+  check('Health v132: blood pressure needs 2 readings on 2 days: one reading or one day gives no range',one.band===null&&one.n===1&&same.band===null&&same.n===2&&same.days===1&&none===null,J([one,same]));
+  const B=[[119,79],[120,79],[129,79],[130,79],[119,80],[139,89],[140,70],[110,90]].map(([a,b])=>bp([[0,a,b],[3,a,b]]).band);
+  check('Health v132: the bands at each edge: normal under 120/80, elevated 120 to 129, stage 1 from 130 or 80, stage 2 from 140 or 90',J(B)===J(['normal','elevated','elevated','stage1','stage1','stage1','stage2','stage2']),J(B));
+  const av=bp([[0,124,80],[2,126,78],[5,122,79],[27,124,79],[28,170,110]]);
+  check('Health v132: the average of the readings of the last 28 days, the day 28 days back left out',av.n===4&&av.days===4&&av.sys===124&&av.dia===79&&av.band==='elevated'&&av.word==='Elevated'&&av.last.date===td(),J(av));
+  const h1=bp([[0,182,100],[3,128,82]]),h2=bp([[0,182,100],[3,181,121]]);
+  check('Health v132: very high (180 or 120) twice asks for advice promptly; once does not',h1.hiN===1&&!h1.high&&h2.hiN===2&&h2.high,J([h1.hiN,h2.hiN]));
+  // the watch's VO2max
+  base();_s.wellness[td()].vo2=52;_s.wellness[dAgo(27)].vo2=50;const v27=vo2Trend();_s.wellness[dAgo(28)].vo2=49;const v28=vo2Trend(),vY=vo2Trend(dAgo(1));
+  base();const v0=vo2Trend();
+  check('Health v132: VO2max compared only with a value 28+ days before; none without values; read as of a day',v27.now===52&&v27.before===null&&v27.change===null&&v28.before===49&&v28.daysApart===28&&v28.change===3&&vY.now===50&&vY.date===dAgo(27)&&vY.before===null&&v0===null,J([v27,v28,vY]));
+  check('Health v132: the briefing gets the fitness marker only with two values 28+ days apart',(()=>{base();_s.wellness[td()].vo2=52;_s.wellness[dAgo(27)].vo2=50;const a=insTraining().fitnessMarker;_s.wellness[dAgo(28)].vo2=49;const b=insTraining().fitnessMarker;return a===null&&J(b)===J({now:52,before:49,daysApart:28,change:3});})(),'');
+  // weight: one weigh-in a week, so each 7-day average is that weigh-in
+  const wt=(ws,o={})=>{base();_s.measurements=ws.map(([d,w],i)=>({id:'wt'+i,date:dAgo(d),weight:w}));if(o.goal!==undefined)_s.profile.wtGoal=o.goal;if(o.nut)_s.profile.nutGoal=o.nut;return wtTrend();};
+  const w2=80*(1-TH.WT_RATE),w3=w2*(1-TH.WT_RATE);
+  const f2=wt([[14,80],[7,w2],[0,w3]]),f1=wt([[14,w2],[7,w2],[0,w3]]),f69=wt([[14,80],[7,80*(1-0.0069)],[0,80*(1-0.0069)*(1-TH.WT_RATE)]]);
+  check('Health v132: weight falling 0.7 % a week for 2 weeks is fast; 1 week, or 0.69 % in one of them, is not',f2.fastWks===2&&f2.fast&&f1.fastWks===1&&!f1.fast&&f69.fastWks===1&&!f69.fast,J([f2.fastWks,f1.fastWks,f69.fastWks]));
+  const s3=wt([[28,72],[0,72.3]]),u4=wt([[28,72],[0,72.4]]),d4=wt([[28,72],[0,71.6]]),n4=wt([[0,72]]);
+  check('Health v132: 4 weeks: steady up to 0.3 kg, else up or down; nothing without a weigh-in 4 weeks before',s3.dir==='steady'&&s3.ch4===0.3&&u4.dir==='up'&&u4.ch4===0.4&&d4.dir==='down'&&d4.ch4===-0.4&&n4.dir===null&&n4.ch4===null&&n4.now===72,J([s3,u4,d4].map(x=>[x.dir,x.ch4])));
+  const g1=wt([[0,72.4]],{goal:70}),g2=wt([[0,72.4]],{goal:72.1}),g3=wt([[0,72.4]],{goal:73}),g4=wt([[0,72.4]],{goal:null});
+  check('Health v132: the distance to the goal: to lose, to gain, reached within half a kilo, none without a goal',J(g1.toGoal)===J({goal:70,kg:2.4,dir:'lose',reached:false})&&g2.toGoal.reached&&g2.toGoal.kg===0.3&&g3.toGoal.dir==='gain'&&g3.toGoal.kg===0.6&&g4.toGoal===null,J([g1.toGoal,g2.toGoal,g3.toGoal]));
+  // signs of not eating enough for your training: each sign must last; two or more ask the question
+  const R0=(base(),redsSigns());
+  check('Health v132: a steady athlete shows no sign',R0.n===0&&!R0.on,J(R0));
+  const rw=(w,o)=>{wt(w,o);return redsSigns().signs.map(x=>x.k).join();};
+  const wk=[rw([[28,72],[14,71.6],[0,71.28]]),rw([[28,72],[14,71.6],[0,71.29]]),rw([[28,72],[14,71.1],[0,71.2]])];
+  check('Health v132: weight falling all through 4 weeks by 1 % of body weight is a sign; less, or up in between, is not',wk[0]==='weight'&&wk[1]===''&&wk[2]==='',J(wk));
+  const lw=[rw([[14,80],[7,w2],[0,w3]],{nut:'lose'}),rw([[21,80],[14,w2],[7,w3]],{nut:'lose'})],lwWhy=(rw([[14,80],[7,w2],[0,w3]],{nut:'lose'}),redsSigns().signs[0].why);
+  check('Health v132: while losing on purpose only fast loss for 2 weeks counts, and only with a weigh-in in the last 7 days',lw[0]==='weight'&&lw[1]===''&&lwWhy==='Losing weight fast for weeks',J(lw));
+  const KG=72,fd=(f)=>{base();_s.measurements=[{id:'m1',date:dAgo(1),weight:KG}];_s.foodLogs=[];for(let i=1;i<=28;i++){const k=f(i);if(k!=null)_s.foodLogs.push({id:'fd-'+dAgo(i),date:dAgo(i),kcal:k,protein:0});}return redsSigns().signs.map(x=>x.k).join();};
+  const F=[fd(()=>800),fd(i=>i<=7?800:null),fd(i=>i>=8&&i<=14?4000:800)];
+  check('Health v132: eating well under use counts when the first and last weeks are low and no week is not',F[0]==='food'&&F[1]===''&&F[2]==='',J(F));
+  // fuWeekLow: the same numbers fuelPlan shows; 3 logged days needed; the cut is higher when losing
+  base();_s.measurements=[{id:'m1',date:dAgo(1),weight:KG}];const bn=i=>fuBurn(dAgo(i),KG);
+  _s.foodLogs=[1,2].map(i=>({id:'f'+i,date:dAgo(i),kcal:Math.round(bn(i)-600)}));const L2=fuWeekLow(dAgo(1),KG);
+  _s.foodLogs=[1,2,3].map(i=>({id:'f'+i,date:dAgo(i),kcal:Math.round(bn(i)-600)}));const L3=fuWeekLow(dAgo(1),KG),P=fuelPlan().week;
+  _s.profile.nutGoal='lose';const L3l=fuWeekLow(dAgo(1),KG);
+  check('Health v132: a food week: low needs 3 logged days; 600 under use is low, not when losing (800); fuelPlan shows the same week',L2.days===2&&L2.low===null&&L3.days===3&&L3.low===true&&Math.round(L3.gap)===600&&L3l.low===false&&P.days===3&&P.low===true&&P.gap===600&&P.eaten===fuR50(L3.eaten),J([L2,L3,P]));
+  const md=(n)=>{base();_s.checkins=[];for(let i=0;i<56;i++){const lo=i<n;_s.checkins.push(ci({id:'ci-'+dAgo(i),date:dAgo(i),energy:lo?2:3+(i%2),mood:lo?2:3,stress:lo?3:2,motivation:lo?2:3}));}return redsSigns().signs.map(x=>x.k).join();};
+  const M=[md(28),md(7)];
+  check('Health v132: mood and energy under your usual for 4 weeks is a sign; one low week is not',M[0]==='mind'&&M[1]==='',J(M));
+  const il=ds=>{base();_s.checkins=ds.map(d=>ci({id:'ci-'+dAgo(d),date:dAgo(d),symptoms:1}));return redsSigns().signs.map(x=>x.k).join();};
+  const I=[il([6,2]),il([5,2]),il([27,26,25])];
+  check('Health v132: ill twice means two spells more than 2 clear days apart; a spell of several days is one',I[0]==='ill'&&I[1]===''&&I[2]==='',J(I));
+  const hd=ds=>{base();_s.planHist={};_s.workouts=[];ds.forEach(d=>{_s.planHist[dAgo(d)]={fam:'runEasy',lvl:3,type:'Run',role:'easy',effort:2,lo:30,hi:40};_s.workouts.push(wk1(dAgo(d),0,'Run',35,4));});return redsSigns().signs.map(x=>x.k).join();};
+  const H=[hd([2,5,20]),hd([2,5,8]),hd([2,20])];
+  check('Health v132: sessions harder than planned count when 3+ fall in both halves of the 4 weeks',H[0]==='hard'&&H[1]===''&&H[2]==='',J(H));
+  base();_s.checkins=[6,2].map(d=>ci({id:'ci-'+dAgo(d),date:dAgo(d),symptoms:1}));_s.planHist={};[2,5,20].forEach(d=>{_s.planHist[dAgo(d)]={fam:'runEasy',lvl:3,type:'Run',role:'easy',effort:2,lo:30,hi:40};_s.workouts.push(wk1(dAgo(d),0,'Run',35,4));});
+  const R2=redsSigns();
+  check('Health v132: two signs ask the question, each with its plain reason',R2.n===2&&R2.on&&J(R2.signs.map(x=>x.why))===J(['Ill twice in a few weeks','Sessions feel harder than planned']),J(R2));
+  // the race guide: Riegel 1.06 from the best run of 3+ km in 90 days, a guide not a promise
+  const rg=(ws,goal)=>{base();_s.workouts=ws.map(([d,km,min],i)=>({id:'r'+i,date:dAgo(d),type:'Run',distKm:km,durMin:min,rpe:3,notes:'',sets:[],sub:{}}));_s.profile.goalName=goal||'';return raceGuide();};
+  const G=rg([[5,10,50],[10,5,30],[3,2.9,10],[90,10,40]],'Jakarta Half Marathon');
+  check('Health v132: from the best run that predicts the fastest 10K: 5K 24 min, 10K 50, half 110; short and old runs left out',G.from.km===10&&G.from.min===50&&J(G.list.map(x=>[x.k,x.min]))===J([['5K',24],['10K',50],['Half marathon',110]])&&G.goal.k==='Half marathon'&&G.goal.min===110&&!G.goal.opt,J(G));
+  const gm=rg([[5,10,50]],'Bali Marathon'),g10=rg([[5,10,50]],'City 10K'),g5=rg([[5,10,50]],'parkrun 5k'),gn=rg([[5,10,50]],''),g89=rg([[89,10,45]]),gx=rg([]);
+  check('Health v132: the goal from its name; a marathon from shorter runs is marked optimistic; a run 89 days back still counts',gm.goal.k==='Marathon'&&gm.goal.min===230&&gm.goal.opt&&g10.goal.k==='10K'&&g5.goal.k==='5K'&&gn.goal===null&&g89&&g89.from.min===45&&gx===null,J([gm.goal,g10.goal,g5.goal]));
+});
+// v132 Insights page: today's call (its words, tones, why rows, the ill day), things to watch without repeats, the coach summary rows,
+// their empty states, the aim, open rows kept, blood pressure and weight notes, the race guide; no source names, no accent colour
+run('Insights v132 page',()=>{
+  const box=document.createElement('div');box.hidden=true;
+  box.innerHTML='<div id="insCall"></div><div id="insWatch"></div><div id="insSum"></div><div id="digestCard"></div>';
+  document.body.appendChild(box);
+  const keepSt=window.strategy,H=id=>document.getElementById(id).innerHTML,all=[];
+  const R=()=>{renderInsCall();renderInsWatch();renderInsSum();const h=H('insCall')+H('insWatch')+H('insSum');all.push(h);return h;};
+  const row=k=>{const d=document.querySelector(`#insSum [data-k="${k}"]`);return d?d.innerHTML:'';};
+  try{
+    // two nights of breathing and resting heart rate up: rest, the signs once, a walk, coming back and when to see a doctor
+    base();for(let i=0;i<35;i++)_s.wellness[dAgo(i)].resp=i<=1?15.6:(i%2?14.0:14.4);_s.wellness[td()].rhr=55;_s.wellness[dAgo(1)].rhr=55;
+    const ks=coachFlags().map(f=>f.k);R();const c=H('insCall');
+    check('Insights v132: two nights of body signs give one ill item in Things to watch, never breathing or resting heart rate again',ks.includes('ill')&&!ks.includes('resp')&&!ks.includes('rhr')&&(H('insWatch').match(/class="cp-da[ "]/g)||[]).length===ks.length,ks.join());
+    check('Insights v132: the ill call is Rest in red, breathing for 2 nights with its value, resting heart rate once, no check-in yet, a walk up to 30 min',
+      /cp-call bad/.test(c)&&/<div class="cp-w">Rest<\/div>/.test(c)&&/Breathing up for 2 nights/.test(c)&&/15\.6 \/min/.test(c)&&(c.match(/Resting heart rate/g)||[]).length===1&&/No check-in yet today/.test(c)&&c.includes(`up to ${TH.ILL_WALK} min`)&&/See a doctor first/.test(c)&&/Coming back/.test(c),c.replace(/<svg.*?<\/svg>/g,'').slice(0,900));
+    // small helpers
+    check('Insights v132: a value against its usual rounds both: ● the same, ▲ over, ▼ under',cpVs(50,50.4).startsWith('● ')&&cpVs(55,50)==='▲ usual 50'&&cpVs(44,50)==='▼ usual 50',[cpVs(50,50.4),cpVs(55,50),cpVs(44,50)].join(' | '));
+    check('Insights v132: the outline keeps the length and effort in one unbreakable piece each',/class="st-nw"/.test(stMetaH({dur:'40 min',effort:2})),stMetaH({dur:'40 min',effort:2}));
+    base();
+    const Wd=[cpWord({done:1,match:{m:'harder'}}),cpWord({done:1,match:'done'}),cpWord({role:'race',name:'10K'}),cpWord({role:'long'}),cpWord({role:'hard'}),cpWord({role:'steady'}),cpWord({role:'strength'}),cpWord({role:'recover'})];
+    check('Insights v132: the call words: done days by how they went, a race by its name, Go long, Train hard, Train steady, Keep it easy, Rest',JSON.stringify(Wd)===JSON.stringify(['Harder than planned','Done as planned','10K','Go long','Train hard','Train steady','Keep it easy','Rest']),JSON.stringify(Wd));
+    const Tn=[cpTone({role:'rest'}),cpTone({role:'hard',bent:1}),cpTone({role:'easy',cap:1}),cpTone({role:'hard'}),cpTone({role:'recover'}),cpTone({done:1})];
+    check('Insights v132: the tones: a planned rest grey, moved down amber (no class), as planned and done green, a rest by a signal red',JSON.stringify(Tn)===JSON.stringify(['rest','','','good','bad','good']),JSON.stringify(Tn));
+    // no call yet: what it needs and the two forms
+    window.strategy=()=>({days:[]});R();const n0=H('insCall');window.strategy=keepSt;
+    check('Insights v132: with no call yet it says what it needs, with Check in and Log sleep',/No call yet/.test(n0)&&(n0.match(/class="cp-chip"/g)||[]).length===2&&/lCheckin/.test(n0)&&/lSleep/.test(n0),n0.replace(/<svg.*?<\/svg>/g,''));
+    // the summary rows in order, the aim, an open row kept, the outline without its target line
+    trn({pat:{1:['Run',50,2],2:['Run',45,2],3:['Cycle',60,2],5:['Run',100,2],6:['Run',45,2]}});_s.profile.aim='improve';R();
+    const ks2=[...document.querySelectorAll('#insSum [data-k]')].map(d=>d.dataset.k);
+    check('Insights v132: the coach summary rows follow the fixed order, and the injury row only shows with an injury',JSON.stringify(ks2)===JSON.stringify(CP_ROWS.map(r=>r[0]).filter(k=>k!=='injury')),ks2.join());
+    const pl=row('plan');
+    check('Insights v132: Your plan marks the chosen aim pressed and says what it does',/Your plan/.test(pl)&&/<button class="on" aria-pressed="true" onclick="cpAim\('improve'\)">Improve/.test(pl)&&(pl.match(/aria-pressed="false"/g)||[]).length===2&&/Builds a little each week/.test(pl),pl.replace(/<svg.*?<\/svg>/g,'').slice(0,600));
+    delete _s.profile.aim;renderInsSum();const pl0=row('plan');
+    check('Insights v132: with no aim chosen Your plan presses Improve, the aim the week already follows',stAim()==='improve'&&/<button class="on" aria-pressed="true" onclick="cpAim\('improve'\)">Improve/.test(pl0),pl0.replace(/<svg.*?<\/svg>/g,'').slice(0,300));
+    _s.profile.aim='improve';
+    _cpOpen.add('training');renderInsSum();
+    check('Insights v132: an opened row stays open when the summary is drawn again, the others stay closed',document.querySelector('#insSum [data-k="training"]').open&&!document.querySelector('#insSum [data-k="recovery"]').open,'');
+    const st=strategy();
+    check('Insights v132: the outline inside Training leaves out the week target line',!/st-tg/.test(stOutlineHTML(st,1))&&/Next 7 days/.test(row('training')),'');
+    // empty states
+    base();_s.workouts=[];_s.measurements=[];_s.bloodLogs=[];R();
+    check('Insights v132: empty states say what to log and open the form: training, food and body',/No training logged yet/.test(row('training'))&&/lWorkout/.test(row('training'))&&/Needs your weight in Log/.test(row('eat'))&&/Nothing logged yet/.test(row('body'))&&/lMeas/.test(row('body')),
+      [row('training'),row('eat'),row('body')].map(h=>h.replace(/<svg.*?<\/svg>/g,'').slice(0,160)).join(' || '));
+    // body and health: blood pressure needs 2 days; elevated gets the plain note; 180/120 twice says seek advice; weight to a goal
+    const bp=rows=>{base();_s.measurements=rows.map(([d,sy,di],i)=>({id:'bp'+i,date:dAgo(d),bpSys:sy,bpDia:di}));renderInsSum();return row('body');};
+    const B1=bp([[0,150,95]]),B2=bp([[0,124,80],[3,124,80]]),B3=bp([[0,182,100],[3,181,121]]);
+    check('Insights v132: one blood pressure reading shows as Latest and asks for more days; never the word hypertension',/Latest/.test(B1)&&new RegExp(`needs readings on ${TH.BP_N} days`).test(B1)&&!/Average/.test(B1)&&![B1,B2,B3].some(h=>/hypertension/i.test(h)),B1.replace(/<svg.*?<\/svg>/g,'').slice(0,400));
+    check('Insights v132: raised readings on 2 days give the average and the plain note; 180/120 twice says seek advice promptly',/Average/.test(B2)&&/Regular training tends to bring it down/.test(B2)&&/seek advice promptly/.test(B3)&&!/seek advice/.test(B2),[B2,B3].map(h=>h.replace(/<svg.*?<\/svg>/g,'').slice(0,300)).join(' || '));
+    base();_s.measurements=[{id:'wt0',date:td(),weight:72.4}];_s.profile.wtGoal=70;renderInsSum();const Bw=row('body');
+    check('Insights v132: weight with a goal below shows the latest weigh-in, what is left and how fast to lose',/72\.4 kg/.test(Bw)&&/2\.4 kg to go/.test(Bw)&&Bw.includes(`Lose no faster than about ${TH.WT_LOSE_WK} kg a week`),Bw.replace(/<svg.*?<\/svg>/g,'').slice(0,500));
+    // fitness: the race guide from the best run and the watch's estimate
+    base();_s.workouts=[{id:'r0',date:dAgo(5),type:'Run',distKm:10,durMin:50,rpe:3,notes:'',sets:[],sub:{}}];_s.profile.goalName='Jakarta Half Marathon';
+    _s.wellness[td()].vo2=52;_s.wellness[dAgo(28)].vo2=49;renderInsSum();const Fi=row('fitness');
+    check('Insights v132: Fitness shows the goal race from the best run as a guide, and the watch estimate with its change',/about 1:50:00/.test(Fi)&&/from your 10 km on/.test(Fi)&&/A guide from your best recent effort, not a promise\./.test(Fi)&&/3 since/.test(Fi)&&/VO2max estimate 52, up 3/.test(Fi),Fi.replace(/<svg.*?<\/svg>/g,'').slice(0,700));
+    // food: the protein as food header matches the protein tile
+    trn({pat:{1:['Run',50,2],3:['Run',45,2],5:['Run',90,2]}});_s.measurements=[{id:'m1',date:dAgo(1),weight:72.4}];renderInsSum();
+    const F=fuelPlan(),E=row('eat');all.push(H('insSum'));
+    check('Insights v132: Eat and drink: the protein tile and the protein as food header give the same grams, with the per-meal note',!!F&&E.includes(`<b>${F.p} g</b>`)&&E.includes(`about ${F.p} g`)&&E.includes(`at least ${F.per.meal} g every 3 to 4 hours`),F?`${F.p} ${F.per.meal}`:'no plan');
+    // page-wide
+    const A=all.join('');
+    check('Insights v132: no source names and no accent colour anywhere on the call, Things to watch or the summary',!/Polar|Intervals|Garmin|Strava/.test(A)&&!/--gold/.test(A),(A.match(/Polar|Intervals|Garmin|Strava|--gold/)||[''])[0]);
+  }finally{window.strategy=keepSt;box.remove();_cpOpen.clear();}
+});
+// v132: five sections that explain the app's call, the 13-section briefings saved before, chips the app makes, the fallback from the coach summary
+run('Briefing v132',()=>{
+  const keep={strategy:window.strategy,fuelPlan:window.fuelPlan},noTags=h=>h.replace(/<svg[\s\S]*?<\/svg>/g,'');
+  try{
+    check('Briefing v132: five sections in order, and the schema asks for those and the archetype only (no questions from the model)',JSON.stringify(INS_KEYS)==='["overall","today","week","working","focus"]'&&!('questions' in INS_SCHEMA.properties)&&JSON.stringify(INS_SCHEMA.required)===JSON.stringify(['archetype',...INS_KEYS])&&INS_SCHEMA.additionalProperties===false,JSON.stringify(INS_SCHEMA.required));
+    check('Briefing v132: the instructions say the coach block is the app\'s call, to explain and never change it',/coach\.call is today's call/.test(INS_COMMON)&&/never change/.test(INS_COMMON)&&/never change them/.test(INS_QA_SYS),'');
+    base();const E5={date:td(),time:'07:12',archetype:'Steady',overall:'Recovered well.',today:'Keep the run easy.',week:'Two hard days so far.',working:'Sleep is steady.',focus:'Protect the long ride.',qa:[]};
+    _insFull=false;const h0=insHTML(E5,[]);_insFull=true;const h1=insHTML(E5,[]);_insFull=false;
+    const nL=h=>(h.match(/class="ins-lead"/g)||[]).length;
+    check('Briefing v132: closed, the briefing shows the short version and "Read the full briefing"; open, all five, Show less and Regenerate',nL(h0)===1&&/Recovered well\./.test(h0)&&/Read the full briefing/.test(h0)&&/aria-expanded="false"/.test(h0)&&!/Regenerate/.test(h0)&&nL(h1)===5&&/Show less/.test(h1)&&/aria-expanded="true"/.test(h1)&&/Regenerate/.test(h1)&&/<small>Focus for the week<\/small>/.test(h1),`${nL(h0)} / ${nL(h1)}`);
+    const E1={...E5,today:'',week:'',working:'',focus:''},h2=insHTML(E1,[]);
+    check('Briefing v132: with only the short version there is nothing to open, and Regenerate shows',nL(h2)===1&&!/ins-more/.test(h2)&&/Regenerate/.test(h2),'');
+    check("Briefing v132: today's briefing carries the Q&A card, an earlier one does not",/id="insQa"/.test(h0)&&!/id="insQa"/.test(insHTML({...E5,date:dAgo(1)},[])),'');
+    const OLD={date:dAgo(3),time:'06:40',archetype:'Building Well',overall:'Old short.',day:'Old day.',today:'Old today.',month:'Old month.',trend:'Old trend.',warnings:'Old warn.',focus:'Old focus.'};
+    _insFull=true;const h3=insHTML(OLD,[{part:'Knee',sev:2}]);_insFull=false;
+    check('Briefing v132: a 13-section briefing saved before still renders its own sections and the injury line',insSecsOf(OLD)===INS_SECS_OLD&&insSecsOf(E5)===INS_SECS&&/<small>This month<\/small>Old month\./.test(h3)&&/<small>The longer view<\/small>/.test(h3)&&/<small>Watch out<\/small>/.test(h3)&&/Knee \(moderate\)/.test(h3)&&nL(h3)===8,`${nL(h3)} sections`);
+    // chips from today's state, at most 4, the defaults fill up
+    window.strategy=()=>({days:[]});window.fuelPlan=()=>null;_s.bloodLogs=[];
+    const c0=insChips(E5);
+    window.strategy=()=>({days:[{role:'rest'}]});_s.bloodLogs=[{id:'bl1',date:dAgo(10),uric:8.1}];const c1=insChips(E5);
+    window.strategy=()=>({days:[{role:'easy',cap:1}]});window.fuelPlan=()=>({next:{name:'Long ride',tom:1}});const c2=insChips(E5);
+    check('Briefing v132: chips: the three defaults with nothing to go on; a rest day and a high marker lead; never more than 4, never twice',JSON.stringify(c0)===JSON.stringify(INS_QDEF)&&c1[0]==='Why rest today?'&&c1[1]==='Is my uric acid worth acting on?'&&c1.length===4&&new Set(c1).size===4
+      &&JSON.stringify(c2)===JSON.stringify(['Why is today easy?',"What should I eat before tomorrow's long ride?",'Is my uric acid worth acting on?','When can I train hard again?']),JSON.stringify([c0,c1,c2]));
+    // the Q&A card: asked questions leave the chips, the count, the send button; at 10 the chips and the box go
+    window.strategy=()=>({days:[{role:'rest'}]});
+    const q1=insQaHTML({...E5,qa:[{q:'Why rest today?',a:'Your body signs are down.',ts:1}]});
+    check('Briefing v132: an asked question leaves the chips; the thread, the box, the round Ask button, "Answers use your own data" and "1 of 10 today"',!/class="ins-qc"[^>]*>Why rest today\?/.test(q1)&&/Your body signs are down\./.test(q1)&&/id="insQ"/.test(q1)&&/class="ins-send" aria-label="Ask"/.test(q1)&&q1.includes(UI.send)&&/Answers use your own data/.test(q1)&&/1 of 10 today/.test(q1),noTags(q1).slice(0,500));
+    const q10=insQaHTML({...E5,qa:Array.from({length:INS_QMAX},(_,i)=>({q:'Q'+i,a:'A'+i,ts:i}))});
+    check('Briefing v132: at 10 questions the chips and the box go and the limit note shows',!/ins-qc/.test(q10)&&!/id="insQ"/.test(q10)&&/limit of 10 questions/.test(q10)&&/10 of 10 today/.test(q10),'');
+    check('Briefing v132: the send icon is a line icon',/^<svg class="ui-i"/.test(UI.send)&&/<path /.test(UI.send),'');
+    // the quick summary when the AI fails: the call word, its first reason, the coach summary rows
+    window.strategy=keep.strategy;window.fuelPlan=keep.fuelPlan;base();
+    const st=strategy(),x=st.days[0],fb=buildFallback(),rows=CP_ROWS.map(([k,f])=>{try{return f(td(),st);}catch(e){return null;}}).filter(r=>r&&r.s);
+    check('Briefing v132: the quick summary starts with the call and carries the coach summary rows',!!x&&fb.startsWith(cpWord(x)+'.')&&rows.length>0&&fb.includes(rows[0].t+': ')&&!/Polar|Intervals|Garmin|Strava/.test(fb),fb.slice(0,300));
+    window.strategy=()=>{throw new Error('x');};const fo=buildFallback(),fo2=buildFallbackOld();window.strategy=keep.strategy;
+    check('Briefing v132: when the call cannot be worked out, the old checks are the last resort',fo===fo2&&!!fo,fo.slice(0,120));
+    // the coach block in the snapshot: the call, its tone in words and the summary
+    const C=insightData().coach||{};
+    check('Briefing v132: the snapshot carries the coach block: the call word, its tone in words, why, and the summary',C.call&&C.call.word===cpWord(x)&&Object.values(INS_TONE).includes(C.call.tone)&&Array.isArray(C.call.why)&&Array.isArray(C.summary)&&C.summary.every(r=>r.area&&r.says),JSON.stringify(C).slice(0,400));
+    check('Briefing v132: the heavy month carries the coach block too',!!(window.HEAVY&&HEAVY.coach&&HEAVY.coach.call),'');
+    // a link only counts past the significance cut: r 0.42 on 14 days is no clear link yet, r 0.99 is strong
+    const pw=Array.from({length:14},(_,i)=>[i,i/2+(i%2?6:-6)]),ps=Array.from({length:14},(_,i)=>[i,i*2+(i%3)]),cw=corrNote('a',pw),cs=corrNote('b',ps);
+    check('Briefing v132: a moderate link on 14 days is "no clear link yet"; a strong one stays strong',cw.strength==='no clear link yet'&&Math.abs(cw.r)<rCrit(14)&&Math.abs(cw.r)>=0.3&&cs.strength==='strong',JSON.stringify([cw,cs]));
+    check('Briefing v132: no source names in the briefing or the Q&A',![h0,h1,h3,q1,q10].some(h=>/Polar|Intervals|Garmin|Strava/.test(h)),'');
+  }finally{Object.assign(window,keep);_insFull=false;}
 });
 // v122 Test 8: an e-bike ride counts as cycling by time and heart rate, but never for power, the long-ride cap or the ride bests
 run('E-bike',()=>{
@@ -944,18 +1304,18 @@ run('v123 text',()=>{
   check('v123 text: every line is at most 2 sentences and 140 characters, with no counting or method words',!bad.length,bad.join(' | ')||lines.length+' lines');
   const r=wkRow({id:'w1',date:td(),type:'Run',durMin:45,distKm:8,rpe:null,notes:'',sets:[]},true);
   check('v123 text: a workout with an empty sets list shows its time, no sets and no effort nag; the Recovery details card is gone',r.includes(fmtDur(45))&&!/\bsets?\b|effort not set/.test(r.replace(/<[^>]+>/g,' '))&&typeof renderRecovery==='undefined',r.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160));
-  const box=document.createElement('div');box.hidden=true;box.innerHTML='<div id="stratCard"></div><div id="coachCard"></div><div id="digestCard"></div>';document.body.appendChild(box);
+  const box=document.createElement('div');box.hidden=true;box.innerHTML='<div id="stratCard"></div><div id="insWatch"></div><div id="digestCard"></div>';document.body.appendChild(box);
   try{
     trn();_stOpen.clear();renderStrategy();const sc=$('stratCard'),ws=[...sc.querySelectorAll('.st-w')].map(e=>e.textContent);
     check('v123 text: the outline has no footnote or How this is worked out, and no reason twice',!/How this is worked out|Worked out again|Tap a day/.test(sc.textContent)&&new Set(ws).size===ws.length&&ws.length>0,ws.join(' | '));
-    base();_s.sleepLogs.forEach(x=>{if(daysAgo(x.date)<7)x.durMin=390;});renderCoach();const cc=$('coachCard'),fl=[...cc.querySelectorAll('.cc-f')].map(e=>e.textContent);
-    const debt=fl.find(x=>/^Sleep debt/.test(x))||'';
-    check('v123 text: the coach card drops "Based on" with enough days, and a flag gives the fact once and the action once',!/Based on/.test(cc.textContent)&&/^Sleep debt: 7h\s*An extra hour a night clears it in about 7 nights\.$/.test(debt),fl.join(' | '));
+    base();_s.sleepLogs.forEach(x=>{if(daysAgo(x.date)<7)x.durMin=390;});renderInsWatch();const cc=$('insWatch'),fl=[...cc.querySelectorAll('.cp-da')];
+    const dc=fl.find(x=>(x.querySelector('.cp-l')||{}).textContent==='Sleep debt'),dv=dc?dc.querySelector('.cp-vv b').textContent:'',dp=dc?dc.querySelector('p').textContent:'';
+    check('v132 watch: Things to watch drops "Based on" with enough days; the debt card gives the value once and one line ending in the action',!/Based on|Early read/.test(cc.textContent)&&dv==='7h'&&/An extra hour a night clears it in about 7 nights\.$/.test(dp)&&(dp.match(/[.!?](?=\s|$)/g)||[]).length<=2&&dp.length<=140,fl.map(e=>e.textContent).join(' | '));
     base();_s.workouts=[wk1(dAgo(1),1,'Run',40,3),wk1(dAgo(9),1,'Run',40,3)];_s.checkins=[ci({date:dAgo(1)})];renderDigest();
     check('v123 text: the week summary has no What stood out',!/What stood out/.test($('digestCard').textContent)&&/Your week in numbers/.test($('digestCard').textContent),$('digestCard').textContent.slice(-120));
   }finally{box.remove();_stOpen.clear();}
   {const c1=cupsLine(1.8,8,20),c2=cupsLine(1,1,20),c3=cupsLine(0.2,0,5);check('v123 text: coffee reads as whole cups, "often late" only when it happens often',c1==='About 2 cups of coffee a day, often late in the day.'&&c2==='About 1 cup of coffee a day.'&&c3==='Little coffee.',[c1,c2,c3].join(' | '));}
-  check('v123 text: the briefing asks for 1 to 2 sentences a field, allows an empty field and keeps follow-up answers to 1 to 4',/1 to 2 short sentences per field/.test(INS_SYS)&&/empty string for any field \(except overall, day and today\)/.test(INS_SYS)&&/at most 3 sentences/.test(INS_SYS)&&/1 to 4 short sentences/.test(INS_QA_SYS)&&/Be brief\./.test(INS_COMMON)&&/At most one number per sentence/.test(INS_COMMON));
+  check('v123 text: the briefing asks for 1 to 2 sentences a field, allows an empty field and keeps follow-up answers to 1 to 4',/1 to 2 short sentences per field/.test(INS_SYS)&&/empty string for any field \(except overall and today\)/.test(INS_SYS)&&/at most 3 sentences/.test(INS_SYS)&&/1 to 4 short sentences/.test(INS_QA_SYS)&&/Be brief\./.test(INS_COMMON)&&/At most one number per sentence/.test(INS_COMMON));
 });
 
 // v124: invite only. A sign-in wall until an invited account signs in, no account created from the app, each person's rows kept apart,
@@ -2123,7 +2483,7 @@ seq('v129 health',async()=>{
     base();_s.profile.wtGoal=72;
     _s.measurements=[...Array.from({length:10},(_,i)=>({id:'m-'+i,date:dAgo(3+i*2),weight:72,bpSys:112,bpDia:74})),{id:'m-n',date:td(),weight:73.1,bpSys:118,bpDia:76}];
     renderHealth();let R=rows();
-    check('v129 health: baselines show the value with its unit and the comparison under it',J(R)===J([['Resting heart rate','50 bpm','●at your usual','nt'],['Weight','73.1 kg','▲1.1 over usual','nt'],['Blood pressure','118/76 mmHg','▲usual 112/74','nt'],['Weight goal','72 kg','1.1 kg to lose','nt']]),J(R));
+    check('v129 health: baselines show the value with its unit and the comparison under it; blood pressure as its 28-day average and range (v132)',J(R)===J([['Resting heart rate','50 bpm','●at your usual','nt'],['Weight','73.1 kg','▲1.1 over usual','nt'],['Blood pressure','113/74 mmHg','●Normal · average of 11 readings','good'],['Weight goal','72 kg','1.1 kg to lose','nt']]),J(R));
     check('v129 health: each baseline has its line icon, the first row no rule above it',[...$('hBase').querySelectorAll('.rf')].every(r=>r.firstElementChild.classList.contains('ui-i'))&&getComputedStyle($('hBase').querySelector('.rf')).borderTopWidth==='0px','');
     const rh=v=>{_s.wellness[td()].rhr=v;renderHealth();return rows()[0].slice(2).join(' ');};
     const rr=[rh(53),rh(47),rh(51)];
@@ -2136,6 +2496,11 @@ seq('v129 health',async()=>{
     check('v129 health: a first reading says so, with no glyph',J(R)===J([['Weight','70.0 kg','First reading','nt']]),J(R));
     _s.measurements=[];renderHealth();
     check('v129 health: no measurements and no resting heart rate gives the empty state with its button',/No measurements yet/.test(txt($('hBase')))&&!!$('hBase').querySelector('.empty-btn'),txt($('hBase')));
+    _s.measurements=[{id:'bp-1',date:dAgo(1),bpSys:182,bpDia:100},{id:'bp-2',date:td(),bpSys:181,bpDia:96}];renderHealth();R=rows();
+    check('v132 health: very high blood pressure twice asks for advice promptly, in red, never a disease name',J(R)===J([['Blood pressure','182/98 mmHg','▲Very high twice: seek medical advice promptly','bad']])&&!/hypertens/i.test(txt($('hBase'))),J(R));
+    _s.measurements=[{id:'bp-1',date:td(),bpSys:128,bpDia:82}];renderHealth();R=rows();
+    check('v132 health: one blood pressure reading shows the reading, not a range',J(R)===J([['Blood pressure','128/82 mmHg','One reading','nt']]),J(R));
+    _s.measurements=[];renderHealth();
     hlInfo('base');const ib=$('hib_base');
     check('v129 health: the ⓘ opens a plain line about the usual, from TH',ib.classList.contains('on')&&ib.getAttribute('aria-expanded')==='true'&&!$('hinf_base').hidden&&$('hinf_base').textContent===`Usual is your average over the ${TH.HL_USUAL} days before the latest reading.`&&!!ib.querySelector('svg')&&ib.getBoundingClientRect().width>=44,$('hinf_base').textContent);
     hlInfo('base');
@@ -2143,7 +2508,7 @@ seq('v129 health',async()=>{
     base();_s.bloodLogs=[{id:'b1',date:dAgo(400),glucose:98,chol:215,uric:8.1},{id:'b2',date:dAgo(200),glucose:103,chol:205,uric:7.6},{id:'b3',date:dAgo(44),glucose:91,chol:193,uric:7.1}];
     _hlOpen=null;renderHealth();
     const B0=['glucose','chol','uric'].map(brow);
-    check('v129 health: one row per marker: name, range, value, state and the change since the test before',txt($('hBlood').querySelector('.ksub'))==='Latest test '+fmtD(dAgo(44))&&J(B0)===J([['Glucose','70 to 100 mg/dL, fasting','91','●In range · down 12','good'],['Total cholesterol','Under 200 mg/dL','193','●In range · down 12','good'],['Uric acid','3.5 to 7.2 mg/dL','7.1','●In range · down 0.5','good']]),J(B0));
+    check('v129 health: one row per marker: name, range, value, state and the change since the test before; uric acid up to 6.8 (v132)',txt($('hBlood').querySelector('.ksub'))==='Latest test '+fmtD(dAgo(44))&&J(B0)===J([['Glucose','70 to 100 mg/dL, fasting','91','●In range · down 12','good'],['Total cholesterol','Under 200 mg/dL','193','●In range · down 12','good'],['Uric acid','3.5 to 6.8 mg/dL','7.1','▲Borderline · down 0.5','warn']]),J(B0));
     check('v129 health: closed rows hold no chart, each row is a 44px+ button',!$('hBlood').querySelector('.bx')&&['glucose','chol','uric'].every(k=>$('br_'+k).getAttribute('role')==='button'&&$('br_'+k).getAttribute('aria-expanded')==='false'&&$('br_'+k).getBoundingClientRect().height>=44),'');
     key($('br_glucose'),'Enter');const st=_ch.btc_glucose,hd=()=>[...$('bth_glucose').children].map(txt);
     check('v129 health: Enter opens the row: unit beside the value, the change moves to the header',_hlOpen==='glucose'&&$('br_glucose').getAttribute('aria-expanded')==='true'&&brow('glucose')[2]==='91 mg/dL'&&brow('glucose')[3]==='●In range'&&!!$('bx_glucose'),J(brow('glucose')));
@@ -2160,7 +2525,7 @@ seq('v129 health',async()=>{
     check('v129 health: What moves it is folded under the chart, in plain words',txt(wm.querySelector('summary'))==='What moves it'&&/Sleep/.test(txt(wm.querySelector('p')))&&!/Moves with/.test(txt(wm)),txt(wm.querySelector('p')).slice(0,60));
     hlBm('uric');
     const mu=txt($('bx_uric').querySelector('.vc-mean'));
-    check('v129 health: one row open at a time; uric keeps one decimal',_hlOpen==='uric'&&!$('bx_glucose')&&!_ch.btc_glucose&&_ch.btc_uric.on&&J(_ch.btc_uric.yl)===J(['3.5','7.2'])&&mu===`In range, down 1 mg/dL since ${fmtD(dAgo(400))}.`,mu+' '+J(_ch.btc_uric.yl));
+    check('v129 health: one row open at a time; uric keeps one decimal',_hlOpen==='uric'&&!$('bx_glucose')&&!_ch.btc_glucose&&_ch.btc_uric.on&&J(_ch.btc_uric.yl)===J(['3.5','6.8'])&&mu===`Borderline, down 1 mg/dL since ${fmtD(dAgo(400))}: moving towards the range.`,mu+' '+J(_ch.btc_uric.yl));
     hlBm('chol');
     check('v129 health: cholesterol has its upper edge only',J(_ch.btc_chol.yl)===J(['200']),J(_ch.btc_chol.yl));
     hlBm('chol');
@@ -2957,6 +3322,44 @@ seq('v131 screens',async()=>{
   }finally{_tdView=null;closeDetail();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
 
+// v132: a question on today's briefing goes out with the snapshot and its coach block, cached, at low effort; the rows card opens This week and Earlier briefings
+seq('Briefing v132 Q&A',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div'),ic=$('insContent');
+  ic.id='insContent0';
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;transform:translateZ(0)';
+  box.innerHTML=doc.getElementById('pg-insights').outerHTML;document.body.appendChild(box);box.querySelector('#pg-insights').style.display='block';
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={showToast:window.showToast},toasts=[];window.showToast=m=>toasts.push(m);
+  const ev=(t,o)=>`event: ${t}\ndata: ${JSON.stringify({type:t,...o})}\n\n`,txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  try{
+    base();_s.claudeKey='test';_insFull=false;_insWkOn=_insHistOn=false;
+    const E5={date:td(),time:'07:12',archetype:'Steady',overall:'Recovered well.',today:'Keep the run easy.',week:'Two hard days so far.',working:'Sleep is steady.',focus:'Protect the long ride.',qa:[]};
+    _s.insightLog=[E5];showTodayInsight();renderInsightHistory();
+    const sb=$('insContent').querySelector('.ins-send').getBoundingClientRect(),qc=[...$('insContent').querySelectorAll('.ins-qc')].map(b=>b.getBoundingClientRect().height);
+    check('Briefing v132: the round Ask button is 44 by 44 and every question chip at least 44px tall at 360px',Math.round(sb.width)===44&&Math.round(sb.height)===44&&qc.length>0&&qc.every(h=>h>=44),`${sb.width}x${sb.height} ${qc}`);
+    let sent=null;window.fetch=async(u,o)=>{sent=JSON.parse(o.body);return sseResp([ev('message_start',{message:{usage:{input_tokens:9}}})+ev('content_block_delta',{delta:{type:'text_delta',text:'Keep it easy '}}),ev('content_block_delta',{delta:{type:'text_delta',text:'today.'}})+ev('message_delta',{delta:{stop_reason:'end_turn'}})]);};
+    await askInsight('Why is today easy?');
+    const c0=sent&&sent.messages[0].content[0];
+    check('Briefing v132: a question goes out with the Q&A instructions cached, low effort, 2000 tokens and the snapshot with its coach block first and cached',!!sent&&sent.system[0].text===INS_QA_SYS&&sent.system[0].cache_control.type==='ephemeral'&&sent.output_config&&sent.output_config.effort==='low'&&sent.max_tokens===2000&&c0.text.startsWith('Snapshot from the app (JSON):')&&/"coach":\{"call":\{"word"/.test(c0.text)&&c0.cache_control.type==='ephemeral'&&sent.messages[0].content[1].text==='Question: Why is today easy?',JSON.stringify(sent&&{...sent,messages:null}).slice(0,300));
+    const e=S().insightLog[0],qt=txt($('insContent').querySelector('#insQa'));
+    check('Briefing v132: the answer is kept on the briefing and shows in the thread, the count moves to 1 of 10 and the asked chip goes',e.qa.length===1&&e.qa[0].a==='Keep it easy today.'&&/Keep it easy today\./.test(qt)&&/1 of 10 today/.test(qt)&&![...$('insContent').querySelectorAll('.ins-qc')].some(b=>b.textContent==='Why is today easy?')&&!toasts.length,qt.slice(0,300)+' '+toasts);
+    // the rows card: This week opens the digest, Earlier briefings hides with nothing saved and counts the rest
+    check('Briefing v132: This week and Earlier briefings start closed',$('insWkBtn').getAttribute('aria-expanded')==='false'&&$('digestCard').hidden&&!$('insHiBtn').hidden&&$('insHistSec').style.display==='none'&&$('insHistCnt').textContent==='1','');
+    insRowTog('wk');const wk=[$('insWkBtn').getAttribute('aria-expanded'),$('digestCard').hidden,txt($('digestCard'))];insRowTog('wk');
+    check('Briefing v132: This week opens the week in numbers and closes again',wk[0]==='true'&&!wk[1]&&/Your week in numbers/.test(wk[2])&&$('digestCard').hidden&&$('insWkBtn').getAttribute('aria-expanded')==='false',JSON.stringify(wk).slice(0,200));
+    _s.insightLog=[];renderInsightHistory();const hid=$('insHiBtn').hidden;
+    const OLD={date:dAgo(3),time:'06:40',archetype:'Building Well',overall:'Old short.',day:'Old day.',month:'Old month.',trend:'Old trend.'};
+    _s.insightLog=[E5,OLD];renderInsightHistory();insRowTog('hi');
+    const ht=txt($('insHistList'));
+    check('Briefing v132: Earlier briefings hides with none saved, counts them, opens with dates in words',hid&&$('insHistCnt').textContent==='2'&&$('insHiBtn').getAttribute('aria-expanded')==='true'&&$('insHistSec').style.display==='block'&&ht.includes(fmtD(dAgo(3))+' · 06:40')&&!/\d{4}-\d\d-\d\d/.test(ht)&&$('archTrend').style.display==='none',ht.slice(0,200));
+    toggleHI(1);const ob=$('ihb1');
+    check('Briefing v132: an earlier 13-section briefing opens with its own sections, its preview hidden',ob.classList.contains('open')&&getComputedStyle(ob).display!=='none'&&/This month/.test(txt(ob))&&/The longer view/.test(txt(ob))&&getComputedStyle($('ihp1')).display==='none',txt(ob).slice(0,200));
+    // full briefing open, 360px, no sideways overflow, no source names
+    _insFull=true;showTodayInsight();insRowTog('wk');
+    const R0=box.getBoundingClientRect().right,wide=[...box.querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
+    check('Briefing v132: at 360px nothing on the page runs wider, and no source names',!wide.length&&!/Polar|Intervals|Garmin|Strava/.test(box.textContent),wide.slice(0,5).map(x=>x.tagName+'.'+x.className).join(' '));
+  }finally{Object.assign(window,keep);_insFull=false;_insWkOn=_insHistOn=false;_s.claudeKey='';ic.id='insContent';box.remove();css.remove();}
+});
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;

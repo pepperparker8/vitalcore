@@ -353,10 +353,43 @@ const wkHm=s=>`${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,
 const wkMin=m=>m>=0.5?fmtDur(Math.round(m)):'0min';
 const wkPl=w=>{const n=wkNoun(w);return n==='yoga'?'yoga sessions':n+'s';};
 // your last TH.SIM_N sessions of the same kind (e-bike with e-bike) before this one, within TH.SIM_DUR of its length, with a heart rate
-function wkSim(w){
+// v132: f narrows them further (hrAtPace: the same speed or power, steady sessions only) before the newest TH.SIM_N are kept
+function wkSim(w,f){
   const eb=wkEb(w),d=w.durMin||0;if(!d)return[];
-  return stWs().filter(o=>o.id!==w.id&&o.type===w.type&&wkEb(o)===eb&&o.date<w.date&&wIcu(o).hr&&Math.abs((o.durMin||0)-d)<=d*TH.SIM_DUR)
+  return stWs().filter(o=>o.id!==w.id&&o.type===w.type&&wkEb(o)===eb&&o.date<w.date&&wIcu(o).hr&&Math.abs((o.durMin||0)-d)<=d*TH.SIM_DUR&&(!f||f(o)))
     .sort((a,b)=>a.date<b.date?1:-1).slice(0,TH.SIM_N);
+}
+// ── v132 HEART RATE AT PACE (R1.4) ── a steady run or ride against your similar sessions at the same speed (power with a real meter):
+// TH.HR_NEAR bpm or more higher is a sign; TH.HR_PACE_N in a row is a watch item (never changes the day on its own), and counts as a warning day
+const wkKmh=w=>w.distKm>0&&w.durMin>0?w.distKm/(w.durMin/60):null;
+// steady: a run or a ride without a motor, not a hard session (typed or watch effort 4+, or a hard share of TH.MIX_HARD)
+function wkSteady(w,thr){
+  if(wkEb(w)||(w.type!=='Run'&&w.type!=='Cycle'))return false;
+  const e=wkEffOf(w,thr);if(e&&e.src!=='hr'&&e.e>=4)return false;
+  const m=wkMix(w,thr);return!(m&&m.hard>=(m.easy+m.steady+m.hard)*TH.MIX_HARD);
+}
+// {d bpm against the similar sessions, n, flag} or null when it cannot be compared
+function hrAtPace(w,thr){
+  const hr=wIcu(w).hr;if(!hr||!wkSteady(w,thr))return null;
+  const i=wIcu(w),pw=w.type==='Cycle'&&i.dw&&i.pw>0?i.pw:null,v=pw||wkKmh(w);if(!v)return null;
+  const at=o=>{const j=wIcu(o);return pw?(j.dw&&j.pw>0?j.pw:null):wkKmh(o);};
+  const sim=wkSim(w,o=>{const x=at(o);return x!=null&&Math.abs(x-v)<=v*TH.PACE_NEAR&&wkSteady(o,thr);});
+  if(sim.length<TH.SIM_MIN)return null;
+  const d=hr-avg(sim.map(o=>wIcu(o).hr));
+  return{d:Math.round(d),n:sim.length,flag:d>=TH.HR_NEAR};
+}
+// the comparable sessions of the last TH.HR_PACE_D days up to t, newest first; run = it and the TH.HR_PACE_N - 1 before it are all up
+function hrPaceList(t=td(),thr){
+  const o=daysAgo(t),L=stWs().filter(w=>(w.type==='Run'||w.type==='Cycle')&&w.date<=t&&daysAgo(w.date)-o<TH.HR_PACE_D)
+    .sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(wkT0(b)||0)-(wkT0(a)||0))
+    .map(w=>({w,r:hrAtPace(w,thr)})).filter(x=>x.r);
+  L.forEach((x,k)=>{x.run=L.length>=k+TH.HR_PACE_N&&L.slice(k,k+TH.HR_PACE_N).every(y=>y.r.flag);});
+  return L;
+}
+// the latest comparable session starts a run and is within the last 7 days: {d, date, w}
+function hrPaceRun(t=td(),thr){
+  const x=hrPaceList(t,thr)[0];
+  return x&&x.run&&daysAgoBetween(x.w.date,t)<7?{d:x.r.d,date:x.w.date,w:x.w}:null;
 }
 // up to six plain sentences: the mix, heart rate drift, the hardest stretches, the biggest climb, heart rate recovery, similar sessions
 // drift: only runs and rides with a motor-free effort, long enough for it to mean something (the sheet and the briefing)
@@ -388,7 +421,7 @@ function wkIns(w,a,thr,B,pm){
     o.push(prev.length>=3?t:t+'.');
   }
   const sim=IS_STR(w.type)?[]:wkSim(w);
-  if(i.hr&&sim.length>=2){
+  if(i.hr&&sim.length>=TH.SIM_MIN){
     const u=Math.round(avg(sim.map(x=>wIcu(x).hr))),d=Math.round(i.hr)-u;
     let t=`Average heart rate ${Math.round(i.hr)} bpm, ${Math.abs(d)<=TH.HR_NEAR?'about the same as':d>0?`${d} higher than`:`${-d} lower than`} your last ${sim.length} similar ${wkPl(w)}`;
     const sp=x=>x.distKm>0&&x.durMin>0?x.distKm/(x.durMin/60):null,me=sp(w),th=sim.map(sp).filter(v=>v),v=th.length>=2?avg(th):null;

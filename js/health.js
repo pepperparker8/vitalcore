@@ -2,7 +2,7 @@
 const BM=[
   ['Glucose','glucose','70–100 mg/dL (fasting)'],
   ['Total cholesterol','chol','under 200 mg/dL'],
-  ['Uric acid','uric','3.5–7.2 mg/dL']
+  ['Uric acid','uric','3.5–6.8 mg/dL']
 ];
 const BM_NOTE={
   glucose:'Sleep (a poor night raises fasting glucose), refined carbs and sugary drinks late in the evening, stress, and regular training, which improves how your body handles sugar. Fast 8+ hours before the test for a fair reading.',
@@ -31,17 +31,18 @@ function hlMeas(f,g){
 }
 // one row: icon, label, value with its unit, and under it the comparison (glyph coloured by the row's state)
 function hlRow(icon,label,v,unit,cmp,cls,date){
-  const m=/^([▲▼]) (.*)$/.exec(cmp),g=m?m[1]:cmp.startsWith('at ')?'●':'',t=m?m[2]:cmp,age=date&&daysAgo(date)>1?' · '+fmtD(date):'';
+  const m=/^([▲▼●]) (.*)$/.exec(cmp),g=m?m[1]:cmp.startsWith('at ')?'●':'',t=m?m[2]:cmp,age=date&&daysAgo(date)>1?' · '+fmtD(date):'';
   return`<div class="rf ${cls}">${UI[icon]}<span class="rf-l">${label}</span><span class="rf-r"><span class="rf-v">${v}${unit?` <em>${unit}</em>`:''}</span><span class="rf-n">${g?`<i class="rf-g" aria-hidden="true">${g}</i>`:''}${t}${age}</span></span></div>`;
 }
 function hlBase(){
-  const d=S(),out=[],rh=hlRhr(),wt=hlMeas('weight'),bp=hlMeas('bpSys','bpDia');
+  const d=S(),out=[],rh=hlRhr(),wt=hlMeas('weight'),bp=hlMeas('bpSys','bpDia'),bb=bpBand();
   if(rh){const df=rh.u==null?0:Math.round(rh.v)-Math.round(rh.u);
     out.push(hlRow('heart','Resting heart rate',Math.round(rh.v),'bpm',rh.u==null?'First reading':rfVs(rh.v,rh.u,0),rh.u==null?'nt':df>=TH.HL_RHR_UP?'warn':df<=-TH.HL_RHR_UP?'good':'nt',rh.date));}
   if(wt)out.push(hlRow('scale','Weight',r1(wt.v).toFixed(1),'kg',wt.u==null?'First reading':rfVs(wt.v,wt.u,1),'nt',wt.date));
-  if(bp){const c=bp.c,ds=bp.u==null?0:c.bpSys-Math.round(bp.u),dd=bp.u==null?0:c.bpDia-Math.round(bp.u2);
-    const cmp=bp.u==null?'First reading':!ds&&!dd?'at your usual':`${(ds||dd)>0?'▲':'▼'} usual ${Math.round(bp.u)}/${Math.round(bp.u2)}`;
-    out.push(hlRow('gauge','Blood pressure',`${c.bpSys}/${c.bpDia}`,'mmHg',cmp,'nt',bp.date));}
+  // v132: the average of the last TH.BP_DAYS days in its band, only from TH.BP_N readings on TH.BP_N days; else the latest reading alone
+  if(bb&&bb.high)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg','▲ Very high twice: seek medical advice promptly','bad',bb.last.date));
+  else if(bb&&bb.band)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg',`${bb.band==='normal'?'●':'▲'} ${bb.word} · average of ${bb.n} readings`,bb.band==='normal'?'good':bb.band==='stage2'?'bad':'warn',bb.last.date));
+  else if(bp)out.push(hlRow('gauge','Blood pressure',`${bp.c.bpSys}/${bp.c.bpDia}`,'mmHg',bb&&bb.n>1?'Readings from one day':'One reading','nt',bp.date));
   const goal=d.profile.wtGoal;
   if(goal&&wt){const df=wt.v-goal;out.push(hlRow('target','Weight goal',goal,'kg',Math.abs(df)<TH.WT_GOAL_NEAR?'Reached':`${r1(Math.abs(df)).toFixed(1)} kg to ${df>0?'lose':'gain'}`,'nt'));}
   return out.join('');
@@ -52,6 +53,14 @@ const bmF=(k,v)=>k==='uric'?r1(v):Math.round(v);
 // the range under each name, from the same ranges scoreBM uses (mg/dL)
 function bmRef(k){const r=BM_RNG[k];return(r.ok[0]>0?`${r.ok[0]} to ${r.ok[1]} mg/dL`:`Under ${r.ok[1]} mg/dL`)+(k==='glucose'?', fasting':'');}
 function bmState(v,k){const s=scoreBM(v,k);return s.status==='ok'?{c:'good',g:'●',t:'In range'}:s.status==='warn'?{c:'warn',g:'▲',t:'Borderline'}:{c:'bad',g:s.low?'▼':'▲',t:s.low?'Low':'High'};}
+// v132 (R12): what a result is worth doing about, in plain words; the same edges as scoreBM. Never a diagnosis.
+function bmWord(k,v){
+  const s=bmState(v,k);
+  if(s.c==='good'||s.t==='Low')return s.t;
+  if(k==='glucose')return v<TH.GLU_HIGH?'In the range doctors call prediabetes':'Worth a repeat test and a doctor';
+  if(k==='uric')return'Worth a mention to your doctor';
+  return s.c==='warn'?'Borderline':'High: worth a mention to your doctor';
+}
 const bmPts=k=>S().bloodLogs.filter(x=>x[k]).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).map(x=>({d:x.date,v:x[k]}));
 function bmChg(k,c,p){const df=bmF(k,c-p);return df>0?'up '+df:df<0?'down '+bmF(k,-df):'no change';}
 // the header over an open marker's chart: the tapped test (else the latest) and the one before it
@@ -115,6 +124,86 @@ function renderHealth(){
   $('hInj').innerHTML=hlInj();
 }
 
+// ── v132 BODY AND HEALTH: blood pressure, weight, low energy signs, the watch's VO2max, the race guide ──
+const BP_WORD={normal:'Normal',elevated:'Elevated',stage1:'Stage 1 range',stage2:'Stage 2 range'};
+// blood pressure over the TH.BP_DAYS days to t: the averages in their band (AHA/ACC), only from TH.BP_N readings on TH.BP_N days;
+// high = TH.BP_N readings at the top cut (seek advice promptly). Measure seated after 5 quiet minutes. Never named as a condition.
+function bpBand(t=td()){
+  const a=stAdd(t,-(TH.BP_DAYS-1)),r=S().measurements.filter(m=>m.bpSys&&m.bpDia&&m.date>=a&&m.date<=t).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:0);
+  if(!r.length)return null;
+  const n=r.length,days=new Set(r.map(m=>m.date)).size,sys=Math.round(avg(r.map(m=>m.bpSys))),dia=Math.round(avg(r.map(m=>m.bpDia))),Sy=TH.BP_SYS,Di=TH.BP_DIA;
+  const hiN=r.filter(m=>m.bpSys>=Sy[3]||m.bpDia>=Di[2]).length;
+  const band=n<TH.BP_N||days<TH.BP_N?null:sys>=Sy[2]||dia>=Di[1]?'stage2':sys>=Sy[1]||dia>=Di[0]?'stage1':sys>=Sy[0]?'elevated':'normal';
+  return{sys,dia,n,days,band,word:band?BP_WORD[band]:null,hiN,high:hiN>=TH.BP_N,last:last(r)};
+}
+// the 7-day average weight ending on x (null without a weigh-in in those days)
+function wtAvgAt(x){
+  const a=stAdd(x,-6),ex=isExampleOnly(),v=S().measurements.filter(m=>m.date>=a&&m.date<=x&&m.weight>=30&&m.weight<=250&&(ex||!m.isEx)).map(m=>m.weight);
+  return v.length?avg(v):null;
+}
+// weight at the latest weigh-in on or before t: the 7-day average, the change on 4 weeks before to 0.1 kg (steady up to TH.WT_STEADY),
+// the weeks in a row losing TH.WT_RATE of body weight or more (fast from TH.WT_RATE_WKS), and the distance to the goal
+function wtTrend(t=td()){
+  const w=wtOn(t);if(!w)return null;
+  const L=w.date,now=wtAvgAt(L),b4=wtAvgAt(stAdd(L,-28)),ch4=b4==null?null:r1(now-b4),goal=S().profile.wtGoal;
+  let fastWks=0;
+  for(let i=0;i<TH.REDS_WKS*2;i++){const a=wtAvgAt(stAdd(L,-7*i)),b=wtAvgAt(stAdd(L,-7*(i+1)));if(a==null||b==null||+(b-a).toFixed(3)<+(TH.WT_RATE*b).toFixed(3))break;fastWks++;}
+  const df=goal?w.weight-goal:null; // the goal and the Weight tile read the latest weigh-in, as Health and Fuel do; the trend reads the 7-day means
+  return{date:L,now:r1(now),last:r1(w.weight),ch4,dir:ch4==null?null:Math.abs(ch4)<=TH.WT_STEADY?'steady':ch4<0?'down':'up',fastWks,fast:fastWks>=TH.WT_RATE_WKS,
+    toGoal:goal?{goal,kg:r1(Math.abs(df)),dir:df>0?'lose':'gain',reached:Math.abs(df)<TH.WT_GOAL_NEAR}:null};
+}
+// R11: signs that you may not be eating enough for your training, over the last TH.REDS_WKS weeks to t. Each sign must last:
+// weight falling all through (or fast while losing on purpose), food under estimated use and mind under your usual in the first and last
+// weeks with no week against it, ill twice, sessions harder than planned in both halves. TH.REDS_N+ signs ask the question; never a diagnosis.
+function redsSigns(t=td(),thr=stThr()){
+  const W=TH.REDS_WKS*7,a=stAdd(t,-(W-1)),signs=[],goal=fuGoal();
+  // weeks oldest first, each ending on e (food weeks end the day before, today's log is still open)
+  const wks=f=>{const o=[];for(let k=TH.REDS_WKS-1;k>=0;k--)o.push(f(stAdd(t,-7*k)));return o;};
+  const lasts=r=>{const v=r.filter(x=>x!=null);return v.length>=2&&r[0]===true&&r[r.length-1]===true&&v.every(Boolean);};
+  // 1 weight
+  if(goal==='lose'){const w=wtTrend(t);if(w&&w.fast&&daysAgoBetween(w.date,t)<7)signs.push({k:'weight',why:'Losing weight fast for weeks'});}
+  else{const w0=wtAvgAt(stAdd(t,-W)),w1=wtAvgAt(stAdd(t,-W/2)),w2=wtAvgAt(t);
+    if(w0!=null&&w1!=null&&w2!=null&&w0>w1&&w1>w2&&+(w0-w2).toFixed(3)>=+(TH.REDS_WT*w0).toFixed(3))signs.push({k:'weight',why:'Weight falling for weeks'});}
+  // 2 food under use
+  const m=fuWeight(),kg=m?m.weight:null;
+  if(kg&&lasts(wks(e=>{const x=fuWeekLow(stAdd(e,-1),kg);return x?x.low:null;})))signs.push({k:'food',why:'Eating well under what you use'});
+  // 3 mind under your usual
+  const mi={};S().checkins.forEach(c=>{const v=mindOf(c);if(v!=null)mi[c.date]=v;});
+  const u=bandOf(x=>mi[x]??null,a);
+  if(u.m!=null&&lasts(wks(e=>{const v=[];for(let i=0;i<7;i++){const x=mi[stAdd(e,-i)];if(x!=null)v.push(x);}
+    if(v.length<TH.OVR_CI_N)return null;const mm=avg(v);return mm<u.m&&mm<=u.m-TH.OVR_MIND_SD*u.sd;})))signs.push({k:'mind',why:'Mood and energy under your usual'});
+  // 4 ill twice: episodes split by more than TH.ILL_FREE_D clear days
+  let ep=0,prev=null;
+  for(let i=W-1;i>=0;i--){const dt=stAdd(t,-i);if(symOn(dt)>=1||(illness(dt)||{}).lvl==='systemic'){if(prev==null||daysAgoBetween(prev,dt)-1>TH.ILL_FREE_D)ep++;prev=dt;}}
+  if(ep>=2)signs.push({k:'ill',why:'Ill twice in a few weeks'});
+  // 5 sessions harder than planned, in both halves
+  let h1=0,h2=0;
+  for(let i=0;i<W;i++){const x=stMatch(stAdd(t,-i),thr);if(x&&x.m==='harder'){if(i<W/2)h2++;else h1++;}}
+  if(h1+h2>=TH.REDS_HARD&&h1&&h2)signs.push({k:'hard',why:'Sessions feel harder than planned'});
+  return{n:signs.length,signs,on:signs.length>=TH.REDS_N};
+}
+// the watch's VO2max on or before t against the latest value TH.VO2_GAP+ days before it (a progress marker, one value for every sport)
+function vo2Trend(t=td()){
+  const v=Object.entries(S().wellness||{}).filter(([dt,w])=>w&&w.vo2&&dt<=t).sort((a,b)=>a[0]<b[0]?-1:1);if(!v.length)return null;
+  const[ld,lw]=last(v),pr=v.filter(([dt])=>daysAgoBetween(dt,ld)>=TH.VO2_GAP).pop();
+  return{now:lw.vo2,date:ld,before:pr?pr[1].vo2:null,daysApart:pr?daysAgoBetween(pr[0],ld):null,change:pr?+(lw.vo2-pr[1].vo2).toFixed(1):null};
+}
+// a guide, not a promise: Riegel (T2 = T1 x (D2/D1)^TH.RIEGEL) from your best run of TH.RG_MIN_KM+ km in TH.RG_DAYS days;
+// the goal distance from the goal name; a marathon from shorter runs is likely optimistic
+const RG_DIST=[['5K',5],['10K',10],['Half marathon',21.0975]],RG_MARA=42.195;
+function rgGoal(){
+  const g=(S().profile.goalName||'').toLowerCase();
+  return/half/.test(g)?RG_DIST[2]:/marathon/.test(g)?['Marathon',RG_MARA]:/10\s*k/.test(g)?RG_DIST[1]:/5\s*k/.test(g)?RG_DIST[0]:null;
+}
+function raceGuide(t=td()){
+  const R=TH.RIEGEL,f=(w,km)=>w.durMin*Math.pow(km/w.distKm,R);
+  const rs=stWs().filter(w=>w.type==='Run'&&w.distKm>=TH.RG_MIN_KM&&w.durMin>0&&w.durMin*60/w.distKm>=TH.RG_PACE_MIN&&w.date<=t&&daysAgoBetween(w.date,t)<TH.RG_DAYS);
+  if(!rs.length)return null;
+  const b=rs.reduce((x,w)=>f(w,10)<f(x,10)?w:x),g=rgGoal();
+  return{from:{date:b.date,km:b.distKm,min:b.durMin},list:RG_DIST.map(([k,km])=>({k,km,min:Math.round(f(b,km))})),
+    goal:g?{k:g[0],km:g[1],min:Math.round(f(b,g[1])),opt:g[1]===RG_MARA}:null};
+}
+
 // ── report: a clean one-page summary the user can save as PDF ────────────────
 function buildReport(days=30){
   const d=S(),name=d.profile.name,rng=x=>daysAgo(x.date)<days;
@@ -125,7 +214,7 @@ function buildReport(days=30){
   let sec='';
   sec+=`<h3>Sleep</h3><table>${sc.length?row('Average sleep score',`${Math.round(avg(sc))}/100 (${pl(sc.length,'night')} logged)`)+(deep.length?row('Average deep sleep',fmtDur(Math.round(avg(deep)))):'')+(rem.length?row('Average REM sleep',fmtDur(Math.round(avg(rem)))):''):row('No sleep logged','')}</table>`;
   const wt=ms.filter(m=>m.weight),bp=ms.filter(m=>m.bpSys),hr=ms.filter(m=>m.hr);
-  sec+=`<h3>Body</h3><table>${wt.length?row('Weight',wt.length>1?`${wt[0].weight} → ${last(wt).weight} kg (${r1(last(wt).weight-wt[0].weight)>0?'+':''}${r1(last(wt).weight-wt[0].weight)})`:`${wt[0].weight} kg`):''}${bp.length?row('Blood pressure',`avg ${Math.round(avg(bp.map(m=>m.bpSys)))}/${Math.round(avg(bp.map(m=>m.bpDia)))} mmHg, latest ${last(bp).bpSys}/${last(bp).bpDia} (${pl(bp.length,'reading')})`):''}${hr.length?row('Resting heart rate (manual)',`avg ${Math.round(avg(hr.map(m=>m.hr)))} bpm, latest ${last(hr).hr}`):''}${!wt.length&&!bp.length&&!hr.length?row('No measurements logged',''):''}</table>`;
+  sec+=`<h3>Body</h3><table>${wt.length?row('Weight',wt.length>1?`${wt[0].weight} → ${last(wt).weight} kg (${r1(last(wt).weight-wt[0].weight)>0?'+':''}${r1(last(wt).weight-wt[0].weight)})`:`${wt[0].weight} kg`):''}${bp.length?row('Blood pressure',`avg ${Math.round(avg(bp.map(m=>m.bpSys)))}/${Math.round(avg(bp.map(m=>m.bpDia)))} mmHg, latest ${last(bp).bpSys}/${last(bp).bpDia} (${pl(bp.length,'reading')})${bpBand()&&bpBand().band?`; last ${TH.BP_DAYS} days ${bpBand().word.toLowerCase()}`:''}`):''}${hr.length?row('Resting heart rate (manual)',`avg ${Math.round(avg(hr.map(m=>m.hr)))} bpm, latest ${last(hr).hr}`):''}${!wt.length&&!bp.length&&!hr.length?row('No measurements logged',''):''}</table>`;
   const dm=sl.filter(x=>x.durMin&&slCounts(x)).map(x=>x.durMin),goal=Math.round((d.profile.sleepGoal||7.5)*60);
   const wl=Object.entries(d.wellness||{}).filter(([dt])=>daysAgo(dt)<days).map(x=>x[1]),hv=wl.filter(w=>w.hrv).map(w=>w.hrv),rh=rhrIn(dt=>daysAgo(dt)<days);
   sec+=`<h3>Recovery</h3><table>${dm.length?row('Average time asleep',`${fmtDur(Math.round(avg(dm)))} (goal ${fmtDur(goal)}, ${pl(dm.length,'night')})`)+row('Nights under goal by 1h+',`${dm.filter(m=>m<goal-60).length} of ${dm.length}`):''}${hv.length?row('HRV',`avg ${Math.round(avg(hv))} ms, range ${Math.round(Math.min(...hv))}–${Math.round(Math.max(...hv))}`):''}${rh.length?row('Resting HR (wearable)',`avg ${Math.round(avg(rh))} bpm, range ${Math.round(Math.min(...rh))}–${Math.round(Math.max(...rh))}`):''}${!dm.length&&!hv.length&&!rh.length?row('No sleep duration or HRV data',''):''}</table>`;

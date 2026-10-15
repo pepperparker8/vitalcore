@@ -10,8 +10,17 @@ const ST_MODE={
   hold:['Holding steady','Training time stays where it is until recovery is clearly good.'],
   build:['Building','Recovery is good, so training time goes up a little, about 7 percent.'],
   back:['Coming back','After time off, training time builds back step by step and sessions start a little easier.'],
-  harder:['Harder sessions','Your sessions stepped up, so training time holds steady. Volume or intensity, not both at once.']
+  harder:['Harder sessions','Your sessions stepped up, so training time holds steady. Volume or intensity, not both at once.'],
+  // v132 (R1.5, R5.1, aim)
+  lighter:['Lighter','Your body showed signs of strain on several days, so training time comes down while it catches up.'],
+  maintain:['Holding','You chose to maintain, so training time stays at your usual week.'],
+  weight:['Holding','Your aim is your weight goal, so training time stays at your usual week and food does the work.']
 };
+// v132: what the training is for (profile.aim, set on Insights): 'improve' (build, lighter weeks, peak and taper; the default),
+// 'maintain' (hold your usual week) or 'weight' (training holds, food follows the weight goal)
+const stAim=()=>{const a=(S().profile||{}).aim;return a==='maintain'||a==='weight'?a:'improve';};
+// the one word for a week's mode on the weeks ahead
+const ST_WORD={build:'Building',lighter:'Lighter',easier:'Lighter',recover:'Lighter',hold:'Holding',maintain:'Holding',weight:'Holding',harder:'Holding',back:'Coming back',start:'Getting started'};
 // v121: a return after days off, by the length of the break: [more than N days off, levels down, share of your usual week for each week back]
 const ST_GAP=[[TH.GAP_MID,3,[0.33,0.5,0.75,0.9]],[TH.GAP_SHORT,2,[0.5,0.75,0.9]],[TH.GAP_RESUME,1,[0.65,0.85]]];
 // the two kinds of hard session in each race phase; hard days take turns
@@ -129,8 +138,12 @@ function progAll(){
 }
 // this week's minutes target: usual week x a factor chosen from recovery, the last three weeks and the race phase
 // v121: a return after time off sets the share of the usual week; growth is capped against the last weeks; a level up holds the time
+// v132: two or more warning days last week (Monday to Sunday), or overreaching, make this week lighter (TH.LIGHT_F); two or more so far this
+// week make next week lighter. The aim 'maintain' or 'weight' holds your usual week (no build and no easier week).
 function stWeek(P){
-  const L=raceLoad(),ph=racePhase(),d=S(),ws=stWs(),ret=P?P.ret:stReturn();
+  const L=raceLoad(),ph=racePhase(),d=S(),ws=stWs(),ret=P?P.ret:stReturn(),t=td(),aim=stAim(),thr=stThr(),mon=stMon(t);
+  const ovr=overreach(t,thr).on,wLast=warnDays(stAdd(mon,-1),thr).n,wNow=warnDays(t,thr).days.filter(x=>x.date>=mon).length;
+  const light=wLast>=TH.WARN_N||ovr,lightNext=wNow>=TH.WARN_N||ovr,hold=aim!=='improve';
   const m=new Date(td()+'T12:00:00');m.setDate(m.getDate()-((m.getDay()+6)%7));
   const wk=(o,tr)=>{const a=new Date(m);a.setDate(a.getDate()+o*7);const b=new Date(a);b.setDate(b.getDate()+7);const A=ymd(a),B=ymd(b);
     return ws.filter(w=>w.date>=A&&w.date<B&&(!tr||stTrains(w))).reduce((t,w)=>t+(w.durMin||0),0);};
@@ -145,8 +158,10 @@ function stWeek(P){
   if(pm<1){mode='taper';f=pm;}
   else if(ret){mode='back';f=ret.pct;}
   else if(!base){mode='start';f=1;}
+  else if(light){mode='lighter';f=TH.LIGHT_F;}
   // v118 (A3 ledger): burnout lives under Mind and spends here, on the week, not on today's verdict
   else if((rAvg!=null&&rAvg<scoreCuts().mod)||calcMind().burnoutHigh){mode='recover';f=0.85;}
+  else if(hold){mode=aim;f=1;}
   else if(full){mode='easier';f=0.75;}
   else if(rAvg==null||rAvg<scoreCuts().warn||p3[2]>base*TH.RAMP_CAUTION){mode='hold';f=Math.min(1.2,pm);}
   // a session level went up in the last 7 days: hold the time (volume or intensity, not both at once)
@@ -154,7 +169,8 @@ function stWeek(P){
   else{mode='build';f=Math.min(1.2,1.07*pm);}
   const r5=n=>Math.max(5,Math.round(n/5)*5);
   // next week: easier if this one would be the third full week; back to normal after an easier week
-  const nextF=mode==='back'?ret.nextPct:mode==='easier'||mode==='recover'?1:mode!=='taper'&&mode!=='start'&&p3T[1]>=base*0.9&&p3T[2]>=base*0.9?0.75:f;
+  const nextF0=mode==='back'?ret.nextPct:mode==='easier'||mode==='recover'||mode==='lighter'||hold?1:mode!=='taper'&&mode!=='start'&&p3T[1]>=base*0.9&&p3T[2]>=base*0.9?0.75:f;
+  const nextF=lightNext?Math.min(nextF0,TH.LIGHT_F):nextF0;
   const B=mode==='back'?ret.base:base;
   let target=B?r5(B*f):null;
   // growth caps: at most TH.WK_UP over last week and TH.WK_UP2 over the week before (never below your usual week)
@@ -164,11 +180,43 @@ function stWeek(P){
     if(ph&&ph.n>=0){const n=ph.n-i;if(n<0)return 0.5;const x=RACE_PH.find(r=>n>=r.min);if(x.mult<1)return x.mult;}
     return next?nextF:f;
   };
-  return{mode,f,base:B,now:Math.round(L.now),target,label:mode==='taper'&&ph?ph.k:ST_MODE[mode][0],why:ST_MODE[mode][1],fAt,ph,ret};
+  return{mode,f,base:B,now:Math.round(L.now),target,label:mode==='taper'&&ph?ph.k:ST_MODE[mode][0],why:ST_MODE[mode][1],fAt,ph,ret,
+    aim,light,lightNext,ovr,warnLast:wLast,warnNow:wNow,nextF,p3,p3T,mon,pm};
+}
+// v132: the weeks ahead, this week first, to the race week (at most TH.WKS_MAX rows) or TH.WKS_AHEAD rows: [{from (Monday), mode, word, min}].
+// Each later week is projected with the same rules as stWeek on the weeks before it (the planned ones count as done): the race phase,
+// a comeback's steps, a lighter next week, the aim, an easier week after three full ones, else building within the growth caps.
+// Worked out each time, never stored.
+function stWeeks(W){
+  W=W||stWeek(progAll());
+  const r5=n=>Math.max(5,Math.round(n/5)*5),t=td(),mon=W.mon,ph=W.ph&&W.ph.n>=0?W.ph:null,ret=W.ret;
+  const word=(m,p)=>m==='taper'?(p?p.k:'Taper'):m==='build'&&p&&p.k==='Peak'?'Peak':ST_WORD[m]||'Holding';
+  const out=[{from:mon,mode:W.mode,word:word(W.mode,ph),min:r5(Math.max(W.now,W.target||0))}];
+  if(!W.base)return out;
+  const rows=ph?Math.min(TH.WKS_MAX,Math.floor((ph.n+stWd(t))/7)+1):TH.WKS_AHEAD;
+  // the weeks before this one (all training minutes, as raceLoad), then each planned week
+  const ws=stWs(),wk=o=>{const A=stAdd(mon,o*7),B=stAdd(mon,o*7+7);return ws.filter(w=>w.date>=A&&w.date<B).reduce((s,w)=>s+(w.durMin||0),0);};
+  const arr=[-4,-3,-2,-1].map(wk),full=[...W.p3T];arr.push(out[0].min);full.push(out[0].min);
+  const gp=ret?(ST_GAP.find(b=>ret.gap>b[0])||[0,0,[]])[2]:null;
+  for(let k=1;k<rows;k++){
+    const from=stAdd(mon,k*7),prev=arr.slice(-4).filter(x=>x>0),base=prev.length?avg(prev):W.base;
+    const p=ph?RACE_PH.find(r=>ph.n-(k*7-stWd(t))>=r.min)||null:null;
+    let mode,min;
+    if(p&&p.mult<1){mode='taper';min=base*p.mult;}
+    else if(ret&&gp&&ret.week-1+k<gp.length){mode='back';min=ret.base*gp[ret.week-1+k];}
+    else if(k===1&&W.lightNext){mode='lighter';min=base*TH.LIGHT_F;}
+    else if(W.aim!=='improve'){mode=W.aim;min=base;}
+    else if(full.slice(-3).every(x=>x>=base*0.9)){mode='easier';min=base*0.75;}
+    else{mode='build';const pm=p?p.mult:1,a=arr[arr.length-1],b=arr[arr.length-2];min=Math.max(base,Math.min(base*Math.min(1.2,1.07*pm),Math.max(base,a*TH.WK_UP),Math.max(base,b*TH.WK_UP2)));}
+    min=r5(min);arr.push(min);full.push(mode==='easier'||mode==='lighter'?0:min);
+    out.push({from,mode,word:word(mode,p),min});
+    if(p&&p.k==='Race week')break;
+  }
+  return out;
 }
 function strategy(){
   const sc=heroScore();if(sc===null)return null;
-  const d=S(),t=td(),ws=stWs(),P=progAll(),W=stWeek(P),v=coachVerdict(),ret=P.ret,ir=injRet(),thr=stThr(),H=d.planHist||{};
+  const d=S(),t=td(),ws=stWs(),P=progAll(),W=stWeek(P),v=coachVerdict(),ret=P.ret,ir=injRet(),thr=stThr(),H=d.planHist||{},ib=illBack(t);
   const rec=ws.filter(w=>daysAgo(w.date)>=0&&daysAgo(w.date)<=42);
   const cnt=ty=>rec.filter(w=>w.type===ty).length;
   const med=ty=>{const a=rec.filter(w=>w.type===ty&&w.durMin).map(w=>w.durMin).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:ST_DEF[ty]||40;};
@@ -244,7 +292,7 @@ function strategy(){
     // v121: no hard days early in a return after time off, at most one later in it or while coming back from an injury
     if(ret)maxHard=Math.min(maxHard,ret.pct<0.75?0:1);
     if(ir)maxHard=Math.min(maxHard,1);
-    const canHard=!prev.hard&&nHard<maxHard&&sev<2&&!recOn(dt);
+    const illOn=!!(ib&&dt<ib.hardFrom),canHard=!prev.hard&&nHard<maxHard&&sev<2&&!recOn(dt)&&!illOn;
     // v126: the long session comes first on its day (it was last, so from midweek a hard day took it and the week fell short)
     // an easier week keeps a shorter long session; a comeback, a recovering week, a taper and race week do not have one
     const longOk=wd>=lwd&&!longDone&&(f>=0.9||f>=0.75&&!ret&&W.mode!=='recover')&&!(inWk&&W.target&&W.now>=W.target);
@@ -261,13 +309,13 @@ function strategy(){
         const want=ST_HARD.test(n)?'hard':ST_LONG.test(n)?'long':ST_EASY.test(n)?'easy':type==='Hike'?'steady':null;
         role=want||(longOk&&!planLong?'long':canHard&&!planHard?'hard':'easy');
         why='On your plan.';
-        if(role==='hard'&&!canHard){role='easy';o.bent=true;why=sev>=2?'Plan says hard. Kept easy while your injury is active.':recOn(dt)?`Plan says hard. Kept easy: ${recWhy}.`:prev.hard?'Plan says hard. Kept easy because the day before is hard too.':'Plan says hard. Kept easy to limit hard days this week.';}
+        if(role==='hard'&&!canHard){role='easy';o.bent=true;why=sev>=2?'Plan says hard. Kept easy while your injury is active.':illOn?`Plan says hard. Kept easy: hard sessions wait until you have been well for ${ib.below?TH.ILL_BELOW_D:TH.ILL_FREE_D} days.`:recOn(dt)?`Plan says hard. Kept easy: ${recWhy}.`:prev.hard?'Plan says hard. Kept easy because the day before is hard too.':'Plan says hard. Kept easy to limit hard days this week.';}
       }
     }else{
       if(run>=maxRun||nTr>=N){role='rest';why=nTr>=N?`${nTr} sessions in the last 6 days. Rest lets the work sink in.`:run>1?`${run} training days in a row. Rest lets the work sink in.`:'A rest day after training. That is when you adapt.';}
       else{
         role=pick();
-        why=role==='hard'?'Fresh after an easier day. A good day to push.':role==='strength'?(gapStr>=99?'No strength work logged lately.':`No strength work for ${gapStr} days.`):role==='long'?'Your longer session of the week.':recOn(dt)?`Easy: ${recWhy}.`:prev.hard?'Easy day after a hard one.':'Easy volume builds fitness without much fatigue.';
+        why=role==='hard'?'Fresh after an easier day. A good day to push.':role==='strength'?(gapStr>=99?'No strength work logged lately.':`No strength work for ${gapStr} days.`):role==='long'?'Your longer session of the week.':recOn(dt)?`Easy: ${recWhy}.`:illOn&&!prev.hard&&nHard<maxHard&&sev<2&&!hardOff?`Easy: hard sessions wait until you have been well for ${ib.below?TH.ILL_BELOW_D:TH.ILL_FREE_D} days.`:prev.hard?'Easy day after a hard one.':'Easy volume builds fitness without much fatigue.';
         if(role==='strength')type=strT;
         else if(role==='easy'&&alt){type=flip?alt:main;flip=!flip;}
       }
@@ -278,15 +326,25 @@ function strategy(){
       // v118 (A3 ledger): the verdict alone decides rest (a severe injury sets it inside coachVerdict); form no longer bends today
       if(v&&v.lvl==='bad'){
         const was=pl&&pl.type!=='Rest'?` Your plan says ${pl.type}. Move it a day.`:'';
+        if(!['rest','gentle','recover'].includes(role))o.was={role,type};
         role='recover';o.bent=!!was;
         why=(sev>=3?'A serious injury is active.':v.ill&&v.ill.lvl==='systemic'?v.ill.why+' Rest until it clears.':sc<scoreCuts().bad?'Recovery is low, so rest is the training today.':hf?hf.t+'.':'Recovery is the priority today.')+was;
       }else if(role!=='rest'&&role!=='gentle'){
-        const cap=v&&v.ill?'You have symptoms above the neck.':prev.hard?'You trained hard yesterday.':sore>=3?'You are sore today.':v&&v.lvl==='warn'?(bodyLive()?'Body is middling today.':'Recovery is moderate.'):'';
+        // v132 (R1.2 to R1.4, R6.3, R7.2): the first of these that holds keeps today easy, in this order
+        const hz=bodyHrvPart(t).part,sn=shortNight(t),fl=feelLow(t);
+        const cap=v&&v.ill?v.ill.why:prev.hard?'You trained hard yesterday.':hz&&hz.z<=TH.HRV_EASY_Z?'Your HRV is under your usual this week.':sn?`Last night was ${fmtDur(sn.gap)} under your need.`:fl?fl.why:sore>=3?'You are sore today.':v&&v.lvl==='warn'?(bodyLive()?'Body is middling today.':'Recovery is moderate.'):'';
+        const nap=sn&&!(v&&v.ill)&&!prev.hard&&!(hz&&hz.z<=TH.HRV_EASY_Z)?` A ${TH.NAP_MIN} to ${TH.NAP_MAX} minute nap between ${TH.NAP_SUG_FROM}:00 and ${TH.NAP_SUG_TO}:00 helps.`:'';
         if(cap){
-          if(role==='hard'||role==='long'||role==='steady'){o.bent=hasPlan;role='easy';why=cap+' Keep it easy and short.'+(hasPlan&&pl?` Plan: ${pl.type}${pl.note?', '+pl.note:''}.`:'');}
-          else if(role==='strength'){o.light=true;why=cap+' Lift lighter than usual.';}
-          else why=cap+' Build base without adding stress.';
+          o.cap=cap;
+          if(role==='hard'||role==='long'||role==='steady'){o.bent=hasPlan;role='easy';why=cap+(nap?' Keep it easy, later in the day if you can.':' Keep it easy and short.')+nap+(hasPlan&&pl?` Plan: ${pl.type}${pl.note?', '+pl.note:''}.`:'');}
+          else if(role==='strength'){o.light=true;why=cap+' Lift lighter than usual.'+nap;}
+          else why=cap+(nap?' Keep it easy.':' Build base without adding stress.')+nap;
         }else if(role==='hard')why=hasPlan?'On your plan, and you are recovered enough to do it well.':'You are recovered and yesterday was easy. A good day to push.';
+      }
+      // v132 (R6.4): the first session after being unwell is short and easy
+      if(ib&&ib.first&&!['rest','recover','race'].includes(role)){
+        if(role==='hard'||role==='long'||role==='steady'){o.bent=hasPlan;role='easy';}
+        o.back=true;why='First session back after being unwell. Short and easy.';
       }
     }
     // this week's target already reached: no more hard or long sessions this week
@@ -319,6 +377,7 @@ function strategy(){
       else if(role==='long'){name='Long '+type.toLowerCase();const m30=mx30(type);lim=Math.min(m30?m30*TH.LONG_GROW:1e9,type==='Run'&&W.target?W.target*TH.LONG_SHARE:1e9,type==='Run'?TH.LONG_RUN_MAX:1e9);dur=Math.min(Math.max(Math.min(med(type)*1.5,Math.max(mx(type)*1.05,med(type)*1.2)),lng(type))*f,lim);effort=2;how='Easy pace all the way. The length is the training.';}
       else if(role==='steady'){name=type;dur=med(type)*f;effort=3;how='Steady effort. Talking takes some work.';}
       else{name='Easy '+type.toLowerCase();dur=med(type)*0.8*f;effort=2;how='Easy. You can talk in full sentences.';}
+      if(o.back)dur*=TH.ILL_BACK_F;
       let lo=0,hi=0;
       if(dur){lo=r5(dur*0.9);hi=Math.max(lo+5,r5(dur*1.1));if(role==='recover'){lo=15;hi=25;}if(lim&&lim<1e9){hi=Math.min(hi,Math.max(10,Math.floor(lim/5)*5));lo=Math.min(lo,hi-5);}}
       return{effort,name,how,lo,hi};};
@@ -359,7 +418,7 @@ function strategy(){
   return{mode:W.mode,label:W.label,why:W.why,target:W.target,now:W.now,base:W.base?Math.round(W.base):null,hasPlan,days,
     hardN:fut.filter(x=>x.role==='hard'||x.role==='race').length,restN:fut.filter(x=>x.role==='rest'||x.role==='recover').length,
     lo:fut.reduce((a,x)=>a+x.lo,0),hi:fut.reduce((a,x)=>a+x.hi,0),
-    ret,ir,thr,tk:{Run:sessKind('Run',thr),Cycle:sessKind('Cycle',thr),Swim:'eff'},lv:P.lv};
+    ret,ir,thr,wk:W,tk:{Run:sessKind('Run',thr),Cycle:sessKind('Cycle',thr),Swim:'eff'},lv:P.lv};
 }
 // today's session in the short form used by the briefing; null once you have trained (the Today card renderSuggest/#sugCard was removed in v115)
 function suggestWorkout(){
@@ -369,6 +428,7 @@ function suggestWorkout(){
 }
 const stBars=n=>n?`<span class="st-e" role="img" aria-label="Effort ${n} of 5">${[1,2,3,4,5].map(k=>`<i${k<=n?' class="on"':''}></i>`).join('')}</span>`:'';
 const stMeta=x=>[x.dur,x.effort?`effort ${x.effort} of 5`:''].filter(Boolean).join(' · ');
+const stMetaH=x=>[x.dur,x.effort?`effort ${x.effort} of 5`:''].filter(Boolean).map(v=>`<span class="st-nw">${esc(v)}</span>`).join(' · ');
 // v121: your swap for a day (this phone only, past dates dropped); '' goes back to the planned sport. Only sports a role can take are stored.
 const ST_SWAPS=new Set(Object.values(ST_SWAP).flat());
 function stSwapTo(dt,ty){
@@ -441,14 +501,19 @@ function stRetHTML(st){
   else if(r)t=`Coming back after ${r.gap} days off: week ${r.week} of ${r.of} at about ${stPctW(r.pct)} of your usual.`;
   return t?`<div class="st-ret">${esc(t)}</div>`:'';
 }
-// Insights: the 7-day outline with this week's time target
+// Insights: the 7-day outline with this week's time target. v132: it lives inside the Training row of the coach summary
+// (stOutlineHTML), so a swap or a send redraws the summary; the old standalone card is drawn only where it still exists.
 function renderStrategy(){
+  if(typeof renderInsSum==='function'&&$('insSum')){renderInsSum();return;}
   const el=$('stratCard');if(!el)return;
   const st=strategy();
   if(!st){el.style.display='none';return;}
   el.style.display='';
+  el.innerHTML=`<div class="sec">Next 7 days</div><div class="st-mode">${esc(st.label)}</div><div class="set-note" style="margin:2px 0 10px">${esc(st.why)}</div>${stOutlineHTML(st)}`;
+}
+function stOutlineHTML(st,noHead){
   const pc=st.target?Math.min(100,Math.round(st.now/st.target*100)):0;
-  const head=st.target?`<div class="st-tg"><b>${fmtDur(st.now)}</b> of about ${fmtDur(st.target)} this week</div><div class="gl-bar"><div style="width:${pc}%"></div></div>`:'';
+  const head=st.target&&!noHead?`<div class="st-tg"><b>${fmtDur(st.now)}</b> of about ${fmtDur(st.target)} this week</div><div class="gl-bar"><div style="width:${pc}%"></div></div>`:'';
   const t=td();[..._stOpen].forEach(k=>{if(k<t)_stOpen.delete(k);});
   // v121: a row with a session, swaps or a done workout opens to show it; rest and race rows stay plain
   // v123: a reason shows once in the week, so three rest days do not repeat the same sentence
@@ -457,11 +522,10 @@ function renderStrategy(){
     const why=seen.has(x.why)?'':x.why;seen.add(x.why);
     const dt=new Date(x.date+'T12:00:00');
     const r=`<div class="st-r${x.i===0?' now':''}${x.role==='rest'||x.role==='recover'?' off':''}"><div class="st-d">${x.i===0?'Today':PL_DAYS[x.wd]}<small>${dt.getDate()}</small></div>
-     <div class="st-b"><div class="st-n">${esc(x.name)}</div>${stMeta(x)?`<div class="st-s">${esc(stMeta(x))}</div>`:''}${why?`<div class="st-s st-w">${esc(why)}</div>`:''}</div>${stBars(x.effort)}`;
+     <div class="st-b"><div class="st-n">${esc(x.name)}</div>${stMeta(x)?`<div class="st-s">${stMetaH(x)}</div>`:''}${why?`<div class="st-s st-w">${esc(why)}</div>`:''}</div>${stBars(x.effort)}`;
     const body=(x.role==='rest'||x.role==='race'?'':stRowX(x,st))+stSendHTML(x,st);
     if(!body)return r+'</div>';
     return`<details class="st-x" data-d="${x.date}" ontoggle="stTog(this)"${_stOpen.has(x.date)?' open':''}><summary>${r}<svg class="st-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></summary><div class="st-sx">${body}</div></details>`;
   }).join('');
-  el.innerHTML=`<div class="sec">Next 7 days</div><div class="st-mode">${esc(st.label)}</div><div class="set-note" style="margin:2px 0 10px">${esc(st.why)}</div>${stRetHTML(st)}${head}
-   <div class="st-list">${rows}</div>`;
+  return`${stRetHTML(st)}${head}<div class="st-list">${rows}</div>`;
 }

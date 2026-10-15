@@ -14,7 +14,7 @@ function refreshActive(){
   if(tab==='trends')renderTrendsTab();
   if(tab==='health')renderHealth();
   if(tab==='log'){if(ciKey()!==_ciKey)fillCI();renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderFood();renderSleepBars();}
-  if(tab==='insights'){renderCoach();renderStrategy();renderDigest();renderInsightHistory();showTodayInsight();}
+  if(tab==='insights'){renderInsCall();renderInsWatch();renderInsSum();renderDigest();renderInsightHistory();renderInsWeek();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
 function logGo(id){switchTab('log');setTimeout(()=>lgOpen(id),80);}

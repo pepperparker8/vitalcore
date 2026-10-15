@@ -318,15 +318,16 @@
 
 <!-- INSIGHTS -->
 <div class="page page-fade" id="pg-insights">
-  <div class="ins-hdr"><div class="ins-title">Your Health Briefing</div><div class="ins-stamp" id="insStamp">Not yet generated today</div></div>
-  <div id="insContent"><div class="ins-block" style="text-align:center;padding:32px"><div style="margin-bottom:12px"><svg class="ui-i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z"/></svg></div><div style="font-size:14px;font-weight:600;margin-bottom:6px">AI briefing</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">Today, this week and your trends in one read, with what to do next.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
-  <div class="card" id="coachCard"></div>
-  <div class="card" id="stratCard" style="display:none"></div>
-  <div class="card" id="digestCard"></div>
-  <div class="ins-hist-sec" id="insHistSec" style="display:none">
-    <div class="ins-hist-head"><span>Past briefings</span><span class="ins-hist-cnt" id="insHistCnt">0</span></div>
-    <div class="arch-trend" id="archTrend" style="display:none"><div class="arch-trend-lbl">Pattern this month</div><div class="arch-trend-val" id="archTrendVal">—</div></div>
-    <div id="insHistList"></div>
+  <div id="insCall"></div><div id="insWatch"></div><div id="insSum"></div>
+  <div id="insContent"><div class="cp-card ins-card"><div class="cp-ch"><b>Briefing</b></div><div class="ins-lead">Today, this week and what is working, in one short read.</div><button class="ins-gen" onclick="genInsight()">Generate briefing</button></div></div>
+  <div class="cp-card ins-rows" id="insWeek">
+    <button type="button" class="ins-rowc" id="insWkBtn" aria-expanded="false" aria-controls="digestCard" onclick="insRowTog('wk')"><b>This week</b><span class="r"><svg class="ui-i ins-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></button>
+    <div class="ins-rx" id="digestCard" hidden></div>
+    <button type="button" class="ins-rowc" id="insHiBtn" aria-expanded="false" aria-controls="insHistSec" onclick="insRowTog('hi')" hidden><b>Earlier briefings</b><span class="r"><span id="insHistCnt">0</span><svg class="ui-i ins-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></button>
+    <div class="ins-rx ins-hist-sec" id="insHistSec" style="display:none">
+      <div class="arch-trend" id="archTrend" style="display:none"><div class="arch-trend-lbl">Pattern this month</div><div class="arch-trend-val" id="archTrendVal">—</div></div>
+      <div id="insHistList"></div>
+    </div>
   </div>
 </div>
 
@@ -354,7 +355,7 @@
     <div class="set-sec"><div class="set-title">Target Zones</div>
       <div class="fg"><div class="fl">SLEEP GOAL</div><div class="fr"><input type="number" class="inp inp-sm" id="sSlpH" placeholder="7" min="4" max="12"><span class="inp-unit">h</span><input type="number" class="inp inp-sm" id="sSlpM" placeholder="30" min="0" max="59"><span class="inp-unit">min</span></div></div>
       <div class="fg"><div class="fl">WEIGHT GOAL (kg)</div><input type="number" class="inp" id="sWt" placeholder="72" step="0.5"></div>
-      <div class="fg"><div class="fl">FOOD GOAL</div><select class="sel-inp" id="sNut"><option value="keep">Keep weight</option><option value="lose">Lose fat</option><option value="build">Build muscle</option></select><div class="set-note">Sets the daily protein, carbs and fat targets on Today.</div></div>
+      <div class="fg"><div class="fl">FOOD GOAL</div><select class="sel-inp" id="sNut"><option value="keep">Keep weight</option><option value="lose">Lose fat</option><option value="build">Build muscle</option></select><div class="set-note">Sets the daily protein, carbs and fat targets on Insights.</div></div>
       <div class="fg"><div class="fl">SEX</div><select class="sel-inp" id="sSex"><option value="">Not set</option><option value="m">Male</option><option value="f">Female</option></select><div class="set-note">Only used to estimate how many calories you use in a day.</div></div>
       <div class="fg"><div class="fl">RESTING HR GOAL (bpm)</div><input type="number" class="inp" id="sHR" placeholder="55"></div>
     </div>
@@ -477,6 +478,7 @@
 <script src="js/health.js"></script>
 <script src="js/digest.js"></script>
 <script src="js/insights.js"></script>
+<script src="js/coachpage.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -458,11 +458,12 @@ function clearInjury(id){
 }
 
 // ── BLOOD MARKERS ────────────────────────────────────────────────────────────
-const BM_RNG={glucose:{ok:[70,100],warn:[100,125]},chol:{ok:[0,200],warn:[200,239]},uric:{ok:[3.5,7.2],warn:[7.2,8.0]}};
+// v132: upper edges are exclusive (glucose 100 is raised, 126 high; cholesterol 200 borderline, 240 high; uric acid from 6.8)
+const BM_RNG={glucose:{ok:[70,TH.GLU_PRE],warn:[TH.GLU_PRE,TH.GLU_HIGH]},chol:{ok:[0,200],warn:[200,240]},uric:{ok:[3.5,TH.URIC_DOC],warn:[TH.URIC_DOC,8.0]}};
 function scoreBM(v,t){
   const rng=BM_RNG[t];if(!rng||!v)return{score:null,status:'—'};
-  if(v>=rng.ok[0]&&v<=rng.ok[1])return{score:90,status:'ok'};
-  if(v>=rng.warn[0]&&v<=rng.warn[1])return{score:55,status:'warn'};
+  if(v>=rng.ok[0]&&v<rng.ok[1])return{score:90,status:'ok'};
+  if(v>=rng.warn[0]&&v<rng.warn[1])return{score:55,status:'warn'};
   return{score:20,status:'bad',low:v<rng.ok[0]};
 }
 function saveBlood(){

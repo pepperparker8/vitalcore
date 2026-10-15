@@ -214,6 +214,21 @@ function bodyRhrOn(date){
   if(date===td()){const pn=polarOn(date),rc=pn&&pn.data&&pn.data.rc;if(rc&&rc.rri>0)return{v:Math.round(60000/rc.rri),src:'polar'};}
   return null;
 }
+// v132: Body's HRV and resting heart rate parts for one day, split out of calcBody (same maths) so the illness check and the warnings read
+// the same numbers: {part, why}. HRV: the mean of the last 7 nights (that day and the 6 before) against the 28 days before it; z is for a
+// 7-night mean, so the band SD is divided by TH.HRV_SE. Resting HR: that day against the 28 days before, from one source (all Intervals.icu
+// values, or all manual readings), inverted.
+function bodyHrvPart(t=td()){
+  const o=daysAgo(t),h7=[];for(let i=0;i<7;i++){const h=bodyHrvOn(dAgo(o+i));if(h)h7.push(h.v);}
+  const hb=bandOf(dt=>wellOn('hrv',dt),t);
+  if(h7.length>=TH.HRV_MIN_7&&hb.m!=null){const v7=avg(h7),s=Math.max(hb.sd,TH.HRV_FLOOR),z=(v7-hb.m)/(s/TH.HRV_SE);return{part:{pts:clampN(50+TH.Z_GAIN*z),v7,m:hb.m,sd:s,z,n7:h7.length,nBase:hb.n,today:bodyHrvOn(t)},why:null};}
+  return{part:null,why:h7.length<TH.HRV_MIN_7?`HRV on ${h7.length} of the last 7 nights, needs ${TH.HRV_MIN_7}`:`HRV baseline has ${hb.n} of ${TH.MIN_BASE_DAYS} days`};
+}
+function bodyRhrPart(t=td()){
+  const o=daysAgo(t),rv=bodyRhrOn(t),rb=rv?toBand(rhrIn(dt=>{const a=daysAgo(dt);return a>=o+1&&a<=o+28;},rv.src==='man'?'man':'icu')):{m:null,sd:null,n:0};
+  if(rv&&rb.m!=null){const s=Math.max(rb.sd,TH.RHR_FLOOR),z=(rv.v-rb.m)/s;return{part:{pts:clampN(50-TH.Z_GAIN*z),v:rv.v,m:rb.m,sd:s,z,nBase:rb.n,src:rv.src},why:null};}
+  return{part:null,why:!rv?(o?'no resting heart rate for that day':'no resting heart rate for today yet'):`resting heart rate baseline has ${rb.n} of ${TH.MIN_BASE_DAYS} days`};
+}
 // form (fitness minus fatigue) on a day: today's from the last sync, an earlier day's from that day's wellness
 function tsbOn(date){const d=S();if(date===td())return d.intervalsData&&d.intervalsData.tsb!=null?d.intervalsData.tsb:null;const w=d.wellness[date];return w&&w.ctl!=null&&w.atl!=null?Math.round((w.ctl-w.atl)*10)/10:null;}
 // what you needed for one night: the goal, plus the strain of the day before, plus recent debt (sleepNeed); shared by Body, the factor row and the sleep sheet
@@ -223,15 +238,9 @@ function bodyNight(date=td()){const d=S(),o=daysAgo(date);for(let i=0;i<=1;i++){
 // v129: any day (Today's day browser, the Recovery sheet); no date = today, exactly as before
 function calcBody(date=td()){
   const d=S(),t=date,o=daysAgo(t),parts={hrv:null,rhr:null,sleep:null},missing=[];
-  // HRV: the mean of the last 7 nights (that day and the 6 before) against the 28 days before it; z is for a 7-night mean, so the band SD is divided by TH.HRV_SE
-  const h7=[];for(let i=0;i<7;i++){const h=bodyHrvOn(dAgo(o+i));if(h)h7.push(h.v);}
-  const hb=bandOf(dt=>wellOn('hrv',dt),t);
-  if(h7.length>=TH.HRV_MIN_7&&hb.m!=null){const v7=avg(h7),s=Math.max(hb.sd,TH.HRV_FLOOR),z=(v7-hb.m)/(s/TH.HRV_SE);parts.hrv={pts:clampN(50+TH.Z_GAIN*z),v7,m:hb.m,sd:s,z,n7:h7.length,nBase:hb.n,today:bodyHrvOn(t)};}
-  else missing.push({k:'hrv',why:h7.length<TH.HRV_MIN_7?`HRV on ${h7.length} of the last 7 nights, needs ${TH.HRV_MIN_7}`:`HRV baseline has ${hb.n} of ${TH.MIN_BASE_DAYS} days`});
-  // resting HR: that day against the 28 days before, from one source (all Intervals.icu values, or all manual readings), inverted
-  const rv=bodyRhrOn(t),rb=rv?toBand(rhrIn(dt=>{const a=daysAgo(dt);return a>=o+1&&a<=o+28;},rv.src==='man'?'man':'icu')):{m:null,sd:null,n:0};
-  if(rv&&rb.m!=null){const s=Math.max(rb.sd,TH.RHR_FLOOR),z=(rv.v-rb.m)/s;parts.rhr={pts:clampN(50-TH.Z_GAIN*z),v:rv.v,m:rb.m,sd:s,z,nBase:rb.n,src:rv.src};}
-  else missing.push({k:'rhr',why:!rv?(o?'no resting heart rate for that day':'no resting heart rate for today yet'):`resting heart rate baseline has ${rb.n} of ${TH.MIN_BASE_DAYS} days`});
+  // HRV: the mean of the last 7 nights against the 28 days before; resting HR: that day against the 28 days before (v132: bodyHrvPart, bodyRhrPart)
+  const H=bodyHrvPart(t);if(H.part)parts.hrv=H.part;else missing.push({k:'hrv',why:H.why});
+  const R=bodyRhrPart(t);if(R.part)parts.rhr=R.part;else missing.push({k:'rhr',why:R.why});
   // sleep: the night ending that day, else the day before, against what you needed that night: 100 at the full need, 0 at TH.SLEEP_FLOOR of it; Polar's solidity (0 to 100) takes TH.SOLIDITY_W when present
   const sl=bodyNight(t);
   if(sl&&!slCounts(sl))missing.push({k:'sleep',why:'your band ran out of battery during the night'});   // v127: missing, not short
@@ -271,18 +280,154 @@ function calcMind(){
   const b=calcBurnout();
   return{state:score==null?null:score>=TH.MIND_GOOD?'Good':score>=TH.MIND_FLAT?'Flat':'Strained',score,burnout:b.score,burnoutHigh:b.score>=TH.BURNOUT_HIGH,checkin:ci};
 }
-// Illness gate (A4). A heuristic, the "neck rule" coaches use, not a diagnosis: symptoms below the neck mean rest;
-// above the neck is mild unless the overnight signals also move (breathing up together with resting HR up or HRV down).
-function illness(){
-  const ci=S().checkins.find(c=>c.date===td())||null,sym=ci&&ci.symptoms!=null?ci.symptoms:0;
-  if(sym>=2)return{lvl:'systemic',why:'Your check-in says symptoms below the neck.'};
-  const pv=latestOf('resp'),pb=pv&&pv.age<=1?bandOf(dt=>wellOn('resp',dt),td()):null;
-  if(pv&&pb&&pb.m!=null&&pv.v>=pb.m+TH.ILL_RESP){
-    const B=calcBody().parts,rz=B.rhr?B.rhr.z:null,hz=B.hrv?B.hrv.z:null;
-    if((rz!=null&&rz>=TH.ILL_RHR_Z)||(hz!=null&&hz<=TH.ILL_HRV_Z))return{lvl:'systemic',why:`Breathing is ${pv.v.toFixed(1)} a minute against your usual ${pb.m.toFixed(1)}, and ${rz!=null&&rz>=TH.ILL_RHR_Z?'resting heart rate is up':'HRV is down'}.`};
+// Illness gate (A4, v132 R6.3). A heuristic, the "neck rule" coaches use, not a diagnosis: symptoms below the neck mean rest at once. The
+// overnight signs (breathing TH.ILL_RESP a minute over its 28-day usual, with resting HR z TH.ILL_RHR_Z or more, or 7-night HRV z
+// TH.ILL_HRV_Z or less) mean rest on TH.ILL_NIGHTS nights in a row, or on one night with symptoms above the neck; one night alone keeps the
+// day easy, because heat or a late drink can move a single night. {lvl 'systemic'|'mild', kind 'below'|'body'|'neck', why, fact, nights}
+const symOn=dt=>{const c=S().checkins.find(x=>x.date===dt);return c&&c.symptoms!=null?c.symptoms:0;};
+// the overnight signs on the night ending dt: {date, v, m, rhrUp, hrvDown}, or null
+function illSigns(dt){
+  const v=wellOn('resp',dt);if(v==null)return null;
+  const b=bandOf(x=>wellOn('resp',x),dt);if(b.m==null||v<b.m+TH.ILL_RESP)return null;
+  const R=bodyRhrPart(dt).part,H=bodyHrvPart(dt).part,up=!!(R&&R.z>=TH.ILL_RHR_Z),dn=!!(H&&H.z<=TH.ILL_HRV_Z);
+  return up||dn?{date:dt,v,m:b.m,rhrUp:up,hrvDown:dn}:null;
+}
+// the latest night with breathing (that day or the one before) and its signs
+function illNight(dt=td()){const l=latestOf('resp',dt);return l&&l.age<=1?illSigns(dAgo(daysAgo(dt)+l.age)):null;}
+function illness(date=td()){
+  const sym=symOn(date);
+  if(sym>=2)return{lvl:'systemic',kind:'below',why:'Your check-in says symptoms below the neck.'};
+  const n0=illNight(date);
+  if(n0){
+    let n=1;while(n<TH.ILL_DOC_D&&illSigns(stAdd(n0.date,-n)))n++;
+    const run=n>=TH.ILL_NIGHTS,more=run?`, ${n} nights running`:sym===1?', with symptoms above the neck':'';
+    return{lvl:run||sym===1?'systemic':'mild',kind:'body',nights:n,resp:n0.v,rhrUp:n0.rhrUp,hrvDown:n0.hrvDown,
+      why:`Your body may be fighting something: ${n0.rhrUp?'breathing and resting heart rate are up':'breathing is up and HRV is down'}${more}.`,
+      fact:`Breathing ${n0.v.toFixed(1)} a minute against a usual ${n0.m.toFixed(1)}, ${n0.rhrUp?'resting heart rate up':'HRV down'}${more}.`};
   }
-  if(sym===1)return{lvl:'mild',why:'Your check-in says symptoms above the neck.'};
+  if(sym===1)return{lvl:'mild',kind:'neck',why:'Your check-in says symptoms above the neck.'};
   return null;
+}
+// v132 coming back (R6.4): after symptoms or a rest-level night, the first session is short and easy (first: nothing trained since) and hard
+// days wait until hardFrom, TH.ILL_FREE_D clear days after the last ill day (TH.ILL_BELOW_D after symptoms below the neck).
+// {last, below, first, hardFrom}, or null while still ill (the gate handles the day) or once it is over
+function illBack(date=td()){
+  if(illness(date))return null;
+  let last=null,below=false,hf=null;
+  for(let i=1;i<=TH.ILL_BELOW_D;i++){
+    const dt=stAdd(date,-i),s=symOn(dt);
+    if(s<1){const il=illness(dt);if(!il||il.lvl!=='systemic')continue;}
+    const h=stAdd(dt,(s>=2?TH.ILL_BELOW_D:TH.ILL_FREE_D)+1);
+    if(!last)last=dt;if(s>=2)below=true;if(!hf||h>hf)hf=h;
+  }
+  if(!last)return null;
+  const thr=stThr(),first=!stWs().some(w=>w.date>last&&w.date<=date&&stTrains(w,thr));
+  return first||date<hf?{last,below,first,hardFrom:hf}:null;
+}
+// v132 see a doctor (R6.5): symptoms checked in on TH.ILL_DOC_D days or more; a check-in without symptoms, or more than TH.ILL_FREE_D days
+// in a row without one, ends the stretch. {days, since} or null
+function illDoc(date=td()){
+  const C={};S().checkins.forEach(c=>{if(c.symptoms!=null)C[c.date]=c.symptoms;});
+  let since=null,gap=0;
+  for(let i=0;;i++){
+    const dt=stAdd(date,-i),s=C[dt];
+    if(s==null){if(++gap>TH.ILL_FREE_D)break;continue;}
+    if(s<1)break;gap=0;since=dt;
+  }
+  if(!since)return null;const days=daysAgoBetween(since,date)+1;
+  return days>=TH.ILL_DOC_D?{days,since}:null;
+}
+// ── v132 SIGNALS (docs/research-v132.md) ── worked out on demand, never stored
+// how you feel (R1.3): the day's check-in reads Strained, or low energy (TH.FEEL_EN or less) with soreness TH.FEEL_SORE or more
+function feelLow(dt=td()){
+  const c=S().checkins.find(x=>x.date===dt);if(!c)return null;
+  const m=mindOf(c);if(m!=null&&m<TH.MIND_FLAT)return{k:'mind',why:'Your check-in reads strained.'};
+  if(c.energy&&c.energy<=TH.FEEL_EN&&c.soreness>=TH.FEEL_SORE)return{k:'sore',why:'Your check-in says low energy and sore.'};
+  return null;
+}
+// a short night (R7.2): the night ending t, counted, TH.SHORT_NIGHT minutes or more under what you needed. {gap, need, min} or null
+function shortNight(t=td()){
+  const sl=last(S().sleepLogs.filter(x=>x.date===t&&x.durMin>0));
+  if(!sl||!slCounts(sl))return null;
+  const need=needOf(sl),gap=need-sl.durMin;
+  return gap>=TH.SHORT_NIGHT?{gap,need,min:sl.durMin}:null;
+}
+// load by date from training you logged (example data only while there is nothing else), one pass
+function loadMap(){const o={};stWs().forEach(w=>{o[w.date]=(o[w.date]||0)+wLoad(w);});return o;}
+const loadSum=(L,end,from,to)=>{let s=0;for(let i=from;i<to;i++)s+=L[stAdd(end,-i)]||0;return s;};
+// warning days (R1.5): days in the 7 ending t with HRV down (z TH.HRV_EASY_Z or lower), a low check-in, heart rate up at pace twice in a
+// row, or the overnight body signs. {n, days[{date, why[]}]}; TH.WARN_N or more make next week lighter
+function warnDays(t=td(),thr=stThr()){
+  const hp=new Set();hrPaceList(t,thr).forEach(x=>{if(x.run)hp.add(x.w.date);});
+  const days=[];
+  for(let i=0;i<7;i++){
+    const dt=stAdd(t,-i),why=[],H=bodyHrvPart(dt).part;
+    if(H&&H.z<=TH.HRV_EASY_Z)why.push('hrv');
+    if(feelLow(dt))why.push('feel');
+    if(hp.has(dt))why.push('pace');
+    if(illSigns(dt))why.push('body');
+    if(why.length)days.push({date:dt,why});
+  }
+  return{n:days.length,days};
+}
+// overreaching (R5.1, R5.2): the 7 days ending a day had Mind under its usual (TH.OVR_CI_N+ full check-ins, their mean TH.OVR_MIND_SD SD
+// or more under the 28 days before), 2+ sessions harder than planned or heart rate up at pace twice in a row, and more load than the
+// 4-week mean. days = how many days in a row up to t that held (counted to TH.OVR_DOC); on from TH.OVR_DAYS, doc from TH.OVR_DOC
+function overreach(t=td(),thr=stThr()){
+  const L=loadMap(),mi={};S().checkins.forEach(c=>{const m=mindOf(c);if(m!=null)mi[c.date]=m;});
+  const hp=hrPaceList(t,thr).filter(x=>x.run).map(x=>x.w.date),hd={};
+  const harder=dt=>{if(!(dt in hd)){const m=stMatch(dt,thr);hd[dt]=!!(m&&m.m==='harder');}return hd[dt];};
+  const C=d=>{
+    const a=stAdd(d,-6),v=[];for(let i=0;i<7;i++){const x=mi[stAdd(d,-i)];if(x!=null)v.push(x);}
+    if(v.length<TH.OVR_CI_N)return false;
+    const u=bandOf(x=>mi[x]??null,a),m=avg(v);if(u.m==null||!(m<u.m&&m<=u.m-TH.OVR_MIND_SD*u.sd))return false;
+    let h=0;for(let i=0;i<7;i++)if(harder(stAdd(d,-i)))h++;
+    if(h<2&&!hp.some(x=>x>=a&&x<=d))return false;
+    const base=loadSum(L,d,7,35)/4;return base>0&&loadSum(L,d,0,7)>base;
+  };
+  let days=0;while(days<TH.OVR_DOC&&C(stAdd(t,-days)))days++;
+  return{on:days>=TH.OVR_DAYS,days,doc:days>=TH.OVR_DOC};
+}
+// monotony (R2.2): the 7 days ending t, rest days 0: their mean over their SD above TH.MONO_HI (or the same load every day), in a week over
+// the 4-week mean. {mono, on, wk, base}
+function monotony(t=td()){
+  const L=loadMap(),a=[];for(let i=0;i<7;i++)a.push(L[stAdd(t,-i)]||0);
+  const r=meanSd(a),wk=loadSum(L,t,0,7),base=loadSum(L,t,7,35)/4,mono=r.sd>0?r.m/r.sd:null;
+  return{mono,on:r.m>0&&base>0&&wk>base&&(r.sd===0||mono>TH.MONO_HI),wk,base};
+}
+// the session mix (R3.1): training sessions in the 28 days ending t, the share that was not hard (a hard effort, or TH.HARD_MIN+ hard
+// minutes) and the most hard ones in any 7 days. on when TH.MIX_N+ sessions and the easy share is under TH.EASY_SHARE or a week had more than TH.HARD_7
+function sessMix28(t=td(),thr=stThr()){
+  const from=stAdd(t,-27),W=stWs().filter(w=>w.date>=from&&w.date<=t&&stTrains(w,thr));
+  const H=W.filter(w=>{if(wkHard(w,thr))return true;const m=wkMix(w,thr);return!!(m&&m.hard>=TH.HARD_MIN);}).map(w=>w.date);
+  let h7=0;for(let i=0;i<=21;i++){const a=stAdd(t,-i-6),b=stAdd(t,-i);h7=Math.max(h7,H.filter(x=>x>=a&&x<=b).length);}
+  const n=W.length,easy=n?(n-H.length)/n:null;
+  return{n,hard:H.length,easyShare:easy,hard7max:h7,on:n>=TH.MIX_N&&(easy<TH.EASY_SHARE||h7>TH.HARD_7)};
+}
+// the correlation needed for n paired days (C3): two-tailed 5% (TH.CORR_Z) through Fisher's z; 0.53 at 14 days, 0.36 at 30
+const rCrit=n=>n>3?Math.tanh(TH.CORR_Z/Math.sqrt(n-3)):1;
+// v132 habits and sleep (C3, "tends to go with", never "causes"): over the last TH.HAB_DAYS counted nights, time asleep after a
+// habit against without it, each habit with TH.CORR_GRP+ nights on both sides and |r| at least rCrit(n); the check-in of the day
+// before a night holds that evening's coffee and mindfulness. Fixed order: bedtime, mindfulness, late coffee
+function habitSleep(t=td()){
+  const ex=isExampleOnly(),o=daysAgo(t);
+  const N=S().sleepLogs.filter(r=>r.durMin>0&&(ex||!r.isEx)&&daysAgo(r.date)>=o&&daysAgo(r.date)<o+TH.HAB_DAYS&&slCounts(r));
+  if(!N.length)return[];
+  const B=N.filter(r=>slHmOk(r.bed)).map(r=>slNoon(r.bed)),bm=B.length?Math.round(dyMed(B)/TH.CAF_ROUND)*TH.CAF_ROUND:null;
+  const ci=r=>ciOn(stAdd(r.date,-1));
+  const H=[
+    {k:'bed',label:bm==null?'':`Bed before ${fuClk(bm+720)}`,on:r=>slHmOk(r.bed)?slNoon(r.bed)<bm:null},
+    {k:'mind',label:`${TH.HAB_MIND} min or more of mindfulness`,on:r=>{const c=ci(r);return c?(c.mindfulMin||0)>=TH.HAB_MIND:null;}},
+    {k:'coffee',label:'Coffee after 14:00',on:r=>{const c=ci(r);return c&&c.coffee!=null?c.coffee>0&&!!c.coffeeLate:null;}}
+  ];
+  return H.map(h=>{
+    if(h.k==='bed'&&bm==null)return null;
+    const P=N.map(r=>{const v=h.on(r);return v==null?null:[v?1:0,r.durMin];}).filter(Boolean);
+    const y=P.filter(a=>a[0]),n0=P.filter(a=>!a[0]);
+    if(y.length<TH.CORR_GRP||n0.length<TH.CORR_GRP)return null;
+    const r=pearson(P);if(r==null||Math.abs(r)<rCrit(P.length))return null;
+    return{k:h.k,label:h.label,diffMin:Math.round(avg(y.map(a=>a[1]))-avg(n0.map(a=>a[1]))),r,n:P.length};
+  }).filter(Boolean);
 }
 // Parallel run (A6): Body is recorded next to the old readiness for TH.PARALLEL_DAYS; then the gauge, verdict, outline and briefing switch to Body
 function bodyLive(){const h=S().bodyHist||{};return Object.values(h).filter(v=>v!=null).length>=TH.PARALLEL_DAYS;}
