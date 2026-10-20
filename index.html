@@ -280,7 +280,7 @@
 
   <div class="lg-grp">Now and then</div>
   <div class="lg-card">
-  <div class="log-sec" id="lMeas"><div class="log-hdr c3" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l10 0"/><path d="M6 6l6 -1l6 1"/><path d="M12 3l0 17"/><path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/></svg></div><div><div class="log-title">Body</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
+  <div class="log-sec" id="lMeas"><div class="log-hdr c3" onclick="tlog('lMeas')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l10 0"/><path d="M6 6l6 -1l6 1"/><path d="M12 3l0 17"/><path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/></svg></div><div><div class="log-title">Body and blood pressure</div><div class="log-stat" id="measStat">Last: 3 days ago</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="hist-box"><div class="hist-ttl">RECENT</div>
         <div class="hist-row"><span>Blood Pressure</span><span class="hist-val" id="bpRec">—</span></div>
@@ -290,10 +290,12 @@
       <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div>
         <div class="bp-ble" id="bpBleW" hidden>
           <button class="btn-out bp-btn" id="bpBle" onclick="bpRead()"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8l10 8l-5 4l0 -16l5 4l-10 8"/></svg><span>Read from your monitor</span></button>
+          <div class="fh" id="bpBleOff" hidden>Bluetooth is off on this phone. Turn it on, then tap.</div>
           <div class="fh" id="bpBleHint">First time: hold the monitor's Bluetooth button until P blinks, then tap. Each reading goes to whichever app reads it first.</div>
           <div class="bp-st" id="bpBleSt" aria-live="polite"></div>
           <div class="bp-us" id="bpBleUs" hidden><span>Which user are you on the monitor?</span><span class="bp-ucs"><button class="bp-uc" data-u="1" aria-pressed="false" onclick="bpSetUser(1)">1</button><button class="bp-uc" data-u="2" aria-pressed="false" onclick="bpSetUser(2)">2</button></span></div>
-        </div></div>
+        </div>
+        <div class="fh" id="bpBleNo" hidden>Reading from your monitor works in Chrome on Android. Type the reading here instead.</div></div>
       <div class="fg"><div class="fl">WEIGHT</div><div class="fr"><input type="number" class="inp" id="wtKg" placeholder="73.5" step="0.1" min="30" max="250"><span class="inp-unit">kg</span></div></div>
       <div class="fg"><div class="fl">RESTING HEART RATE (morning)</div><div class="fr"><input type="number" class="inp" id="hrVal" placeholder="58" min="30" max="200"><span class="inp-unit">bpm</span></div><div class="fh">Right after waking, before getting up</div></div>
       <button class="btn-gold" onclick="saveMeas()">Save results</button>

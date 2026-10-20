@@ -600,12 +600,16 @@ function bpUserUI(){
   if(row)row.hidden=me==null;
   document.querySelectorAll('.bp-uc').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.u===me&&!(_bpHold&&b.closest('#bpBleUs')))));
 }
-// Shows the button only where the browser can read the monitor
+// Shows the button wherever the browser can use Bluetooth (v136: also while Bluetooth is off, with a line to turn it on)
+let _bpAv=false;
 async function bpBleInit(){
   const w=$('bpBleW');if(!w)return;
-  const bt=navigator.bluetooth;let ok=!!bt;
-  if(ok&&bt.getAvailability){try{ok=await bt.getAvailability();}catch(e){}}
-  w.hidden=!ok;
+  const bt=navigator.bluetooth;let on=!!bt;
+  if(bt&&bt.getAvailability){try{on=await bt.getAvailability();}catch(e){}}
+  if(bt&&!_bpAv&&bt.addEventListener){_bpAv=true;try{bt.addEventListener('availabilitychanged',()=>bpBleInit());}catch(e){}}
+  w.hidden=!bt;
+  const no=$('bpBleNo');if(no)no.hidden=!!bt;
+  const off=$('bpBleOff');if(off)off.hidden=!bt||!!on;
   const h=$('bpBleHint');if(h)h.hidden=!!S().bpOk;
   bpUserUI();
 }
@@ -712,8 +716,8 @@ function lgSum(){
   else{const p=lgPlan();o.wkStat=p?'Plan today: '+p:'Nothing logged today';}
   const mm=ci?.mindfulMin||0;o.mindStat=mm?mm+' min today':'Not yet today';
   const fd=fuFood(t);o.foodStat='Optional · '+(fd?fuN(fd.kcal)+' kcal so far':'nothing yet');
-  const ms=d.measurements.filter(x=>x.date<=t).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0),mw=ms.filter(x=>x.weight).pop(),ml=ms[ms.length-1];
-  o.measStat=mw?'Weighed '+lgAgo(mw.date)+' · '+mw.weight+' kg':ml?'Measured '+lgAgo(ml.date):'Weight, blood pressure, resting heart rate';
+  const ms=d.measurements.filter(x=>x.date<=t).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0),mw=ms.filter(x=>x.weight).pop(),ml=ms[ms.length-1],mb=ms.filter(x=>x.bpSys&&x.bpDia).pop();
+  o.measStat=mb&&(!mw||mb.date>=mw.date)?'Blood pressure '+mb.bpSys+'/'+mb.bpDia+' · '+lgAgo(mb.date):mw?'Weighed '+lgAgo(mw.date)+' · '+mw.weight+' kg':ml?'Measured '+lgAgo(ml.date):'Weight, blood pressure, resting heart rate';
   const bl=d.bloodLogs.filter(x=>x.date<=t).map(x=>x.date).sort().pop();
   o.bloodStat=bl?'Last test '+fmtD(bl):'Glucose, cholesterol, uric acid';
   const ij=d.injuries.filter(x=>x.active).slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);

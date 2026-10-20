@@ -2696,6 +2696,9 @@ seq('v129 log',async()=>{
     const m=mindOf(_s.checkins[0]),mw=m>=TH.MIND_GOOD?'Good':m>=TH.MIND_FLAT?'Flat':'Strained';
     renderLogHead();const S1=lgSum();
     check('v129 log: with everything logged each row sums it up in one line',J(S1)===J({ciStat:mw+' · 07:12',sleepStat:fmtDur(450),wkStat:'Run · '+fmtDur(48)+' · '+fmtDist(W[0]),mindStat:'10 min today',foodStat:'Optional · 1,450 kcal so far',measStat:'Weighed 3 days ago · 73.1 kg',bloodStat:'Last test '+fmtD(dAgo(44)),injStat:'1 active · Left calf'})&&/8\.2 km/.test(S1.wkStat)&&txt($('ciStat'))===S1.ciStat,J(S1));
+    _s.measurements.push({id:'m3',date:dAgo(1),bpSys:131,bpDia:84});
+    check('v136 log: the Body row names the latest blood pressure when it is the newest entry',lgSum().measStat==='Blood pressure 131/84 · yesterday',lgSum().measStat);
+    _s.measurements.pop();
     check('v129 log: all four done fills four green segments and four ticks',/4 of 4 done/.test(txt($('lgProg')))&&seg()==='ok,ok,ok,ok'&&ico()==='ok,ok,ok,ok'&&$('lSleepSt').getAttribute('aria-label')==='Done'&&getComputedStyle($('lgProg').querySelector('.lp-seg i')).backgroundColor===getComputedStyle(document.documentElement).getPropertyValue('--green').trim().replace(/^#(..)(..)(..)$/,(_,a,b,c)=>`rgb(${parseInt(a,16)}, ${parseInt(b,16)}, ${parseInt(c,16)})`),seg()+' · '+ico());
     _s.workouts=[...W,{id:'w-c',date:td(),type:'Yoga',durMin:30,rpe:1,notes:'',sets:[]}];_s.injuries.push({id:'i3',date:dAgo(1),part:'Right knee',sev:1,active:true});
     check('v129 log: two workouts today give the count and total time, two injuries the newest and how many more',lgSum().wkStat==='2 workouts · '+fmtDur(78)&&lgSum().injStat==='2 active · Right knee and 1 more',lgSum().wkStat+' | '+lgSum().injStat);
@@ -3722,6 +3725,12 @@ seq('v135 monitor',async()=>{
     check('v135 button: hidden where the browser cannot use Bluetooth',$('bpBleW').hidden,'');
     setBt(fake({}));await bpBleInit();
     check('v135 button: shown with Bluetooth, the first-time hint shown until a read works',!$('bpBleW').hidden&&!$('bpBleHint').hidden&&/Read from your monitor/.test(txt($('bpBle'))),'');
+    setBt(undefined);await bpBleInit();const noLine=!$('bpBleNo').hidden&&$('bpBleW').hidden&&/Chrome on Android/.test(txt($('bpBleNo')));
+    const offF=fake({});offF.getAvailability=async()=>false;setBt(offF);await bpBleInit();
+    check('v136 button: Bluetooth off keeps the button and says to turn it on; no browser line',noLine&&!$('bpBleW').hidden&&!$('bpBleOff').hidden&&$('bpBleNo').hidden,'');
+    setBt(fake({}));await bpBleInit();
+    check('v136 button: Bluetooth on hides the turn-on line',!$('bpBleW').hidden&&$('bpBleOff').hidden&&$('bpBleNo').hidden,'');
+    check('v136 log: the section is named Body and blood pressure',txt($('lMeas').querySelector('.log-title'))==='Body and blood pressure','');
     setBt(fake({cancel:1}));toasts.length=0;await bpRead();
     check('v135 read: closing the chooser says nothing and saves nothing',!toasts.length&&!S().measurements.length&&fake.q.filters[0].services[0]===0x1810,JS(toasts));
     setBt(fake({off:1}));toasts.length=0;await bpRead();
@@ -3755,7 +3764,7 @@ seq('v135 monitor',async()=>{
     check('v135 layout: at 360px nothing runs wider, the button is 48px tall, the user buttons at least 44px',!wide.length&&bh>=48&&uc.length===2&&uc.every(r=>r.width>=44&&r.height>=44),wide.slice(0,4).map(x=>x.id||x.className).join(' ')+' '+bh);
     const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v135: Monitor')[1]||'';
     check('v135: no brand or source names on the screens, no accent in the v135 CSS',!/Omron|Polar|Intervals|Garmin|BLEsmart/.test(txt(box.querySelector('#lMeas'))+txt($('bpUserRow')))&&all.length>0&&!/--gold/.test(all),'');
-    check('v135: the Bluetooth icon is Tabler\'s and the cache name is v135',UI.bt&&/M7 8l10 8l-5 4l0 -16l5 4l-10 8/.test(UI.bt)&&APP_VER===135,'');
+    check('v135: the Bluetooth icon is Tabler\'s and the version is at least v135',UI.bt&&/M7 8l10 8l-5 4l0 -16l5 4l-10 8/.test(UI.bt)&&APP_VER>=135,'');
   }finally{
     Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});TH.BP_BLE_IDLE=keep.IDLE;_bpHold=null;_bpBusy=false;
     if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
