@@ -74,7 +74,6 @@ function slCounts(r){
   const sv=polarSleepVals(n),w=r.src&&r.src.wake;
   return!!(r.wake&&!IMP_SRC.includes(w)&&w!=='est'&&!(sv&&sv.wake===r.wake));
 }
-const slScore=s=>!s?0:s.score||(s.durMin?Math.round(Math.max(30,Math.min(95,s.durMin/((S().profile.sleepGoal||7.5)*60)*85))):0);
 // '2026-09-20' -> '20 Sept' (year added when it is not this year)
 const fmtD=iso=>{if(!iso)return'';const x=new Date(iso+'T12:00:00');return x.toLocaleDateString('en-GB',x.getFullYear()===new Date().getFullYear()?{day:'numeric',month:'short'}:{day:'numeric',month:'short',year:'numeric'});};
 const daysAgo=date=>Math.round((new Date(td()+'T00:00:00')-new Date(date+'T00:00:00'))/864e5);
@@ -103,13 +102,11 @@ const TH={
   MIND_GOOD:70,MIND_FLAT:50,             // today's check-in on 0 to 100 (energy, mood, calm, motivation): Good from 70, Flat from 50, Strained below
   BURNOUT_MOD:30,                        // burnout risk: low under 30, moderate to 59, high from BURNOUT_HIGH
   ILL_RESP:1.0,ILL_RHR_Z:1.5,ILL_HRV_Z:-1.5, // illness gate: breathing above band mean by this, with resting HR z or 7-day HRV z past these
-  PARALLEL_DAYS:14,                      // days the old readiness score runs alongside Body before the gauge switches
   SCORE_DROP:10,                         // a fall of this many points within 3 days is called out under the score chart (note only)
   WT_RATE:0.007,                         // weight change per week, as a share of body weight, above which the weight chart says it is fast (note only)
   WT_GOAL_NEAR:0.5,                      // kg from the weight goal that Health counts as reached (words only)
   HL_USUAL:30,HL_RHR_UP:2,               // Health baselines: usual = the mean of the 30 days before the latest reading; resting HR 2+ bpm over reads amber, 2+ under green
   SETS_LO:10,SETS_HI:20,                 // hard sets per muscle per week: under 10 low, 10 to 20 on target, over 20 high
-  OLD_BAD:45,OLD_WARN:65,OLD_MOD:50,OLD_HIGH:80, // the old readiness cuts (verdict bad / warn, zone moderate / primed); retired after the parallel run
   // v121 training sessions (js/sessions.js, js/strategy.js)
   SESS_THR:0.10,SESS_INT:0.08,SESS_REP:0.05, // weekly share of training minutes at steady-hard, hard, and short fast reps (strides, hills)
   LONG_GROW:1.10,LONG_SHARE:0.30,LONG_RUN_MAX:150, // long session: at most 10 % over the longest of the last 30 days; a long run also at most 30 % of the week and 150 min
@@ -235,7 +232,7 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe'],bodyFeel:['','Wrecked','Tired','Okay','Good','Strong'],symptoms:['None','Above the neck','Below the neck'],soreArea:{legs:'Legs',hips:'Hips',back:'Back',upper:'Shoulders and arms',core:'Core'}};
-const APP_VER=133; // keep in step with the cache name in sw.js
+const APP_VER=134; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
 const POLAR_API='https://vitalcore-backend.vercel.app/api'; // the owner's Vercel functions; they hold the Polar tokens, the app sends its app key
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M19 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 19l0 -4l-3 -3l5 -4l2 3l3 0"/><path d="M17 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M6 11l4 -2l3.5 3l-1.5 2"/><path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1 -.25"/></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2"/><path d="M22 12h-1"/></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M13 21l1 -9l7 -6"/><path d="M3 11h6l5 1"/><path d="M11.5 8.5l4.5 -3.5"/></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l2 -4"/><path d="M13 21v-4l-3 -3l1 -6l3 4l3 2"/><path d="M10 14l-1.827 -1.218a2 2 0 0 1 -.831 -2.15l.28 -1.117a2 2 0 0 1 1.939 -1.515h1.439l4 1l3 -2"/><path d="M17 12v9"/><path d="M16 20h2"/></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l3 -4"/><path d="M16 21l-2 -4l-3 -3l1 -6"/><path d="M6 12l2 -3l4 -1l3 3l3 1"/></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 20h4l1.5 -3"/><path d="M17 20l-1 -5h-5l1 -7"/><path d="M4 10l4 -1l4 -1l4 1.5l4 1.5"/></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>']];
@@ -289,6 +286,7 @@ function icuFill(rec,vals,who='icu'){
 function markProfile(){const d=S();d.profileTs=Date.now();d.pending['profile|1']=d.profileTs;save(d);queuePush();}
 function migrate(){
   const d=_s;
+  delete d.readHist;   // v134: the old readiness is retired; Body (bodyHist) is the one score
   for(const [n,T] of Object.entries(TBL)){
     d[T.k]=(d[T.k]||[]).filter(r=>!r.isEx);      // example data from older versions
     d[T.k].forEach(r=>{

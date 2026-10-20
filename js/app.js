@@ -27,8 +27,8 @@ let _toastAct=null;
 function showToast(msg,act){const t=$('toast');_toastAct=act&&act.fn||null;t.innerHTML=esc(msg)+(act?` <button class="toast-act" onclick="toastDo()">${esc(act.label)}</button>`:'');t.classList.toggle('act',!!act);t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show','act'),act?7000:3200);}
 function toastDo(){const f=_toastAct;_toastAct=null;$('toast').classList.remove('show','act');if(f)f();}
 function recalc(){
-  // v118 parallel run: the old readiness and Body are both recorded; the hero shows Body once TH.PARALLEL_DAYS of it exist (heroScore)
-  recordReadiness(calcReadiness());recordBody(calcBody().score);stSnap();
+  // v134: Body is the one recovery score; one snapshot a day in bodyHist
+  recordBody(calcBody().score);stSnap();
   renderExTag();renderDayBar();renderRing(dayScore(tdDay()));renderGauges();renderYourDay();
   renderPlan();renderSoreSug();renderReflect();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }

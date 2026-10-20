@@ -67,7 +67,12 @@ function coachVerdict(){
   let lvl=sc<c.bad?'bad':sc<c.warn?'warn':'ok';
   if(hurt||(ill&&ill.lvl==='systemic'))lvl='bad';else if(ill&&lvl==='ok')lvl='warn';
   const head={ok:['Train','You are recovered. Follow the plan and push where it says to.'],warn:['Hold steady','Train, but keep it controlled. Do not add extra load today.'],bad:['Rest','Recovery is the priority. Easy movement or rest.']}[lvl];
-  return{lvl,head,sc,body:bodyLive(),ill};
+  return{lvl,head,sc,ill};
+}
+// v134: no score, no verdict; the two gates still hold for the outline (a severe injury or systemic illness rests, a mild illness keeps it easy)
+function coachGates(){
+  const hurt=S().injuries.some(i=>i.active&&i.sev>=3),ill=illness();
+  return{lvl:hurt||(ill&&ill.lvl==='systemic')?'bad':ill?'warn':null,head:null,sc:null,ill,gate:true};
 }
 // true when today's prescription is rest and nothing has been logged
 function restToday(){try{const s=typeof strategy==='function'?strategy():null,d0=s&&s.days&&s.days[0];return !!(d0&&d0.role==='rest'&&!wkOn().some(w=>w.date===td()));}catch(e){return false;}}

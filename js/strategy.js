@@ -215,8 +215,9 @@ function stWeeks(W){
   return out;
 }
 function strategy(){
-  const sc=heroScore();if(sc===null)return null;
-  const d=S(),t=td(),ws=stWs(),P=progAll(),W=stWeek(P),v=coachVerdict(),ret=P.ret,ir=injRet(),thr=stThr(),H=d.planHist||{},ib=illBack(t);
+  // v134: with no recovery score the outline still runs (plan or usual days); only the score's bend is left out, the gates below still apply
+  const sc=heroScore();
+  const d=S(),t=td(),ws=stWs(),P=progAll(),W=stWeek(P),v=coachVerdict()||coachGates(),ret=P.ret,ir=injRet(),thr=stThr(),H=d.planHist||{},ib=illBack(t);
   const rec=ws.filter(w=>daysAgo(w.date)>=0&&daysAgo(w.date)<=42);
   const cnt=ty=>rec.filter(w=>w.type===ty).length;
   const med=ty=>{const a=rec.filter(w=>w.type===ty&&w.durMin).map(w=>w.durMin).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:ST_DEF[ty]||40;};
@@ -328,11 +329,11 @@ function strategy(){
         const was=pl&&pl.type!=='Rest'?` Your plan says ${pl.type}. Move it a day.`:'';
         if(!['rest','gentle','recover'].includes(role))o.was={role,type};
         role='recover';o.bent=!!was;
-        why=(sev>=3?'A serious injury is active.':v.ill&&v.ill.lvl==='systemic'?v.ill.why+' Rest until it clears.':sc<scoreCuts().bad?'Recovery is low, so rest is the training today.':hf?hf.t+'.':'Recovery is the priority today.')+was;
+        why=(sev>=3?'A serious injury is active.':v.ill&&v.ill.lvl==='systemic'?v.ill.why+' Rest until it clears.':sc!=null&&sc<scoreCuts().bad?'Recovery is low, so rest is the training today.':hf?hf.t+'.':'Recovery is the priority today.')+was;
       }else if(role!=='rest'&&role!=='gentle'){
         // v132 (R1.2 to R1.4, R6.3, R7.2): the first of these that holds keeps today easy, in this order
         const hz=bodyHrvPart(t).part,sn=shortNight(t),fl=feelLow(t);
-        const cap=v&&v.ill?v.ill.why:prev.hard?'You trained hard yesterday.':hz&&hz.z<=TH.HRV_EASY_Z?'Your HRV is under your usual this week.':sn?`Last night was ${fmtDur(sn.gap)} under your need.`:fl?fl.why:sore>=3?'You are sore today.':v&&v.lvl==='warn'?(bodyLive()?'Body is middling today.':'Recovery is moderate.'):'';
+        const cap=v&&v.ill?v.ill.why:prev.hard?'You trained hard yesterday.':hz&&hz.z<=TH.HRV_EASY_Z?'Your HRV is under your usual this week.':sn?`Last night was ${fmtDur(sn.gap)} under your need.`:fl?fl.why:sore>=3?'You are sore today.':v&&v.lvl==='warn'?(sc!=null?'Body is middling today.':v.ill?v.ill.why:''):'';
         const nap=sn&&!(v&&v.ill)&&!prev.hard&&!(hz&&hz.z<=TH.HRV_EASY_Z)?` A ${TH.NAP_MIN} to ${TH.NAP_MAX} minute nap between ${TH.NAP_SUG_FROM}:00 and ${TH.NAP_SUG_TO}:00 helps.`:'';
         if(cap){
           o.cap=cap;

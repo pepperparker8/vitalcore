@@ -1,14 +1,5 @@
-// Trends: fitness / fatigue / form (from Intervals.icu) and readiness trend (local daily snapshots)
-function recordReadiness(s){
-  if(s===null||s===undefined)return;
-  const d=S();d.readHist=d.readHist||{};
-  if(d.readHist[td()]===s)return;
-  d.readHist[td()]=s;
-  const keys=Object.keys(d.readHist).sort();
-  while(keys.length>120)delete d.readHist[keys.shift()];
-  save(d);
-}
-// Body (v118) is snapshotted the same way, local only, alongside the old readiness during the parallel run and after it
+// Trends: fitness / fatigue / form (from Intervals.icu) and the recovery trend (local daily snapshots)
+// Body (v118; the one score since v134) is snapshotted once a day, local only
 function recordBody(s){
   if(s===null||s===undefined)return;
   const d=S();d.bodyHist=d.bodyHist||{};
@@ -121,8 +112,7 @@ function renderRecTrend(){
 // score zones: the gauge's words (scoreWord) and cuts (scoreCuts)
 function scoreZones(){
   const c=scoreCuts();
-  return bodyLive()?[{lo:c.high,hi:null,color:'--green',label:'Good'},{lo:c.mod,hi:c.high,color:'--amber/.6',label:'Moderate'},{lo:null,hi:c.mod,color:'--red',label:'Low'}]
-    :[{lo:c.high,hi:null,color:'--green',label:'Primed'},{lo:c.warn,hi:c.high,color:'--green/.5',label:'Good'},{lo:c.mod,hi:c.warn,color:'--amber/.6',label:'Moderate'},{lo:null,hi:c.mod,color:'--red',label:'Low'}];
+  return[{lo:c.high,hi:null,color:'--green',label:'Good'},{lo:c.mod,hi:c.high,color:'--amber/.6',label:'Moderate'},{lo:null,hi:c.mod,color:'--red',label:'Low'}];
 }
 // v123: the pattern in one line ("Mostly good"), with the sharpest fall in view; a fall in the last 3 days leads, with what to look at
 function scoreMeaning(info){
@@ -135,16 +125,12 @@ function scoreMeaning(info){
 }
 function renderReadTrend(){
   const d=S(),host=$('readCanvas');if(!host)return;
-  const h=d.readHist||{},pts=Object.keys(h).sort().map(dt=>({d:dt,v:h[dt]})).filter(p=>p.v!=null);
-  const bh=d.bodyHist||{},bpts=Object.keys(bh).sort().map(dt=>({d:dt,v:bh[dt]})).filter(p=>p.v!=null);
-  const note=$('readNote'),live=bodyLive(),f=v=>Math.round(v),c=scoreCuts();
-  if(pts.length<2&&bpts.length<2){chUnmount('readCanvas');host.innerHTML='';note.style.display='';note.textContent='Your daily score is saved each time you open the app. A line appears after two days.';return;}
-  // v118 parallel run: both lines; the one the gauge uses comes first and is filled, the other dashed. The old readiness ages out of this chart once Body is live.
-  const series=[];
-  if(live){if(bpts.length>=2)series.push({pts:bpts,color:'--gold-dk',name:'Body',fill:true,fmt:f,vl:v=>String(f(v))});if(pts.length>=2)series.push({pts,color:'--t3',dash:[4,3],name:'Old readiness',lg:true,fmt:f,thin:true,noDots:true});}
-  else{if(pts.length>=2)series.push({pts,color:'--gold-dk',name:'Readiness',fill:true,fmt:f,vl:v=>String(f(v))});if(bpts.length>=2)series.push({pts:bpts,color:'--text',dash:[4,3],name:'Body',lg:'Body (new score)',fmt:f,thin:true,noDots:true});}
-  const main=series[0].pts,wc={Primed:'good',Good:'good',Moderate:'warn',Low:'bad'};
-  mountChart('readCanvas',{key:'read',group:'trends',tb:false,legend:true,H:170,min:live?0:20,max:100,band:rollBand(main,4),yfmt:f,label:live?'Body score':'Readiness',zones:scoreZones(),hi:true,series,
+  const bh=d.bodyHist||{},main=Object.keys(bh).sort().map(dt=>({d:dt,v:bh[dt]})).filter(p=>p.v!=null);
+  const note=$('readNote'),f=v=>Math.round(v),c=scoreCuts();
+  if(main.length<2){chUnmount('readCanvas');host.innerHTML='';note.style.display='';note.textContent='Your daily score is saved each time you open the app. A line appears after two days.';return;}
+  // v134: one line, Body
+  const series=[{pts:main,color:'--gold-dk',name:'Recovery',fill:true,fmt:f,vl:v=>String(f(v))}],wc={Good:'good',Moderate:'warn',Low:'bad'};
+  mountChart('readCanvas',{key:'read',group:'trends',tb:false,legend:true,H:170,min:0,max:100,band:rollBand(main,4),yfmt:f,label:'Recovery',zones:scoreZones(),hi:true,series,
     stats:{good:v=>v>=c.warn},means:scoreMeaning,
     head:x=>{const R=trRight(main,x,{f:v=>[String(f(v)),'']});if(!x.p)return{...R,v:null};const w=scoreWord(x.p.v);
       return{...R,v:String(f(x.p.v)),u:'of 100',st:w,cls:wc[w]||'',sa:wc[w]==='good'?'●':'▼'};}});

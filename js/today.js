@@ -17,15 +17,12 @@ function renderDayBar(){
   $('dayNext').classList.toggle('off',n===0);$('dayNext').disabled=n===0;
   $('dayPrev').classList.toggle('off',n>=TH.DAY_BACK);$('dayPrev').disabled=n>=TH.DAY_BACK;
 }
-// the recovery score of a day: today as the hero; a past day worked out again once Body is live (a stored snapshot that differs is corrected, none is added), else the old snapshot
+// the recovery score of a day: today as the hero; a past day worked out again with the same maths (a stored snapshot that differs is corrected, none is added)
 function dayScore(dt){
   if(dt===td())return heroScore();
-  if(bodyLive()){
-    const sc=calcBody(dt).score,h=S().bodyHist||{};
-    if(h[dt]!=null&&sc!=null&&h[dt]!==sc){h[dt]=sc;save(S());}
-    return sc;
-  }
-  const r=(S().readHist||{})[dt];return r==null?null:r;
+  const sc=calcBody(dt).score,h=S().bodyHist||{};
+  if(h[dt]!=null&&sc!=null&&h[dt]!==sc){h[dt]=sc;save(S());}
+  return sc;
 }
 // a gauge, factor row or Your day opens its sheet for the day in view
 function tdOpen(k){_dtDay=tdDay()===td()?null:tdDay();openDetail(k);}

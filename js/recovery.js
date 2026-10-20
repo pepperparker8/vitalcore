@@ -191,15 +191,6 @@ function recoveryDrivers(){
   }
   return out;
 }
-// small readiness nudge from HRV and resting HR (0 when no trusted baseline)
-function recoveryAdj(){
-  let a=0;
-  const hv=latestOf('hrv'),hb=wSeries('hrv');
-  if(hv&&hb.length>=RB_MIN)a+=Math.max(-10,Math.min(4,(hv.v/avg(hb)-1)*30));
-  const rv=latestOf('rhr'),rb=rhrSeries();
-  if(rv&&rb.length>=RB_MIN)a+=Math.max(-6,Math.min(2,-(rv.v-avg(rb))*0.8));
-  return a;
-}
 // ── Body, Load, Mind (v118, Spec v2 A2 and A3): three scores, every signal counted in one place ──
 // Body is objective only: HRV, resting heart rate and sleep against your own 28-day band. No self-report, no form, no injuries.
 const clampN=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
@@ -439,14 +430,12 @@ function habitSleep(t=td()){
     return{k:h.k,label:h.label,diffMin:Math.round(avg(y.map(a=>a[1]))-avg(n0.map(a=>a[1]))),r,n:P.length};
   }).filter(Boolean);
 }
-// Parallel run (A6): Body is recorded next to the old readiness for TH.PARALLEL_DAYS; then the gauge, verdict, outline and briefing switch to Body
-function bodyLive(){const h=S().bodyHist||{};return Object.values(h).filter(v=>v!=null).length>=TH.PARALLEL_DAYS;}
-function scoreCuts(){return bodyLive()?{bad:TH.BODY_YELLOW,mod:TH.BODY_YELLOW,warn:TH.BODY_GREEN,high:TH.BODY_GREEN}:{bad:TH.OLD_BAD,mod:TH.OLD_MOD,warn:TH.OLD_WARN,high:TH.OLD_HIGH};}
-function heroScore(){return bodyLive()?calcBody().score:calcReadiness();}
-function heroHist(){const d=S();return(bodyLive()?d.bodyHist:d.readHist)||{};}
+// v134: Body is the one recovery score (the v118 parallel run is over; the old readiness is gone)
+function scoreCuts(){return{bad:TH.BODY_YELLOW,mod:TH.BODY_YELLOW,warn:TH.BODY_GREEN,high:TH.BODY_GREEN};}
+function heroScore(){return calcBody().score;}
+function heroHist(){return S().bodyHist||{};}
 function scoreWord(sc){
-  if(sc==null)return bodyLive()?'Sync watch':'Check in';
+  if(sc==null)return 'No score';
   const c=scoreCuts();
-  if(bodyLive())return sc>=c.high?'Good':sc>=c.mod?'Moderate':'Low';
-  return sc>=c.high?'Primed':sc>=c.warn?'Good':sc>=c.mod?'Moderate':'Low';
+  return sc>=c.high?'Good':sc>=c.mod?'Moderate':'Low';
 }

@@ -5,7 +5,6 @@ let _dtKey=null,_dtCh=null,_dtDay=null;   // _dtDay (v129): the day Today showed
 const dtGoal=()=>Math.round((S().profile.sleepGoal||7.5)*60);
 const dtPsy=c=>mindOf(c);
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
-const dtPts=n=>{n=Math.round(n);return n===0?'no change':(n>0?'+':'−')+Math.abs(n)+(Math.abs(n)===1?' point':' points');};
 const dtAvg=(fn,days=30)=>{const o=daysAgo(_dtDay||td()),a=[];for(let i=1;i<=days;i++){const v=fn(dAgo(o+i));if(v!=null)a.push(v);}return a;};
 const ciOn=date=>S().checkins.find(c=>c.date===date);
 // v119: the last 30 days as an interactive chart (14 in view, drag or ‹ for the rest), with the same zones, usual
@@ -629,35 +628,34 @@ function dtSpec(k){
     const night=x?slNightSvg(pn,sl,U&&U.wake):'';
     // v127: a battery night counts as missing, not short: no ring, no need bar, no score; what it means for Body and sleep debt
     if(!cnt){
-      const us=v=>v!=null?`<small>usual ${hhmm(v+720)}</small>`:'',bed=slHmOk(sl.bed)?sl.bed:x&&plHm(x.start),end=x&&plHm(x.end),ub=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s)));
+      const us=v=>v!=null?`<small>usual ${hhmm(v+720)}</small>`:'',bed=slHmOk(sl.bed)?sl.bed:x&&plHm(x.start),end=x&&plHm(x.end);
       const onT=bodyNight(t)===sl?`<div class="dt-sec">On Today</div><div class="dt-card"><div class="rf none">${UI.moon}<span class="rf-l">Sleep</span><span class="rf-r"><span class="rf-v">Not counted</span><span class="rf-n"><i class="rf-g" aria-hidden="true">●</i>battery ran out</span></span></div></div>`:'';
       const det=slRow('Asleep from',bed,us(U&&U.bed))+slRow('Recorded until',end,'<small>battery ran out</small>')
-        +(bodyLive()?slRow('Recovery that day','HRV and resting heart rate','<small>sleep left out</small>'):ub&&ub.date===sl.date?slRow('Recovery that day',`Starts at ${Math.round(slScore(sl)*0.5+35)} of 100`,'<small>from the part recorded</small>'):'')+slRow('Sleep debt','Nothing added');
+        +slRow('Recovery that day','HRV and resting heart rate','<small>sleep left out</small>')+slRow('Sleep debt','Nothing added');
       return{title:'Sleep',nav,pre,head:`<div class="dt-big">${fmtDur(sl.durMin)}</div><div class="dt-sub">recorded${bed?`, from ${bed}`:''} until the battery ran out</div>`,
         body:night+`<div class="dt-sec">Details</div>`+det+onT+slDebtSec(_dtDate||t),link:['Edit in Log',"logGo('lSleep')"],extra:late+(now?tonight:'')};
     }
-    const need=needOf(sl),pct=Math.round(sl.durMin/need*100),base=Math.round(slScore(sl)*0.5+35),used=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s)));
+    const need=needOf(sl),pct=Math.round(sl.durMin/need*100);
     const est=src.bed==='est'||src.wake==='est'?' · one time estimated':'',score=x?slScoreSec(x):'';
     const bar=`<div class="sl-need" role="img" aria-label="${pct}% of what you needed"><i style="width:${Math.min(pct,100)}%"></i><u style="left:${pct>100?(100/pct*100).toFixed(1):100}%"></u></div><div class="sl-nl"><span>0</span><span>Need ${fmtDur(need)}</span></div>`;
     const head=`<div class="dt-big">${fmtDur(sl.durMin)}</div><div class="dt-sub">asleep, ${pct}% of the ${fmtDur(need)} you needed${!score&&sl.score?' · score '+sl.score:''}${est}</div>`+bar;
     // v118 (A5): Body uses the night ending that day, else the day before, never an older one
-    const bs=bodyLive()?calcBody(t).parts.sleep:null;
+    const bs=calcBody(t).parts.sleep;
     // a night the shown day does not use names the one it does, or says it came later or is too old
-    const pc=Math.round(sl.durMin/goal*100),uD=bodyLive()?bs&&bs.date:used&&used.date,dw=now?'today':'that day';
+    const uD=bs&&bs.date,dw=now?'today':'that day';
     const notUsed=uD?`Not counted ${dw}: the score uses the night ending ${fmtD(uD)}.`:`Not counted ${dw}: ${sl.date>t?'this night came later':'too old'}.`;
     return{title:'Sleep',nav,pre,head,
       body:slRing(slStages(sl,pn))+night+slDetails(sl,pn,U)+score+slWinSvg(sl.date,U)+slDebtSec(_dtDate||t),
-      effect:uD!==sl.date?notUsed:bodyLive()?`${Math.round(bs.pts)} of 100 for Body (${TH.W_SLEEP}%): ${fmtDur(bs.durMin)} of the ${fmtDur(bs.need)} you needed.`
-        :`Starts the score at ${base} of 100${pc>=90?': a full night.':pc>=75?': a bit short of your goal.':': well short of your goal.'}`,
+      effect:uD!==sl.date?notUsed:`${Math.round(bs.pts)} of 100 for Body (${TH.W_SLEEP}%): ${fmtDur(bs.durMin)} of the ${fmtDur(bs.need)} you needed.`,
       link:['Edit in Log',"logGo('lSleep')"],extra:late+(now?tonight:'')};
   }
   if(k==='form'){
     const fn=tsbOn,tsb=fn(t),ia=now?d.intervalsData:d.wellness[t]||{},u=dtAvg(fn);
     if(tsb==null)return{title:'Form',missing:'Form (how fresh your legs are) is fitness minus recent fatigue, from your training history. Connect your training account in Settings and sync.',link:['Open Settings','openSettings()']};
-    const n=tsb>0?tsb*0.5:tsb*0.3,w=zL(tsb,'tsb');
+    const w=zL(tsb,'tsb');
     return{title:'Form',val:(tsb>0?'+':'')+Math.round(tsb),sub:`${w} · fitness ${Math.round(ia.ctl)} minus recent fatigue ${Math.round(ia.atl)}`,
       usual:u.length?`${(avg(u)>0?'+':'')+Math.round(avg(u))}`:'Needs more days',trend:dtTrend(fn,sgn,{label:'Form',color:'--teal',zones:formZones(),stats:{good:v=>v>=TH.FORM_OK,label:'balanced or fresher'}}),
-      effect:bodyLive()?'Not part of Body.':`${cap(dtPts(n))}.`,
+      effect:'Not part of Body.',
       link:['Open Settings','openSettings()']};
   }
   if(k==='checkin'){
@@ -669,25 +667,25 @@ function dtSpec(k){
     const p=dtPsy(ci),e=EM,was=ci.date!==t?cap(old(ci.date))+'. ':'';
     return{title:'Check-in',val:p>=TH.MIND_GOOD?'Good':p>=TH.MIND_FLAT?'Flat':'Strained',sub:`${was}${p}/100 · energy ${e.energy[ci.energy].toLowerCase()}, mood ${e.mood[ci.mood].toLowerCase()}, stress ${e.stress[ci.stress].toLowerCase()}, motivation ${e.motivation[ci.motivation].toLowerCase()}`,
       usual:u.length?`${Math.round(avg(u))}/100`:'Needs more days',trend:tr,
-      effect:bodyLive()?'Not part of Body.':`30% of the score${p>=70?': lifts it.':p>=50?': holds it steady.':': pulls it down.'}`,
+      effect:'Not part of Body.',
       link:['Edit in Log',"logGo('lCheckin')"]};
   }
   if(k==='hrv'){
     const hv=latestOf('hrv',t),hb=wSeries('hrv',30,true,t),fn=dt=>{const w=d.wellness[dt];return w&&w.hrv!=null?w.hrv:null;};
     if(!hv)return{title:'Heart rate variability',missing:now?'No HRV in the last three days. Your watch records it overnight; sync to refresh.':`No HRV in the three days to ${fmtD(t)}.`,link:['Open Settings','openSettings()']};
-    const b=hb.length>=RB_MIN?avg(hb):null,pc=b?Math.round((hv.v/b-1)*100):0,adj=b?Math.max(-10,Math.min(4,(hv.v/b-1)*30)):0;
+    const b=hb.length>=RB_MIN?avg(hb):null;
     return{title:'Heart rate variability',val:Math.round(hv.v)+' ms',sub:hv.age?`from ${fmtD(dAgo(o+hv.age))}`:now?'last night':'that night',
       usual:b?`${Math.round(b)} ms`:`Building: ${hb.length} of ${RB_MIN} days`,trend:dtTrend(fn,v=>Math.round(v)+' ms',{label:'Heart rate variability',color:'--teal',yfmt:v=>Math.round(v),band:TH.HRV_FLOOR,txt:BAND_TXT.hrv,stats:{good:dtIn(1),label:'in or above your usual range'}}),
-      effect:bodyLive()?dtBodyPart('hrv'):b?`${cap(dtPts(adj))}${pc>=-5?'.':`: ${-pc}% below usual.`}`:`Counts after ${RB_MIN} days of readings.`,
+      effect:dtBodyPart('hrv'),
       link:['Open Settings','openSettings()']};
   }
   if(k==='rhr'){
     const rv=latestOf('rhr',t),rb=rhrSeries(30,t),src=rv&&rv.src,fn=dt=>{const r=rhrOn(dt);return r&&r.src===src?r.v:null;};
     if(!rv)return{title:'Resting heart rate',missing:now?'No resting heart rate in the last three days. Sync to refresh, or log it under Body.':`No resting heart rate in the three days to ${fmtD(t)}.`,link:['Log in Body',"logGo('lMeas')"]};
-    const b=rb.length>=RB_MIN?avg(rb):null,df=b?Math.round(rv.v-b):0,adj=b?Math.max(-6,Math.min(2,-(rv.v-b)*0.8)):0;
+    const b=rb.length>=RB_MIN?avg(rb):null;
     return{title:'Resting heart rate',val:Math.round(rv.v)+' bpm',sub:(rv.age?`from ${fmtD(dAgo(o+rv.age))}`:now?'today':'that day')+(src==='icu'?'':' · logged by you'),
       usual:b?`${Math.round(b)} bpm`:`Building: ${rb.length} of ${RB_MIN} days`,trend:dtTrend(fn,v=>Math.round(v)+' bpm',{label:'Resting heart rate',yfmt:v=>Math.round(v),band:TH.RHR_FLOOR,txt:BAND_TXT.rhr,stats:{good:dtIn(-1),label:'in or below your usual range'}}),
-      effect:bodyLive()?dtBodyPart('rhr'):b?`${cap(dtPts(adj))}${df<=2?'.':`: ${df} bpm above usual.`}`:`Counts after ${RB_MIN} days of readings.`,
+      effect:dtBodyPart('rhr'),
       link:src==='icu'?['Open Settings','openSettings()']:['Edit in Body',"logGo('lMeas')"]};
   }
   if(k==='breathing'){
@@ -710,7 +708,7 @@ function dtSpec(k){
     if(!s)return{title:'Soreness',missing:now?'Not rated in the last three days. Soreness is part of the check-in.':`Not rated in the three days to ${fmtD(t)}.`,link:['Check in',"logGo('lCheckin')"],trend:tr};
     return{title:'Soreness',val:EM.soreness[s],sub:`level ${s} of 4${ci.date!==t?' · '+old(ci.date):''}`,
       usual:u.length?`${EM.soreness[Math.round(avg(u))]}`:'Needs more days',trend:tr,
-      effect:(bodyLive()?'Not part of Body.':s>=2?`${cap(dtPts(-(s-1)*4))}.`:'No change.')+(s>=3?' Three days like this: log it as an injury.':''),
+      effect:'Not part of Body.'+(s>=3?' Three days like this: log it as an injury.':''),
       link:['Edit in Log',"logGo('lCheckin')"]};
   }
   if(k==='coffee'){
@@ -726,7 +724,7 @@ function dtSpec(k){
     if(!inj.length)return{title:'Injuries',missing:'No active injuries. Log a niggle under Injury so recovery and the week plan allow for it.',link:['Log an injury',"logGo('lInjury')"]};
     const m=Math.max(...inj.map(i=>i.sev));
     return{title:'Injuries',val:inj.length===1?esc(inj[0].part):inj.length+' active',sub:inj.map(i=>`${esc(i.part)} (${['','mild','moderate','severe'][i.sev]}, since ${fmtD(i.date)})`).join(' · '),
-      usual:'',effect:(bodyLive()?'Not part of Body.':`${cap(dtPts(-m*8))}.`)+(m>=3?' Rest until it settles.':m>=2?' No hard days for now.':''),link:['Edit in Log',"logGo('lInjury')"]};
+      usual:'',effect:'Not part of Body.'+(m>=3?' Rest until it settles.':m>=2?' No hard days for now.':''),link:['Edit in Log',"logGo('lInjury')"]};
   }
   if(k==='strain'){
     // v129: the aim, where the strain came from, heart rate zones all day, your day, the heart rate line and this week, then the 30-day chart
@@ -740,35 +738,18 @@ function dtSpec(k){
         barColor:v=>v>=hard?'--text':'--t2',lines:[{v:hard,label:'Hard day',color:'--t3'}],stats:{avg:'average on training days',unit:'training days',one:'training day',good:v=>v<hard,label:'below a hard day'},
         means:info=>{const h=info.pts.filter(p=>p.v>=hard);return h.length?`${h.length} hard day${h.length>1?'s':''}, the latest ${dayWord(last(h).d).replace(/^T/,'t')}.`:'No hard days.';}})};
   }
-  if(k==='recovery'&&bodyLive()){
-    // v118: Body is the hero score after the parallel run: HRV, resting heart rate and sleep only, each against your own band
+  if(k==='recovery'){
+    // v118: Body: HRV, resting heart rate and sleep only, each against your own band
     // v129: the score and one line on what moved it, a waterfall from your usual day, each part against its usual range
     const B=calcBody(t),sc=B.score,h=d.bodyHist||{},T=td(),fn=dt=>dt===t?sc:dt===T?calcBody().score:(h[dt]??null),nav=dtDayNav();
-    if(sc==null)return{title:'Recovery',nav,missing:now?'No score yet: it needs heart rate variability or resting heart rate from your watch. Tap Sync in Settings.':'No score for this day: no heart rate variability or resting heart rate.',link:['Open Settings','openSettings()']};
+    // v134: no score is shown without HRV or resting heart rate; the sheet says what is missing and how far each usual range has got
+    if(sc==null){const why=B.missing.filter(m=>m.k!=='sleep').map(m=>cap(m.why)+'.').join(' ');
+      return{title:'Recovery',nav,missing:(now?'No score yet. ':'No score for this day. ')+why+(now?' Sync to refresh.':''),link:['Open Settings','openSettings()']};}
     const R=recSteps(B),miss=B.missing.length?`<div class="dt-ln dt-mute">Missing ${now?'today':'that day'}: ${B.missing.map(m=>m.why).join('; ')}.</div>`:'';
     return{title:'Recovery',nav,head:dtHead(sc,recLine(B,R,now))+miss,
       body:`<div class="dt-sec">From your usual day to ${now?'today':'that day'}</div><div class="dt-card">${recWfSvg(R,now?'Today':dayWd(t))}</div>`+
         `<div class="dt-sec">Against your usual range</div><div class="dt-card rc-rgs">${recRows(B,R)}</div>`,
       trend:dtTrend(fn,v=>Math.round(v),{label:'Recovery',color:'--gold-dk',min:0,max:100,zones:scoreZones(),stats:{good:v=>v>=scoreCuts().warn,label:'good'},means:scoreMeaning})};
-  }
-  if(k==='recovery'){
-    const h=d.readHist||{},sc=now?calcReadiness():h[t]??null,fn=dt=>dt===t?sc:(h[dt]??null),u=dtAvg(fn),nav=dtDayNav();
-    const usual=`<div class="dt-row dt-usual"><span>Usual, 30 days</span><b>${u.length?Math.round(avg(u)):'Needs more days'}</b></div>`;
-    if(!now)return sc==null?{title:'Recovery',nav,missing:'No score was recorded for this day.'}:{title:'Recovery',nav,head:dtHead(sc,'')+usual};
-    if(sc==null)return{title:'Recovery',nav,missing:'No score yet. Check in or log last night\'s sleep and it appears.',link:['Check in',"logGo('lCheckin')"]};
-    const sl=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s))),ci=last(d.checkins.filter(c=>ciFull(c)&&fresh(c))),tsb=d.intervalsData.tsb;
-    const parts=[];
-    parts.push(['Sleep',sl?`start ${Math.round(slScore(sl)*0.5+35)}`:'start 70, nothing logged']);
-    if(tsb!=null)parts.push(['Form',dtPts(tsb>0?tsb*0.5:tsb*0.3)]);
-    if(ci)parts.push(['Check-in'+(ci.date!==t?' (yesterday)':''),`30% at ${dtPsy(ci)}/100`]);
-    const hv=latestOf('hrv'),hb=wSeries('hrv');if(hv&&hb.length>=RB_MIN)parts.push(['HRV',dtPts(Math.max(-10,Math.min(4,(hv.v/avg(hb)-1)*30)))]);
-    const rv=latestOf('rhr'),rb=rhrSeries();if(rv&&rb.length>=RB_MIN)parts.push(['Resting HR',dtPts(Math.max(-6,Math.min(2,-(rv.v-avg(rb))*0.8)))]);
-    if(ci&&ci.soreness>=2)parts.push(['Soreness'+(ci.date!==t?' (yesterday)':''),dtPts(-(ci.soreness-1)*4)]);
-    const inj=d.injuries.filter(i=>i.active);if(inj.length)parts.push(['Injury',dtPts(-Math.max(...inj.map(i=>i.sev))*8)]);
-    return{title:'Recovery',nav,head:dtHead(sc,renderZone(sc).ins)+usual,
-      trend:dtTrend(fn,v=>Math.round(v),{label:'Readiness',color:'--gold-dk',min:20,max:100,zones:scoreZones(),stats:{good:v=>v>=scoreCuts().warn,label:'good or primed'},means:scoreMeaning}),
-      effect:`<div class="dt-parts">${parts.map(([l,v])=>`<div class="dt-row"><span>${l}</span><b>${v}</b></div>`).join('')}</div>${(()=>{const b=calcBody().score,n=Object.values(d.bodyHist||{}).filter(v=>v!=null).length,left=Math.max(0,TH.PARALLEL_DAYS-n);return b!=null?`<div class="dt-note">Body (new): ${b} today, takes over in ${left} day${left===1?'':'s'}.</div>`:'';})()}`,
-      link:['Edit in Log',"logGo('lCheckin')"]};
   }
   return null;
 }

@@ -72,7 +72,7 @@ function readinessFactors(date=td()){
   else out.push({k:'checkin',l:'Check-in',v:'Not done',n:'Tap for details',st:'none'});
   const tsb=tsbOn(date);
   if(tsb!=null)out.push({k:'form',l:'Form',v:(tsb>0?'+':tsb<0?'−':'')+Math.abs(Math.round(tsb)),n:zL(tsb,'tsb'),st:tsb>=TH.FORM_OK?'good':tsb>=TH.FORM_DEEP?'warn':'bad'});
-  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:bodyLive()?(now?'shapes today\'s session':'shaped that day\'s session'):'−'+(ci.soreness-1)*4+' on recovery',st:ci.soreness>=3?'bad':'warn'});
+  if(ci&&ci.soreness>=2)out.push({k:'soreness',l:'Soreness',v:EM.soreness[ci.soreness],n:now?'shapes today\'s session':'shaped that day\'s session',st:ci.soreness>=3?'bad':'warn'});
   if(ci&&ci.coffeeLate)out.push({k:'coffee',l:'Coffee',v:'Late cup',n:'after 14:00',st:'warn'});
   const inj=now?d.injuries.filter(i=>i.active):[];
   if(inj.length){const m=Math.max(...inj.map(i=>i.sev));out.push({k:'injury',l:'Injury',v:inj.length===1?esc(inj[0].part):inj.length+' active',n:m>=3?'Severe':m===2?'Moderate':'Mild',st:m>=2?'bad':'warn'});}
@@ -97,35 +97,12 @@ function setWake(v){if(!/^\d\d:\d\d$/.test(v))return;const d=S();d.profile.wakeT
 // the headline and its line for a recovery score (v129: shown at the top of the Recovery sheet, no longer on Today)
 function renderZone(score){
   let z,ins,act=null;   // act: what to do today, for a score under green (the Recovery sheet's line)
-  if(bodyLive()){
-    // Body (v118): green, yellow, red from TH.BODY_*
-    if(score===null){z='Waiting for your watch';ins='Body needs heart rate variability or resting heart rate from last night. Sync to refresh.';}
-    else if(score>=TH.BODY_GREEN){z='Body is recovered';ins='HRV, resting heart rate and sleep are in your usual range. A good day to train as planned.';}
-    else if(score>=TH.BODY_YELLOW){z='Body is middling';act='Train, but keep it controlled.';ins='Some overnight signals are off. '+act;}
-    else{z='Body needs recovery';act='Rest or easy movement.';ins='Your overnight signals are well off your usual. '+act;}
-  }
-  else if(score===null){z='Start with a check-in';ins='Tap how you feel below. Your readiness score appears once you check in or log sleep.';}
-  else if(score>=TH.OLD_HIGH){z='Ready to push hard';ins='All systems green. Good day to train hard or race.';}
-  else if(score>=TH.OLD_WARN){z='Solid day ahead';ins='Good recovery. Normal training appropriate today.';}
-  else if(score>=TH.OLD_MOD){z='Moderate readiness';ins='Some fatigue. Keep intensity moderate today.';}
-  else{z='Recovery day needed';ins='Body is under stress. Prioritise rest and sleep tonight.';}
+  // Body (v118; the one score since v134): green, yellow, red from TH.BODY_*
+  if(score===null){z='No score yet';ins='Recovery needs heart rate variability or resting heart rate from last night, against 14 days of your usual. Sync to refresh.';}
+  else if(score>=TH.BODY_GREEN){z='Body is recovered';ins='HRV, resting heart rate and sleep are in your usual range. A good day to train as planned.';}
+  else if(score>=TH.BODY_YELLOW){z='Body is middling';act='Train, but keep it controlled.';ins='Some overnight signals are off. '+act;}
+  else{z='Body needs recovery';act='Rest or easy movement.';ins='Your overnight signals are well off your usual. '+act;}
   return{z,ins,act};
-}
-function calcReadiness(){
-  const d=S();
-  // only the last three days count: an old night or check-in says nothing about today
-  const fresh=x=>daysAgo(x.date)<=2;
-  const sl=last(d.sleepLogs.filter(s=>(s.score||s.durMin)&&fresh(s))),ci=last(d.checkins.filter(c=>ciFull(c)&&fresh(c))),tsb=d.intervalsData.tsb;
-  if(!sl&&!ci&&tsb===null)return null;
-  let s=70;
-  if(sl)s=slScore(sl)*0.5+35;
-  if(tsb!=null)s=Math.max(30,Math.min(100,s+(tsb>0?tsb*0.5:tsb*0.3)));
-  if(ci){const psy=(ci.energy+ci.mood+(5-ci.stress)+ci.motivation)/16*100;s=s*0.7+psy*0.3;}
-  s+=recoveryAdj();
-  if(ci&&ci.soreness>=2)s-=(ci.soreness-1)*4;
-  const inj=d.injuries.filter(i=>i.active);
-  if(inj.length){const m=Math.max(...inj.map(i=>i.sev));s=Math.max(20,s-m*8);}
-  return Math.round(Math.min(100,Math.max(20,s)));
 }
 function activeDays(){const s=new Set();S().checkins.forEach(c=>{if(ciFull(c)||c.mindfulMin>0)s.add(c.date);});return s;}
 function calcStreak(){const s=activeDays();let n=0,i=s.has(td())?0:1;while(s.has(dAgo(i))){n++;i++;}return n;}

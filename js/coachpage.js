@@ -50,8 +50,10 @@ function renderInsCall(){
   const el=document.getElementById('insCall');if(!el)return;
   let st=null;try{st=strategy();}catch(e){console.warn('call',e);}
   const x=st&&st.days&&st.days[0];
-  // no score yet (no recent night, check-in or training load): say what it needs and open the form
+  // v134: no Body score and no gate (illness, a severe injury): no call; the outline still runs under Training
+  const gated=!coachVerdict()&&!coachGates().lvl;
   if(!x){el.innerHTML=`<div class="cp-call rest"><div class="cp-k"><span>Today's call</span><span>${esc(fmtD(td()))}</span></div><div class="cp-w">No call yet</div><div class="cp-s">It needs last night's sleep or today's check-in.</div><div class="cp-chips"><button class="cp-chip" onclick="logGo('lCheckin')">${UI.check}Check in</button><button class="cp-chip" onclick="logGo('lSleep')">${UI.moon}Log sleep</button></div></div>`;return;}
+  if(gated&&!x.done){el.innerHTML=`<div class="cp-call rest"><div class="cp-k"><span>Today's call</span><span>${esc(fmtD(td()))}</span></div><div class="cp-w">No call yet</div><div class="cp-s">It needs heart rate variability or resting heart rate from last night. Sync to refresh.</div><div class="cp-chips"><button class="cp-chip" onclick="openSettings()">${UI.pulse}Open Settings</button></div></div>`;return;}
   const t=td(),tone=cpTone(x),il=illness(t)||{},nh=st.days.slice(1).find(d=>d.role==='hard');
   const ill=il.lvl==='systemic'&&x.role==='recover';
   let s=ill?(il.kind==='body'?'Your body may be fighting something.':il.why)+' Rest today; a walk is fine.':x.why||'';

@@ -71,7 +71,7 @@ function atDay(dt,fn){
 
 // a steady athlete: 35 days of HRV (56/64 alternating, the last week at 64), resting HR 49/51, 7h30 asleep every night (goal 7h30), no training
 function base(o={}){
-  const s=JSON.parse(JSON.stringify(DEFAULTS));s.onboardingDone=true;s.readHist={};s.bodyHist={};
+  const s=JSON.parse(JSON.stringify(DEFAULTS));s.onboardingDone=true;s.bodyHist={};
   s.profile.sleepGoal=7.5;
   for(let i=0;i<35;i++){
     const dt=dAgo(i);
@@ -90,7 +90,7 @@ const ci=(o={})=>({id:'ci-'+td(),date:td(),energy:3,mood:3,stress:2,motivation:3
 run('Test 2',()=>{
   base();const a=calcBody().score,va=coachVerdict().lvl;
   _s.wellness[td()].hrv=52;const b=calcBody().score,vb=coachVerdict().lvl;
-  check('Test 2: a single-morning HRV dip leaves the verdict unchanged',bodyLive()&&va===vb&&va==='ok',`Body ${a} → ${b} after HRV 64 → 52 this morning; verdict ${va} → ${vb}`);
+  check('Test 2: a single-morning HRV dip leaves the verdict unchanged',va===vb&&va==='ok',`Body ${a} → ${b} after HRV 64 → 52 this morning; verdict ${va} → ${vb}`);
 });
 // and the control: a week of low HRV does move it
 run('Test 2b',()=>{
@@ -225,13 +225,10 @@ run('Overreach',()=>{
   O=setup(10,{loadOk:true});
   check('Overreach: load at the 4-week mean → off',!O.on,JSON.stringify(O));
 });
-// Parallel run (A6): the old readiness leads until Body has 14 recorded days
-run('Parallel',()=>{
-  base({bodyDays:13});_s.checkins=[ci()];
-  const a=bodyLive(),ha=heroScore()===calcReadiness();
-  base({bodyDays:14});
-  const b=bodyLive(),hb=heroScore()===calcBody().score;
-  check('Parallel run: 13 Body days → old readiness, 14 → Body',!a&&ha&&b&&hb,`13 days: live ${a}; 14 days: live ${b}`);
+// v134: Body is the one recovery score from the first day
+run('Body only',()=>{
+  base({bodyDays:0});_s.checkins=[ci()];
+  check('v134: with no Body history the hero score is still Body',heroScore()===calcBody().score&&heroScore()!=null,String(heroScore()));
 });
 // Load and Mind
 run('Load',()=>{
@@ -1722,8 +1719,8 @@ seq('v127 battery',async()=>{
     const brow=l=>{const r=[...$('dtBody').querySelectorAll('.dt-row')].find(r=>r.firstElementChild&&r.firstElementChild.textContent===l);return r?r.lastElementChild.textContent:'';};
     check('v127 battery: the sheet says until when it was recorded, with no ring, no need bar and no chart',brow('Recorded until').startsWith('03:12')&&brow('Recorded until').includes('battery ran out')&&_dtCh===null&&!$('dtBody').querySelector('.sl-ring')&&!$('dtBody').querySelector('.sl-need'),brow('Recorded until'));
     check('v127 battery: no app or device names in the sheet',noNames($('dtBody').textContent));
-    const e1=brow('Recovery that day'),bh=S().bodyHist;S().bodyHist={};openDetail('sleep');const e0=brow('Recovery that day'),f0=dtSpec('sleep').effect;S().bodyHist=bh;
-    check('v127 battery: Recovery that day leaves sleep out of Body, and before Body is live says the old score reads the part recorded, not that the night was short',e1==='HRV and resting heart ratesleep left out'&&/^Starts at \d+ of 100from the part recorded$/.test(e0)&&!/short/.test(e0)&&f0===undefined,e1+' / '+e0);
+    const e1=brow('Recovery that day');
+    check('v127 battery: Recovery that day leaves sleep out of Body, not that the night was short',e1==='HRV and resting heart ratesleep left out'&&!/short/.test(e1),e1);
     closeDetail();
     loadSleepFor(dt);const st=logStatus().find(x=>x[0]==='lSleep'),w=slWhy(L);
     check('v127 battery: Log > Sleep asks for the wake-up time',st[1]===false&&st[2]==='part'&&st[3]==='sleep needs your wake-up time'&&w&&w.st==='Battery ran out: add your wake-up time'&&!w.ask&&$('slNote').textContent===w.nt&&!$('slNote').querySelector('button')&&noNames(w.nt+w.st),JSON.stringify(st)+' '+$('slNote').textContent);
@@ -2031,10 +2028,10 @@ seq('v129 day bar',async()=>{
     base();const bh0=JSON.stringify(S().bodyHist),n0=Object.keys(S().bodyHist).length,cy=calcBody(y).score,c15=calcBody(dAgo(TH.DAY_BACK)).score;
     S().bodyHist[dAgo(15)]=80;delete S().bodyHist[dAgo(3)];S().bodyHist[dAgo(2)]=calcBody(dAgo(2)).score;
     const s1=dayScore(y),s3=dayScore(dAgo(3)),s2=dayScore(dAgo(2));
-    check('v129 day bar: with Body live a past day is worked out again; a stored day that differs is corrected, none is added',bodyLive()&&s1===cy&&S().bodyHist[y]===cy&&cy!==80&&s3===calcBody(dAgo(3)).score&&!(dAgo(3) in S().bodyHist)&&s2===S().bodyHist[dAgo(2)]&&Object.keys(S().bodyHist).length===n0,`${s1} ${s3} ${s2} / ${bh0.length}`);
+    check('v129 day bar: a past day is worked out again; a stored day that differs is corrected, none is added',s1===cy&&S().bodyHist[y]===cy&&cy!==80&&s3===calcBody(dAgo(3)).score&&!(dAgo(3) in S().bodyHist)&&s2===S().bodyHist[dAgo(2)]&&Object.keys(S().bodyHist).length===n0,`${s1} ${s3} ${s2} / ${bh0.length}`);
     check('v129 day bar: today is the hero score',dayScore(td())===heroScore(),'');
-    base({live:false});S().readHist[y]=71;
-    check('v129 day bar: before Body is live a past day shows the old snapshot, or nothing',!bodyLive()&&dayScore(y)===71&&dayScore(dAgo(2))===null,'');
+    base();for(let i=2;i<=8;i++)delete S().wellness[dAgo(i)].hrv;delete S().wellness[dAgo(2)].rhr;
+    check('v134 day bar: a past day with neither HRV nor resting heart rate has no score',dayScore(dAgo(2))===null&&dayScore(y)!=null,'');
     _tdView=dAgo(2);renderGauges();
     check('v129 day bar: a past day with no score says No data',$('ringNum').textContent==='—'||$('gRecSub').textContent==='No data',$('gRecSub').textContent);
     // a sheet opened from Today follows the day; elsewhere it opens on today
@@ -2388,10 +2385,6 @@ seq('v129 recovery sheet',async()=>{
     // a missing part is named under the line
     base({noSleep:true});openDetail('recovery');
     check('v129 recovery sheet: missing parts follow the line',/^Missing today: no sleep record/.test(txt($('dtBody').querySelector('.dt-mute'))),txt($('dtBody').querySelector('.dt-mute')));
-    closeDetail();
-    // before Body is live: the old score keeps its list, gains the day bar and the top line
-    base({live:false});_s.checkins=[ci()];openDetail('recovery');const sc=calcReadiness();
-    check('v129 recovery sheet: before Body is live, the old score with its line and its list',txt($('dtBody').querySelector('.dt-ln'))===renderZone(sc).ins&&$('dtBody').querySelector('.dt-dbar')&&/Effect on recovery/.test($('dtBody').textContent)&&!$('dtBody').querySelector('.rc-wf'),txt($('dtBody').querySelector('.dt-ln')));
     closeDetail();
     // 360px: the sheet fits
     base();openDetail('recovery');const m=box.querySelector('.modal'),R0=box.getBoundingClientRect().right,wide=[...$('dtBody').querySelectorAll('*')].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().right>R0+0.5);
@@ -3118,8 +3111,8 @@ seq('v130 map',async()=>{
 });
 
 // v131: sleep debt against your goal over 14 nights; a longer night or a nap pays back at most 2 hours a day, never below 0;
-// missing and battery nights add and pay nothing; an alert only, never part of Body, the gauge, the need or the old readiness
-const PIN131={body:68,ready:74,need:495};   // v130's values on the pin fixture (Body, the old readiness, tonight's need)
+// missing and battery nights add and pay nothing; an alert only, never part of Body, the gauge or the need
+const PIN131={body:68,need:495};   // v130's values on the pin fixture (Body, tonight's need)
 // dn(a): base(), then the 14 nights from 13 days ago to today set to a (minutes; null = no night; 'b' = a battery night of 390)
 function dn(a){
   base();a.forEach((v,i)=>{const dt=dAgo(13-i),r=_s.sleepLogs.find(x=>x.date===dt);
@@ -3197,15 +3190,15 @@ run('v131 debt readers',()=>{
   check('v131 debt: paying back, the briefing also gets the peak it came down from',I2&&I2.min===168&&I2.state==='paying'&&I2.peakMin===318,JSON.stringify(I2));
 });
 run('v131 debt pin',()=>{
-  // the debt never lowers Body, the gauge, tonight's need or the old readiness: the same values with any debt
-  const snap=()=>JS([calcBody().score,calcBody(dAgo(1)).score,calcReadiness(),sleepNeed(0,dAgo(-1)),sleepNeed(5),needOf(slOf(dAgo(1)))]);
+  // the debt never lowers Body, the gauge or tonight's need: the same values with any debt
+  const snap=()=>JS([calcBody().score,calcBody(dAgo(1)).score,sleepNeed(0,dAgo(-1)),sleepNeed(5),needOf(slOf(dAgo(1)))]);
   const fx=[[...G7,...Array(7).fill(390)],[...gN(10),300,300,750,450],[...gN(14)]],keep=window.sleepDebt;
   const r=fx.map(a=>{dn(a);const x=snap();window.sleepDebt=()=>({date:td(),goal:450,min:900,state:'building',trend:'up',nights:[],peak:{min:900,date:td()},clearedOn:null,since:dAgo(6),n:14,toClear:15,payN:0,payNaps:0});
     const y=snap();window.sleepDebt=keep;return[x,y];});
-  const src=[calcBody,sleepNeed,calcReadiness,bodyNight].map(f=>f.toString()).join('');
-  check('v131 debt pin: Body, the old readiness and the sleep need are the same with any debt, and never read it',r.every(([x,y])=>x===y)&&!/sleepDebt|DEBT_/.test(src),JS(r));
+  const src=[calcBody,sleepNeed,bodyNight].map(f=>f.toString()).join('');
+  check('v131 debt pin: Body and the sleep need are the same with any debt, and never read it',r.every(([x,y])=>x===y)&&!/sleepDebt|DEBT_/.test(src),JS(r));
   dn([...G7,...Array(7).fill(390)]);
-  check('v131 debt pin: Body on the fixture is as before v131 (pinned)',calcBody().score===PIN131.body&&calcReadiness()===PIN131.ready&&sleepNeed(0,dAgo(-1))===PIN131.need,JS([calcBody().score,calcReadiness(),sleepNeed(0,dAgo(-1))]));
+  check('v131 debt pin: Body on the fixture is as before v131 (pinned)',calcBody().score===PIN131.body&&sleepNeed(0,dAgo(-1))===PIN131.need,JS([calcBody().score,sleepNeed(0,dAgo(-1))]));
 });
 
 // v133 (R7.6): the debt fades with a half-life of DEBT_HALF nights over DEBT_LOOK nights; an old night never drops out at once
@@ -3232,10 +3225,10 @@ run('v133 debt fade',()=>{
   const lines=[];[[...gN(10),390,390,390,450],[...gN(10),330,330,510,450],[...G7,...Array(7).fill(390)],[...gN(12),210,900]].forEach(a=>{dn(a);const x=sleepDebt();if(x)lines.push(debtLine(x));
     for(let i=0;i<7;i++)_s.wellness[dAgo(i)].hrv=48;const y=sleepDebt();if(y)lines.push(debtLine(y));});
   check('v133 fade: every debt line keeps the v123 rule: at most 2 sentences and 140 characters',lines.length===8&&lines.every(t=>t.length<=140&&nSen(t)<=2),lines.filter(t=>t.length>140||nSen(t)>2).join(' | ')||lines.join(' | '));
-  // the pins hold on the fade fixtures too: Body, the old readiness and the need never read the debt
-  const snap=()=>JS([calcBody().score,calcReadiness(),sleepNeed(0,dAgo(-1)),needOf(slOf(dAgo(1)))]),keep=window.sleepDebt,r=[];
+  // the pins hold on the fade fixtures too: Body and the need never read the debt
+  const snap=()=>JS([calcBody().score,sleepNeed(0,dAgo(-1)),needOf(slOf(dAgo(1)))]),keep=window.sleepDebt,r=[];
   [[210,...gN(13)],[...gN(12),210,900],[...gN(12),330,'b']].forEach(a=>{dn(a);const x=snap();window.sleepDebt=()=>null;const y=snap();window.sleepDebt=keep;r.push(x===y);});
-  check('v133 fade pin: Body, the old readiness and the need are the same with the debt switched off',r.every(Boolean),JS(r));
+  check('v133 fade pin: Body and the need are the same with the debt switched off',r.every(Boolean),JS(r));
 });
 
 // v131: naps. A sleep stretch on the band's day counts only under the strict rule (length, gaps to the nights, steps, no workout,
@@ -3592,6 +3585,47 @@ seq('Briefing v132 Q&A',async()=>{
     const R0=box.getBoundingClientRect().right,wide=[...box.querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
     check('Briefing v132: at 360px nothing on the page runs wider, and no source names',!wide.length&&!/Polar|Intervals|Garmin|Strava/.test(box.textContent),wide.slice(0,5).map(x=>x.tagName+'.'+x.className).join(' '));
   }finally{Object.assign(window,keep);_insFull=false;_insWkOn=_insHistOn=false;_s.claudeKey='';ic.id='insContent';box.remove();css.remove();}
+});
+// v134: Body is the one recovery score; the old readiness, its history and the parallel run are gone
+run('v134 retired',()=>{
+  const gone=['calcReadiness','recoveryAdj','dtPts','recordReadiness','bodyLive','slScore'].filter(n=>typeof window[n]!=='undefined');
+  check('v134: the old readiness and its helpers are gone',!gone.length,gone.join(' '));
+  const oldTh=Object.keys(TH).filter(k=>/^OLD_|^PARALLEL/.test(k));
+  check('v134: no OLD_ or PARALLEL_DAYS thresholds',!oldTh.length,oldTh.join(' '));
+  check('v134: the cuts are Body\'s, and no Primed',scoreCuts().high===67&&scoreCuts().mod===34&&[95,80,70,50,20].every(v=>scoreWord(v)!=='Primed')&&scoreWord(null)==='No score',JS(scoreCuts()));
+  base();_s.readHist={[dAgo(1)]:71};migrate();
+  check('v134: migrate() deletes readHist',!('readHist' in S()),'');
+  base();const D=insightData(),t=JS(D);
+  check('v134 briefing: no readiness fields, a weekly Body average, no Readiness 20-100',!/readiness|scoreInUse/i.test(t)&&'bodyAvg' in (D.week||{})&&!/Readiness 20-100|scoreInUse/.test(INS_COMMON),JS(D.week&&D.week.bodyAvg));
+});
+// v134: a day with neither HRV nor resting heart rate has no score: no number, no call, no strain aim; the outline still runs
+function noScore(){base();for(let i=0;i<7;i++)delete _s.wellness[dAgo(i)].hrv;delete _s.wellness[td()].rhr;_s.checkins=[ci()];}
+seq('v134 no score',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';
+  box.innerHTML=['pg-today','pg-insights','dtModal'].map(id=>doc.getElementById(id).outerHTML).join('');document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  try{
+    noScore();_tdView=null;
+    check('v134 no score: Body is null, the hero score is null',calcBody().score===null&&heroScore()===null,JS(calcBody().missing));
+    renderRing(dayScore(td()));renderGauges();
+    check('v134 no score: the gauge shows no number and says No score',$('ringNum').textContent==='—'&&$('gRecSub').textContent==='No score',`${$('ringNum').textContent} ${$('gRecSub').textContent}`);
+    check('v134 no score: no strain aim',strainTarget()===null&&!/Aim/.test($('gStrSub').textContent),$('gStrSub').textContent);
+    const st=strategy();
+    check('v134 no score: the outline still has seven days and today has a role',st&&st.days.length===7&&!!st.days[0].role,JS(st&&st.days.map(x=>x.role)));
+    check('v134 no score: no verdict, and the gates are quiet on a healthy day',coachVerdict()===null&&coachGates().lvl===null,'');
+    renderInsCall();
+    check('v134 no score: Today\'s call says No call yet',/No call yet/.test(txt($('insCall'))),txt($('insCall')).slice(0,120));
+    _s.injuries=[{id:'in1',date:td(),part:'Knee',sev:3,active:true}];
+    check('v134 no score: a severe injury still gives rest with no score',coachGates().lvl==='bad'&&['rest','recover'].includes(strategy().days[0].role),strategy().days[0].role);
+    _s.injuries=[];
+    _dtDay=null;openDetail('recovery');const bt=txt($('dtBody'));
+    check('v134 no score: the Recovery sheet says No score yet and why',/No score yet\./.test(bt)&&/Open Settings/.test(bt)&&!$('dtBody').querySelector('.rc-wf'),bt.slice(0,200));
+    const R0=box.getBoundingClientRect().right,wide=[...box.querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
+    check('v134 no score: nothing wider than 360px, no source names, no Primed or readiness',!wide.length&&!/Polar|Intervals|Garmin|Strava/.test(box.textContent)&&!/Primed|readiness/i.test(box.textContent),wide.slice(0,5).map(x=>x.className).join(' '));
+    closeDetail();
+  }finally{closeDetail();_tdView=null;box.remove();css.remove();}
 });
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
