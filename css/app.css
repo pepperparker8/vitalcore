@@ -1574,3 +1574,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .dy-sw.sl{background:var(--teal-l);border:1px solid var(--teal)}
 .dy-sw.wo{background:var(--sur2);border:1px solid var(--bdr)}
 .dy-sw.bo{background:repeating-linear-gradient(45deg,var(--t3) 0 1px,transparent 1px 4px);border:1px solid var(--bdr)}
+
+/* ── v135: Monitor (blood pressure read over Bluetooth, Log > Body) ── */
+.bp-ble[hidden],.bp-us[hidden]{display:none}
+.bp-ble{margin-top:8px}
+#pg-log .bp-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin-top:0}
+.bp-btn .ui-i{width:20px;height:20px;flex:none}
+.bp-st{font-size:13px;color:var(--t2);min-height:0}
+.bp-st:empty{display:none}
+.bp-st:not(:empty){padding-top:6px}
+.bp-us{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:8px;font-size:14px;color:var(--text)}
+.bp-ucs{display:flex;gap:8px}
+.bp-uc{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--bdr);background:transparent;color:var(--text);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.bp-uc[aria-pressed="true"]{border-color:var(--text)}
+.bp-set{padding:8px 0}

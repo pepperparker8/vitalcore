@@ -287,7 +287,13 @@
         <div class="hist-row"><span>Weight</span><span class="hist-val" id="wtRec">—</span></div>
         <div class="hist-row"><span>Resting HR</span><span class="hist-val" id="hrRec">—</span></div>
       </div>
-      <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div></div>
+      <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div>
+        <div class="bp-ble" id="bpBleW" hidden>
+          <button class="btn-out bp-btn" id="bpBle" onclick="bpRead()"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8l10 8l-5 4l0 -16l5 4l-10 8"/></svg><span>Read from your monitor</span></button>
+          <div class="fh" id="bpBleHint">First time: hold the monitor's Bluetooth button until P blinks, then tap. Each reading goes to whichever app reads it first.</div>
+          <div class="bp-st" id="bpBleSt" aria-live="polite"></div>
+          <div class="bp-us" id="bpBleUs" hidden><span>Which user are you on the monitor?</span><span class="bp-ucs"><button class="bp-uc" data-u="1" aria-pressed="false" onclick="bpSetUser(1)">1</button><button class="bp-uc" data-u="2" aria-pressed="false" onclick="bpSetUser(2)">2</button></span></div>
+        </div></div>
       <div class="fg"><div class="fl">WEIGHT</div><div class="fr"><input type="number" class="inp" id="wtKg" placeholder="73.5" step="0.1" min="30" max="250"><span class="inp-unit">kg</span></div></div>
       <div class="fg"><div class="fl">RESTING HEART RATE (morning)</div><div class="fr"><input type="number" class="inp" id="hrVal" placeholder="58" min="30" max="200"><span class="inp-unit">bpm</span></div><div class="fh">Right after waking, before getting up</div></div>
       <button class="btn-gold" onclick="saveMeas()">Save results</button>
@@ -388,6 +394,7 @@
       <button class="btn-out" onclick="backupJSON()">⬇ Download backup file</button>
       <button class="btn-out" onclick="document.getElementById('restoreFile').click()">⬆ Restore from backup file</button>
       <button class="btn-out" onclick="exportCSV()">Export as spreadsheet (CSV)</button>
+      <div class="bp-us bp-set" id="bpUserRow" hidden><span>User on the blood pressure monitor</span><span class="bp-ucs"><button class="bp-uc" data-u="1" aria-pressed="false" onclick="bpSetUser(1)">1</button><button class="bp-uc" data-u="2" aria-pressed="false" onclick="bpSetUser(2)">2</button></span></div>
       <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="restoreBackup(this)">
     </div>
     <button class="btn-gold" style="margin-top:8px" onclick="saveSettings()">Save Settings</button>

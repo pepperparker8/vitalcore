@@ -443,10 +443,11 @@ function saveMeas(){
   const sys=$('bpSys').value,dia=$('bpDia').value;
   if((sys&&!dia)||(dia&&!sys)){showToast('Enter both blood pressure numbers, top and bottom');return;}
   const sN=+sys,dN=+dia;
-  if(sys&&dia){if(sN<60||sN>250){showToast('Systolic: 60–250');return;}if(dN<40||dN>180){showToast('Diastolic: 40–180');return;}if(sN<=dN){showToast('Systolic must be higher than diastolic');return;}}
+  const [sLo,sHi]=TH.BP_SYS_RNG,[dLo,dHi]=TH.BP_DIA_RNG,[hLo,hHi]=TH.HR_RNG;
+  if(sys&&dia){if(sN<sLo||sN>sHi){showToast(`Systolic: ${sLo}–${sHi}`);return;}if(dN<dLo||dN>dHi){showToast(`Diastolic: ${dLo}–${dHi}`);return;}if(sN<=dN){showToast('Systolic must be higher than diastolic');return;}}
   const wt=+$('wtKg').value||null,hr=+$('hrVal').value||null;
   if(wt&&(wt<30||wt>250)){showToast('Weight: 30–250 kg');return;}
-  if(hr&&(hr<30||hr>200)){showToast('Resting HR: 30–200 bpm');return;}
+  if(hr&&(hr<hLo||hr>hHi)){showToast(`Resting HR: ${hLo}–${hHi} bpm`);return;}
   const pw=last(S().measurements.filter(m=>m.weight&&!m.isEx&&daysAgo(m.date)<=7));
   if(wt&&pw&&Math.abs(wt-pw.weight)>=4&&!sane(`${wt} kg is ${Math.round(Math.abs(wt-pw.weight)*10)/10} kg different from your last weigh-in (${pw.weight} kg).`))return;
   if(!sN&&!wt&&!hr){showToast('Enter at least one measurement');return;}
@@ -458,11 +459,155 @@ function saveMeas(){
 }
 function updMeasHist(){
   const ms=S().measurements;
-  const b=last(ms.filter(m=>m.bpSys)),w=last(ms.filter(m=>m.weight)),h=last(ms.filter(m=>m.hr));
-  $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg`:'—';
+  const b=ms.filter(m=>m.bpSys).reduce((a,m)=>!a||m.date>a.date||(m.date===a.date&&(bpT(m)||'')>=(bpT(a)||''))?m:a,null),w=last(ms.filter(m=>m.weight)),h=last(ms.filter(m=>m.hr));
+  $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg${bpT(b)?' · '+bpT(b):''}`:'—';
   $('wtRec').textContent=w?`${w.weight} kg`:'—';
   $('hrRec').textContent=h?`${h.hr} bpm`:'—';
-  lgStat();
+  bpBleInit();lgStat();
+}
+
+// ── BLOOD PRESSURE MONITOR (v135, docs/plan-omron-ble.md) ────────────────────
+// Reads new readings from a monitor with the standard Bluetooth Blood Pressure service (0x1810, measurement 0x2A35).
+// One record per reading, id bp-<date>-<HHMM> from the reading's own time, so a resend is the same record.
+// The cuff pulse is shown in the toast only, never stored as resting heart rate (owner's decision).
+const BP_SVC=0x1810,BP_MEAS=0x2A35,BP_CTS=0x1805;
+let _bpBusy=false,_bpHold=null;
+// IEEE-11073 16-bit SFLOAT: 4-bit signed exponent, 12-bit signed mantissa; the special values read as null
+function sfloat(u){
+  if([0x07FF,0x0800,0x07FE,0x0802,0x0801].includes(u))return null;
+  let m=u&0x0FFF,e=u>>12;if(m>=0x0800)m-=0x1000;if(e>=8)e-=16;
+  return e<0?m/Math.pow(10,-e):m*Math.pow(10,e);
+}
+// One 0x2A35 value: flags, systolic, diastolic, mean pressure, then time stamp, pulse, user and status when flagged
+function bpParse(dv){
+  if(!dv||dv.byteLength<7)return null;
+  const f=dv.getUint8(0),u16=i=>dv.getUint16(i,true),k=f&1?TH.BP_KPA:1,mm=v=>v==null?null:Math.round(v*k);
+  const sys=mm(sfloat(u16(1))),dia=mm(sfloat(u16(3))),map=mm(sfloat(u16(5)));
+  let o=7,at=null,pulse=null,user=null,st=0;
+  if(f&2){if(dv.byteLength<o+7)return null;const y=u16(o),mo=dv.getUint8(o+2),d=dv.getUint8(o+3);
+    if(y&&mo&&d)at=new Date(y,mo-1,d,dv.getUint8(o+4),dv.getUint8(o+5),dv.getUint8(o+6));o+=7;}
+  if(f&4){if(dv.byteLength<o+2)return null;const p=sfloat(u16(o));pulse=p==null?null:Math.round(p);o+=2;}
+  if(f&8){if(dv.byteLength<o+1)return null;const x=dv.getUint8(o);user=x===255?null:x;o+=1;}
+  if(f&16){if(dv.byteLength<o+2)return null;st=u16(o);o+=2;}
+  if(sys==null||dia==null)return null;
+  return {sys,dia,map,pulse,at,user,move:!!(st&1),cuff:!!(st&2),irr:!!(st&4)};
+}
+// The time of day of a monitor reading, from its id ('07:12'), else null
+function bpT(rec){const m=/^bp-\d{4}-\d{2}-\d{2}-(\d{2})(\d{2})/.exec(rec&&rec.id||'');return m?m[1]+':'+m[2]:null;}
+const bpP2=n=>String(n).padStart(2,'0');
+// Decides what to keep from one read: readings r {…bpParse, got (arrival Date)} in the order they arrived.
+// Returns the new records and the counts the toast reports; ask = readings of two users and none chosen yet.
+function bpKeep(rs,now=new Date()){
+  const o={add:[],same:0,gone:0,range:0,old:0,clock:0,phone:0,move:0,cuff:0,other:0,pulse:null,ask:false};
+  const users=[...new Set(rs.map(r=>r.user).filter(x=>x!=null))],me=S().bpUser;
+  if(users.length>1&&me==null){o.ask=true;return o;}
+  const [sLo,sHi]=TH.BP_SYS_RNG,[dLo,dHi]=TH.BP_DIA_RNG,[hLo,hHi]=TH.HR_RNG,ms=S().measurements;
+  const bad=r=>r.at&&(r.at-now>TH.BP_BLE_FUT*60000||r.at.getFullYear()<TH.BP_BLE_Y0);
+  const lastBad=rs.filter(bad).pop();
+  rs.forEach(r=>{
+    if(me!=null&&r.user!=null&&r.user!==me){o.other++;return;}
+    let at=r.at;
+    if(!at){at=r.got||now;o.phone++;}
+    else if(bad(r)){if(r!==lastBad){o.clock++;return;}at=r.got||now;o.clock++;}
+    if(now-at>TH.BP_BLE_OLD*864e5){o.old++;return;}
+    if(r.sys<sLo||r.sys>sHi||r.dia<dLo||r.dia>dHi||r.sys<=r.dia||(r.pulse!=null&&(r.pulse<hLo||r.pulse>hHi))){o.range++;return;}
+    const date=ymd(at);
+    if(ms.some(m=>m.date===date&&!/^bp-/.test(String(m.id))&&m.bpSys===r.sys&&m.bpDia===r.dia)){o.same++;return;}
+    const base=`bp-${date}-${bpP2(at.getHours())}${bpP2(at.getMinutes())}${r.user>1?'-u'+r.user:''}`;
+    for(let n=1;;n++){
+      const id=n===1?base:base+'-'+n,ex=ms.find(m=>m.id===id)||o.add.find(m=>m.id===id);
+      if(ex&&ex.bpSys===r.sys&&ex.bpDia===r.dia){o.same++;return;}
+      if(!ex&&isGone(id)){o.gone++;return;}
+      if(ex)continue;
+      o.add.push({id,date,bpSys:r.sys,bpDia:r.dia,weight:null,hr:null,src:{bpSys:'mon',bpDia:'mon'}});
+      if(r.move)o.move++;if(r.cuff)o.cuff++;if(r.pulse!=null)o.pulse=r.pulse;
+      return;
+    }
+  });
+  if(!o.add.length)o.phone=0;
+  return o;
+}
+const bpN=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+// The toast after a read, in the counts bpKeep returned
+function bpMsg(o){
+  const a=o.add.length,t=[];
+  t.push(a?`${bpN(a,'reading')} added${o.same?`, ${o.same} already in`:''}`:o.same?`${bpN(o.same,'reading')} already in`:'No new readings on the monitor');
+  if(o.pulse!=null&&a)t.push(`Pulse ${o.pulse} bpm`);
+  if(o.move)t.push(`${o.move} taken while moving`);
+  if(o.cuff)t.push(`${o.cuff} with the cuff loose`);
+  if(o.range)t.push(`${bpN(o.range,'reading')} skipped: outside the usual range`);
+  if(o.old)t.push(`${bpN(o.old,'reading')} over a year old left out`);
+  if(o.clock)t.push(`The monitor's clock is off; set it on the monitor`);
+  else if(o.phone)t.push('Time from your phone');
+  return t.join('. ')+'.';
+}
+// Saves what bpKeep kept and reports it, with Undo
+function bpApply(rs){
+  if(!rs.length){showToast('No new readings on the monitor');return null;}
+  const o=bpKeep(rs);
+  if(o.ask){_bpHold=rs;bpUserUI();return o;}
+  o.add.forEach(r=>put('meas',r));
+  const d=S();if(!d.bpOk){d.bpOk=1;save(d);}
+  updMeasHist();if(o.add.length)refreshAll();
+  showToast(bpMsg(o),o.add.length?{label:'Undo',fn:()=>{o.add.forEach(r=>del('meas',r.id));updMeasHist();refreshAll();}}:null);
+  return o;
+}
+// The button: one read through the browser's device chooser (it must run inside the tap)
+async function bpRead(){
+  if(_bpBusy||!navigator.bluetooth)return;
+  const st=$('bpBleSt'),rs=[];let dev=null,idle=null,done=null;
+  _bpBusy=true;
+  try{
+    dev=await navigator.bluetooth.requestDevice({filters:[{services:[BP_SVC]},{namePrefix:'BLEsmart_'}],optionalServices:[BP_SVC,BP_CTS]});
+  }catch(e){
+    _bpBusy=false;
+    if(e&&/adapter|bluetooth is off|turned off/i.test(e.message||''))showToast('Turn on Bluetooth and try again');
+    else if(!e||e.name!=='NotFoundError')showToast('Could not reach the monitor. Try again.');
+    return;
+  }
+  const fin=new Promise(r=>done=r),kick=()=>{clearTimeout(idle);idle=setTimeout(done,TH.BP_BLE_IDLE*1000);};
+  const onOff=()=>done();
+  dev.addEventListener('gattserverdisconnected',onOff);
+  let err=null;
+  try{
+    st.textContent='Connecting…';
+    const srv=await dev.gatt.connect();
+    let ch=null;
+    try{ch=await (await srv.getPrimaryService(BP_SVC)).getCharacteristic(BP_MEAS);}catch(e){err='svc';}
+    if(ch){
+      ch.addEventListener('characteristicvaluechanged',ev=>{const r=bpParse(ev.target.value);if(r){r.got=new Date();rs.push(r);}kick();});
+      await ch.startNotifications();
+      st.textContent='Waiting for readings…';kick();
+      await fin;
+    }
+  }catch(e){if(!err)err='link';}
+  clearTimeout(idle);dev.removeEventListener('gattserverdisconnected',onOff);
+  try{if(dev.gatt.connected)dev.gatt.disconnect();}catch(e){}
+  st.textContent='';_bpBusy=false;
+  if(err==='svc'){showToast('This monitor does not share readings this way. Enter them by hand.');return;}
+  if(err&&!rs.length){showToast('Could not reach the monitor. Try again.');return;}
+  return bpApply(rs);
+}
+// Which user of a two-user monitor this phone reads (local only)
+function bpSetUser(n){
+  const d=S();d.bpUser=n;save(d);
+  const rs=_bpHold;_bpHold=null;bpUserUI();
+  if(rs)bpApply(rs);
+}
+function bpUserUI(){
+  const me=S().bpUser,q=$('bpBleUs'),row=$('bpUserRow');
+  if(q)q.hidden=!_bpHold;
+  if(row)row.hidden=me==null;
+  document.querySelectorAll('.bp-uc').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.u===me&&!(_bpHold&&b.closest('#bpBleUs')))));
+}
+// Shows the button only where the browser can read the monitor
+async function bpBleInit(){
+  const w=$('bpBleW');if(!w)return;
+  const bt=navigator.bluetooth;let ok=!!bt;
+  if(ok&&bt.getAvailability){try{ok=await bt.getAvailability();}catch(e){}}
+  w.hidden=!ok;
+  const h=$('bpBleHint');if(h)h.hidden=!!S().bpOk;
+  bpUserUI();
 }
 
 // ── INJURY LOG ───────────────────────────────────────────────────────────────

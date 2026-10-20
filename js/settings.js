@@ -9,7 +9,7 @@ function loadSetUI(){
   $('sSlpH').value=Math.floor(d.profile.sleepGoal)||7;$('sSlpM').value=Math.round(((d.profile.sleepGoal||7.5)%1)*60)||0;
   $('sWt').value=d.profile.wtGoal||'';$('sNut').value=fuGoal();$('sSex').value=d.profile.sex||'';$('sHR').value=d.profile.hrGoal||'';$('sGoalName').value=d.profile.goalName||'';$('sGoalDate').value=d.profile.goalDate||'';
   $('sClaudeKey').value=d.claudeKey||'';$('sInterKey').value=d.intervalsKey||'';$('sInterID').value=d.intervalsID||'';$('sPolarKey').value=d.polarKey||'';
-  $('claudeTestRes').textContent='';$('icuTestRes').textContent='';$('polTestRes').textContent='';$('polNote').textContent=polarNote();
+  $('claudeTestRes').textContent='';$('icuTestRes').textContent='';$('polTestRes').textContent='';$('polNote').textContent=polarNote();bpUserUI();
   const n=Object.keys(d.pending).length;
   if(_auth){
     $('accBox').innerHTML=`<b>Signed in as ${esc(_auth.user.email||'your account')}</b>${n?`${n} change${n>1?'s':''} waiting to upload.`:'Everything is backed up online.'} Only people you invite can sign in, and each person sees only their own data.`;
@@ -33,7 +33,7 @@ function saveSettings(){
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function backupJSON(){
-  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;delete d.napBackV;
+  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;delete d.napBackV;delete d.bpUser;delete d.bpOk;
   download(`vitalcore-backup-${td()}.json`,'application/json',JSON.stringify(d));
   showToast('Backup downloaded');
 }
@@ -46,7 +46,7 @@ function restoreBackup(inp){
       if(!Array.isArray(b.checkins)||!Array.isArray(b.workouts))throw new Error('bad');
       if(!confirm('Replace the data on this phone with this backup?'))return;
       const d=S();
-      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey,intervalsID:d.intervalsID||b.intervalsID||'',polarKey:d.polarKey,icuSent:d.icuSent,dataUid:d.dataUid};
+      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey,intervalsID:d.intervalsID||b.intervalsID||'',polarKey:d.polarKey,icuSent:d.icuSent,dataUid:d.dataUid,bpUser:d.bpUser,bpOk:d.bpOk};
       const safe={};for(const k of Object.keys(DEFAULTS))if(k in b)safe[k]=b[k];
       _s={...JSON.parse(JSON.stringify(DEFAULTS)),...safe,...keep,pending:{},tomb:[],onboardingDone:true};
       migrate();
