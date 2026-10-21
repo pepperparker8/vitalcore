@@ -52,7 +52,7 @@ const dayLoad=date=>wkOn().filter(w=>w.date===date).reduce((a,w)=>a+wLoad(w),0);
 const actEst=st=>Math.max(0,st-TH.STEP_BASE)/TH.STEP_RATE;
 function wtOn(t){
   const ex=isExampleOnly();
-  return last(S().measurements.filter(x=>x.date<=t&&x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort((x,y)=>x.date<y.date?-1:1));
+  return last(S().measurements.filter(x=>x.date<=t&&x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort(msCmp));
 }
 function dayAct(date){
   const p=dayOn(date),a=p&&p.data||{},ws=((S().wellness||{})[date]||{}).steps,os=ws>0?ws:null,bs=a.steps??(a.act!=null?0:null);

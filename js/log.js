@@ -446,7 +446,7 @@ function saveMeas(){
   const [sLo,sHi]=TH.BP_SYS_RNG,[dLo,dHi]=TH.BP_DIA_RNG,[hLo,hHi]=TH.HR_RNG;
   if(sys&&dia){if(sN<sLo||sN>sHi){showToast(`Systolic: ${sLo}–${sHi}`);return;}if(dN<dLo||dN>dHi){showToast(`Diastolic: ${dLo}–${dHi}`);return;}if(sN<=dN){showToast('Systolic must be higher than diastolic');return;}}
   const wt=+$('wtKg').value||null,hr=+$('hrVal').value||null;
-  if(wt&&(wt<30||wt>250)){showToast('Weight: 30–250 kg');return;}
+  if(wt&&(wt<TH.SC_KG_RNG[0]||wt>TH.SC_KG_RNG[1])){showToast(`Weight: ${TH.SC_KG_RNG[0]}–${TH.SC_KG_RNG[1]} kg`);return;}
   if(hr&&(hr<hLo||hr>hHi)){showToast(`Resting HR: ${hLo}–${hHi} bpm`);return;}
   const pw=last(S().measurements.filter(m=>m.weight&&!m.isEx&&daysAgo(m.date)<=7));
   if(wt&&pw&&Math.abs(wt-pw.weight)>=4&&!sane(`${wt} kg is ${Math.round(Math.abs(wt-pw.weight)*10)/10} kg different from your last weigh-in (${pw.weight} kg).`))return;
@@ -459,11 +459,11 @@ function saveMeas(){
 }
 function updMeasHist(){
   const ms=S().measurements;
-  const b=ms.filter(m=>m.bpSys).reduce((a,m)=>!a||m.date>a.date||(m.date===a.date&&(bpT(m)||'')>=(bpT(a)||''))?m:a,null),w=last(ms.filter(m=>m.weight)),h=last(ms.filter(m=>m.hr));
+  const b=ms.filter(m=>m.bpSys).reduce((a,m)=>!a||m.date>a.date||(m.date===a.date&&(bpT(m)||'')>=(bpT(a)||''))?m:a,null),w=last(ms.filter(m=>m.weight).sort(msCmp)),h=last(ms.filter(m=>m.hr));
   $('bpRec').textContent=b?`${b.bpSys}/${b.bpDia} mmHg${bpT(b)?' · '+bpT(b):''}`:'—';
-  $('wtRec').textContent=w?`${w.weight} kg`:'—';
+  $('wtRec').textContent=w?`${w.weight} kg${scT(w)?' · '+scT(w):''}`:'—';
   $('hrRec').textContent=h?`${h.hr} bpm`:'—';
-  bpBleInit();lgStat();
+  bpBleInit();scBleInit();lgStat();
 }
 
 // ── BLOOD PRESSURE MONITOR (v135, docs/plan-omron-ble.md) ────────────────────
@@ -625,13 +625,183 @@ async function bpBleInit(){
   const w=$('bpBleW');if(!w)return;
   const bt=navigator.bluetooth;let on=!!bt;
   if(bt&&bt.getAvailability){try{on=await bt.getAvailability();}catch(e){}}
-  if(bt&&!_bpAv&&bt.addEventListener){_bpAv=true;try{bt.addEventListener('availabilitychanged',()=>bpBleInit());}catch(e){}}
+  if(bt&&!_bpAv&&bt.addEventListener){_bpAv=true;try{bt.addEventListener('availabilitychanged',()=>{bpBleInit();scBleInit();});}catch(e){}}
   w.hidden=!bt;
   const or=$('bpOr');if(or)or.hidden=!bt;
   const no=$('bpBleNo');if(no)no.hidden=!!bt;
   const off=$('bpBleOff');if(off)off.hidden=!bt||!!on;
   const h=$('bpBleHint');if(h)h.hidden=!!S().bpOk;
   bpUserUI();
+}
+
+// ── BODY SCALE (v140, docs/plan-xiaomi-scale.md) ─────────────────────────────
+// Reads the weigh-ins a body scale keeps (the Body Composition service 0x181B with impedance, or the Weight Scale
+// service 0x181D, weight only) through the scale's history characteristic, as described in openScale's protocol notes
+// (facts only; openScale is GPL-3.0 and none of its code is used). One record per weigh-in, id sc-<date>-<HHMM> from its
+// own time, so a resend is the same record. Impedance is stored as imp for the estimates on Health, never in a score.
+const SC_BC=0x181B,SC_WS=0x181D,SC_TIME=0x2A2B,SC_CTS=0x1805;
+const SC_HIST='00002a2f-0000-3512-2118-0009af100700',SC_VND='00001530-0000-3512-2118-0009af100700';
+const SC_MAGIC=[0x01,0x96,0x8A,0xBD,0x62];
+let _scBusy=false;
+// The scale's raw weight in kilograms, rounded to 0.1: /200 for kilograms, /100 for pounds or jin
+function scKg(raw,lb,jin){const k=lb?raw/100*TH.SC_LB:jin?raw/100*TH.SC_JIN:raw/200;return Math.round(k*10)/10;}
+function scAt(dv,o,s){const y=dv.getUint16(o,true),mo=dv.getUint8(o+2),d=dv.getUint8(o+3);return y&&mo&&d?new Date(y,mo-1,d,dv.getUint8(o+4),dv.getUint8(o+5),s?dv.getUint8(o+6):0):null;}
+// A 10-byte weight record (0x181D): status (bit0 pounds, bit4 jin, bit5 settled, bit7 stepped off), weight, then the time
+function scParse10(dv,o=0){
+  if(!dv||dv.byteLength<o+10)return null;
+  const st=dv.getUint8(o);
+  if(!(st&32)||st&128)return null;
+  return {kg:scKg(dv.getUint16(o+1,true),st&1,st&16),imp:null,at:scAt(dv,o+3,true)};
+}
+// A 13-byte frame (0x181B): byte 0 bit0 pounds; byte 1 bit1 impedance, bit5 settled, bit6 jin, bit7 stepped off;
+// the time at 2 to 7, impedance at 9, weight at 11
+function scParse13(dv,o=0){
+  if(!dv||dv.byteLength<o+13)return null;
+  const c0=dv.getUint8(o),c1=dv.getUint8(o+1);
+  if(!(c1&32)||c1&128)return null;
+  const [iLo,iHi]=TH.SC_IMP_RNG,iv=dv.getUint16(o+9,true);
+  return {kg:scKg(dv.getUint16(o+11,true),c0&1,c1&64),imp:c1&2&&iv>=iLo&&iv<=iHi?iv:null,at:scAt(dv,o+2,false)};
+}
+// The time of day of a weigh-in from the scale, from its id ('07:05'), else null
+function scT(rec){const m=/^sc-\d{4}-\d{2}-\d{2}-(\d{2})(\d{2})/.exec(rec&&rec.id||'');return m?m[1]+':'+m[2]:null;}
+// Decides what to keep from one read: weigh-ins r {kg, imp, at, got (arrival Date)} in the order they arrived.
+// A typed weight that day within SC_SAME is the same weigh-in (not saved); the scale app's copy (mi-<date>) within
+// SC_SAME gives way to the scale's own record (drop); a weigh-in SC_OTHER from your latest weight is someone else's.
+function scKeep(rs,now=new Date()){
+  const o={add:[],drop:[],same:0,gone:0,range:0,old:0,clock:0,phone:0,other:0};
+  const [kLo,kHi]=TH.SC_KG_RNG,ms=S().measurements,ref=wtOn(ymd(now));
+  const bad=r=>r.at&&(r.at-now>TH.SC_BLE_FUT*60000||r.at.getFullYear()<TH.BP_BLE_Y0);
+  const lastBad=rs.filter(bad).pop(),near=(a,b)=>Math.abs(a-b)<=TH.SC_SAME;
+  rs.forEach(r=>{
+    let at=r.at;
+    if(!at){at=r.got||now;o.phone++;}
+    else if(bad(r)){if(r!==lastBad){o.clock++;return;}at=r.got||now;o.clock++;}
+    if(now-at>TH.SC_BLE_OLD*864e5){o.old++;return;}
+    if(r.kg<kLo||r.kg>kHi){o.range++;return;}
+    if(ref&&Math.abs(r.kg-ref.weight)>TH.SC_OTHER){o.other++;return;}
+    const date=ymd(at);
+    if(ms.some(m=>m.date===date&&m.weight&&!/^(sc-|mi-)/.test(String(m.id))&&near(m.weight,r.kg))){o.same++;return;}
+    const base=`sc-${date}-${bpP2(at.getHours())}${bpP2(at.getMinutes())}`;
+    for(let n=1;;n++){
+      const id=n===1?base:base+'-'+n,ex=ms.find(m=>m.id===id)||o.add.find(m=>m.id===id);
+      if(ex&&ex.weight===r.kg){o.same++;return;}
+      if(!ex&&isGone(id)){o.gone++;return;}
+      if(ex)continue;
+      const rec={id,date,bpSys:null,bpDia:null,weight:r.kg,hr:null,imp:r.imp??null,src:{weight:'scale'}};
+      if(rec.imp!=null)rec.src.imp='scale';
+      o.add.push(rec);
+      const mi=ms.find(m=>m.id==='mi-'+date);
+      if(mi&&mi.weight&&near(mi.weight,r.kg)&&!o.drop.includes(mi))o.drop.push(mi);
+      return;
+    }
+  });
+  if(!o.add.length)o.phone=0;
+  return o;
+}
+// The toast after a read, in the counts scKeep returned
+function scMsg(o){
+  const a=o.add.length,t=[];
+  t.push(a?`${bpN(a,'weigh-in')} added${o.same?`, ${o.same} already in`:''}`:o.same?`${bpN(o.same,'weigh-in')} already in`:'No new weigh-ins on the scale');
+  if(o.range)t.push(`${o.range} left out: outside the usual range`);
+  if(o.other)t.push(`${bpN(o.other,'weigh-in')} of someone else left out`);
+  if(o.old)t.push(`${bpN(o.old,'weigh-in')} over a year old left out`);
+  if(o.clock)t.push(`The scale's clock was off; it is set now`);
+  else if(o.phone)t.push('Time from your phone');
+  return t.join('. ')+'.';
+}
+// Saves what scKeep kept and reports it, with Undo (which also brings back a copy it replaced)
+function scApply(rs){
+  if(!rs.length){showToast('No new weigh-ins on the scale');scSaved([]);return null;}
+  const o=scKeep(rs),d=S();
+  o.add.forEach(r=>put('meas',r));
+  o.drop.forEach(m=>del('meas',m.id));
+  if(!d.scOk)d.scOk=1;
+  save(d);
+  updMeasHist();if(o.add.length){refreshAll();if($('hBase'))renderHealth();}
+  scSaved(o.add);
+  showToast(scMsg(o),o.add.length?{label:'Undo',fn:()=>{
+    o.add.forEach(r=>del('meas',r.id));
+    const b=o.drop.map(m=>m.id),x=S();x.gone=(x.gone||[]).filter(id=>!b.includes(id));
+    o.drop.forEach(m=>put('meas',{...m}));
+    scSaved([]);updMeasHist();refreshAll();if($('hBase'))renderHealth();}}:null);
+  return o;
+}
+// The lasting line under the button after a read (as for the monitor, v139)
+function scSaved(add){
+  const st=$('scBleSt');if(!st)return;
+  const r=add.reduce((a,x)=>!a||x.date>a.date||(x.date===a.date&&(scT(x)||'')>=(scT(a)||''))?x:a,null);
+  st.textContent=r?`Saved: ${r.weight} kg${r.date!==td()?' · '+fmtD(r.date):''}${scT(r)?' · '+scT(r):''}${add.length>1?`, and ${bpN(add.length-1,'earlier weigh-in')}`:''}. Nothing more to tap.`:'';
+}
+// This phone's reader id on the scale (local only): the scale sends only what came after this reader's last read
+function scUid(){const d=S();if(!(d.scUid>0&&d.scUid<65536)){d.scUid=1+Math.floor(Math.random()*65534);save(d);}return d.scUid;}
+const scW=(ch,b)=>{const v=new Uint8Array(b);return ch.writeValueWithResponse?ch.writeValueWithResponse(v):ch.writeValue(v);};
+// The time for 0x2A2B: year, month, day, hours, minutes, seconds, then 00 00 01
+function scTime(t=new Date()){const y=t.getFullYear();return [y&255,y>>8,t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes(),t.getSeconds(),0,0,1];}
+// The button: one read through the browser's device chooser (it must run inside the tap)
+async function scRead(){
+  if(_scBusy||!navigator.bluetooth)return;
+  const st=$('scBleSt'),rs=[];let dev=null,idle=null,ack=null,done=null;
+  _scBusy=true;
+  try{
+    dev=await navigator.bluetooth.requestDevice({filters:[{services:[SC_BC]},{services:[SC_WS]},{namePrefix:'MIBFS'},{namePrefix:'MIBCS'},{namePrefix:'MI SCALE2'},{namePrefix:'MI_SCALE'}],optionalServices:[SC_BC,SC_WS,SC_CTS,SC_VND]});
+  }catch(e){
+    _scBusy=false;
+    if(e&&/adapter|bluetooth is off|turned off/i.test(e.message||''))showToast('Turn on Bluetooth and try again');
+    else if(!e||e.name!=='NotFoundError')showToast('Could not reach the scale. Step on it to wake it, then tap again.');
+    return;
+  }
+  const fin=new Promise(r=>done=r),kick=()=>{clearTimeout(idle);idle=setTimeout(done,TH.SC_BLE_IDLE*1000);};
+  const onOff=()=>done();
+  dev.addEventListener('gattserverdisconnected',onOff);
+  let err=null,end=false,ch=null;
+  try{
+    st.textContent='Connecting…';
+    const srv=await dev.gatt.connect();
+    let svc=null,big=false;
+    try{svc=await srv.getPrimaryService(SC_BC);big=true;}catch(e){try{svc=await srv.getPrimaryService(SC_WS);}catch(e2){}}
+    if(svc)try{ch=await svc.getCharacteristic(SC_HIST);}catch(e){}
+    if(!ch)err='svc';
+    else{
+      const len=big?13:10,parse=big?scParse13:scParse10,u=scUid(),uh=u>>8,ul=u&255;
+      let buf=[],count=false;
+      const setTime=async()=>{try{await scW(await svc.getCharacteristic(SC_TIME),scTime());}catch(e){}};
+      ch.addEventListener('characteristicvaluechanged',ev=>{
+        const v=ev.target.value,b=[...new Uint8Array(v.buffer,v.byteOffset,v.byteLength)];
+        if(b.length===1&&b[0]===3){end=true;done();return;}
+        if(!count&&!buf.length&&b[0]===1&&b.length<len){count=true;clearTimeout(ack);kick();return;}
+        count=true;clearTimeout(ack);
+        buf=buf.concat(b);
+        while(buf.length>=len){const r=parse(new DataView(new Uint8Array(buf.slice(0,len)).buffer));buf=buf.slice(len);if(r){r.got=new Date();rs.push(r);}}
+        kick();
+      });
+      await setTime();
+      if(big){await ch.startNotifications();await scW(ch,SC_MAGIC);}
+      else{await scW(ch,SC_MAGIC);await ch.startNotifications();}
+      st.textContent='Reading…';
+      await scW(ch,[0x01,0xFF,0xFF,uh,ul]);await scW(ch,[0x02]);
+      // no count from the scale: ask once for every weigh-in it keeps (the ids keep repeats out)
+      ack=setTimeout(async()=>{if(count)return;try{await scW(ch,[0x01,0x00,0x00,uh,ul]);await scW(ch,[0x02]);}catch(e){}},TH.SC_BLE_ACK*1000);
+      kick();
+      await fin;
+      if(end){try{await scW(ch,[0x03]);await scW(ch,[0x04,0xFF,0xFF,uh,ul]);}catch(e){}}
+      await setTime();
+    }
+  }catch(e){if(!err)err='link';}
+  clearTimeout(idle);clearTimeout(ack);dev.removeEventListener('gattserverdisconnected',onOff);
+  try{if(dev.gatt.connected)dev.gatt.disconnect();}catch(e){}
+  st.textContent='';_scBusy=false;
+  if(err==='svc'){showToast('This scale does not share weigh-ins this way. They still arrive through your scale\'s app.');return;}
+  if(err&&!rs.length){showToast('Could not reach the scale. Step on it to wake it, then tap again.');return;}
+  return scApply(rs);
+}
+// Shows the button wherever the browser can use Bluetooth, with a line while Bluetooth is off (as for the monitor)
+async function scBleInit(){
+  const w=$('scBleW');if(!w)return;
+  const bt=navigator.bluetooth;let on=!!bt;
+  if(bt&&bt.getAvailability){try{on=await bt.getAvailability();}catch(e){}}
+  w.hidden=!bt;
+  const off=$('scBleOff');if(off)off.hidden=!bt||!!on;
+  const h=$('scBleHint');if(h)h.hidden=!!S().scOk;
 }
 
 // ── INJURY LOG ───────────────────────────────────────────────────────────────

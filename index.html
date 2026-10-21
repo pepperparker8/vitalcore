@@ -294,6 +294,12 @@
         <div class="bp-st" id="bpBleSt" aria-live="polite"></div>
         <div class="bp-us" id="bpBleUs" hidden><span>Your user on the monitor</span><span class="bp-ucs"><button class="bp-uc" data-u="1" aria-pressed="false" onclick="bpSetUser(1)">1</button><button class="bp-uc" data-u="2" aria-pressed="false" onclick="bpSetUser(2)">2</button></span></div>
       </div>
+      <div class="bp-ble" id="scBleW" hidden><div class="fl">FROM YOUR SCALE</div>
+        <button class="btn-out bp-btn" id="scBle" onclick="scRead()"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20l10 0"/><path d="M6 6l6 -1l6 1"/><path d="M12 3l0 17"/><path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/></svg><span>Read from your scale</span></button>
+        <div class="fh" id="scBleOff" hidden>Bluetooth is off on this phone. Turn it on, then tap.</div>
+        <div class="fh" id="scBleHint">Step on the scale to wake it, then tap. Readings save on their own.</div>
+        <div class="bp-st" id="scBleSt" aria-live="polite"></div>
+      </div>
       <div class="bp-or" id="bpOr" hidden>Or type a reading</div>
       <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div>
         <div class="fh" id="bpBleNo" hidden>Reading from your monitor works in Chrome on Android. Type the reading here instead.</div></div>

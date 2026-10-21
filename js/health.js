@@ -25,9 +25,39 @@ function hlRhr(){
   return null;
 }
 function hlMeas(f,g){
-  const ms=S().measurements.filter(m=>m[f]).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);if(!ms.length)return null;
+  const ms=S().measurements.filter(m=>m[f]).sort(msCmp);if(!ms.length)return null;
   const c=last(ms),o=ms.filter(m=>hlBefore(c.date,m.date));
   return{c,date:c.date,v:c[f],u:o.length?avg(o.map(m=>m[f])):null,u2:g&&o.length?avg(o.map(m=>m[g])):null};
+}
+// ── v140: body composition from a weigh-in with impedance (published equations, estimates only) ──
+// H height cm, W weight kg, R impedance ohms (50 kHz, foot to foot); sex unset = the average of the two.
+// Never in a score, the fuel targets or the briefing; the scale maker's own formulas are not used.
+const scSx=(m,f)=>{const x=S().profile.sex;return x==='m'?m:x==='f'?f:(m+f)/2;};
+function scComp(rec){
+  const p=S().profile,H=p.height,W=rec&&rec.weight,R=rec&&rec.imp;
+  if(!W||!(H>=TH.SC_H_RNG[0]&&H<=TH.SC_H_RNG[1]))return null;
+  const o={bmi:W/((H/100)*(H/100))};  // BMI = kg / m²
+  if(!R||p.age<TH.SC_AGE_MIN)return o;
+  const hr=H*H/R;
+  // fat-free mass: Sun SS et al. 2003, Am J Clin Nutr 77:331-40 (NHANES III)
+  o.ffm=scSx(-10.678+0.652*hr+0.262*W+0.015*R,-9.529+0.696*hr+0.168*W+0.016*R);
+  o.fat=(W-o.ffm)/W*100;
+  // total body water: Sun SS et al. 2003, same paper; as a share of weight
+  o.tbw=scSx(1.203+0.449*hr+0.176*W,3.747+0.450*hr+0.113*W)/W*100;
+  // skeletal muscle mass: Janssen I et al. 2000, J Appl Physiol 89:465-71 (sex 1 man, 0 woman)
+  o.smm=0.401*hr+3.825*scSx(1,0)-0.071*p.age+5.102;
+  // resting energy from fat-free mass: Katch-McArdle, 370 + 21.6 × fat-free mass
+  o.ree=370+21.6*o.ffm;
+  if(!(o.ffm>0&&o.ffm<W&&o.smm>0))return{bmi:o.bmi};
+  return o;
+}
+// the latest weigh-in with impedance against the mean of those in the TH.HL_USUAL days before it
+function hlComp(){
+  const ms=S().measurements.filter(m=>m.weight&&m.imp).sort(msCmp);if(!ms.length)return null;
+  const c=last(ms),cc=scComp(c);if(!cc||cc.fat==null)return null;
+  const o=ms.filter(m=>hlBefore(c.date,m.date)).map(scComp).filter(x=>x&&x.fat!=null);
+  const u=k=>o.length?avg(o.map(x=>x[k])):null;
+  return{date:c.date,v:cc,u:{fat:u('fat'),ffm:u('ffm'),tbw:u('tbw'),smm:u('smm'),ree:u('ree')}};
 }
 // one row: icon, label, value with its unit, and under it the comparison (glyph coloured by the row's state)
 function hlRow(icon,label,v,unit,cmp,cls,date){
@@ -39,6 +69,16 @@ function hlBase(){
   if(rh){const df=rh.u==null?0:Math.round(rh.v)-Math.round(rh.u);
     out.push(hlRow('heart','Resting heart rate',Math.round(rh.v),'bpm',rh.u==null?'First reading':rfVs(rh.v,rh.u,0),rh.u==null?'nt':df>=TH.HL_RHR_UP?'warn':df<=-TH.HL_RHR_UP?'good':'nt',rh.date));}
   if(wt)out.push(hlRow('scale','Weight',r1(wt.v).toFixed(1),'kg',wt.u==null?'First reading':rfVs(wt.v,wt.u,1),'nt',wt.date));
+  const bm=wt&&scComp(wt.c),m2=(d.profile.height/100)*(d.profile.height/100);
+  if(bm)out.push(hlRow('ruler','BMI',r1(bm.bmi).toFixed(1),'',wt.u==null?'First reading':rfVs(bm.bmi,wt.u/m2,1),'nt',wt.date));
+  const bc=hlComp();
+  if(bc){const v=bc.v,u=bc.u,cv=(k,dp)=>u[k]==null?'First reading':rfVs(v[k],u[k],dp);
+    out.push(hlRow('flame','Body fat',r1(v.fat).toFixed(1),'%',cv('fat',1),'nt',bc.date));
+    out.push(hlRow('dna','Fat-free mass',r1(v.ffm).toFixed(1),'kg',cv('ffm',1),'nt',bc.date));
+    out.push(hlRow('weight','Skeletal muscle',r1(v.smm).toFixed(1),'kg',cv('smm',1),'nt',bc.date));
+    out.push(hlRow('droplet','Body water',r1(v.tbw).toFixed(1),'%',cv('tbw',1),'nt',bc.date));
+    out.push(hlRow('bolt','Resting energy',Math.round(v.ree),'kcal',cv('ree',0),'nt',bc.date));
+    out.push(`<div class="hl-est">Estimates from your scale, best read as a trend.</div>`);}
   // v132: the average of the last TH.BP_DAYS days in its band, only from TH.BP_N readings on TH.BP_N days; else the latest reading alone
   if(bb&&bb.high)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg','▲ Very high twice: seek medical advice promptly','bad',bb.last.date));
   else if(bb&&bb.band)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg',`${bb.band==='normal'?'●':'▲'} ${bb.word} · average of ${bb.n} readings`,bb.band==='normal'?'good':bb.band==='stage2'?'bad':'warn',bb.last.date));

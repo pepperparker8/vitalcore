@@ -2593,7 +2593,7 @@ seq('v129 health',async()=>{
     base();_s.profile.wtGoal=72;
     _s.measurements=[...Array.from({length:10},(_,i)=>({id:'m-'+i,date:dAgo(3+i*2),weight:72,bpSys:112,bpDia:74})),{id:'m-n',date:td(),weight:73.1,bpSys:118,bpDia:76}];
     renderHealth();let R=rows();
-    check('v129 health: baselines show the value with its unit and the comparison under it; blood pressure as its 28-day average and range (v132)',J(R)===J([['Resting heart rate','50 bpm','●at your usual','nt'],['Weight','73.1 kg','▲1.1 over usual','nt'],['Blood pressure','113/74 mmHg','●Normal · average of 11 readings','good'],['Weight goal','72 kg','1.1 kg to lose','nt']]),J(R));
+    check('v129 health: baselines show the value with its unit and the comparison under it; blood pressure as its 28-day average and range (v132)',J(R)===J([['Resting heart rate','50 bpm','●at your usual','nt'],['Weight','73.1 kg','▲1.1 over usual','nt'],['BMI','25.3','▲0.4 over usual','nt'],['Blood pressure','113/74 mmHg','●Normal · average of 11 readings','good'],['Weight goal','72 kg','1.1 kg to lose','nt']]),J(R));
     check('v129 health: each baseline has its line icon, the first row no rule above it',[...$('hBase').querySelectorAll('.rf')].every(r=>r.firstElementChild.classList.contains('ui-i'))&&getComputedStyle($('hBase').querySelector('.rf')).borderTopWidth==='0px','');
     const rh=v=>{_s.wellness[td()].rhr=v;renderHealth();return rows()[0].slice(2).join(' ');};
     const rr=[rh(53),rh(47),rh(51)];
@@ -2603,7 +2603,7 @@ seq('v129 health',async()=>{
     _s.measurements=_s.measurements.filter(m=>m.id!=='m-n');renderHealth();R=rows();
     check('v129 health: a reading older than yesterday carries its date',R[1][2]==='●at your usual · '+fmtD(dAgo(3))&&R[0][2].indexOf(' · ')<0,J(R[1]));
     _s.measurements=[{id:'m-1',date:td(),weight:70.0}];delete _s.wellness[td()].rhr;Object.values(_s.wellness).forEach(w=>delete w.rhr);renderHealth();R=rows();
-    check('v129 health: a first reading says so, with no glyph',J(R)===J([['Weight','70.0 kg','First reading','nt']]),J(R));
+    check('v129 health: a first reading says so, with no glyph',J(R)===J([['Weight','70.0 kg','First reading','nt'],['BMI','24.2','First reading','nt']]),J(R));
     _s.measurements=[];renderHealth();
     check('v129 health: no measurements and no resting heart rate gives the empty state with its button',/No measurements yet/.test(txt($('hBase')))&&!!$('hBase').querySelector('.empty-btn'),txt($('hBase')));
     _s.measurements=[{id:'bp-1',date:dAgo(1),bpSys:182,bpDia:100},{id:'bp-2',date:td(),bpSys:181,bpDia:96}];renderHealth();R=rows();
@@ -3791,6 +3791,174 @@ seq('v135 monitor',async()=>{
     box.remove();css.remove();
   }
 });
+// ── v140: body scale ──
+// byte builders: at 'YYYY-MM-DDTHH:MM[:SS]'; kg (or raw); lb, jin, imp, loose (not settled), off (stepped off)
+function scB13(o){
+  const b=new Array(13).fill(0),t=o.at?new RealDate(o.at):null,raw=o.raw??Math.round(o.kg*200);
+  b[0]=o.lb?1:0;b[1]=(o.imp!=null?2:0)|(o.loose?0:32)|(o.jin?64:0)|(o.off?128:0);
+  if(t){b[2]=t.getFullYear()&255;b[3]=t.getFullYear()>>8;b[4]=t.getMonth()+1;b[5]=t.getDate();b[6]=t.getHours();b[7]=t.getMinutes();}
+  const iv=o.imp||0;b[9]=iv&255;b[10]=iv>>8;b[11]=raw&255;b[12]=raw>>8;return b;
+}
+function scB10(o){
+  const b=new Array(10).fill(0),t=o.at?new RealDate(o.at):null,raw=o.raw??Math.round(o.kg*200);
+  b[0]=(o.lb?1:0)|(o.jin?16:0)|(o.loose?0:32)|(o.off?128:0);b[1]=raw&255;b[2]=raw>>8;
+  if(t){b[3]=t.getFullYear()&255;b[4]=t.getFullYear()>>8;b[5]=t.getMonth()+1;b[6]=t.getDate();b[7]=t.getHours();b[8]=t.getMinutes();b[9]=t.getSeconds();}
+  return b;
+}
+const scDV=b=>new DataView(new Uint8Array(b).buffer);
+run('v140 parse',()=>{
+  const D=dAgo(1);
+  let r=scParse13(scDV(scB13({kg:75.3,imp:480,at:D+'T07:05'})));
+  check('v140 parse: a 13-byte frame gives kilograms, impedance and the time to the minute',r&&r.kg===75.3&&r.imp===480&&ymd(r.at)===D&&r.at.getHours()===7&&r.at.getMinutes()===5,JS(r));
+  r=scParse13(scDV(scB13({raw:16500,lb:1,at:D+'T07:05'})));
+  check('v140 parse: pounds become kilograms, one decimal, and no impedance flag means none',r&&r.kg===74.8&&r.imp===null,JS(r));
+  r=scParse13(scDV(scB13({raw:15000,jin:1,at:D+'T07:05'})));
+  check('v140 parse: jin become kilograms',r&&r.kg===75,JS(r));
+  const [iL,iH]=TH.SC_IMP_RNG;
+  check('v140 parse: impedance outside its range is dropped, the edges kept',scParse13(scDV(scB13({kg:75,imp:iL-1,at:D+'T07:05'}))).imp===null&&scParse13(scDV(scB13({kg:75,imp:iH+1,at:D+'T07:05'}))).imp===null&&scParse13(scDV(scB13({kg:75,imp:iL,at:D+'T07:05'}))).imp===iL&&scParse13(scDV(scB13({kg:75,imp:iH,at:D+'T07:05'}))).imp===iH,'');
+  check('v140 parse: an unsettled weight, a stepped-off frame and a short frame are not weigh-ins',scParse13(scDV(scB13({kg:75,at:D+'T07:05',loose:1})))===null&&scParse13(scDV(scB13({kg:75,at:D+'T07:05',off:1})))===null&&scParse13(scDV([1,2,3]))===null,'');
+  r=scParse10(scDV(scB10({kg:75.3,at:D+'T07:05:42'})));
+  check('v140 parse: a 10-byte record gives kilograms and the time with seconds, never impedance',r&&r.kg===75.3&&r.imp===null&&r.at.getSeconds()===42,JS(r));
+  check('v140 parse: 10-byte pounds, jin, unsettled and stepped off',scParse10(scDV(scB10({raw:16500,lb:1,at:D+'T07:05'}))).kg===74.8&&scParse10(scDV(scB10({raw:15000,jin:1,at:D+'T07:05'}))).kg===75&&scParse10(scDV(scB10({kg:75,loose:1})))===null&&scParse10(scDV(scB10({kg:75,off:1})))===null,'');
+  check('v140 parse: no time in the record reads as none',scParse13(scDV(scB13({kg:75}))).at===null&&scParse10(scDV(scB10({kg:75}))).at===null,'');
+});
+run('v140 keep',()=>{
+  base();const now=new Date(),D=dAgo(1),R=(kg,at,x)=>({kg,imp:null,at:at?new Date(at):null,got:now,...x});
+  let o=scKeep([R(75.3,D+'T07:05'),R(75.9,D+'T07:05:30')],now);
+  check('v140 keep: ids from the weigh-in\'s own time, a second in the same minute gets -2',o.add.map(r=>r.id).join()===`sc-${D}-0705,sc-${D}-0705-2`&&o.add[0].src.weight==='scale'&&o.add[0].bpSys===null&&o.add[0].hr===null,JS(o.add));
+  o.add.forEach(r=>put('meas',r));
+  o=scKeep([R(75.3,D+'T07:05')],now);
+  check('v140 keep: a resend is already in',!o.add.length&&o.same===1,JS(o));
+  o=scKeep([R(76,D+'T08:00',{imp:500})],now);
+  check('v140 keep: impedance is stored as imp with its source',o.add[0].imp===500&&o.add[0].src.imp==='scale',JS(o.add));
+  del('meas',`sc-${D}-0705`);
+  o=scKeep([R(75.3,D+'T07:05')],now);
+  check('v140 keep: a deleted weigh-in stays deleted',!o.add.length&&o.gone===1&&isGone(`sc-${D}-0705`),JS(o));
+  base();put('meas',{id:'m1',date:D,bpSys:null,bpDia:null,weight:75.1,hr:null});
+  check('v140 keep: a weight you typed that day within '+TH.SC_SAME+' kg is the same weigh-in, further is a new one',scKeep([R(75.3,D+'T07:05')],now).same===1&&scKeep([R(75.5,D+'T07:05')],now).add.length===1,'');
+  check('v140 keep: a weigh-in '+TH.SC_OTHER+'+ kg from your latest weight is someone else\'s',scKeep([R(75.1+TH.SC_OTHER+0.5,D+'T07:05')],now).other===1,'');
+  base();put('meas',{id:'mi-'+D,date:D,bpSys:null,bpDia:null,weight:75.0,hr:null,src:{weight:'icu'}});
+  o=scKeep([R(75.2,D+'T07:05')],now);
+  check('v140 keep: the scale app\'s copy of the same weigh-in gives way to the scale\'s own',o.add.length===1&&o.drop.length===1&&o.drop[0].id==='mi-'+D&&!o.same,JS(o));
+  check('v140 keep: a different weight leaves that copy alone',!scKeep([R(75.6,D+'T07:05')],now).drop.length,'');
+  base();
+  o=scKeep([R(75,'2010-01-01T07:00'),R(75.2,'2011-01-01T07:00')],now);
+  check('v140 clock: a clock never set keeps only the last such weigh-in, at its arrival time',o.add.length===1&&o.clock===2&&o.add[0].date===ymd(now)&&/clock was off/.test(scMsg(o)),JS(o));
+  o=scKeep([R(75,new RealDate(now.getTime()+(TH.SC_BLE_FUT+5)*60000).toISOString())],now);
+  check('v140 clock: a time over '+TH.SC_BLE_FUT+' minutes ahead is a clock that is off',o.clock===1&&o.add.length===1,JS(o));
+  o=scKeep([R(75,null)],now);
+  check('v140 clock: no time uses the phone\'s, and says so',o.phone===1&&o.add[0].date===ymd(now)&&/Time from your phone/.test(scMsg(o)),scMsg(o));
+  o=scKeep([R(75,dAgo(TH.SC_BLE_OLD+1)+'T07:00')],now);
+  check('v140 clock: over a year old is left out and counted',!o.add.length&&o.old===1&&/over a year old left out/.test(scMsg(o)),scMsg(o));
+  const [kL,kH]=TH.SC_KG_RNG,rg=kg=>{base();return scKeep([R(kg,D+'T07:05')],now);};
+  check('v140 range: the edges are kept, one past each edge is left out',rg(kL).add.length&&rg(kH).add.length&&rg(kL-0.1).range&&rg(kH+0.1).range,'');
+  check('v140 range: a typed weight reads the same range',/TH\.SC_KG_RNG/.test(String(saveMeas)),'');
+  const M=x=>scMsg({add:[],drop:[],same:0,gone:0,range:0,old:0,clock:0,phone:0,other:0,...x});
+  check('v140 toast: added, already in, nothing new, range, someone else',M({add:[1,2],same:1})==='2 weigh-ins added, 1 already in.'&&M({same:3})==='3 weigh-ins already in.'&&M({})==='No new weigh-ins on the scale.'&&M({add:[1],range:2})==='1 weigh-in added. 2 left out: outside the usual range.'&&M({other:1})==='No new weigh-ins on the scale. 1 weigh-in of someone else left out.',[M({add:[1,2],same:1}),M({other:1})].join(' | '));
+  check('v140: sc- ids are remembered when deleted, scUid and scOk are local only, imp syncs',/sc-/.test(String(del))&&/delete d\.scUid;delete d\.scOk/.test(String(backupJSON))&&TBL.meas.f.imp&&SKIP_NULL.has('imp'),'');
+});
+run('v140 comp',()=>{
+  base();const p=S().profile;p.height=175;p.age=40;
+  const near=(a,b)=>Math.abs(a-b)<0.05,rec={weight:75,imp:500};
+  p.sex='m';let c=scComp(rec);
+  check('v140 comp: a man of 175 cm, 75 kg, 500 ohms (Sun 2003, Janssen 2000, Katch-McArdle)',near(c.bmi,24.49)&&near(c.ffm,56.407)&&near(c.fat,24.79)&&near(c.tbw,55.87)&&near(c.smm,30.648)&&near(c.ree,1588.4),JS(c));
+  p.sex='f';c=scComp(rec);
+  check('v140 comp: a woman uses her own equations',near(c.ffm,53.701)&&near(c.fat,28.40)&&c.smm<30.648-3.8,JS(c));
+  p.sex=undefined;c=scComp(rec);
+  check('v140 comp: sex not set uses the average of the two',near(c.ffm,(56.407+53.701)/2),JS(c));
+  check('v140 comp: no impedance gives BMI only, no height or one out of range gives nothing',JS(Object.keys(scComp({weight:75})))==='["bmi"]'&&(p.height=0,scComp(rec))===null&&(p.height=TH.SC_H_RNG[1]+1,scComp(rec))===null,'');
+  p.height=175;p.age=TH.SC_AGE_MIN-1;
+  check('v140 comp: under '+TH.SC_AGE_MIN+' gives BMI only',JS(Object.keys(scComp(rec)))==='["bmi"]','');
+  p.age=40;p.sex='m';
+  put('meas',{id:'sc-'+dAgo(1)+'-0705',date:dAgo(1),bpSys:null,bpDia:null,weight:75,hr:null,imp:500});
+  let h=hlBase();
+  check('v140 Health: BMI, body fat, fat-free mass, skeletal muscle, body water and resting energy, first reading, then the estimate line',['BMI','Body fat','Fat-free mass','Skeletal muscle','Body water','Resting energy'].every(l=>h.includes(`>${l}<`))&&/24\.8 <em>%/.test(h)&&/First reading/.test(h)&&/class="hl-est">Estimates from your scale, best read as a trend\./.test(h),h.slice(0,200));
+  put('meas',{id:'sc-'+td()+'-0705',date:td(),bpSys:null,bpDia:null,weight:74.5,hr:null,imp:505});
+  h=hlBase();
+  check('v140 Health: a second weigh-in compares with the usual',/>Body fat<.*?[▲▼]<\/i>[0-9.]+ (over|under) usual/.test(h),h);
+  base();S().profile.height=175;put('meas',{id:'m1',date:dAgo(1),bpSys:null,bpDia:null,weight:75,hr:null});h=hlBase();
+  check('v140 Health: a weight without impedance shows BMI and no estimates',/>BMI</.test(h)&&!/Body fat|hl-est/.test(h),'');
+  check('v140: the estimates never feed a score, the fuel targets or the briefing',!/scComp|hlComp|\.imp\b/.test(String(calcBody)+String(fuelPlan)+String(insightRaw)+String(coachFlags)+String(strategy)),'');
+});
+seq('v140 scale',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';
+  box.innerHTML=doc.getElementById('pg-log').outerHTML+doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const has=Object.getOwnPropertyDescriptor(navigator,'bluetooth'),keep={showToast,refreshAll,IDLE:TH.SC_BLE_IDLE,ACK:TH.SC_BLE_ACK},toasts=[];
+  const setBt=v=>Object.defineProperty(navigator,'bluetooth',{value:v,configurable:true,writable:true});
+  // a fake scale: o.ws only 0x181D (10-byte records); o.vals byte arrays sent after the 02 write (o.late: after the second);
+  // o.end sends 03; o.drop disconnects after; o.noHist, o.noSvc, o.noLink, o.cancel, o.off; log keeps every write in order
+  function fake(o){
+    const L={},log=[],tch={writeValueWithResponse:async v=>{log.push('t:'+v.length);}};
+    let n02=0;
+    const send=()=>setTimeout(()=>{(o.vals||[]).forEach(b=>ch.f({target:{value:scDV(b)}}));if(o.end)ch.f({target:{value:scDV([3])}});if(o.drop&&L.gattserverdisconnected)L.gattserverdisconnected();},5);
+    const ch={addEventListener:(t,f)=>{ch.f=f;},startNotifications:async()=>{log.push('n');},writeValueWithResponse:async v=>{const b=[...v];log.push(b.map(x=>x.toString(16).padStart(2,'0')).join(''));if(b.length===1&&b[0]===2){n02++;if(n02===(o.late?2:1))send();}}};
+    const svc={getCharacteristic:async u=>{if(u===SC_HIST){if(o.noHist)throw new DOMException('No Characteristics matching UUID found.','NotFoundError');return ch;}if(u===SC_TIME)return tch;throw new DOMException('none','NotFoundError');}};
+    const srv={getPrimaryService:async u=>{if(o.noSvc||(o.ws&&u===SC_BC)||(!o.ws&&u===SC_WS))throw new DOMException('No Services matching UUID found in Device.','NotFoundError');fake.svc=u;return svc;}};
+    const dev={gatt:{connected:false,connect:async()=>{if(o.noLink)throw new DOMException('GATT Server is disconnected.','NetworkError');dev.gatt.connected=true;return srv;},disconnect(){dev.gatt.connected=false;}},addEventListener:(t,f)=>{L[t]=f;},removeEventListener:t=>{delete L[t];}};
+    return{getAvailability:async()=>true,requestDevice:async q=>{fake.q=q;if(o.cancel)throw new DOMException('User cancelled the requestDevice() chooser.','NotFoundError');if(o.off)throw new DOMException('Bluetooth adapter not available.','NotFoundError');return dev;},dev,log};
+  }
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  try{
+    window.showToast=(m,u)=>toasts.push({m,u});window.refreshAll=()=>{};TH.SC_BLE_IDLE=0.05;TH.SC_BLE_ACK=0.02;_scBusy=false;
+    base();const D=dAgo(1),p=S().profile;p.height=175;p.age=40;p.sex='m';
+    setBt(undefined);await scBleInit();
+    check('v140 button: hidden where the browser cannot use Bluetooth',$('scBleW').hidden,'');
+    setBt(fake({}));await scBleInit();
+    const lb=$('lMeas').querySelector('.log-body'),kids=[...lb.children];
+    check('v140 button: shown with Bluetooth under the monitor and above Or type a reading, with the first-time hint',!$('scBleW').hidden&&!$('scBleHint').hidden&&txt($('scBle'))==='Read from your scale'&&kids.indexOf($('bpBleW'))<kids.indexOf($('scBleW'))&&kids.indexOf($('scBleW'))<kids.indexOf($('bpOr')),kids.map(x=>x.id||x.className).join());
+    const offF=fake({});offF.getAvailability=async()=>false;setBt(offF);await scBleInit();
+    check('v140 button: Bluetooth off keeps the button and says to turn it on',!$('scBleW').hidden&&!$('scBleOff').hidden,'');
+    setBt(fake({cancel:1}));toasts.length=0;await scRead();
+    const f=fake.q.filters;
+    check('v140 read: the chooser asks for both scale services and the scale names; closing it says nothing',!toasts.length&&!S().measurements.length&&f.some(x=>x.services&&x.services[0]===0x181B)&&f.some(x=>x.services&&x.services[0]===0x181D)&&f.some(x=>x.namePrefix==='MIBCS')&&fake.q.optionalServices.includes(SC_VND),JS(toasts));
+    setBt(fake({off:1}));toasts.length=0;await scRead();
+    check('v140 read: Bluetooth off says to turn it on',toasts.length===1&&toasts[0].m==='Turn on Bluetooth and try again',JS(toasts));
+    setBt(fake({noSvc:1}));toasts.length=0;await scRead();
+    check('v140 read: a scale without the services says weigh-ins still arrive through its app',toasts.length===1&&/does not share weigh-ins this way/.test(toasts[0].m),JS(toasts));
+    setBt(fake({noHist:1}));toasts.length=0;await scRead();
+    check('v140 read: a scale without the history characteristic says the same',toasts.length===1&&/does not share weigh-ins this way/.test(toasts[0].m),JS(toasts));
+    setBt(fake({noLink:1}));toasts.length=0;await scRead();
+    check('v140 read: a link that fails says to wake the scale and try again',toasts.length===1&&/Could not reach the scale/.test(toasts[0].m),JS(toasts));
+    setBt(fake({vals:[]}));toasts.length=0;await scRead();
+    check('v140 read: nothing by the idle time says nothing new, the status line clears',toasts.length===1&&toasts[0].m==='No new weigh-ins on the scale'&&$('scBleSt').textContent==='',JS(toasts));
+    // group B: count, two frames split across notifications, the end
+    put('meas',{id:'mi-'+D,date:D,bpSys:null,bpDia:null,weight:75.0,hr:null,src:{weight:'icu'}});
+    const two=scB13({kg:75.1,imp:490,at:D+'T07:05'}).concat(scB13({kg:74.8,imp:495,at:D+'T21:30'}));
+    const F=fake({vals:[[1,2,0],two.slice(0,7),two.slice(7,19),two.slice(19)],end:1,drop:1});setBt(F);toasts.length=0;
+    const u=scUid(),uh=(u>>8).toString(16).padStart(2,'0'),ul=(u&255).toString(16).padStart(2,'0');
+    const o=await scRead();
+    check('v140 read: group B sets the time, starts notifications before the magic, asks from this reader, acknowledges the end, sets the time again',JS(F.log)===JS(['t:10','n','01968abd62','01ffff'+uh+ul,'02','03','04ffff'+uh+ul,'t:10'])&&fake.svc===0x181B,JS(F.log));
+    check('v140 read: two weigh-ins split across notifications are both saved with impedance; the scale app\'s copy gives way',o&&o.add.length===2&&o.add.every(r=>r.imp>0)&&S().measurements.filter(m=>/^sc-/.test(m.id)).length===2&&!S().measurements.some(m=>m.id==='mi-'+D)&&toasts[0].m==='2 weigh-ins added.'&&toasts[0].u&&toasts[0].u.label==='Undo'&&!F.dev.gatt.connected,JS(toasts)+JS(o&&o.add));
+    check('v140 read: Log shows the latest weigh-in with its time, the hint goes after the first read',txt($('wtRec'))==='74.8 kg · 21:30'&&$('scBleHint').hidden&&S().scOk===1,txt($('wtRec')));
+    check('v140 read: the saved line names the newest weigh-in and says nothing more is needed',txt($('scBleSt'))==='Saved: 74.8 kg · '+fmtD(D)+' · 21:30, and 1 earlier weigh-in. Nothing more to tap.',txt($('scBleSt')));
+    check('v140 read: Health shows the weight and the estimates straight after the read',/74\.8/.test(txt($('hBase')))&&/Body fat/.test(txt($('hBase'))),txt($('hBase')).slice(0,160));
+    toasts[0].u.fn();
+    check('v140 read: Undo removes both, they stay deleted, the scale app\'s copy comes back, the saved line goes',!S().measurements.some(m=>/^sc-/.test(m.id))&&S().gone.includes(`sc-${D}-0705`)&&S().measurements.some(m=>m.id==='mi-'+D)&&!S().gone.includes('mi-'+D)&&$('scBleSt').textContent==='','');
+    // group A: 10-byte records, magic before notifications, no count until asked again
+    base();Object.assign(S().profile,{height:175,age:40,sex:'m'});
+    const A=fake({ws:1,late:1,vals:[[1,1,0],scB10({kg:76.2,at:D+'T06:50:10'})],end:1});setBt(A);toasts.length=0;
+    const oa=await scRead(),u2=scUid(),h2=(u2>>8).toString(16).padStart(2,'0'),l2=(u2&255).toString(16).padStart(2,'0');
+    check('v140 read: group A writes the magic before notifications and asks for every weigh-in when no count comes',fake.svc===0x181D&&JS(A.log.slice(0,7))===JS(['t:10','01968abd62','n','01ffff'+h2+l2,'02','0100'+'00'+h2+l2,'02']),JS(A.log));
+    check('v140 read: a 10-byte weigh-in is saved without impedance, so Health shows BMI only',oa&&oa.add.length===1&&oa.add[0].imp===null&&oa.add[0].id===`sc-${D}-0650`&&/BMI/.test(txt($('hBase')))&&!/Body fat/.test(txt($('hBase'))),JS(oa&&oa.add));
+    setBt(fake({ws:1,vals:[scB10({kg:76.2,at:D+'T06:50:10'})],end:1}));toasts.length=0;await scRead();
+    check('v140 read: reading again finds it already in',toasts[0].m==='1 weigh-in already in.'&&$('scBleSt').textContent==='',JS(toasts));
+    // 360px, tap targets, no brand names, no accent in the v140 CSS
+    box.querySelector('#pg-log').classList.add('active');$('lMeas').classList.add('open');$('scBleSt').textContent='Saved: 74.8 kg · '+fmtD(D)+' · 21:30, and 1 earlier weigh-in. Nothing more to tap.';
+    const R0=box.getBoundingClientRect().right,wide=[...box.querySelector('#pg-log').querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
+    const bh=$('scBle').getBoundingClientRect().height;
+    check('v140 layout: at 360px nothing runs wider and the button is 48px tall',!wide.length&&bh>=48,wide.slice(0,4).map(x=>x.id||x.className).join(' ')+' '+bh);
+    const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v140: Scale')[1]||'';
+    check('v140: no brand names on the screens, no accent in the v140 CSS',!/Xiaomi|Zepp|Mi Fit|Mi Scale|MIBFS|MIBCS/i.test(txt(box.querySelector('#lMeas'))+txt($('hBase')))&&all.length>0&&!/--gold/.test(all),'');
+    check('v140: the droplet icon is Tabler\'s and the version is at least v140',UI.droplet&&/M7\.502 19\.423/.test(UI.droplet)&&APP_VER>=140,UI.droplet);
+  }finally{
+    Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});TH.SC_BLE_IDLE=keep.IDLE;TH.SC_BLE_ACK=keep.ACK;_scBusy=false;
+    if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
+    box.remove();css.remove();
+  }
+});
+
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;

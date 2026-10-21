@@ -101,7 +101,7 @@ let _pushT=null,_pushing=false,_syncing=false;
 let _pushErr='';
 function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(e=>{const m=String(e.message||e);if(m!==_pushErr){_pushErr=m;showToast('Upload failed: '+m.slice(0,80));}}),1500);}
 // fields left out of a row while empty; the v118 check-in fields too, so check-ins keep syncing before docs/supabase-v118.sql has been run
-const SKIP_NULL=new Set(['sets','sub','reflection','symptoms','soreArea','bodyFeel']);
+const SKIP_NULL=new Set(['sets','sub','reflection','symptoms','soreArea','bodyFeel','imp']);
 const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if(SKIP_NULL.has(a)&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
 const fromRow=(n,x)=>{const r={id:x.id,date:x.date,ts:Date.parse(x.updated_at)||0};for(const [a,b] of Object.entries(TBL[n].f)){if(SKIP_NULL.has(a)&&x[b]==null)continue;r[a]=x[b];}return r;};
 // a bulk upsert needs the same keys in every row: a key that one row left out (SKIP_NULL) is sent as null in the others of the same batch

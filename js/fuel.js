@@ -21,7 +21,7 @@ function fuAmt(g,f){
 }
 function fuWeight(){
   const ex=isExampleOnly();
-  return last(S().measurements.filter(x=>x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort((a,b)=>a.date<b.date?-1:1));
+  return last(S().measurements.filter(x=>x.weight>=30&&x.weight<=250&&(ex||!x.isEx)).sort(msCmp));
 }
 // ── Energy use (estimate): resting use x 1.35 for daily living, plus training ──
 // steps for a day from Intervals.icu wellness (Polar), when the watch counted them

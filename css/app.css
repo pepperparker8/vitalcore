@@ -1598,3 +1598,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 #pg-health .rf-l{white-space:nowrap}
 #pg-health .rf-r{min-width:0}
 #pg-health .rf-n{white-space:normal;align-items:baseline;justify-content:flex-end}
+
+/* ── v140: Scale (weigh-ins read over Bluetooth, Log > Body) ── */
+#scBleSt{color:var(--text)}
+#pg-health .hl-est{font-size:13px;color:var(--t3);padding:4px 0 8px}
