@@ -255,8 +255,8 @@ function chDraw(id){
       if(tr)chRR(ctx,g.x,g.y,g.w,g.h,g.w>=14?4:2,p.v<0);else{ctx.beginPath();ctx.rect(g.x,g.y,g.w,g.h);}ctx.fill();ctx.globalAlpha=1;});return;}
     const q=s.pts.map(p=>[X(DN(p.d)),Y(p.v),p]);if(!q.length)return;
     if(s.fill&&q.length>1){const g=ctx.createLinearGradient(0,T,0,H-B);g.addColorStop(0,cssv(s.color));g.addColorStop(1,cssv('--sur'));ctx.globalAlpha=.16;ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(q[0][0],H-B);q.forEach(p=>ctx.lineTo(p[0],p[1]));ctx.lineTo(q[q.length-1][0],H-B);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
-    ctx.strokeStyle=cssv(s.color);ctx.lineWidth=s.thin?1.5:tr?2:2.2;ctx.lineJoin='round';ctx.lineCap='round';ctx.setLineDash(s.dash||[]);ctx.beginPath();
-    q.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.setLineDash([]);
+    if(!s.noLine){ctx.strokeStyle=cssv(s.color);ctx.lineWidth=s.thin?1.5:tr?2:2.2;ctx.lineJoin='round';ctx.lineCap='round';ctx.setLineDash(s.dash||[]);ctx.beginPath();
+    q.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.setLineDash([]);}
     // dots only when there is room for them (about 9px per point in view, 14px on Trends), or when they carry a colour
     const nIn=q.filter(p=>p[0]>=L-4&&p[0]<=W-R+4).length,roomy=nIn>0&&(W-L-R)/nIn>=(tr?14:9);
     if(tr){if(s.noDots)return;
@@ -265,7 +265,8 @@ function chDraw(id){
       if(lp&&lp[0]>=L-4){ctx.fillStyle=s.dotColor?cssv(s.dotColor(lp[2].v,lp[2].d)):cssv(s.color);ctx.beginPath();ctx.arc(lp[0],lp[1],5,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();}
       return;}
     // bare: every point a dot in its colour on a card-coloured ring, the latest larger
-    if(cfg.bare){const lp=q.filter(p=>DN(p[2].d)<=b).pop();q.forEach(p=>{if(p[0]<L-6||p[0]>W)return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p[2].v,p[2].d)):cssv(s.color);ctx.beginPath();ctx.arc(p[0],p[1],p===lp?5:4,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();});return;}
+    // v141: a plain line with no room for its dots keeps only the latest one (dotColor or dots:true always draw them)
+    if(cfg.bare){if(s.noDots)return;const lp=q.filter(p=>DN(p[2].d)<=b).pop(),all=s.dotColor||s.dots||roomy;q.forEach(p=>{if(p[0]<L-6||p[0]>W||(!all&&p!==lp))return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p[2].v,p[2].d)):cssv(s.color);ctx.beginPath();ctx.arc(p[0],p[1],p===lp?5:4,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();});return;}
     if(!s.noDots&&(roomy||s.dotColor)){q.forEach(p=>{if(p[0]<L-4||p[0]>W)return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p[2].v,p[2].d)):cssv('--sur');ctx.strokeStyle=cssv(s.color);ctx.beginPath();ctx.arc(p[0],p[1],s.dotColor?4:roomy&&dots?3.2:2.4,0,7);ctx.fill();ctx.lineWidth=s.dotColor?1.2:1.8;ctx.stroke();});}
   });
   (cfg.marks||[]).forEach(m=>{const p=cfg.series[0].pts.find(q=>q.d===m);if(!p)return;ctx.strokeStyle=cssv('--gold');ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),7,0,7);ctx.stroke();});
@@ -295,7 +296,7 @@ function chDraw(id){
     cfg.series.forEach(s=>{const p=chNear(s,st.hover);if(!p)return;
       if(s.type==='bar'){if(!p.v)return;const g=barGeo(s,p);ctx.strokeStyle=cssv('--text');ctx.lineWidth=1.5;ctx.strokeRect(g.x-1,g.y-1,g.w+2,g.h+1);return;}
       if(tr){ctx.fillStyle=cssv('--sur');ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),5,0,7);ctx.fill();ctx.strokeStyle=cssv('--text');ctx.lineWidth=2;ctx.stroke();return;}
-      if(cfg.bare){ctx.fillStyle=s.dotColor?cssv(s.dotColor(p.v,p.d)):cssv(s.color);ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),5.5,0,7);ctx.fill();ctx.strokeStyle=cssv('--text');ctx.lineWidth=2;ctx.stroke();return;}
+      if(cfg.bare){if(s.noDots)return;ctx.fillStyle=s.dotColor?cssv(s.dotColor(p.v,p.d)):cssv(s.color);ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),5.5,0,7);ctx.fill();ctx.strokeStyle=cssv('--text');ctx.lineWidth=2;ctx.stroke();return;}
       ctx.fillStyle=cssv(s.color);ctx.beginPath();ctx.arc(X(DN(p.d)),Y(p.v),4.5,0,7);ctx.fill();ctx.strokeStyle=cssv('--sur');ctx.lineWidth=2;ctx.stroke();});}
   ctx.restore();
   // the values, outside the clip so a label near the top or an edge stays whole; the latest in view is bold

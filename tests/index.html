@@ -3959,6 +3959,95 @@ seq('v140 scale',async()=>{
   }
 });
 
+seq('v141 health trends',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  box.firstElementChild.classList.add('active');box.firstElementChild.style.display='block';
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={},stub={recalc:()=>{},showToast:()=>{},renderInjuryDisplay:()=>{},refreshAll:()=>renderHealth()};
+  Object.keys(stub).forEach(k=>{keep[k]=window[k];window[k]=stub[k];});
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',J=x=>JSON.stringify(x),noNames=x=>!/Polar|Intervals\.icu|Garmin|Strava|Xiaomi|Omron/i.test(x);
+  const v123=x=>x.length<=140&&x.split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(x);
+  const key=(el,k)=>el.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true}));
+  const mean=k=>txt($('htc_'+k)&&$('htc_'+k).querySelector('.vc-mean'));
+  const fix=()=>{
+    base();Object.assign(_s.profile,{height:175,age:40,sex:'m',wtGoal:70});
+    // 80 kg down to 72 kg over 56 days, every 4 days, with impedance; blood pressure on three days
+    _s.measurements=Array.from({length:15},(_,i)=>({id:'m-'+i,date:dAgo(56-i*4),weight:+(80-i*8/14).toFixed(1),imp:480+i}));
+    _s.measurements.push({id:'bp-1',date:dAgo(6),bpSys:118,bpDia:76},{id:'bp-2',date:dAgo(3),bpSys:135,bpDia:84},{id:'bp-3',date:dAgo(1),bpSys:145,bpDia:92});
+    _s.wellness[dAgo(44)]={..._s.wellness[dAgo(44)],vo2:50};_s.wellness[dAgo(2)]={..._s.wellness[dAgo(2)],vo2:52};
+    _hlOpen=null;_s.bloodLogs=[{id:'b1',date:dAgo(200),glucose:95},{id:'b2',date:dAgo(40),glucose:92}];
+  };
+  try{
+    fix();renderHealth();
+    const ks=HL_KEYS.filter(k=>$('hr_'+k));
+    check('v141 rows: every baseline row with history is a button, 44px tall, closed',J(ks)===J(HL_KEYS)&&ks.every(k=>{const r=$('hr_'+k);return r.getAttribute('role')==='button'&&r.tabIndex===0&&r.getAttribute('aria-expanded')==='false'&&r.getBoundingClientRect().height>=44;}),J(ks));
+    check('v141 rows: the weight goal row stays a plain row',!!$('hBase').querySelector('.rf:not([role])')&&/Weight goal/.test(txt($('hBase').querySelector('.rf:not([role])'))),'');
+    $('hr_wt').click();
+    check('v141 open: a tap opens the row in place with its header, chart, line and What moves it',_hlOpen==='wt'&&$('hr_wt').getAttribute('aria-expanded')==='true'&&$('hr_wt').nextElementSibling.id==='hx_wt'&&_ch.htc_wt&&_ch.htc_wt.on&&!!$('hx_wt').querySelector('details.wm summary')&&txt($('hx_wt').querySelector('details.wm p'))===HL_NOTE.wt,'');
+    check('v141 open: no chips or toolbar on the chart, opening on the last TH.HL_VIEW days',!$('hx_wt').querySelector('button,.wk-ch,.vc-tb')&&_ch.htc_wt.cfg.span===TH.HL_VIEW&&_ch.htc_wt.cfg.bare===true,'');
+    const H=txt($('hth_wt'));
+    check('v141 header: the latest weigh-in with its change and the one before',H===`${fmtD(dAgo(0))}72.0 kg▼Down 0.6 kgPrevious72.6 kg${fmtD(dAgo(4))}`,H);
+    hlHead('wt',dAgo(56));const H0=txt($('hth_wt'));
+    check('v141 header: a tapped day shows that day, and the first reading has no Previous',H0===`${fmtD(dAgo(56))}80.0 kg`,H0);
+    _ch.htc_wt.cfg.pick(dAgo(52));
+    check('v141 header: the chart\'s pick moves the header',txt($('hth_wt')).startsWith(fmtD(dAgo(52))+'79.4 kg▼Down 0.6 kgPrevious80.0 kg'),txt($('hth_wt')));
+    const S0=_ch.htc_wt.cfg.series;
+    check('v141 weight: each weigh-in a dot without a line, the 7-day average a line without dots, and a Goal line',S0.length===2&&S0[0].noLine&&S0[0].dots&&S0[0].pts.length===15&&S0[1].noDots&&S0[1].name==='7-day average'&&J(_ch.htc_wt.cfg.lines)===J([{v:70,label:'Goal',color:'--t2'}]),J(_ch.htc_wt.cfg.lines));
+    const W1=mean('wt');
+    check('v141 weight: a fast loss says the average fell and that slower keeps muscle',wtTrend().fast&&/^Down \d+\.\d kg on the 7-day average since .+\. A slower loss keeps more muscle and strength\.$/.test(W1)&&v123(W1),W1);
+    check('v141 weight: the average series is the mean of the 7 days ending on each weigh-in',J(hlAvg([{d:dAgo(10),v:70},{d:dAgo(6),v:72},{d:dAgo(4),v:74},{d:dAgo(0),v:76}]).map(p=>p.v))===J([70,71,72,74]),'');
+    $('hr_bmi').click();
+    check('v141 one open: opening BMI closes weight and takes its chart down',_hlOpen==='bmi'&&!$('hx_wt')&&!_ch.htc_wt&&$('hr_wt').getAttribute('aria-expanded')==='false'&&_ch.htc_bmi&&_ch.htc_bmi.on,'');
+    const bc=_ch.htc_bmi.cfg;
+    check('v141 BMI: the general adult range shaded from TH.BMI_RNG, labelled, with its two values on the axis',J(bc.zones.map(z=>[z.lo,z.hi]))===J([TH.BMI_RNG])&&J(bc.yat)===J(TH.BMI_RNG)&&txt($('hx_bmi').querySelector('.vc-lg'))==='General adult range',txt($('hx_bmi').querySelector('.vc-lg')));
+    check('v141 BMI: never a weight-class word, the line has no estimate tail',!/overweight|obese|underweight|normal weight/i.test(txt(box))&&/^Down \d+\.\d on the 7-day average since .+\.$/.test(mean('bmi'))&&!/estimate/.test(mean('bmi')),mean('bmi'));
+    $('hr_fat').click();const F=mean('fat');
+    check('v141 composition: each part opens its own chart and its line says it is an estimate',_hlOpen==='fat'&&_ch.htc_fat.on&&/ An estimate, best read as a trend\.$/.test(F)&&v123(F),F);
+    const comp=['ffm','smm','tbw','ree'].map(k=>{hlOpen(k);return _ch['htc_'+k]&&_ch['htc_'+k].on&&/estimate/.test(mean(k))&&_ch['htc_'+k].cfg.series[0].pts.length===15;});
+    check('v141 composition: fat-free mass, skeletal muscle, body water and resting energy each chart 15 weigh-ins',comp.every(Boolean),J(comp));
+    hlOpen('bp');const bs=_ch.htc_bp.cfg.series,dc=[118,135,145].map(bs[0].dotColor),dd=[76,84,92].map(bs[1].dotColor);
+    check('v141 blood pressure: systolic and diastolic with lines at TH.BP_SYS and TH.BP_DIA',bs.map(s=>s.name).join()==='Systolic,Diastolic'&&J(_ch.htc_bp.cfg.lines.map(l=>l.v))===J([TH.BP_SYS[0],TH.BP_SYS[1],TH.BP_SYS[2],TH.BP_DIA[0],TH.BP_DIA[1]]),'');
+    check('v141 blood pressure: each reading coloured green, amber or red by its range',J(dc)===J(['--green','--amber','--red'])&&J(dd)===J(['--green','--amber','--red']),J([dc,dd]));
+    const B=mean('bp'),x=bpBand();
+    check('v141 blood pressure: the line names the band of the 28-day average, never a disease',x&&x.band&&B===`${x.word} on the ${TH.BP_DAYS}-day average of ${x.n} readings.`&&!/hypertens/i.test(txt(box))&&v123(B),B);
+    hlOpen('vo2');const V=mean('vo2');
+    check('v141 VO2max: a new row, the change only across TH.VO2_GAP days',/▲ ?2 in 6 weeks/.test(txt($('hr_vo2')))&&V==='Up 2 over 6 weeks.'&&_ch.htc_vo2.cfg.series[0].dots,V+' | '+txt($('hr_vo2')));
+    delete _s.wellness[dAgo(44)].vo2;_s.wellness[dAgo(20)]={..._s.wellness[dAgo(20)],vo2:51};renderHealth();const V2=mean('vo2');
+    check('v141 VO2max: readings under 4 weeks apart say when a change will show',V2==="Your watch's estimate. A change shows once readings are 4 weeks apart."&&/Your watch's estimate/.test(txt($('hr_vo2')))&&v123(V2),V2);
+    hlOpen('rhr');
+    check('v141 resting heart rate: your usual range shaded, the same line as Trends',_ch.htc_rhr.on&&_ch.htc_rhr.cfg.band&&txt($('hx_rhr').querySelector('.vc-lg'))==='Your usual range'&&v123(mean('rhr')),mean('rhr'));
+    key($('hr_rhr'),'Enter');
+    check('v141 keys: Enter on the open row closes it and takes the chart down',_hlOpen===null&&!$('hx_rhr')&&!_ch.htc_rhr,'');
+    key($('hr_wt'),' ');
+    check('v141 keys: Space opens a row',_hlOpen==='wt'&&!!$('hx_wt'),'');
+    $('hx_wt').querySelector('details.wm').open=true;$('hx_wt').querySelector('details.wm').dispatchEvent(new Event('toggle'));renderHealth();
+    check('v141 What moves it: stays open over a re-render',$('hx_wt').querySelector('details.wm').open,'');
+    hlBm('glucose');
+    check('v141 one open: a blood marker closes the baseline row, and back again',_hlOpen==='glucose'&&!box.querySelector('[id^="hx_"]')&&!_ch.htc_wt,'');
+    hlOpen('wt');
+    check('v141 one open: a baseline row closes the blood marker',_hlOpen==='wt'&&!_ch.btc_glucose&&!!$('hx_wt'),'');
+    check('v141 What moves it: a note for every key, plain, at most four sentences',HL_KEYS.every(k=>HL_NOTE[k]&&HL_NOTE[k].split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=4&&noNames(HL_NOTE[k])),'');
+    _s.measurements=_s.measurements.filter(m=>!m.bpSys||m.id==='bp-3');hlOpen('bp');
+    check('v141 one reading: the chart says it appears after the second',!_ch.htc_bp.on&&txt($('htc_bp'))==='One reading so far. The chart appears after your second.'&&txt($('hth_bp'))===fmtD(dAgo(1))+'145/92 mmHg',txt($('hth_bp')));
+    _s.measurements=[{id:'m-1',date:dAgo(3),weight:74}];hlOpen('wt');
+    check('v141 one reading: a single weigh-in does not chart against its own average',!_ch.htc_wt.on&&!!$('htc_wt').querySelector('.vc-empty'),'');
+    _s.measurements=_s.measurements.filter(m=>m.bpSys);renderHealth();
+    check('v141 data gone: an open row whose data is gone closes',_hlOpen==='bp'?!!$('hx_bp'):_hlOpen===null,String(_hlOpen));
+    _s.measurements=[];renderHealth();
+    check('v141 data gone: no weight closes the weight rows',!$('hr_wt')&&!box.querySelector('[id^="hx_wt"]'),'');
+    fix();renderHealth();hlOpen('wt');
+    const wide=[...box.querySelectorAll('#pg-health *')].filter(e=>e.getBoundingClientRect().width&&e.getBoundingClientRect().right>box.getBoundingClientRect().right+1);
+    check('v141 layout: at 360px nothing runs wider with a chart open',!wide.length,wide.slice(0,4).map(x=>x.id||x.className).join(' '));
+    check('v141: no source or brand names on Health',noNames(txt(box)),'');
+    const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v141: Health baselines')[1]||'';
+    check('v141: no accent in the v141 CSS, the version is at least 141, the cache follows it',all.length>0&&!/--gold/.test(all)&&APP_VER>=141,'');
+  }finally{
+    if(_hlOpen)chUnmount(hlCid(_hlOpen));_hlOpen=null;
+    Object.assign(window,keep);box.remove();css.remove();
+  }
+});
+
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;

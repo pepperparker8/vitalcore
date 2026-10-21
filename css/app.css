@@ -1602,3 +1602,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 /* ── v140: Scale (weigh-ins read over Bluetooth, Log > Body) ── */
 #scBleSt{color:var(--text)}
 #pg-health .hl-est{font-size:13px;color:var(--t3);padding:4px 0 8px}
+
+/* ── v141: Health baselines rows open a chart in place ── */
+#pg-health .rf[role=button]{grid-template-columns:24px auto minmax(0,1fr) 18px;min-height:56px;cursor:pointer}
+#pg-health .rf[role=button]>.ui-i:last-child{width:18px;height:18px;color:var(--t3)}
+#pg-health .rf[role=button]:focus-visible{outline:2px solid var(--text);outline-offset:2px;border-radius:6px}
+#pg-health .rf+.bx{border-top:0}

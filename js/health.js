@@ -60,29 +60,35 @@ function hlComp(){
   return{date:c.date,v:cc,u:{fat:u('fat'),ffm:u('ffm'),tbw:u('tbw'),smm:u('smm'),ree:u('ree')}};
 }
 // one row: icon, label, value with its unit, and under it the comparison (glyph coloured by the row's state)
-function hlRow(icon,label,v,unit,cmp,cls,date){
+// v141: with a key the row opens in place to its chart (one open at a time, shared with the blood markers)
+function hlRow(icon,label,v,unit,cmp,cls,date,k){
   const m=/^([▲▼●]) (.*)$/.exec(cmp),g=m?m[1]:cmp.startsWith('at ')?'●':'',t=m?m[2]:cmp,age=date&&daysAgo(date)>1?' · '+fmtD(date):'';
-  return`<div class="rf ${cls}">${UI[icon]}<span class="rf-l">${label}</span><span class="rf-r"><span class="rf-v">${v}${unit?` <em>${unit}</em>`:''}</span><span class="rf-n">${g?`<i class="rf-g" aria-hidden="true">${g}</i>`:''}${t}${age}</span></span></div>`;
+  const op=k&&_hlOpen===k,at=k?` id="hr_${k}" role="button" tabindex="0" aria-expanded="${op}" aria-controls="hx_${k}" onclick="hlOpen('${k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hlOpen('${k}')}"`:'';
+  return`<div class="rf ${cls}"${at}>${UI[icon]}<span class="rf-l">${label}</span><span class="rf-r"><span class="rf-v">${v}${unit?` <em>${unit}</em>`:''}</span><span class="rf-n">${g?`<i class="rf-g" aria-hidden="true">${g}</i>`:''}${t}${age}</span></span>${k?(op?UI.chevU:UI.chevD):''}</div>`
+    +(op?`<div class="bx" id="hx_${k}"><div class="vc-hd" id="hth_${k}"></div><div id="htc_${k}"></div>`
+      +`<details class="wm"${_hlWm[k]?' open':''} ontoggle="_hlWm['${k}']=this.open"><summary><b>What moves it</b>${UI.chevD}</summary><p>${HL_NOTE[k]}</p></details></div>`:'');
 }
 function hlBase(){
   const d=S(),out=[],rh=hlRhr(),wt=hlMeas('weight'),bp=hlMeas('bpSys','bpDia'),bb=bpBand();
   if(rh){const df=rh.u==null?0:Math.round(rh.v)-Math.round(rh.u);
-    out.push(hlRow('heart','Resting heart rate',Math.round(rh.v),'bpm',rh.u==null?'First reading':rfVs(rh.v,rh.u,0),rh.u==null?'nt':df>=TH.HL_RHR_UP?'warn':df<=-TH.HL_RHR_UP?'good':'nt',rh.date));}
-  if(wt)out.push(hlRow('scale','Weight',r1(wt.v).toFixed(1),'kg',wt.u==null?'First reading':rfVs(wt.v,wt.u,1),'nt',wt.date));
+    out.push(hlRow('heart','Resting heart rate',Math.round(rh.v),'bpm',rh.u==null?'First reading':rfVs(rh.v,rh.u,0),rh.u==null?'nt':df>=TH.HL_RHR_UP?'warn':df<=-TH.HL_RHR_UP?'good':'nt',rh.date,'rhr'));}
+  if(wt)out.push(hlRow('scale','Weight',r1(wt.v).toFixed(1),'kg',wt.u==null?'First reading':rfVs(wt.v,wt.u,1),'nt',wt.date,'wt'));
   const bm=wt&&scComp(wt.c),m2=(d.profile.height/100)*(d.profile.height/100);
-  if(bm)out.push(hlRow('ruler','BMI',r1(bm.bmi).toFixed(1),'',wt.u==null?'First reading':rfVs(bm.bmi,wt.u/m2,1),'nt',wt.date));
+  if(bm)out.push(hlRow('ruler','BMI',r1(bm.bmi).toFixed(1),'',wt.u==null?'First reading':rfVs(bm.bmi,wt.u/m2,1),'nt',wt.date,'bmi'));
   const bc=hlComp();
   if(bc){const v=bc.v,u=bc.u,cv=(k,dp)=>u[k]==null?'First reading':rfVs(v[k],u[k],dp);
-    out.push(hlRow('flame','Body fat',r1(v.fat).toFixed(1),'%',cv('fat',1),'nt',bc.date));
-    out.push(hlRow('dna','Fat-free mass',r1(v.ffm).toFixed(1),'kg',cv('ffm',1),'nt',bc.date));
-    out.push(hlRow('weight','Skeletal muscle',r1(v.smm).toFixed(1),'kg',cv('smm',1),'nt',bc.date));
-    out.push(hlRow('droplet','Body water',r1(v.tbw).toFixed(1),'%',cv('tbw',1),'nt',bc.date));
-    out.push(hlRow('bolt','Resting energy',Math.round(v.ree),'kcal',cv('ree',0),'nt',bc.date));
+    out.push(hlRow('flame','Body fat',r1(v.fat).toFixed(1),'%',cv('fat',1),'nt',bc.date,'fat'));
+    out.push(hlRow('dna','Fat-free mass',r1(v.ffm).toFixed(1),'kg',cv('ffm',1),'nt',bc.date,'ffm'));
+    out.push(hlRow('weight','Skeletal muscle',r1(v.smm).toFixed(1),'kg',cv('smm',1),'nt',bc.date,'smm'));
+    out.push(hlRow('droplet','Body water',r1(v.tbw).toFixed(1),'%',cv('tbw',1),'nt',bc.date,'tbw'));
+    out.push(hlRow('bolt','Resting energy',Math.round(v.ree),'kcal',cv('ree',0),'nt',bc.date,'ree'));
     out.push(`<div class="hl-est">Estimates from your scale, best read as a trend.</div>`);}
   // v132: the average of the last TH.BP_DAYS days in its band, only from TH.BP_N readings on TH.BP_N days; else the latest reading alone
-  if(bb&&bb.high)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg','▲ Very high twice: seek medical advice promptly','bad',bb.last.date));
-  else if(bb&&bb.band)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg',`${bb.band==='normal'?'●':'▲'} ${bb.word} · average of ${bb.n} readings`,bb.band==='normal'?'good':bb.band==='stage2'?'bad':'warn',bb.last.date));
-  else if(bp)out.push(hlRow('gauge','Blood pressure',`${bp.c.bpSys}/${bp.c.bpDia}`,'mmHg',bb&&bb.n>1?'Readings from one day':'One reading','nt',bp.date));
+  if(bb&&bb.high)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg','▲ Very high twice: seek medical advice promptly','bad',bb.last.date,'bp'));
+  else if(bb&&bb.band)out.push(hlRow('gauge','Blood pressure',`${bb.sys}/${bb.dia}`,'mmHg',`${bb.band==='normal'?'●':'▲'} ${bb.word} · average of ${bb.n} readings`,bb.band==='normal'?'good':bb.band==='stage2'?'bad':'warn',bb.last.date,'bp'));
+  else if(bp)out.push(hlRow('gauge','Blood pressure',`${bp.c.bpSys}/${bp.c.bpDia}`,'mmHg',bb&&bb.n>1?'Readings from one day':'One reading','nt',bp.date,'bp'));
+  const vo=vo2Trend();
+  if(vo)out.push(hlRow('run','VO2max',r1(vo.now).toFixed(1),'',vo.change==null?"Your watch's estimate":vo.change?`${vo.change>0?'▲':'▼'} ${Math.abs(vo.change)} in ${Math.round(vo.daysApart/7)} weeks`:'● No change','nt',vo.date,'vo2'));
   const goal=d.profile.wtGoal;
   if(goal&&wt){const df=wt.v-goal;out.push(hlRow('target','Weight goal',goal,'kg',Math.abs(df)<TH.WT_GOAL_NEAR?'Reached':`${r1(Math.abs(df)).toFixed(1)} kg to ${df>0?'lose':'gain'}`,'nt'));}
   return out.join('');
@@ -127,10 +133,7 @@ function drawBloodChart(k){
       if(!bmF(k,Math.abs(df)))return`${w}, about the same since ${fmtD(a.d)}.`;
       return`${w}, ${df>0?'up':'down'} ${f(Math.abs(df))} since ${fmtD(a.d)}`+(w!=='In range'&&((df<0)===(l.v>r.ok[1]))?': moving towards the range.':'.');}});
 }
-function hlBm(k){
-  const was=_hlOpen===k;if(_hlOpen)chUnmount('btc_'+_hlOpen);_hlOpen=was?null:k;renderHealth();
-  if(_hlOpen){const e=$('br_'+k);if(e&&e.scrollIntoView)e.scrollIntoView({block:'nearest'});}
-}
+const hlBm=k=>hlOpen(k);
 function hlBlood(){
   const bl=S().bloodLogs.filter(x=>BM.some(([,k])=>x[k])).sort((a,b)=>a.date<b.date?-1:1);
   if(!bl.length)return'<div class="empty-state" style="padding:8px 0"><div class="empty-icon">'+UI.dna+'</div><div class="empty-title">No blood results yet</div><div class="empty-sub">Enter your latest lab results (mg/dL) and each marker gets a timeline against its healthy range.</div><button class="empty-btn" onclick="logGo(\'lBlood\')">Add lab results</button></div>';
@@ -143,6 +146,97 @@ function hlBlood(){
       +(op?`<div class="bx" id="bx_${k}"><div class="vc-hd" id="bth_${k}"></div><div id="btc_${k}"></div>`
         +`<details class="wm"${_hlWm[k]?' open':''} ontoggle="_hlWm['${k}']=this.open"><summary><b>What moves it</b>${UI.chevD}</summary><p>${BM_NOTE[k]}</p></details></div>`:'');
   }).join('');
+}
+
+// ── v141 HEALTH HISTORY: every baseline row opens to its chart (bare: drag and pinch, no toolbar), nothing stored ──
+const HL_KEYS=['rhr','wt','bmi','fat','ffm','smm','tbw','ree','bp','vo2'];
+const hlCid=k=>(HL_KEYS.includes(k)?'htc_':'btc_')+k;
+function hlOpen(k){
+  const was=_hlOpen===k;if(_hlOpen)chUnmount(hlCid(_hlOpen));_hlOpen=was?null:k;renderHealth();
+  if(_hlOpen){const e=$((HL_KEYS.includes(k)?'hr_':'br_')+k);if(e&&e.scrollIntoView)e.scrollIntoView({block:'nearest'});}
+}
+const HL_SPEC={rhr:['Resting heart rate','bpm',0],wt:['Weight','kg',1],bmi:['BMI','',1],fat:['Body fat','%',1],ffm:['Fat-free mass','kg',1],
+  smm:['Skeletal muscle','kg',1],tbw:['Body water','%',1],ree:['Resting energy','kcal',0],bp:['Blood pressure','mmHg',0],vo2:['VO2max','',1]};
+const HL_NOTE={
+  rhr:'Sleep, alcohol, illness, heat, stress and hard training raise it for a day or two. Months of aerobic training bring it down. Read it at the same time each morning.',
+  wt:'Food and drink, salt, carbs stored with water, and the time of day move a single weigh-in by a kilo or more. Weigh at the same time each morning; the 7-day average is the trend.',
+  bmi:'Weight divided by height squared. It cannot tell muscle from fat, so a muscular athlete often reads above the general range. Read the trend, not the number.',
+  fat:'Read by a small current through your feet, so water, a meal, a workout or a shower shift it. Weigh at the same time each morning; the trend over weeks is what counts.',
+  ffm:'Muscle, bone, organs and water. Strength training and enough protein hold it up while losing weight; a fast loss takes some of it with the fat.',
+  smm:'Built by strength training with enough protein and energy. An estimate from the scale, so water swings move it; read the trend over weeks.',
+  tbw:'Drinking, salt, carbs, alcohol and sweat move it from day to day. Steady habits and the same weighing time give a fair trend.',
+  ree:'What your body burns at rest, estimated from fat-free mass. It follows that number, so keeping muscle keeps it up.',
+  bp:'Salt, alcohol, sleep, stress, caffeine and body weight move it; regular aerobic exercise brings it down. Measure seated after 5 quiet minutes, twice, at the same time of day.',
+  vo2:'Your watch estimates it from heart rate against pace or power on steady sessions. Regular hard intervals and more aerobic training raise it; a few easy weeks can lower it.'};
+// values per day: the mean of that day's readings
+function hlDays(rs,f){const m={};rs.forEach(r=>{const v=f(r);if(v!=null&&isFinite(v))(m[r.date]=m[r.date]||[]).push(v);});return Object.keys(m).sort().map(d=>({d,v:avg(m[d])}));}
+// the mean of the readings in the TH.HL_AVG days ending on each reading's day
+function hlAvg(pts){return pts.map(p=>{const n=DN(p.d),w=pts.filter(q=>DN(q.d)<=n&&n-DN(q.d)<TH.HL_AVG).map(q=>q.v);return{d:p.d,v:avg(w)};});}
+const hlWts=()=>{const ex=isExampleOnly();return S().measurements.filter(m=>m.weight>=30&&m.weight<=250&&(ex||!m.isEx));};
+const hlM2=()=>{const h=S().profile.height;return h>=TH.SC_H_RNG[0]&&h<=TH.SC_H_RNG[1]?(h/100)*(h/100):null;};
+// the points behind each chart; blood pressure gives [systolic, diastolic]
+function hlPts(k){
+  const d=S();
+  if(k==='rhr'){const wl=d.wellness||{};let rh=Object.keys(wl).sort().filter(dt=>wl[dt]&&wl[dt].rhr!=null).map(dt=>({d:dt,v:wl[dt].rhr}));
+    const rm=hlDays(d.measurements.filter(m=>m.hr),m=>m.hr);return rm.length>rh.length?rm:rh;}  // one source, as on Trends
+  if(k==='wt')return hlDays(hlWts(),m=>m.weight);
+  if(k==='bmi'){const m2=hlM2();return m2?hlDays(hlWts(),m=>m.weight/m2):[];}
+  if(k==='bp')return[hlDays(d.measurements.filter(m=>m.bpSys&&m.bpDia),m=>m.bpSys),hlDays(d.measurements.filter(m=>m.bpSys&&m.bpDia),m=>m.bpDia)];
+  if(k==='vo2')return Object.keys(d.wellness||{}).sort().filter(dt=>d.wellness[dt]&&d.wellness[dt].vo2).map(dt=>({d:dt,v:d.wellness[dt].vo2}));
+  return hlDays(d.measurements.filter(m=>m.weight&&m.imp),m=>{const c=scComp(m);return c&&c[k]!=null?c[k]:null;});
+}
+const hlF=(k,v)=>{const dp=HL_SPEC[k][2];return dp?r1(v).toFixed(1):String(Math.round(v));};
+const hlU=k=>HL_SPEC[k][1]?' '+HL_SPEC[k][1]:'';
+// the header over an open baseline chart: the tapped day (else the latest) with its change, and the reading before it
+function hlHead(k,d){
+  const h=$('hth_'+k);if(!h)return;
+  const P=hlPts(k),bp=k==='bp',pts=bp?P[0]:P;let i=d?pts.findIndex(p=>p.d===d):pts.length-1;if(i<0)i=pts.length-1;if(i<0)return;
+  const val=j=>bp?`${Math.round(P[0][j].v)}/${Math.round(P[1][j].v)}`:hlF(k,pts[j].v),u=HL_SPEC[k][1]?` <em>${HL_SPEC[k][1]}</em>`:'';
+  const c=pts[i],p=pts[i-1];let ch='';
+  if(p&&!bp){const df=+hlF(k,c.v)-+hlF(k,p.v);ch=df?`<i>${df>0?'▲':'▼'}</i>${df>0?'Up':'Down'} ${hlF(k,Math.abs(df))}${hlU(k)}`:'<i>●</i>No change';}
+  if(bp){const x=bpBand(c.d);ch=x&&x.band?`<i>${x.band==='normal'?'●':'▲'}</i>${x.word} on the ${TH.BP_DAYS}-day average`:'';}
+  h.innerHTML=`<div><small>${fmtD(c.d)}</small><b class="v1">${val(i)}${u}</b><span>${ch}</span></div>`
+    +(p?`<div><small>Previous</small><b class="v2">${val(i-1)}${u}</b><span>${fmtD(p.d)}</span></div>`:'');
+}
+// one line for an averaged chart: the change of the 7-day average over the view
+function hlTrendLine(k,info,est){
+  const a=info.first,l=info.last,n=HL_SPEC[k][0];if(!l)return'';
+  const df=l.v-a.v,ab=hlF(k,Math.abs(df)),tail=est?' An estimate, best read as a trend.':'';
+  if(a.d===l.d)return`${n} ${hlF(k,l.v)}${hlU(k)} on the ${TH.HL_AVG}-day average.`+tail;
+  if(!+ab)return`About the same on the ${TH.HL_AVG}-day average since ${fmtD(a.d)}.`+tail;
+  const s=`${df>0?'Up':'Down'} ${ab}${hlU(k)} on the ${TH.HL_AVG}-day average since ${fmtD(a.d)}.`;
+  if(k==='wt'&&df<0){const w=wtTrend();if(w&&w.fast)return s+' A slower loss keeps more muscle and strength.';}
+  return s+tail;
+}
+function hlChart(k){
+  const id='htc_'+k,[name,unit]=HL_SPEC[k],f=v=>hlF(k,v)+hlU(k),P=hlPts(k);
+  const base={bare:true,vals:false,key:'hl'+k,H:150,span:TH.HL_VIEW,label:name,yfmt:v=>hlF(k,v),pick:d=>hlHead(k,d),
+    empty:'One reading so far. The chart appears after your second.'};
+  hlHead(k,null);
+  // one reading charts nothing: its pair (diastolic) or its own average would otherwise make two points
+  if((k==='bp'?P[0]:P).length<2)return mountChart(id,{...base,series:[]});
+  if(k==='rhr'){const band=rollBand(P,TH.RHR_FLOOR);
+    return mountChart(id,{...base,band,legend:'Your usual range',series:[{name,color:'--text',thin:true,fmt:f,pts:P}],
+      means:info=>bandMeaning(info,band,f,BAND_TXT.rhr)});}
+  if(k==='bp'){const Sy=TH.BP_SYS,Di=TH.BP_DIA,col=(v,c)=>v<c[0]?'--green':v<c[2]?'--amber':'--red';
+    return mountChart(id,{...base,yfmt:v=>String(Math.round(v)),yat:[Sy[0],Sy[1],Sy[2],Di[0],Di[1]],
+      lines:[Sy[0],Sy[1],Sy[2],Di[0],Di[1]].map(v=>({v,color:'--t3'})),
+      series:[{name:'Systolic',color:'--t3',thin:true,fmt:v=>Math.round(v)+' mmHg',pts:P[0],dotColor:v=>col(v,Sy)},
+        {name:'Diastolic',color:'--t3',thin:true,fmt:v=>Math.round(v)+' mmHg',pts:P[1],dotColor:v=>col(v,[Di[0],0,Di[1]])}],
+      means:()=>{const x=bpBand();
+        if(x&&x.high)return'Very high twice: seek medical advice promptly.';
+        if(x&&x.band)return`${x.word} on the ${TH.BP_DAYS}-day average of ${x.n} readings.`;
+        return P[0].length>1?'Readings from one day so far.':'One reading so far.';}});}
+  if(k==='vo2')return mountChart(id,{...base,series:[{name,color:'--text',thin:true,fmt:f,pts:P,dots:true}],
+    means:()=>{const v=vo2Trend();if(!v||v.change==null)return`Your watch's estimate. A change shows once readings are ${Math.round(TH.VO2_GAP/7)} weeks apart.`;
+      const w=Math.round(v.daysApart/7);return v.change?`${v.change>0?'Up':'Down'} ${Math.abs(v.change)} over ${w} weeks.`:`No change over ${w} weeks.`;}});
+  // weight, BMI and body composition: each day's reading as a dot, the 7-day average as the line
+  const cfg={...base,stats:{s:1},series:[{name,color:'--teal',noLine:true,dots:true,fmt:f,pts:P},{name:`${TH.HL_AVG}-day average`,color:'--text',noDots:true,fmt:f,pts:hlAvg(P)}],
+    means:info=>hlTrendLine(k,info,!['wt','bmi'].includes(k))};
+  const goal=S().profile.wtGoal;
+  if(k==='wt'&&goal)cfg.lines=[{v:goal,label:'Goal',color:'--t2'}];
+  if(k==='bmi'){const R=TH.BMI_RNG;cfg.zones=[{lo:R[0],hi:R[1],color:'--t3/1.6'}];cfg.legend='General adult range';cfg.yat=[R[0],R[1]];}
+  return mountChart(id,cfg);
 }
 
 // ── active injuries, each with Mark healed (Log > Injury keeps its own list) ──
@@ -158,9 +252,11 @@ function renderHealth(){
   document.querySelectorAll('#pg-health .ib:empty').forEach(x=>x.innerHTML=TR_I_SVG);
   $('hinf_base').textContent=`Usual is your average over the ${TH.HL_USUAL} days before the latest reading.`;
   $('hBase').innerHTML=b||'<div class="empty-state" style="padding:8px 0"><div class="empty-title">No measurements yet</div><div class="empty-sub">Log weight, blood pressure or resting heart rate and your personal baseline builds here.</div><button class="empty-btn" onclick="logGo(\'lMeas\')">Add a measurement</button></div>';
-  if(_hlOpen&&!bmPts(_hlOpen).length){chUnmount('btc_'+_hlOpen);_hlOpen=null;}
+  // an open row whose data has gone closes
+  if(_hlOpen&&(HL_KEYS.includes(_hlOpen)?!$('hr_'+_hlOpen):!bmPts(_hlOpen).length)){chUnmount(hlCid(_hlOpen));_hlOpen=null;if(b)$('hBase').innerHTML=hlBase();}
+  if(_hlOpen&&HL_KEYS.includes(_hlOpen))hlChart(_hlOpen);
   $('hBlood').innerHTML=hlBlood();
-  if(_hlOpen)drawBloodChart(_hlOpen);
+  if(_hlOpen&&!HL_KEYS.includes(_hlOpen))drawBloodChart(_hlOpen);
   $('hInj').innerHTML=hlInj();
 }
 
