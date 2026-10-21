@@ -298,6 +298,10 @@ Verify after each change; don't batch.
   - Health > Your baselines (CSS block "v137" at the end of app.css, scoped to `#pg-health`): `.rf` columns `24px auto minmax(0,1fr)`, the label `nowrap`, the line under the value (`.rf-n`) wraps right-aligned.
   - Insights: `_insFull` starts true, so the five sections show; Show less folds to the short version (`insFullTog`, unchanged).
   - Tests: 1002.
+- Monitor readings save on their own (v138; the owner read the monitor but nothing reached Health: two-user readings waited for the user question). No score, data or sync change.
+  - `bpKeep` never waits (no `ask`): with two users in a read and no `bpUser`, it keeps the user of the newest reading by its own time (`pick`) and `bpApply` stores it as `bpUser`; `bpMsg` adds "Saved as user N on the monitor; change it below", and "N readings of the other user left out" when nothing else was added. `bpApply` saves, then `refreshAll()` and `renderHealth()`.
+  - `_bpLast` (replaces `_bpHold`) keeps the last two-user read `{rs, ids, prev}`; `#bpBleUs` ("Your user on the monitor") shows while it exists. `bpSetUser(n)` with another user deletes what that read saved, clears the `gone` and tombstone entries of the readings an earlier switch took back, and applies the read again, so switching back and forth works.
+  - Tests: 1006 (the pick, the newest by its own time, the other user's toast, saving at once, switching both ways, Health straight after a read). The 360px sheet checks need the pane at phone width (they fail at 1024px on v137 too).
 - Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
 
 ## Conventions

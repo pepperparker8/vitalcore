@@ -3679,7 +3679,13 @@ run('v135 keep',()=>{
   check('v135 keep: a typed reading with the same numbers that day is already in, a different one is added',o4.same===1&&o4.add.length===1&&o4.add[0].bpSys===129,JS(o4));
   // users
   base();const two=[bpR({sys:120,dia:80,at:D+'T07:00',user:1}),bpR({sys:140,dia:90,at:D+'T07:30',user:2})];
-  check('v135 keep: two users and none chosen asks which, keeps nothing',bpKeep(two,now).ask&&!bpKeep(two,now).add.length,'');
+  o=bpKeep(two,now);
+  check('v138 keep: two users and none chosen never waits: the newest reading\'s user is kept and named',o.two&&o.pick===2&&o.add.length===1&&o.add[0].id==='bp-'+D+'-0730-u2'&&o.other===1&&/Saved as user 2/.test(bpMsg(o)),JS(o));
+  o=bpKeep([bpR({sys:140,dia:90,at:D+'T07:30',user:2}),bpR({sys:120,dia:80,at:D+'T08:10',user:1})],now);
+  check('v138 keep: the newest by its own time, not by arrival',o.pick===1&&o.add[0].id==='bp-'+D+'-0810',JS(o));
+  _s.bpUser=1;o=bpKeep([bpR({sys:140,dia:90,at:D+'T07:30',user:2})],now);
+  check('v138 keep: only the other user\'s readings says so in the toast',!o.add.length&&o.other===1&&/of the other user left out/.test(bpMsg(o)),bpMsg(o));
+  _s.bpUser=null;
   _s.bpUser=2;o=bpKeep(two,now);
   check('v135 keep: with user 2 chosen, user 1 is left out and user 2 gets -u2',o.add.length===1&&o.add[0].id==='bp-'+D+'-0730-u2'&&o.other===1,JS(o));
   _s.bpUser=null;o=bpKeep([bpR({sys:120,dia:80,at:D+'T07:00',user:1})],now);
@@ -3713,7 +3719,7 @@ run('v135 keep',()=>{
 seq('v135 monitor',async()=>{
   const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
   box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';
-  box.innerHTML=doc.getElementById('pg-log').outerHTML+doc.getElementById('setModal').outerHTML;document.body.appendChild(box);
+  box.innerHTML=doc.getElementById('pg-log').outerHTML+doc.getElementById('pg-health').outerHTML+doc.getElementById('setModal').outerHTML;document.body.appendChild(box);
   const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
   const has=Object.getOwnPropertyDescriptor(navigator,'bluetooth'),keep={showToast,refreshAll,IDLE:TH.BP_BLE_IDLE},toasts=[];
   const setBt=v=>Object.defineProperty(navigator,'bluetooth',{value:v,configurable:true,writable:true});
@@ -3752,18 +3758,20 @@ seq('v135 monitor',async()=>{
     const o=await bpRead();
     check('v135 read: two readings then a disconnect are both saved, with the pulse in the toast and Undo',o&&o.add.length===2&&S().measurements.filter(m=>/^bp-/.test(m.id)).length===2&&toasts[0].m==='2 readings added. Pulse 61 bpm.'&&toasts[0].u&&toasts[0].u.label==='Undo'&&!F.dev.gatt.connected,JS(toasts));
     check('v135 read: Log shows the latest reading with its time, and the hint goes after the first read',txt($('bpRec'))==='127/80 mmHg · 07:20'&&$('bpBleHint').hidden&&S().bpOk===1,txt($('bpRec')));
+    check('v138 read: Health shows the new reading straight after the read, with nothing else to tap',/127\/80/.test(txt($('hBase'))),txt($('hBase')).slice(0,120));
     toasts[0].u.fn();
     check('v135 read: Undo removes both and they stay deleted',!S().measurements.some(m=>/^bp-/.test(m.id))&&S().gone.includes('bp-'+D+'-0712'),'');
     setBt(fake({vals:[bpDV({sys:133,dia:85,at:D+'T08:00'})],drop:0}));toasts.length=0;await bpRead();
     check('v135 read: a reading then silence is saved after the idle time',S().measurements.some(m=>m.id==='bp-'+D+'-0800')&&/1 reading added/.test(toasts[0].m),JS(toasts));
     // two users: the question, then the choice
-    base();_bpHold=null;setBt(fake({vals:[bpDV({sys:120,dia:80,at:D+'T07:00',user:1}),bpDV({sys:140,dia:90,at:D+'T07:30',user:2})],drop:1}));toasts.length=0;
+    base();_bpLast=null;setBt(fake({vals:[bpDV({sys:120,dia:80,at:D+'T07:00',user:1}),bpDV({sys:140,dia:90,at:D+'T07:30',user:2})],drop:1}));toasts.length=0;
     await bpRead();
-    check('v135 users: readings of two users ask which user you are and save nothing yet',!$('bpBleUs').hidden&&!S().measurements.length&&!toasts.length,'');
-    $('bpBleUs').querySelector('[data-u="2"]').click();
-    check('v135 users: choosing 2 saves user 2\'s reading, hides the question and shows the Settings row with 2 pressed',S().bpUser===2&&S().measurements.length===1&&S().measurements[0].id==='bp-'+D+'-0730-u2'&&$('bpBleUs').hidden&&!$('bpUserRow').hidden&&$('bpUserRow').querySelector('[data-u="2"]').getAttribute('aria-pressed')==='true'&&$('bpUserRow').querySelector('[data-u="1"]').getAttribute('aria-pressed')==='false',JS(S().measurements.map(m=>m.id)));
-    $('bpUserRow').querySelector('[data-u="1"]').click();
-    check('v135 users: Settings changes the user',S().bpUser===1&&$('bpUserRow').querySelector('[data-u="1"]').getAttribute('aria-pressed')==='true','');
+    const ids=()=>S().measurements.map(m=>m.id).join();
+    check('v138 users: two users save at once as the newest reading\'s user, with the user row shown and 2 pressed',S().bpUser===2&&ids()==='bp-'+D+'-0730-u2'&&!$('bpBleUs').hidden&&!$('bpUserRow').hidden&&$('bpBleUs').querySelector('[data-u="2"]').getAttribute('aria-pressed')==='true'&&$('bpUserRow').querySelector('[data-u="1"]').getAttribute('aria-pressed')==='false'&&/Saved as user 2/.test(toasts[0].m),ids()+' '+JS(toasts));
+    $('bpBleUs').querySelector('[data-u="1"]').click();
+    check('v138 users: choosing 1 takes user 2\'s reading back and saves user 1\'s',S().bpUser===1&&ids()==='bp-'+D+'-0700'&&$('bpUserRow').querySelector('[data-u="1"]').getAttribute('aria-pressed')==='true',ids());
+    $('bpUserRow').querySelector('[data-u="2"]').click();
+    check('v138 users: back to 2 from Settings brings user 2\'s reading back',S().bpUser===2&&ids()==='bp-'+D+'-0730-u2',ids());
     // 360px, tap targets, no source names, no accent in the v135 CSS
     box.querySelector('#pg-log').classList.add('active');$('lMeas').classList.add('open');$('bpBleUs').hidden=false;
     const R0=box.getBoundingClientRect().right,wide=[...box.querySelector('#pg-log').querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
@@ -3772,8 +3780,9 @@ seq('v135 monitor',async()=>{
     const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v135: Monitor')[1]||'';
     check('v135: no brand or source names on the screens, no accent in the v135 CSS',!/Omron|Polar|Intervals|Garmin|BLEsmart/.test(txt(box.querySelector('#lMeas'))+txt($('bpUserRow')))&&all.length>0&&!/--gold/.test(all),'');
     check('v135: the Bluetooth icon is Tabler\'s and the version is at least v135',UI.bt&&/M7 8l10 8l-5 4l0 -16l5 4l-10 8/.test(UI.bt)&&APP_VER>=135,'');
+    check('v138: the version is at least v138',APP_VER>=138,'');
   }finally{
-    Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});TH.BP_BLE_IDLE=keep.IDLE;_bpHold=null;_bpBusy=false;
+    Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});TH.BP_BLE_IDLE=keep.IDLE;_bpLast=null;_bpBusy=false;
     if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
     box.remove();css.remove();
   }

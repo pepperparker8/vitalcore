@@ -471,7 +471,7 @@ function updMeasHist(){
 // One record per reading, id bp-<date>-<HHMM> from the reading's own time, so a resend is the same record.
 // The cuff pulse is shown in the toast only, never stored as resting heart rate (owner's decision).
 const BP_SVC=0x1810,BP_MEAS=0x2A35,BP_CTS=0x1805;
-let _bpBusy=false,_bpHold=null;
+let _bpBusy=false,_bpLast=null; // v138: the last two-user read {rs, ids}, so choosing the other user moves it
 // IEEE-11073 16-bit SFLOAT: 4-bit signed exponent, 12-bit signed mantissa; the special values read as null
 function sfloat(u){
   if([0x07FF,0x0800,0x07FE,0x0802,0x0801].includes(u))return null;
@@ -496,11 +496,14 @@ function bpParse(dv){
 function bpT(rec){const m=/^bp-\d{4}-\d{2}-\d{2}-(\d{2})(\d{2})/.exec(rec&&rec.id||'');return m?m[1]+':'+m[2]:null;}
 const bpP2=n=>String(n).padStart(2,'0');
 // Decides what to keep from one read: readings r {…bpParse, got (arrival Date)} in the order they arrived.
-// Returns the new records and the counts the toast reports; ask = readings of two users and none chosen yet.
+// Returns the new records and the counts the toast reports; two = readings of two users came in.
+// v138: with two users and none chosen it never waits: it keeps the user of the newest reading (pick), changeable after.
 function bpKeep(rs,now=new Date()){
-  const o={add:[],same:0,gone:0,range:0,old:0,clock:0,phone:0,move:0,cuff:0,other:0,pulse:null,ask:false};
-  const users=[...new Set(rs.map(r=>r.user).filter(x=>x!=null))],me=S().bpUser;
-  if(users.length>1&&me==null){o.ask=true;return o;}
+  const o={add:[],same:0,gone:0,range:0,old:0,clock:0,phone:0,move:0,cuff:0,other:0,pulse:null,two:false,pick:null,user:null};
+  const users=[...new Set(rs.map(r=>r.user).filter(x=>x!=null))];let me=S().bpUser;
+  o.two=users.length>1;
+  if(o.two&&me==null){const u=rs.filter(r=>r.user!=null),nw=u.reduce((a,r)=>(r.at||r.got||0)>=(a.at||a.got||0)?r:a,u[0]);me=o.pick=nw.user;}
+  o.user=me;
   const [sLo,sHi]=TH.BP_SYS_RNG,[dLo,dHi]=TH.BP_DIA_RNG,[hLo,hHi]=TH.HR_RNG,ms=S().measurements;
   const bad=r=>r.at&&(r.at-now>TH.BP_BLE_FUT*60000||r.at.getFullYear()<TH.BP_BLE_Y0);
   const lastBad=rs.filter(bad).pop();
@@ -537,6 +540,8 @@ function bpMsg(o){
   if(o.cuff)t.push(`${o.cuff} with the cuff loose`);
   if(o.range)t.push(`${bpN(o.range,'reading')} skipped: outside the usual range`);
   if(o.old)t.push(`${bpN(o.old,'reading')} over a year old left out`);
+  if(o.other&&!a)t.push(`${bpN(o.other,'reading')} of the other user left out`);
+  if(o.pick)t.push(`Saved as user ${o.pick} on the monitor; change it below`);
   if(o.clock)t.push(`The monitor's clock is off; set it on the monitor`);
   else if(o.phone)t.push('Time from your phone');
   return t.join('. ')+'.';
@@ -544,11 +549,13 @@ function bpMsg(o){
 // Saves what bpKeep kept and reports it, with Undo
 function bpApply(rs){
   if(!rs.length){showToast('No new readings on the monitor');return null;}
-  const o=bpKeep(rs);
-  if(o.ask){_bpHold=rs;bpUserUI();return o;}
+  const o=bpKeep(rs),d=S();
   o.add.forEach(r=>put('meas',r));
-  const d=S();if(!d.bpOk){d.bpOk=1;save(d);}
-  updMeasHist();if(o.add.length)refreshAll();
+  if(o.pick!=null)d.bpUser=o.pick;
+  if(!d.bpOk)d.bpOk=1;
+  save(d);
+  _bpLast=o.two?{rs,ids:o.add.map(r=>r.id)}:null;bpUserUI();
+  updMeasHist();if(o.add.length){refreshAll();if($('hBase'))renderHealth();}
   showToast(bpMsg(o),o.add.length?{label:'Undo',fn:()=>{o.add.forEach(r=>del('meas',r.id));updMeasHist();refreshAll();}}:null);
   return o;
 }
@@ -589,16 +596,21 @@ async function bpRead(){
   return bpApply(rs);
 }
 // Which user of a two-user monitor this phone reads (local only)
+// v138: after a two-user read, choosing the other user takes back what was saved for the first and saves the other's
 function bpSetUser(n){
-  const d=S();d.bpUser=n;save(d);
-  const rs=_bpHold;_bpHold=null;bpUserUI();
-  if(rs)bpApply(rs);
+  const d=S(),was=d.bpUser;d.bpUser=n;save(d);
+  const L=_bpLast;
+  if(L&&was!==n){
+    const back=L.prev||[];L.ids.forEach(id=>del('meas',id));
+    d.gone=(d.gone||[]).filter(x=>!back.includes(x));d.tomb=d.tomb.filter(t=>!back.includes(t.id)); // the readings of an earlier switch come back
+    bpApply(L.rs);if(_bpLast)_bpLast.prev=L.ids;return;}
+  bpUserUI();
 }
 function bpUserUI(){
   const me=S().bpUser,q=$('bpBleUs'),row=$('bpUserRow');
-  if(q)q.hidden=!_bpHold;
+  if(q)q.hidden=!_bpLast;
   if(row)row.hidden=me==null;
-  document.querySelectorAll('.bp-uc').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.u===me&&!(_bpHold&&b.closest('#bpBleUs')))));
+  document.querySelectorAll('.bp-uc').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.u===me)));
 }
 // Shows the button wherever the browser can use Bluetooth (v136: also while Bluetooth is off, with a line to turn it on)
 let _bpAv=false;
