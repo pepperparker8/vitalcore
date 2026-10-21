@@ -3959,6 +3959,67 @@ seq('v140 scale',async()=>{
   }
 });
 
+seq('v142 scale live',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto';
+  box.innerHTML=doc.getElementById('pg-log').outerHTML+doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  const has=Object.getOwnPropertyDescriptor(navigator,'bluetooth'),K=['SC_BLE_IDLE','SC_BLE_ACK','SC_BLE_WAIT','SC_BLE_CONN','SC_BLE_OP','SC_BLE_MAX','SC_LIVE_IMP'],keep={showToast,refreshAll,th:K.map(k=>TH[k])},toasts=[];
+  const setBt=v=>Object.defineProperty(navigator,'bluetooth',{value:v,configurable:true,writable:true});
+  // a fake scale with a live characteristic: o.ws 0x181D; o.live [[ms after its notifications start, bytes]]; o.loop bytes sent every 10 ms;
+  // o.vals history bytes 5 ms after the 02 write, o.end then 03; o.hang a connect that never answers; o.hangW a 02 write that never answers
+  function fake(o){
+    const L={},log=[],st=[],tm=[],tch={writeValueWithResponse:async()=>{log.push('t');}};
+    const ch={addEventListener:(t,f)=>{ch.f=f;},startNotifications:async()=>{log.push('n');},writeValueWithResponse:v=>{const b=[...v];log.push(b.map(x=>x.toString(16).padStart(2,'0')).join(''));
+      if(b.length===1&&b[0]===2){if(o.hangW)return new Promise(()=>{});tm.push(setTimeout(()=>{(o.vals||[]).forEach(x=>ch.f({target:{value:scDV(x)}}));if(o.end)ch.f({target:{value:scDV([3])}});},5));}
+      return Promise.resolve();}};
+    const fire=b=>{lc.f({target:{value:scDV(b)}});st.push($('scBleSt').textContent);};
+    const lc={addEventListener:(t,f)=>{lc.f=f;},startNotifications:async()=>{(o.live||[]).forEach(([ms,b])=>tm.push(setTimeout(()=>fire(b),ms)));if(o.loop)tm.push(setInterval(()=>fire(o.loop),10));}};
+    const svc={getCharacteristic:async u=>{if(u===SC_HIST)return ch;if(u===SC_TIME)return tch;if(u===(o.ws?0x2A9D:0x2A9C))return lc;throw new DOMException('none','NotFoundError');}};
+    const srv={getPrimaryService:async u=>{if((o.ws&&u===SC_BC)||(!o.ws&&u===SC_WS))throw new DOMException('none','NotFoundError');return svc;}};
+    const dev={gatt:{connected:false,connect:()=>o.hang?new Promise(()=>{}):(dev.gatt.connected=true,Promise.resolve(srv)),disconnect(){dev.gatt.connected=false;tm.forEach(x=>{clearTimeout(x);clearInterval(x);});}},addEventListener:(t,f)=>{L[t]=f;},removeEventListener:t=>{delete L[t];}};
+    return{getAvailability:async()=>true,requestDevice:async()=>dev,dev,log,st,stop:()=>tm.forEach(x=>{clearTimeout(x);clearInterval(x);})};
+  }
+  const D=dAgo(1),go=async o=>{base();toasts.length=0;_scBusy=false;const F=fake(o);setBt(F);const t0=performance.now();const r=await scRead();F.ms=performance.now()-t0;F.stop();F.r=r;return F;};
+  const scs=()=>S().measurements.filter(m=>/^sc-/.test(m.id));
+  try{
+    window.showToast=(m,u)=>toasts.push({m,u});window.refreshAll=()=>{};
+    Object.assign(TH,{SC_BLE_IDLE:0.05,SC_BLE_ACK:0.02,SC_BLE_WAIT:0.4,SC_BLE_CONN:0.05,SC_BLE_OP:0.05,SC_BLE_MAX:2,SC_LIVE_IMP:1});
+    let F=await go({hang:1});
+    check('v142 read: a connect that never answers stops after its time limit and says to wake the scale',toasts.length===1&&/Could not reach the scale/.test(toasts[0].m)&&F.ms<500&&!_scBusy&&$('scBleSt').textContent==='',JS(toasts)+' '+F.ms);
+    F=await go({hangW:1});
+    check('v142 read: a write that never answers stops after its time limit',toasts.length===1&&/Could not reach the scale/.test(toasts[0].m)&&F.ms<500,JS(toasts)+' '+F.ms);
+    TH.SC_BLE_MAX=0.15;
+    F=await go({loop:scB13({kg:74.6,loose:1})});
+    check('v142 read: a scale that keeps sending stops at the overall cap, showing the weight as it comes',toasts.length===1&&toasts[0].m==='No new weigh-ins on the scale'&&F.st.includes('74.6 kg…')&&F.ms<600&&!scs().length,JS(toasts)+' '+F.ms+' '+JS(F.st.slice(0,2)));
+    TH.SC_BLE_MAX=2;
+    F=await go({vals:[],end:1});
+    check('v142 read: with a live weigh-in possible, an empty history waits for you to step on before it ends',F.ms>=350&&toasts[0].m==='No new weigh-ins on the scale',F.ms+' '+JS(toasts));
+    F=await go({vals:[],end:1,live:[[20,scB13({kg:74.9,loose:1})],[40,scB13({kg:74.6})],[80,scB13({kg:74.6,imp:480})]]});
+    check('v142 live: step on, it settles, the body measurement comes: saved on its own with impedance and the phone\'s time',F.r&&F.r.add.length===1&&scs().length===1&&scs()[0].weight===74.6&&scs()[0].imp===480&&scs()[0].date===td()&&/1 weigh-in added/.test(toasts[0].m)&&/Time from your phone/.test(toasts[0].m)&&toasts[0].u&&toasts[0].u.label==='Undo',JS(toasts)+JS(scs()));
+    check('v142 live: the status line reads the weight while you stand, then measuring once settled, and the saved line stays after',F.st.includes('74.9 kg…')&&F.st.includes('74.6 kg, measuring…')&&/^Saved: 74\.6 kg/.test($('scBleSt').textContent)&&F.ms<300,JS(F.st)+' '+$('scBleSt').textContent);
+    F=await go({ws:1,vals:[],end:1,live:[[20,scB10({kg:76.2})]]});
+    check('v142 live: a scale without body measurement saves the first settled weight at once',scs().length===1&&scs()[0].weight===76.2&&scs()[0].imp===null&&F.ms<200,F.ms+JS(scs()));
+    F=await go({live:[[5,scB13({kg:75.4})],[30,scB13({kg:75.4,off:1})]]});
+    check('v142 live: stepping off before the body measurement saves the weight without it',scs().length===1&&scs()[0].weight===75.4&&scs()[0].imp===null&&F.ms<200,F.ms+JS(scs()));
+    TH.SC_LIVE_IMP=0.05;
+    F=await go({live:[[5,scB13({kg:75.4})]]});
+    check('v142 live: no body measurement within its time saves the weight',scs().length===1&&scs()[0].imp===null&&F.ms<250,F.ms+JS(scs()));
+    TH.SC_LIVE_IMP=1;
+    F=await go({vals:[scB13({kg:75.2,imp:470,at:D+'T07:05'})],end:1,live:[[1,scB13({kg:75.2,at:D+'T07:06'})],[40,scB13({kg:75.2,imp:470,at:D+'T07:06'})]]});
+    check('v142 live: the same weigh-in from the history and live is saved once, and the end of the history waits for it',scs().length===1&&scs()[0].id===`sc-${D}-0705`&&toasts[0].m==='1 weigh-in added, 1 already in.',JS(toasts)+JS(scs().map(m=>m.id)));
+    F=await go({vals:[scB13({kg:75.0,imp:470,at:D+'T07:05'})],end:1,live:[[1,scB13({kg:76.0,at:D+'T07:05'})],[40,scB13({kg:76.0,imp:480,at:D+'T07:05'})]]});
+    check('v142 live: two different weights in one minute are both kept',scs().map(m=>m.id).sort().join()===`sc-${D}-0705,sc-${D}-0705-2`,JS(scs().map(m=>m.id)));
+    base();put('meas',{id:`sc-${D}-0705`,date:D,bpSys:null,bpDia:null,weight:75.2,hr:null,src:{weight:'scale'}});
+    const ko=scKeep([{kg:75.3,imp:null,at:new Date(D+'T07:0'+(5+TH.SC_SAME_MIN)),got:new Date()},{kg:75.3,imp:null,at:new Date(D+'T07:'+(5+TH.SC_SAME_MIN+1)),got:new Date()}],new Date());
+    check('v142 keep: a stored scale weigh-in within '+TH.SC_SAME_MIN+' minutes and '+TH.SC_SAME+' kg is the same one, a minute later is new',ko.same===1&&ko.add.length===1,JS(ko));
+    check('v142: the version is at least v142',APP_VER>=142,'');
+  }finally{
+    Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});K.forEach((k,i)=>TH[k]=keep.th[i]);_scBusy=false;
+    if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
+    box.remove();
+  }
+});
+
 seq('v141 health trends',async()=>{
   const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
   box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);

@@ -681,6 +681,9 @@ function scKeep(rs,now=new Date()){
     if(ref&&Math.abs(r.kg-ref.weight)>TH.SC_OTHER){o.other++;return;}
     const date=ymd(at);
     if(ms.some(m=>m.date===date&&m.weight&&!/^(sc-|mi-)/.test(String(m.id))&&near(m.weight,r.kg))){o.same++;return;}
+    // the same weigh-in read live and again from the scale's memory (v142): a scale record SC_SAME_MIN minutes away, same weight
+    const mn=at.getHours()*60+at.getMinutes();
+    if(ms.concat(o.add).some(m=>m.date===date&&m.weight&&near(m.weight,r.kg)&&(x=>x&&Math.abs(+x[1]*60+ +x[2]-mn)<=TH.SC_SAME_MIN)(/^sc-\d{4}-\d{2}-\d{2}-(\d{2})(\d{2})/.exec(String(m.id))))){o.same++;return;}
     const base=`sc-${date}-${bpP2(at.getHours())}${bpP2(at.getMinutes())}`;
     for(let n=1;;n++){
       const id=n===1?base:base+'-'+n,ex=ms.find(m=>m.id===id)||o.add.find(m=>m.id===id);
@@ -734,13 +737,26 @@ function scSaved(add){
 }
 // This phone's reader id on the scale (local only): the scale sends only what came after this reader's last read
 function scUid(){const d=S();if(!(d.scUid>0&&d.scUid<65536)){d.scUid=1+Math.floor(Math.random()*65534);save(d);}return d.scUid;}
-const scW=(ch,b)=>{const v=new Uint8Array(b);return ch.writeValueWithResponse?ch.writeValueWithResponse(v):ch.writeValue(v);};
+// A Bluetooth step that may never answer (v142): rejects after s seconds, so a read always ends
+const scTo=(p,s)=>new Promise((ok,no)=>{const t=setTimeout(()=>no(new Error('timeout')),s*1000);Promise.resolve(p).then(v=>{clearTimeout(t);ok(v);},e=>{clearTimeout(t);no(e);});});
+// A write, without response where the characteristic only allows that, inside SC_BLE_OP
+const scW=(ch,b)=>{const v=new Uint8Array(b),p=ch.properties||{};return scTo(p.write===false&&p.writeWithoutResponse&&ch.writeValueWithoutResponse?ch.writeValueWithoutResponse(v):ch.writeValueWithResponse?ch.writeValueWithResponse(v):ch.writeValue(v),TH.SC_BLE_OP);};
 // The time for 0x2A2B: year, month, day, hours, minutes, seconds, then 00 00 01
 function scTime(t=new Date()){const y=t.getFullYear();return [y&255,y>>8,t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes(),t.getSeconds(),0,0,1];}
-// The button: one read through the browser's device chooser (it must run inside the tap)
+// A live frame (v142, 0x2A9C with 13 bytes or 0x2A9D with 10, the history layouts): the weight shown so far,
+// settled, stepped off, and the weigh-in once settled (r)
+function scFrame(dv,big){
+  const n=big?13:10;if(!dv||dv.byteLength<n)return null;
+  const u=dv.getUint8(0),c=big?dv.getUint8(1):u;
+  const kg=big?scKg(dv.getUint16(11,true),u&1,c&64):scKg(dv.getUint16(1,true),u&1,u&16);
+  return {kg,set:!!(c&32),off:!!(c&128),r:big?scParse13(dv):scParse10(dv)};
+}
+// The button: one read through the browser's device chooser (it must run inside the tap). It reads the weigh-ins the
+// scale keeps and, while you stand on it, the one you are making (v142), and saves them by itself. Every step has a
+// time limit and the read never runs past SC_BLE_MAX, so it always ends with a toast.
 async function scRead(){
   if(_scBusy||!navigator.bluetooth)return;
-  const st=$('scBleSt'),rs=[];let dev=null,idle=null,ack=null,done=null;
+  const st=$('scBleSt'),rs=[];let dev=null,idle=null,ack=null,cap=null,lt=null,done=null;
   _scBusy=true;
   try{
     dev=await navigator.bluetooth.requestDevice({filters:[{services:[SC_BC]},{services:[SC_WS]},{namePrefix:'MIBFS'},{namePrefix:'MIBCS'},{namePrefix:'MI SCALE2'},{namePrefix:'MI_SCALE'}],optionalServices:[SC_BC,SC_WS,SC_CTS,SC_VND]});
@@ -750,44 +766,71 @@ async function scRead(){
     else if(!e||e.name!=='NotFoundError')showToast('Could not reach the scale. Step on it to wake it, then tap again.');
     return;
   }
-  const fin=new Promise(r=>done=r),kick=()=>{clearTimeout(idle);idle=setTimeout(done,TH.SC_BLE_IDLE*1000);};
+  // the wait: SC_BLE_WAIT while the scale can still be stepped on and nothing has come, else SC_BLE_IDLE
+  const fin=new Promise(r=>done=r),kick=()=>{clearTimeout(idle);idle=setTimeout(done,(lc&&!seen&&!rs.length?TH.SC_BLE_WAIT:TH.SC_BLE_IDLE)*1000);};
   const onOff=()=>done();
   dev.addEventListener('gattserverdisconnected',onOff);
-  let err=null,end=false,ch=null;
+  cap=setTimeout(done,TH.SC_BLE_MAX*1000);
+  let err=null,end=false,ch=null,lc=null,hold=null,seen=0,live=null;
   try{
     st.textContent='Connecting…';
-    const srv=await dev.gatt.connect();
+    const srv=await scTo(dev.gatt.connect(),TH.SC_BLE_CONN);
     let svc=null,big=false;
-    try{svc=await srv.getPrimaryService(SC_BC);big=true;}catch(e){try{svc=await srv.getPrimaryService(SC_WS);}catch(e2){}}
-    if(svc)try{ch=await svc.getCharacteristic(SC_HIST);}catch(e){}
-    if(!ch)err='svc';
+    try{svc=await scTo(srv.getPrimaryService(SC_BC),TH.SC_BLE_OP);big=true;}catch(e){try{svc=await scTo(srv.getPrimaryService(SC_WS),TH.SC_BLE_OP);}catch(e2){}}
+    if(svc)try{ch=await scTo(svc.getCharacteristic(SC_HIST),TH.SC_BLE_OP);}catch(e){}
+    if(svc)try{lc=await scTo(svc.getCharacteristic(big?0x2A9C:0x2A9D),TH.SC_BLE_OP);}catch(e){}
+    if(!ch&&!lc)err='svc';
     else{
       const len=big?13:10,parse=big?scParse13:scParse10,u=scUid(),uh=u>>8,ul=u&255;
       let buf=[],count=false;
-      const setTime=async()=>{try{await scW(await svc.getCharacteristic(SC_TIME),scTime());}catch(e){}};
-      ch.addEventListener('characteristicvaluechanged',ev=>{
-        const v=ev.target.value,b=[...new Uint8Array(v.buffer,v.byteOffset,v.byteLength)];
-        if(b.length===1&&b[0]===3){end=true;done();return;}
-        if(!count&&!buf.length&&b[0]===1&&b.length<len){count=true;clearTimeout(ack);kick();return;}
-        count=true;clearTimeout(ack);
-        buf=buf.concat(b);
-        while(buf.length>=len){const r=parse(new DataView(new Uint8Array(buf.slice(0,len)).buffer));buf=buf.slice(len);if(r){r.got=new Date();rs.push(r);}}
-        kick();
-      });
+      const setTime=async()=>{try{await scW(await scTo(svc.getCharacteristic(SC_TIME),TH.SC_BLE_OP),scTime());}catch(e){}};
+      // the weigh-in you are making: held once settled, saved when the body measurement comes, you step off, or SC_LIVE_IMP passes
+      const fix=()=>{clearTimeout(lt);if(hold){live=hold;rs.push(hold);hold=null;}done();};
+      const busy=()=>hold||Date.now()-seen<TH.SC_BLE_ACK*1000;
+      if(lc){
+        lc.addEventListener('characteristicvaluechanged',ev=>{
+          const f=scFrame(ev.target.value,big);if(!f)return;
+          if(f.off){seen=0;if(hold)fix();else kick();return;}
+          seen=Date.now();kick();
+          if(f.r){
+            hold={...f.r,got:new Date()};st.textContent=`${f.r.kg} kg, measuring…`;
+            if(!big||f.r.imp!=null)fix();else if(!lt)lt=setTimeout(fix,TH.SC_LIVE_IMP*1000);
+            return;
+          }
+          if(f.kg>0&&!hold)st.textContent=`${f.kg} kg…`;
+        });
+        try{await scTo(lc.startNotifications(),TH.SC_BLE_OP);}catch(e){lc=null;}
+      }
+      if(ch){
+        ch.addEventListener('characteristicvaluechanged',ev=>{
+          const v=ev.target.value,b=[...new Uint8Array(v.buffer,v.byteOffset,v.byteLength)];
+          if(b.length===1&&b[0]===3){end=true;if(!busy()&&(!lc||rs.length))done();return;}
+          if(!count&&!buf.length&&b[0]===1&&b.length<len){count=true;clearTimeout(ack);kick();return;}
+          count=true;clearTimeout(ack);
+          buf=buf.concat(b);
+          while(buf.length>=len){const r=parse(new DataView(new Uint8Array(buf.slice(0,len)).buffer));buf=buf.slice(len);if(r){r.got=new Date();rs.push(r);}}
+          kick();
+        });
+      }
       await setTime();
-      if(big){await ch.startNotifications();await scW(ch,SC_MAGIC);}
-      else{await scW(ch,SC_MAGIC);await ch.startNotifications();}
-      st.textContent='Reading…';
-      await scW(ch,[0x01,0xFF,0xFF,uh,ul]);await scW(ch,[0x02]);
-      // no count from the scale: ask once for every weigh-in it keeps (the ids keep repeats out)
-      ack=setTimeout(async()=>{if(count)return;try{await scW(ch,[0x01,0x00,0x00,uh,ul]);await scW(ch,[0x02]);}catch(e){}},TH.SC_BLE_ACK*1000);
+      try{
+        if(ch&&big){await scTo(ch.startNotifications(),TH.SC_BLE_OP);await scW(ch,SC_MAGIC);}
+        else if(ch){await scW(ch,SC_MAGIC);await scTo(ch.startNotifications(),TH.SC_BLE_OP);}
+      }catch(e){if(!lc)throw e;ch=null;}
+      st.textContent=lc?'Reading… step on the scale to weigh now':'Reading…';
+      if(ch){
+        await scW(ch,[0x01,0xFF,0xFF,uh,ul]);await scW(ch,[0x02]);
+        // no count from the scale: ask once for every weigh-in it keeps (the ids keep repeats out)
+        ack=setTimeout(async()=>{if(count)return;try{await scW(ch,[0x01,0x00,0x00,uh,ul]);await scW(ch,[0x02]);}catch(e){}},TH.SC_BLE_ACK*1000);
+      }
       kick();
       await fin;
-      if(end){try{await scW(ch,[0x03]);await scW(ch,[0x04,0xFF,0xFF,uh,ul]);}catch(e){}}
-      await setTime();
+      if(hold)fix();
+      if(end&&ch){try{await scW(ch,[0x03]);await scW(ch,[0x04,0xFF,0xFF,uh,ul]);}catch(e){}}
+      if(dev.gatt.connected)await setTime();
     }
   }catch(e){if(!err)err='link';}
-  clearTimeout(idle);clearTimeout(ack);dev.removeEventListener('gattserverdisconnected',onOff);
+  clearTimeout(idle);clearTimeout(ack);clearTimeout(cap);clearTimeout(lt);dev.removeEventListener('gattserverdisconnected',onOff);
   try{if(dev.gatt.connected)dev.gatt.disconnect();}catch(e){}
   st.textContent='';_scBusy=false;
   if(err==='svc'){showToast('This scale does not share weigh-ins this way. They still arrive through your scale\'s app.');return;}
