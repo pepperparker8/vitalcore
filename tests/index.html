@@ -2792,6 +2792,13 @@ run('v130 readers',()=>{
     check('v130 readers (control): with Show both the second copy counts',both.dayLoad>one.dayLoad&&both.rows===one.rows+1&&J(both.insight)!==J(one.insight),`load ${Math.round(one.dayLoad)} → ${Math.round(both.dayLoad)}, rows ${one.rows} → ${both.rows}`);
   });}finally{box.remove();}
 });
+// v137: the full briefing opens by default; Health baselines keep the label whole and wrap the line under the value
+seq('v137 briefing and Health rows',async()=>{
+  const src=await(await realFetch('../js/insights.js',{cache:'no-store'})).text();
+  check('v137 briefing: the full briefing is open by default',/^let _insFull=true;/m.test(src),'');
+  const css=await(await realFetch('../css/app.css',{cache:'no-store'})).text();
+  check('v137 health: baseline rows give the label its own width and let the line under the value wrap',/#pg-health \.rf\{grid-template-columns:24px auto minmax\(0,1fr\)\}/.test(css)&&/#pg-health \.rf-l\{white-space:nowrap\}/.test(css)&&/#pg-health \.rf-n\{white-space:normal/.test(css),'');
+});
 seq('v130 source scan',async()=>{
   const sw=await(await realFetch('../sw.js',{cache:'no-store'})).text(),files=[...sw.matchAll(/\.\/(js\/[\w-]+\.js)/g)].map(m=>m[1]);
   const ok=[/const wkOn=/,/Array\.isArray\(b\.workouts\)/,/d\.workouts\.forEach\(w=>csv/,/const a=S\(\)\.workouts\|\|\[\];let ts/],bad=[];let n=0;

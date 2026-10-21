@@ -294,6 +294,10 @@ Verify after each change; don't batch.
   - Log > Body is titled "Body and blood pressure"; its summary (`lgSum` `measStat`) names the latest blood pressure ("Blood pressure 131/84 · yesterday") when it is the newest entry, else the weight.
   - `bpBleInit()` shows `#bpBleW` wherever `navigator.bluetooth` exists, also while the phone's Bluetooth is off: `#bpBleOff` "Bluetooth is off on this phone. Turn it on, then tap." from `getAvailability()`, refreshed on `availabilitychanged` (listener added once, `_bpAv`). Where the browser has no Bluetooth, `#bpBleNo` says to type the reading instead. Chrome cannot read the monitor in the background: every read is a tap.
   - Tests: 1000.
+- Health rows that fit, the full briefing open (v137; the owner saw the blood pressure line cover its label and only the short version of the briefing). No score, data or sync change.
+  - Health > Your baselines (CSS block "v137" at the end of app.css, scoped to `#pg-health`): `.rf` columns `24px auto minmax(0,1fr)`, the label `nowrap`, the line under the value (`.rf-n`) wraps right-aligned.
+  - Insights: `_insFull` starts true, so the five sections show; Show less folds to the short version (`insFullTog`, unchanged).
+  - Tests: 1002.
 - Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
 
 ## Conventions

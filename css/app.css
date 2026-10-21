@@ -1588,3 +1588,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .bp-uc{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--bdr);background:transparent;color:var(--text);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 .bp-uc[aria-pressed="true"]{border-color:var(--text)}
 .bp-set{padding:8px 0}
+/* v137: Health baselines rows keep the label whole and let the line under the value wrap */
+#pg-health .rf{grid-template-columns:24px auto minmax(0,1fr)}
+#pg-health .rf-l{white-space:nowrap}
+#pg-health .rf-r{min-width:0}
+#pg-health .rf-n{white-space:normal;align-items:baseline;justify-content:flex-end}

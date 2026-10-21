@@ -8,7 +8,7 @@ const INS_SECS=[['overall','The short version'],['today','Today'],['week','This 
 const INS_KEYS=INS_SECS.map(x=>x[0]);
 const insTxt=v=>typeof v==='string'?v.trim():v==null?'':String(v);
 const insSecsOf=e=>INS_SECS_OLD.some(([k])=>!INS_KEYS.includes(k)&&insTxt(e&&e[k]))?INS_SECS_OLD:INS_SECS;
-let _insFull=false;
+let _insFull=true; // v137: the full briefing shows by default; Show less folds it to the short version
 function insFullTog(){_insFull=!_insFull;showTodayInsight();}
 function insHTML(ins,inj){
   const secs=insSecsOf(ins),old=secs===INS_SECS_OLD,has=secs.filter(([k])=>insTxt(ins[k]));
