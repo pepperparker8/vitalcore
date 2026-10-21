@@ -3735,7 +3735,7 @@ seq('v135 monitor',async()=>{
     window.showToast=(m,u)=>toasts.push({m,u});window.refreshAll=()=>{};TH.BP_BLE_IDLE=0.05;
     base();const D=dAgo(1);
     setBt(undefined);await bpBleInit();
-    check('v135 button: hidden where the browser cannot use Bluetooth',$('bpBleW').hidden,'');
+    check('v135 button: hidden where the browser cannot use Bluetooth, and so is Or type a reading',$('bpBleW').hidden&&$('bpOr').hidden,'');
     setBt(fake({}));await bpBleInit();
     check('v135 button: shown with Bluetooth, the first-time hint shown until a read works',!$('bpBleW').hidden&&!$('bpBleHint').hidden&&/Read from your monitor/.test(txt($('bpBle'))),'');
     setBt(undefined);await bpBleInit();const noLine=!$('bpBleNo').hidden&&$('bpBleW').hidden&&/Chrome on Android/.test(txt($('bpBleNo')));
@@ -3759,8 +3759,11 @@ seq('v135 monitor',async()=>{
     check('v135 read: two readings then a disconnect are both saved, with the pulse in the toast and Undo',o&&o.add.length===2&&S().measurements.filter(m=>/^bp-/.test(m.id)).length===2&&toasts[0].m==='2 readings added. Pulse 61 bpm.'&&toasts[0].u&&toasts[0].u.label==='Undo'&&!F.dev.gatt.connected,JS(toasts));
     check('v135 read: Log shows the latest reading with its time, and the hint goes after the first read',txt($('bpRec'))==='127/80 mmHg · 07:20'&&$('bpBleHint').hidden&&S().bpOk===1,txt($('bpRec')));
     check('v138 read: Health shows the new reading straight after the read, with nothing else to tap',/127\/80/.test(txt($('hBase'))),txt($('hBase')).slice(0,120));
+    check('v139 read: the status line says it is saved, the newest reading first, and that nothing more is needed',txt($('bpBleSt'))==='Saved: 127/80 mmHg · '+fmtD(D)+' · 07:20, and 1 earlier reading. Nothing more to tap.',txt($('bpBleSt')));
+    const lb=$('lMeas').querySelector('.log-body'),kids=[...lb.children],save=lb.querySelector('.btn-gold');
+    check('v139 layout: the monitor sits above the typed fields, Or type a reading between them, and Save names only what you typed',kids.indexOf($('bpBleW'))<kids.indexOf($('bpOr'))&&kids.indexOf($('bpOr'))<kids.indexOf($('bpSys').closest('.fg'))&&!$('bpOr').hidden&&txt(save)==='Save what you typed'&&!$('bpBleW').contains(save)&&/save on their own/.test(txt($('bpBleHint'))),kids.map(x=>x.id||x.className).join());
     toasts[0].u.fn();
-    check('v135 read: Undo removes both and they stay deleted',!S().measurements.some(m=>/^bp-/.test(m.id))&&S().gone.includes('bp-'+D+'-0712'),'');
+    check('v135 read: Undo removes both and they stay deleted, and the saved line goes',!S().measurements.some(m=>/^bp-/.test(m.id))&&S().gone.includes('bp-'+D+'-0712')&&$('bpBleSt').textContent==='','');
     setBt(fake({vals:[bpDV({sys:133,dia:85,at:D+'T08:00'})],drop:0}));toasts.length=0;await bpRead();
     check('v135 read: a reading then silence is saved after the idle time',S().measurements.some(m=>m.id==='bp-'+D+'-0800')&&/1 reading added/.test(toasts[0].m),JS(toasts));
     // two users: the question, then the choice
@@ -3781,6 +3784,7 @@ seq('v135 monitor',async()=>{
     check('v135: no brand or source names on the screens, no accent in the v135 CSS',!/Omron|Polar|Intervals|Garmin|BLEsmart/.test(txt(box.querySelector('#lMeas'))+txt($('bpUserRow')))&&all.length>0&&!/--gold/.test(all),'');
     check('v135: the Bluetooth icon is Tabler\'s and the version is at least v135',UI.bt&&/M7 8l10 8l-5 4l0 -16l5 4l-10 8/.test(UI.bt)&&APP_VER>=135,'');
     check('v138: the version is at least v138',APP_VER>=138,'');
+    check('v139: the version is at least v139',APP_VER>=139,'');
   }finally{
     Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});TH.BP_BLE_IDLE=keep.IDLE;_bpLast=null;_bpBusy=false;
     if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;

@@ -302,6 +302,10 @@ Verify after each change; don't batch.
   - `bpKeep` never waits (no `ask`): with two users in a read and no `bpUser`, it keeps the user of the newest reading by its own time (`pick`) and `bpApply` stores it as `bpUser`; `bpMsg` adds "Saved as user N on the monitor; change it below", and "N readings of the other user left out" when nothing else was added. `bpApply` saves, then `refreshAll()` and `renderHealth()`.
   - `_bpLast` (replaces `_bpHold`) keeps the last two-user read `{rs, ids, prev}`; `#bpBleUs` ("Your user on the monitor") shows while it exists. `bpSetUser(n)` with another user deletes what that read saved, clears the `gone` and tombstone entries of the readings an earlier switch took back, and applies the read again, so switching back and forth works.
   - Tests: 1006 (the pick, the newest by its own time, the other user's toast, saving at once, switching both ways, Health straight after a read). The 360px sheet checks need the pane at phone width (they fail at 1024px on v137 too).
+- No Save for monitor readings (v139; the owner: "if this read from bluetooth, no need for save"). No score, data or sync change.
+  - Log > Body and blood pressure: `#bpBleW` ("From your monitor") comes first, then `#bpOr` "Or type a reading" (shown with the button), then the typed fields and "Save what you typed" (`saveMeas`, unchanged). The hint says readings save on their own.
+  - `bpSaved(add)` (log.js): after a read the status line `#bpBleSt` stays as "Saved: 127/80 mmHg · 07:20, and N earlier readings. Nothing more to tap." (the date too when not today); empty when nothing was added, cleared by Undo and by the next read.
+  - Tests: 1009.
 - Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
 
 ## Conventions

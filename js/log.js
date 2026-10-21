@@ -556,8 +556,15 @@ function bpApply(rs){
   save(d);
   _bpLast=o.two?{rs,ids:o.add.map(r=>r.id)}:null;bpUserUI();
   updMeasHist();if(o.add.length){refreshAll();if($('hBase'))renderHealth();}
-  showToast(bpMsg(o),o.add.length?{label:'Undo',fn:()=>{o.add.forEach(r=>del('meas',r.id));updMeasHist();refreshAll();}}:null);
+  bpSaved(o.add);
+  showToast(bpMsg(o),o.add.length?{label:'Undo',fn:()=>{o.add.forEach(r=>del('meas',r.id));bpSaved([]);updMeasHist();refreshAll();}}:null);
   return o;
+}
+// v139: a read saves by itself, so the status line says so and stays until the next read
+function bpSaved(add){
+  const st=$('bpBleSt');if(!st)return;
+  const r=add.reduce((a,x)=>!a||x.date>a.date||(x.date===a.date&&(bpT(x)||'')>=(bpT(a)||''))?x:a,null);
+  st.textContent=r?`Saved: ${r.bpSys}/${r.bpDia} mmHg${r.date!==td()?' · '+fmtD(r.date):''}${bpT(r)?' · '+bpT(r):''}${add.length>1?`, and ${bpN(add.length-1,'earlier reading')}`:''}. Nothing more to tap.`:'';
 }
 // The button: one read through the browser's device chooser (it must run inside the tap)
 async function bpRead(){
@@ -620,6 +627,7 @@ async function bpBleInit(){
   if(bt&&bt.getAvailability){try{on=await bt.getAvailability();}catch(e){}}
   if(bt&&!_bpAv&&bt.addEventListener){_bpAv=true;try{bt.addEventListener('availabilitychanged',()=>bpBleInit());}catch(e){}}
   w.hidden=!bt;
+  const or=$('bpOr');if(or)or.hidden=!bt;
   const no=$('bpBleNo');if(no)no.hidden=!!bt;
   const off=$('bpBleOff');if(off)off.hidden=!bt||!!on;
   const h=$('bpBleHint');if(h)h.hidden=!!S().bpOk;

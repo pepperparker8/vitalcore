@@ -1577,10 +1577,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 /* ── v135: Monitor (blood pressure read over Bluetooth, Log > Body) ── */
 .bp-ble[hidden],.bp-us[hidden]{display:none}
-.bp-ble{margin-top:8px}
+.bp-ble{margin:8px 0 16px}
+.bp-or[hidden]{display:none}
+/* v139: the typed fields and their Save sit under their own line, apart from the monitor */
+.bp-or{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:13px;color:var(--t3)}
+.bp-or::before,.bp-or::after{content:'';flex:1;height:1px;background:var(--bdr)}
 #pg-log .bp-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin-top:0}
 .bp-btn .ui-i{width:20px;height:20px;flex:none}
 .bp-st{font-size:13px;color:var(--t2);min-height:0}
+#bpBleSt{color:var(--text)}
 .bp-st:empty{display:none}
 .bp-st:not(:empty){padding-top:6px}
 .bp-us{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:8px;font-size:14px;color:var(--text)}
