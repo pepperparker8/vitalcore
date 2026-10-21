@@ -33,7 +33,7 @@ function saveSettings(){
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function backupJSON(){
-  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;delete d.napBackV;delete d.bpUser;delete d.bpOk;delete d.scUid;delete d.scOk;
+  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;delete d.napBackV;delete d.bpUser;delete d.bpOk;delete d.scUid;delete d.scOk;delete d.bpDev;delete d.scDev;
   download(`vitalcore-backup-${td()}.json`,'application/json',JSON.stringify(d));
   showToast('Backup downloaded');
 }
@@ -46,7 +46,7 @@ function restoreBackup(inp){
       if(!Array.isArray(b.checkins)||!Array.isArray(b.workouts))throw new Error('bad');
       if(!confirm('Replace the data on this phone with this backup?'))return;
       const d=S();
-      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey,intervalsID:d.intervalsID||b.intervalsID||'',polarKey:d.polarKey,icuSent:d.icuSent,dataUid:d.dataUid,bpUser:d.bpUser,bpOk:d.bpOk,scUid:d.scUid,scOk:d.scOk};
+      const keep={claudeKey:d.claudeKey,intervalsKey:d.intervalsKey,intervalsID:d.intervalsID||b.intervalsID||'',polarKey:d.polarKey,icuSent:d.icuSent,dataUid:d.dataUid,bpUser:d.bpUser,bpOk:d.bpOk,scUid:d.scUid,scOk:d.scOk,bpDev:d.bpDev,scDev:d.scDev};
       const safe={};for(const k of Object.keys(DEFAULTS))if(k in b)safe[k]=b[k];
       _s={...JSON.parse(JSON.stringify(DEFAULTS)),...safe,...keep,pending:{},tomb:[],onboardingDone:true};
       migrate();

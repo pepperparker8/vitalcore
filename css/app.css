@@ -1614,3 +1614,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .sc-det summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
 .sc-det pre{white-space:pre-wrap;word-break:break-all;font:12px/1.5 ui-monospace,monospace;background:var(--bg);border-radius:8px;padding:8px;margin:0 0 8px;color:var(--text);max-width:100%;overflow-x:auto}
 .sc-det .btn-out{min-height:44px}
+
+/* v144: Use another monitor / scale, under the read button */
+.ble-alt{display:block;min-height:44px;padding:0 4px;background:none;border:0;color:var(--t2);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}

@@ -566,12 +566,43 @@ function bpSaved(add){
   const r=add.reduce((a,x)=>!a||x.date>a.date||(x.date===a.date&&(bpT(x)||'')>=(bpT(a)||''))?x:a,null);
   st.textContent=r?`Saved: ${r.bpSys}/${r.bpDia} mmHg${r.date!==td()?' · '+fmtD(r.date):''}${bpT(r)?' · '+bpT(r):''}${add.length>1?`, and ${bpN(add.length-1,'earlier reading')}`:''}. Nothing more to tap.`:'';
 }
-// The button: one read through the browser's device chooser (it must run inside the tap)
-async function bpRead(){
+// v144: a monitor or scale this site was allowed before is read again without the chooser, where the browser
+// remembers it (getDevices). The stored id picks it, else the name; without one the chooser opens as before.
+async function bleKnown(key,pre){
+  const bt=navigator.bluetooth;if(!bt||!bt.getDevices)return null;
+  let L=[];try{L=await scTo(bt.getDevices(),TH.SC_BLE_OP);}catch(e){return null;}
+  const id=S()[key];
+  return (id&&L.find(x=>x.id===id))||L.find(x=>pre.some(p=>(x.name||'').startsWith(p)))||null;
+}
+function bleKeep(key,dev){const d=S();if(dev&&dev.id&&d[key]!==dev.id){d[key]=dev.id;save(d);bleAltUI();}}
+// Waits until a remembered device sends its signal (it is awake), at most s seconds; true when the browser cannot tell
+async function bleWake(dev,s){
+  if(!dev.watchAdvertisements)return true;
+  let on=null,t=null;
+  const p=new Promise(r=>{on=()=>r(true);t=setTimeout(()=>r(false),s*1000);});
+  dev.addEventListener('advertisementreceived',on);
+  try{await scTo(dev.watchAdvertisements(),TH.SC_BLE_OP);}catch(e){dev.removeEventListener('advertisementreceived',on);clearTimeout(t);return true;}
+  const ok=await p;clearTimeout(t);dev.removeEventListener('advertisementreceived',on);
+  try{if(dev.unwatchAdvertisements)dev.unwatchAdvertisements();}catch(e){}
+  return ok;
+}
+// "Use another monitor / scale" shows once one is remembered and the browser can remember devices
+function bleAltUI(){
+  const bt=navigator.bluetooth,on=!!(bt&&bt.getDevices),d=S();
+  const a=$('bpAlt');if(a)a.hidden=!on||!d.bpDev;
+  const b=$('scAlt');if(b)b.hidden=!on||!d.scDev;
+}
+// The button: one read (it must run inside the tap). v144: the monitor read before needs no chooser; pick forces it
+async function bpRead(pick){
   if(_bpBusy||!navigator.bluetooth)return;
   const st=$('bpBleSt'),rs=[];let dev=null,idle=null,done=null;
   _bpBusy=true;
-  try{
+  const known=pick?null:await bleKnown('bpDev',['BLEsmart_']);
+  if(known){
+    dev=known;st.textContent='Waiting for the monitor…';
+    if(!await bleWake(dev,TH.BLE_WAKE)){st.textContent='';_bpBusy=false;showToast('The monitor did not answer. Finish a reading or press its Bluetooth button, then tap again.');return;}
+  }
+  else try{
     dev=await navigator.bluetooth.requestDevice({filters:[{services:[BP_SVC]},{namePrefix:'BLEsmart_'}],optionalServices:[BP_SVC,BP_CTS]});
   }catch(e){
     _bpBusy=false;
@@ -585,7 +616,8 @@ async function bpRead(){
   let err=null;
   try{
     st.textContent='Connecting…';
-    const srv=await dev.gatt.connect();
+    const srv=await (known?scTo(dev.gatt.connect(),TH.SC_BLE_CONN):dev.gatt.connect());
+    bleKeep('bpDev',dev);
     let ch=null;
     try{ch=await (await srv.getPrimaryService(BP_SVC)).getCharacteristic(BP_MEAS);}catch(e){err='svc';}
     if(ch){
@@ -631,7 +663,7 @@ async function bpBleInit(){
   const no=$('bpBleNo');if(no)no.hidden=!!bt;
   const off=$('bpBleOff');if(off)off.hidden=!bt||!!on;
   const h=$('bpBleHint');if(h)h.hidden=!!S().bpOk;
-  bpUserUI();
+  bpUserUI();bleAltUI();
 }
 
 // ── BODY SCALE (v140, docs/plan-xiaomi-scale.md) ─────────────────────────────
@@ -778,11 +810,14 @@ function scDetCopy(){
 // time limit and the read never runs past SC_BLE_MAX, so it always ends with a toast. v143: a settled frame marked
 // stepped off counts; a weight held within SC_STEADY_KG for SC_STEADY seconds counts when the scale never marks it
 // settled; the scale's advertisements feed the same reading where the browser offers them; an empty read says why.
-async function scRead(){
+// v144: the scale read before needs no chooser (it waits for you to step on); pick forces the chooser
+async function scRead(pick){
   if(_scBusy||!navigator.bluetooth)return;
   const st=$('scBleSt'),rs=[];let dev=null,idle=null,ack=null,cap=null,lt=null,done=null;
   _scBusy=true;
-  try{
+  const known=pick?null:await bleKnown('scDev',['MIBFS','MIBCS','MI SCALE2','MI_SCALE']);
+  if(known)dev=known;
+  else try{
     dev=await navigator.bluetooth.requestDevice({filters:[{services:[SC_BC]},{services:[SC_WS]},{namePrefix:'MIBFS'},{namePrefix:'MIBCS'},{namePrefix:'MI SCALE2'},{namePrefix:'MI_SCALE'}],optionalServices:[SC_BC,SC_WS,SC_CTS,SC_VND]});
   }catch(e){
     _scBusy=false;
@@ -825,9 +860,10 @@ async function scRead(){
     }
   };
   // the scale's advertisements carry the same frames as service data, where the browser lets a page watch them
+  let woke=null;const wake=new Promise(r=>woke=r);
   if(dev.watchAdvertisements){
     onAdv=ev=>{
-      const m=ev.serviceData;if(!m||!m.get)return;
+      woke();const m=ev.serviceData;if(!m||!m.get)return;
       const x=m.get('0000181b-0000-1000-8000-00805f9b34fb'),y=x?null:m.get('0000181d-0000-1000-8000-00805f9b34fb');
       if(x||y){R.adv++;onLive(x||y,!!x);}
     };
@@ -835,10 +871,17 @@ async function scRead(){
     try{await scTo(dev.watchAdvertisements(),TH.SC_BLE_OP);R.adv=0;}catch(e){dev.removeEventListener('advertisementreceived',onAdv);onAdv=null;}
   }
   try{
+    // a remembered scale may be asleep: wait for it to wake as you step on
+    if(known&&R.adv!=null){
+      st.textContent='Step on the scale…';
+      let tw=null;const ok=await Promise.race([wake.then(()=>true),fin.then(()=>false),new Promise(r=>tw=setTimeout(()=>r(false),TH.SC_BLE_WAIT*1000))]);
+      clearTimeout(tw);if(!ok&&!rs.length){R.err='asleep';throw new Error('asleep');}
+    }
     st.textContent='Connecting…';
     let srv=null,svc=null,big=false;
     try{srv=await scTo(dev.gatt.connect(),TH.SC_BLE_CONN);}catch(e){if(R.adv==null)throw e;R.err='no link';}
     if(srv){
+      bleKeep('scDev',dev);
       try{svc=await scTo(srv.getPrimaryService(SC_BC),TH.SC_BLE_OP);big=true;}catch(e){try{svc=await scTo(srv.getPrimaryService(SC_WS),TH.SC_BLE_OP);}catch(e2){}}
       if(svc){
         R.svc=big?'body composition, 13 bytes':'weight scale, 10 bytes';
@@ -905,6 +948,7 @@ async function scBleInit(){
   w.hidden=!bt;
   const off=$('scBleOff');if(off)off.hidden=!bt||!!on;
   const h=$('scBleHint');if(h)h.hidden=!!S().scOk;
+  bleAltUI();
 }
 
 // ── INJURY LOG ───────────────────────────────────────────────────────────────

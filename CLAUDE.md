@@ -46,6 +46,7 @@ polarDays[]    {id 'pd-<date>', date, data{steps, act (active min), sit (min), m
 bodyHist  {date: score}  local only, newest 120; Body, one snapshot a day (v118; `readHist`, the old readiness, deleted by `migrate()` in v134)
 claudeKey, intervalsKey, intervalsID, polarKey, lastSync, streak
 bpUser, bpOk   local only (v135, left out of backups): the user on a two-user blood pressure monitor (null, 1, 2); 1 once a monitor read has worked (hides the first-time hint)
+bpDev, scDev   local only (v144, left out of backups, kept on restore): the Bluetooth id of the monitor and the scale read before
 exDismissed, hasRealData, onboardingDone
 ```
 `isEx: true` marks seeded example data.
@@ -331,6 +332,12 @@ Verify after each change; don't batch.
   - Reasons: `scApply(rs, why)` toasts "The weight never settled (last N kg)…" or "The scale sent no weigh-in…"; `scMsg` names weigh-ins you deleted (`gone`).
   - Read details (`#scDet`, `<details>` after `#scBleSt`, 44px summary, CSS block "v143"): `scReport(R)` from the read's record (ended: quiet, scale disconnected, time limit, weigh-in read, memory read; service, memory count and end, live frames, broadcasts, each weigh-in's fate, the last `SC_RPT_N` frames as hex via `scHex`), kept in `_scLast`, shown by `scDetShow`, Copy (`scDetCopy`, clipboard, toast). No brand names.
   - Tests: 1124. The suite passes run as a Monday, a Thursday and a Sunday through `?day=`.
+- The monitor and the scale remembered (v144; the owner: no Bluetooth chooser on every read, one tap is fine). No score, data or sync change.
+  - Thresholds (`TH`, core.js): `BLE_WAKE` 30 s (how long a remembered monitor has to send its signal).
+  - log.js: `bleKnown(key, prefixes)` asks `navigator.bluetooth.getDevices()` for the stored id (`bpDev`, `scDev`), else a device allowed before whose name starts with a known prefix; `bleKeep` stores the id after a connect; `bleWake` waits for an advertisement (`watchAdvertisements`) before connecting, and goes ahead where the browser cannot watch. `bpRead(pick)` / `scRead(pick)`: with a known device and no `pick`, no chooser; the monitor gives up after `BLE_WAKE` with its own toast, the scale waits `SC_BLE_WAIT` for you to step on (`err` 'asleep', the "Could not reach the scale" toast). No `getDevices`, nothing remembered or only other devices: the chooser as before. `#bpAlt` "Use another monitor" / `#scAlt` "Use another scale" (`bleAltUI`, `.ble-alt` 44px, no `--gold`) call `bpRead(1)` / `scRead(1)`.
+  - Every read is still a tap: Chrome cannot read Bluetooth in the background. On Android `getDevices` may need Chrome's new Bluetooth permissions backend; without it the chooser opens as before.
+  - Local only: `bpDev`, `scDev` (left out of backups, kept on restore).
+  - Tests: 1138. The suite passes run as a Monday, a Thursday and a Sunday through `?day=`.
 - Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
 
 ## Conventions

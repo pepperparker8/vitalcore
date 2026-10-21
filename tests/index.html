@@ -4091,6 +4091,88 @@ seq('v143 scale reasons',async()=>{
   }
 });
 
+// ── v144: the monitor and scale read before need no chooser ──
+seq('v144 remembered devices',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';
+  box.innerHTML=doc.getElementById('pg-log').outerHTML+doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const has=Object.getOwnPropertyDescriptor(navigator,'bluetooth'),K=['BP_BLE_IDLE','BLE_WAKE','SC_BLE_IDLE','SC_BLE_ACK','SC_BLE_WAIT','SC_BLE_CONN','SC_BLE_OP','SC_BLE_MAX','SC_LIVE_IMP'];
+  const keep={showToast,refreshAll,th:K.map(k=>TH[k]),bl:_bpLast,sl:_scLast},toasts=[];
+  const setBt=v=>Object.defineProperty(navigator,'bluetooth',{value:v,configurable:true,writable:true});
+  // a fake device: o.id, o.name; o.wake ms until it advertises (null: never); o.vals monitor readings then a disconnect; o.live scale frames
+  function dev(o){
+    const L={},tm=[];
+    const ch={addEventListener:(t,f)=>{ch.f=f;},startNotifications:async()=>{tm.push(setTimeout(()=>{(o.vals||[]).forEach(v=>ch.f({target:{value:v}}));if(o.vals&&L.gattserverdisconnected)L.gattserverdisconnected();},5));},writeValueWithResponse:async()=>{}};
+    const lc={addEventListener:(t,f)=>{lc.f=f;},startNotifications:async()=>{(o.live||[]).forEach(([ms,b])=>tm.push(setTimeout(()=>lc.f({target:{value:scDV(b)}}),ms)));}};
+    const svc={getCharacteristic:async u=>{if(o.vals)return ch;if(u===0x2A9C)return lc;throw new DOMException('none','NotFoundError');}};
+    const srv={getPrimaryService:async u=>{if(!o.vals&&u!==SC_BC)throw new DOMException('none','NotFoundError');return svc;}};
+    const d={id:o.id,name:o.name,gatt:{connected:false,connect:async()=>{d.gatt.connected=true;return srv;},disconnect(){d.gatt.connected=false;}},
+      addEventListener:(t,f)=>{L[t]=f;},removeEventListener:t=>{delete L[t];},stop:()=>tm.forEach(clearTimeout)};
+    if('wake' in o)d.watchAdvertisements=async()=>{if(o.wake!=null)tm.push(setTimeout(()=>{if(L.advertisementreceived)L.advertisementreceived({});},o.wake));};
+    return d;
+  }
+  // the browser: list = the devices it remembers (no getDevices when null); pick = what the chooser returns
+  function bt(list,pick){const b={n:0,getAvailability:async()=>true,requestDevice:async()=>{b.n++;return pick;}};if(list)b.getDevices=async()=>list;return b;}
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  const bps=()=>S().measurements.filter(m=>/^bp-/.test(m.id)),scs=()=>S().measurements.filter(m=>/^sc-/.test(m.id));
+  try{
+    window.showToast=(m,u)=>toasts.push({m,u});window.refreshAll=()=>{};
+    Object.assign(TH,{BP_BLE_IDLE:0.05,BLE_WAKE:0.1,SC_BLE_IDLE:0.05,SC_BLE_ACK:0.02,SC_BLE_WAIT:0.15,SC_BLE_CONN:0.05,SC_BLE_OP:0.05,SC_BLE_MAX:2,SC_LIVE_IMP:1});
+    const D=dAgo(1),R1=()=>[bpDV({sys:124,dia:79,at:D+'T07:10'})];
+    // the monitor: the first read uses the chooser and remembers it
+    base();_bpBusy=false;toasts.length=0;let M=dev({id:'m1',name:'BLEsmart_0001',vals:R1()}),B=bt([],M);setBt(B);await bpBleInit();
+    const altOff=$('bpAlt').hidden;
+    await bpRead();
+    check('v144 monitor: the first read opens the chooser once and remembers the monitor, then shows Use another monitor',B.n===1&&S().bpDev==='m1'&&bps().length===1&&altOff&&!$('bpAlt').hidden,JS(toasts)+S().bpDev);
+    // the next read: no chooser, waits for the monitor's signal
+    M=dev({id:'m1',name:'BLEsmart_0001',wake:10,vals:[bpDV({sys:126,dia:81,at:D+'T08:10'})]});B=bt([M],M);setBt(B);toasts.length=0;
+    await bpRead();
+    check('v144 monitor: the monitor read before is read with no chooser once it sends its signal',B.n===0&&bps().length===2&&/1 reading added/.test(toasts[0].m),JS(toasts));
+    M=dev({id:'m1',name:'BLEsmart_0001',wake:null,vals:[]});B=bt([M],M);setBt(B);toasts.length=0;
+    await bpRead();
+    check('v144 monitor: a remembered monitor that stays silent says how to wake it, with no chooser and nothing saved',B.n===0&&toasts.length===1&&toasts[0].m==='The monitor did not answer. Finish a reading or press its Bluetooth button, then tap again.'&&bps().length===2&&$('bpBleSt').textContent===''&&!_bpBusy,JS(toasts));
+    M=dev({id:'m9',name:'BLEsmart_0009',vals:[bpDV({sys:118,dia:76,at:D+'T09:10'})]});B=bt([dev({id:'m1',name:'BLEsmart_0001',wake:null})],M);setBt(B);toasts.length=0;
+    await bpRead(1);
+    check('v144 monitor: Use another monitor opens the chooser and remembers the new one',B.n===1&&S().bpDev==='m9'&&bps().length===3,JS(toasts)+S().bpDev);
+    M=dev({id:'m1',name:'BLEsmart_0001',vals:[bpDV({sys:130,dia:82,at:D+'T10:10'})]});B=bt(null,M);setBt(B);toasts.length=0;await bpBleInit();
+    await bpRead();
+    check('v144 monitor: a browser that cannot remember devices opens the chooser every time and hides the link',B.n===1&&bps().length===4&&$('bpAlt').hidden,JS(toasts));
+    base();_bpBusy=false;M=dev({id:'m2',name:'BLEsmart_0002',vals:[bpDV({sys:121,dia:77,at:D+'T07:40'})]});B=bt([M],M);setBt(B);toasts.length=0;
+    await bpRead();
+    check('v144 monitor: a monitor allowed before but not yet stored is found by its name and stored',B.n===0&&S().bpDev==='m2'&&bps().length===1,JS(toasts));
+    B=bt([dev({id:'x',name:'Headphones'})],M);setBt(B);S().bpDev='';toasts.length=0;M.gatt.connected=false;
+    await bpRead();
+    check('v144 monitor: with only other devices remembered the chooser opens',B.n===1,JS(toasts));
+    // the scale
+    base();_scBusy=false;let C=dev({id:'s1',name:'MIBCS',live:[[5,scB13({kg:75.4,imp:470})]]});B=bt([],C);setBt(B);toasts.length=0;await scBleInit();
+    const scOff=$('scAlt').hidden;
+    await scRead();
+    check('v144 scale: the first read opens the chooser and remembers the scale, then shows Use another scale',B.n===1&&S().scDev==='s1'&&scs().length===1&&scOff&&!$('scAlt').hidden,JS(toasts)+S().scDev);
+    C=dev({id:'s1',name:'MIBCS',wake:10,live:[[5,scB13({kg:75.1,imp:480})]]});B=bt([C],C);setBt(B);toasts.length=0;
+    await scRead();
+    check('v144 scale: the scale read before is read with no chooser once you step on',B.n===0&&scs().length===2&&/1 weigh-in added/.test(toasts[0].m),JS(toasts)+JS(scs()));
+    C=dev({id:'s1',name:'MIBCS',wake:null});B=bt([C],C);setBt(B);toasts.length=0;
+    await scRead();
+    check('v144 scale: a remembered scale that stays asleep says to step on it, with no chooser',B.n===0&&toasts.length===1&&toasts[0].m==='Could not reach the scale. Step on it to wake it, then tap again.'&&_scLast.err==='asleep'&&!_scBusy,JS(toasts));
+    C=dev({id:'s7',name:'MIBFS',live:[[5,scB13({kg:68,imp:500})]]});B=bt([dev({id:'s1',name:'MIBCS',wake:null})],C);setBt(B);toasts.length=0;
+    await scRead(1);
+    check('v144 scale: Use another scale opens the chooser and remembers the new one',B.n===1&&S().scDev==='s7',JS(toasts)+S().scDev);
+    // local only, layout, no accent
+    check('v144: the remembered devices are local only, left out of backups and kept on restore',/delete d\.bpDev/.test(String(backupJSON))&&/delete d\.scDev/.test(String(backupJSON))&&/bpDev/.test(String(restoreBackup||''))&&/scDev/.test(String(restoreBackup||'')),'');
+    box.querySelector('#pg-log').classList.add('active');$('lMeas').classList.add('open');$('bpAlt').hidden=false;$('scAlt').hidden=false;
+    const R0=box.getBoundingClientRect().right,wide=[...box.querySelector('#pg-log').querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
+    const ah=[$('bpAlt'),$('scAlt')].map(x=>x.getBoundingClientRect().height);
+    check('v144 layout: at 360px nothing runs wider and both links are at least 44px tall',!wide.length&&ah.every(h=>h>=44)&&txt($('bpAlt'))==='Use another monitor'&&txt($('scAlt'))==='Use another scale',wide.slice(0,4).map(x=>x.id||x.className).join(' ')+' '+ah);
+    const cs=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v144: Use another')[1]||'';
+    check('v144: no accent in the v144 CSS, the version is at least v144',cs.length>0&&!/--gold/.test(cs)&&APP_VER>=144,'');
+  }finally{
+    Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});K.forEach((k,i)=>TH[k]=keep.th[i]);_bpBusy=false;_scBusy=false;_bpLast=keep.bl;_scLast=keep.sl;
+    if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
+    box.remove();css.remove();
+  }
+});
+
 seq('v141 health trends',async()=>{
   const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
   box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
