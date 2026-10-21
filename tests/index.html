@@ -3922,7 +3922,7 @@ seq('v140 scale',async()=>{
     setBt(fake({noLink:1}));toasts.length=0;await scRead();
     check('v140 read: a link that fails says to wake the scale and try again',toasts.length===1&&/Could not reach the scale/.test(toasts[0].m),JS(toasts));
     setBt(fake({vals:[]}));toasts.length=0;await scRead();
-    check('v140 read: nothing by the idle time says nothing new, the status line clears',toasts.length===1&&toasts[0].m==='No new weigh-ins on the scale'&&$('scBleSt').textContent==='',JS(toasts));
+    check('v140 read: nothing by the idle time says the scale sent no weigh-in, the status line clears',toasts.length===1&&toasts[0].m==='The scale sent no weigh-in. Tap, step on and stand still until the weight shows here.'&&$('scBleSt').textContent==='',JS(toasts));
     // group B: count, two frames split across notifications, the end
     put('meas',{id:'mi-'+D,date:D,bpSys:null,bpDia:null,weight:75.0,hr:null,src:{weight:'icu'}});
     const two=scB13({kg:75.1,imp:490,at:D+'T07:05'}).concat(scB13({kg:74.8,imp:495,at:D+'T21:30'}));
@@ -3990,10 +3990,10 @@ seq('v142 scale live',async()=>{
     check('v142 read: a write that never answers stops after its time limit',toasts.length===1&&/Could not reach the scale/.test(toasts[0].m)&&F.ms<500,JS(toasts)+' '+F.ms);
     TH.SC_BLE_MAX=0.15;
     F=await go({loop:scB13({kg:74.6,loose:1})});
-    check('v142 read: a scale that keeps sending stops at the overall cap, showing the weight as it comes',toasts.length===1&&toasts[0].m==='No new weigh-ins on the scale'&&F.st.includes('74.6 kg…')&&F.ms<600&&!scs().length,JS(toasts)+' '+F.ms+' '+JS(F.st.slice(0,2)));
+    check('v142 read: a scale that keeps sending stops at the overall cap, showing the weight as it comes',toasts.length===1&&/^The weight never settled \(last 74\.6 kg\)/.test(toasts[0].m)&&F.st.includes('74.6 kg…')&&F.ms<600&&!scs().length,JS(toasts)+' '+F.ms+' '+JS(F.st.slice(0,2)));
     TH.SC_BLE_MAX=2;
     F=await go({vals:[],end:1});
-    check('v142 read: with a live weigh-in possible, an empty history waits for you to step on before it ends',F.ms>=350&&toasts[0].m==='No new weigh-ins on the scale',F.ms+' '+JS(toasts));
+    check('v142 read: with a live weigh-in possible, an empty history waits for you to step on before it ends',F.ms>=350&&toasts[0].m==='The scale sent no weigh-in. Tap, step on and stand still until the weight shows here.',F.ms+' '+JS(toasts));
     F=await go({vals:[],end:1,live:[[20,scB13({kg:74.9,loose:1})],[40,scB13({kg:74.6})],[80,scB13({kg:74.6,imp:480})]]});
     check('v142 live: step on, it settles, the body measurement comes: saved on its own with impedance and the phone\'s time',F.r&&F.r.add.length===1&&scs().length===1&&scs()[0].weight===74.6&&scs()[0].imp===480&&scs()[0].date===td()&&/1 weigh-in added/.test(toasts[0].m)&&/Time from your phone/.test(toasts[0].m)&&toasts[0].u&&toasts[0].u.label==='Undo',JS(toasts)+JS(scs()));
     check('v142 live: the status line reads the weight while you stand, then measuring once settled, and the saved line stays after',F.st.includes('74.9 kg…')&&F.st.includes('74.6 kg, measuring…')&&/^Saved: 74\.6 kg/.test($('scBleSt').textContent)&&F.ms<300,JS(F.st)+' '+$('scBleSt').textContent);
@@ -4017,6 +4017,77 @@ seq('v142 scale live',async()=>{
     Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});K.forEach((k,i)=>TH[k]=keep.th[i]);_scBusy=false;
     if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
     box.remove();
+  }
+});
+
+seq('v143 scale reasons',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';
+  box.innerHTML=doc.getElementById('pg-log').outerHTML+doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const has=Object.getOwnPropertyDescriptor(navigator,'bluetooth'),K=['SC_BLE_IDLE','SC_BLE_ACK','SC_BLE_WAIT','SC_BLE_CONN','SC_BLE_OP','SC_BLE_MAX','SC_LIVE_IMP','SC_STEADY','SC_STEADY_KG'],keep={showToast,refreshAll,th:K.map(k=>TH[k]),last:_scLast},toasts=[];
+  const hasClip=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+  const setBt=v=>Object.defineProperty(navigator,'bluetooth',{value:v,configurable:true,writable:true});
+  // a fake scale: o.live [[ms, bytes]] on the live characteristic; o.loop bytes every 10 ms; o.adv [[ms, bytes, 13|10]] as advertisements;
+  // o.noLink a connect that fails; o.noSvc no services; o.vals history bytes, o.end then 03
+  function fake(o){
+    const L={},tm=[],tch={writeValueWithResponse:async()=>{}};
+    const ch={addEventListener:(t,f)=>{ch.f=f;},startNotifications:async()=>{},writeValueWithResponse:v=>{const b=[...v];
+      if(b.length===1&&b[0]===2)tm.push(setTimeout(()=>{(o.vals||[]).forEach(x=>ch.f({target:{value:scDV(x)}}));if(o.end)ch.f({target:{value:scDV([3])}});},5));
+      return Promise.resolve();}};
+    const lc={addEventListener:(t,f)=>{lc.f=f;},startNotifications:async()=>{(o.live||[]).forEach(([ms,b])=>tm.push(setTimeout(()=>lc.f({target:{value:scDV(b)}}),ms)));if(o.loop)tm.push(setInterval(()=>lc.f({target:{value:scDV(o.loop)}}),10));}};
+    const svc={getCharacteristic:async u=>{if(u===SC_HIST)return ch;if(u===SC_TIME)return tch;if(u===0x2A9C)return lc;throw new DOMException('none','NotFoundError');}};
+    const srv={getPrimaryService:async u=>{if(o.noSvc||u===SC_WS)throw new DOMException('none','NotFoundError');return svc;}};
+    const dev={gatt:{connected:false,connect:async()=>{if(o.noLink)throw new DOMException('GATT Server is disconnected.','NetworkError');dev.gatt.connected=true;return srv;},disconnect(){dev.gatt.connected=false;}},
+      addEventListener:(t,f)=>{L[t]=f;},removeEventListener:t=>{delete L[t];}};
+    if(o.adv)dev.watchAdvertisements=async()=>{o.adv.forEach(([ms,b,n])=>tm.push(setTimeout(()=>{if(L.advertisementreceived)L.advertisementreceived({serviceData:new Map([[n===10?'0000181d-0000-1000-8000-00805f9b34fb':'0000181b-0000-1000-8000-00805f9b34fb',scDV(b)]])});},ms)));};
+    return{getAvailability:async()=>true,requestDevice:async()=>dev,dev,stop:()=>tm.forEach(x=>{clearTimeout(x);clearInterval(x);})};
+  }
+  const go=async o=>{base();toasts.length=0;_scBusy=false;const F=fake(o);setBt(F);const t0=performance.now();const r=await scRead();F.ms=performance.now()-t0;F.stop();F.r=r;return F;};
+  const scs=()=>S().measurements.filter(m=>/^sc-/.test(m.id));
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  try{
+    window.showToast=(m,u)=>toasts.push({m,u});window.refreshAll=()=>{};
+    Object.assign(TH,{SC_BLE_IDLE:0.05,SC_BLE_ACK:0.02,SC_BLE_WAIT:0.3,SC_BLE_CONN:0.05,SC_BLE_OP:0.05,SC_BLE_MAX:2,SC_LIVE_IMP:1});
+    let F=await go({live:[[5,scB13({kg:75.4,off:1})]]});
+    check('v143 live: a settled frame that also says stepped off is saved as the weigh-in',scs().length===1&&scs()[0].weight===75.4&&/1 weigh-in added/.test(toasts[0].m)&&F.ms<250,F.ms+JS(toasts)+JS(scs()));
+    F=await go({live:[[5,scB13({kg:75.4,imp:470,off:1})]]});
+    check('v143 live: the same with body measurement keeps the impedance',scs().length===1&&scs()[0].imp===470,JS(scs()));
+    Object.assign(TH,{SC_STEADY:0.08,SC_STEADY_KG:0.05});
+    F=await go({live:[[5,scB13({kg:74.9,loose:1})],[15,scB13({kg:74.62,loose:1})]],loop:scB13({kg:74.6,loose:1})});
+    check('v143 live: a weight that never settles but holds within '+TH.SC_STEADY_KG+' kg for the steady time is saved with the phone\'s time',scs().length===1&&scs()[0].weight===74.6&&scs()[0].date===td()&&/Time from your phone/.test(toasts[0].m)&&F.ms<400,F.ms+JS(toasts)+JS(scs()));
+    TH.SC_BLE_MAX=0.15;TH.SC_STEADY=8;
+    F=await go({loop:scB13({kg:74.6,loose:1})});
+    check('v143 reason: a weight that keeps moving says it never settled, with the last weight, and saves nothing',toasts.length===1&&toasts[0].m==='The weight never settled (last 74.6 kg). Stand still until the scale shows it, then tap again.'&&!scs().length,JS(toasts));
+    TH.SC_BLE_MAX=2;
+    F=await go({vals:[],end:1});
+    check('v143 reason: nothing at all says the scale sent no weigh-in and how to weigh',toasts.length===1&&toasts[0].m==='The scale sent no weigh-in. Tap, step on and stand still until the weight shows here.',JS(toasts));
+    check('v143 details: Read details shows after a read with what came, the memory end and no live frames',!$('scDet').hidden&&/Memory: yes/.test($('scDetT').textContent)&&/end yes/.test($('scDetT').textContent)&&/Live: yes, frames 0/.test($('scDetT').textContent)&&/Weigh-ins read: 0/.test($('scDetT').textContent),$('scDetT').textContent);
+    F=await go({noLink:1,adv:[[10,scB13({kg:77.1,loose:1})],[30,scB13({kg:77.0,imp:500})]]});
+    check('v143 advertisements: a scale that only advertises its weight is read without a connection and saved',scs().length===1&&scs()[0].weight===77&&scs()[0].imp===500&&/Advertisements: 2/.test($('scDetT').textContent)&&/no link/.test($('scDetT').textContent),JS(toasts)+JS(scs())+$('scDetT').textContent);
+    F=await go({noSvc:1,adv:[[10,scB10({kg:68.4}),10]]});
+    check('v143 advertisements: a 10-byte advertised weight is saved when the scale has no services to read',scs().length===1&&scs()[0].weight===68.4&&scs()[0].imp===null,JS(toasts)+JS(scs()));
+    F=await go({noLink:1});
+    check('v143: without advertisements a failed link still says to wake the scale',toasts.length===1&&/Could not reach the scale/.test(toasts[0].m)&&!$('scDet').hidden&&/no link/.test($('scDetT').textContent),JS(toasts));
+    const ko=scMsg({add:[],same:0,range:0,other:0,old:0,gone:2,clock:0,phone:0});
+    check('v143 message: weigh-ins you deleted are named',/2 weigh-ins you deleted left out/.test(ko),ko);
+    F=await go({live:[[5,scB13({kg:75.4})],[20,scB13({kg:75.4,imp:470})]]});
+    const rep=$('scDetT').textContent;
+    check('v143 details: the report names the frames as bytes and no brand or source names',/13: [0-9a-f]{2}( [0-9a-f]{2}){12}/.test(rep)&&!/Xiaomi|Zepp|Mi Fit|Mi Scale|MIBFS|MIBCS|Polar|Garmin|Intervals|Strava|Omron/i.test(rep+txt(box.querySelector('#lMeas'))),rep);
+    let clip='';Object.defineProperty(navigator,'clipboard',{value:{writeText:async t=>{clip=t;}},configurable:true});toasts.length=0;
+    scDetCopy();await new Promise(r=>setTimeout(r,10));
+    check('v143 details: Copy puts the report on the clipboard',clip===rep&&toasts.length===1&&toasts[0].m==='Copied',JS(toasts));
+    box.querySelector('#pg-log').classList.add('active');$('lMeas').classList.add('open');$('scDet').open=true;
+    const R0=box.getBoundingClientRect().right,wide=[...box.querySelector('#pg-log').querySelectorAll('*')].filter(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.right>R0+0.5;});
+    const sh=$('scDet').querySelector('summary').getBoundingClientRect().height;
+    check('v143 layout: at 360px the open report does not run wider and its summary is 44px tall',!wide.length&&sh>=44,wide.slice(0,4).map(x=>x.id||x.className).join(' ')+' '+sh);
+    const cs=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v143: Read details')[1]||'';
+    check('v143: no accent in the v143 CSS, the version is at least v143',cs.length>0&&!/--gold/.test(cs)&&APP_VER>=143,'');
+  }finally{
+    Object.assign(window,{showToast:keep.showToast,refreshAll:keep.refreshAll});K.forEach((k,i)=>TH[k]=keep.th[i]);_scBusy=false;_scLast=keep.last;
+    if(has)Object.defineProperty(navigator,'bluetooth',has);else delete navigator.bluetooth;
+    if(hasClip)Object.defineProperty(navigator,'clipboard',hasClip);else delete navigator.clipboard;
+    box.remove();css.remove();
   }
 });
 

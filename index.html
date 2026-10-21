@@ -299,6 +299,7 @@
         <div class="fh" id="scBleOff" hidden>Bluetooth is off on this phone. Turn it on, then tap.</div>
         <div class="fh" id="scBleHint">Step on the scale to wake it, then tap. Readings save on their own.</div>
         <div class="bp-st" id="scBleSt" aria-live="polite"></div>
+        <details class="sc-det" id="scDet" hidden><summary>Read details</summary><pre id="scDetT"></pre><button class="btn-out" onclick="scDetCopy()">Copy</button></details>
       </div>
       <div class="bp-or" id="bpOr" hidden>Or type a reading</div>
       <div class="fg"><div class="fl">BLOOD PRESSURE</div><div class="fr"><input type="number" class="inp inp-sm" id="bpSys" placeholder="118" min="60" max="250"><span class="inp-unit">/</span><input type="number" class="inp inp-sm" id="bpDia" placeholder="76" min="40" max="180"><span class="inp-unit">mmHg</span></div>

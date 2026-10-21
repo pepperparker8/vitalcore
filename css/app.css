@@ -1608,3 +1608,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 #pg-health .rf[role=button]>.ui-i:last-child{width:18px;height:18px;color:var(--t3)}
 #pg-health .rf[role=button]:focus-visible{outline:2px solid var(--text);outline-offset:2px;border-radius:6px}
 #pg-health .rf+.bx{border-top:0}
+
+/* v143: Read details under the scale button */
+.sc-det{margin-top:8px;font-size:13px;color:var(--t2)}
+.sc-det summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+.sc-det pre{white-space:pre-wrap;word-break:break-all;font:12px/1.5 ui-monospace,monospace;background:var(--bg);border-radius:8px;padding:8px;margin:0 0 8px;color:var(--text);max-width:100%;overflow-x:auto}
+.sc-det .btn-out{min-height:44px}
