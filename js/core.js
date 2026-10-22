@@ -31,19 +31,62 @@ const TBL={
   pday:{k:'polarDays',t:'polar_days',opt:true,lim:60,f:{data:'data'}}
 };
 
+// v147: the data lives in IndexedDB (no 5 MB ceiling, written off the main thread); localStorage holds it only where
+// IndexedDB will not open, and as a copy written on pagehide in case the last write has not finished. A localStorage copy is
+// always the newer one: it is read first, moved into IndexedDB and removed once IndexedDB holds the same save or a later one.
+const DB={name:'vitalcore',store:'kv',key:'data',ls:'vitalcore-data'};
+let _db=null,_dbOk=null,_saveQ=Promise.resolve(),_saveN=0,_lsN=-1,_dirty=false;
+function dbOpen(){
+  if(_db)return Promise.resolve(_db);
+  return new Promise((ok,no)=>{
+    let r;try{r=indexedDB.open(DB.name,1);}catch(e){no(e);return;}
+    r.onupgradeneeded=()=>r.result.createObjectStore(DB.store);
+    r.onsuccess=()=>{const db=r.result;_db=db;db.onversionchange=()=>{db.close();if(_db===db)_db=null;};ok(db);};
+    r.onerror=()=>no(r.error||new Error('open'));r.onblocked=()=>no(new Error('blocked'));
+  });
+}
+function dbReq(mode,fn){
+  return dbOpen().then(db=>new Promise((ok,no)=>{
+    const tx=db.transaction(DB.store,mode),q=fn(tx.objectStore(DB.store));let v;
+    q.onsuccess=()=>{v=q.result;};tx.oncomplete=()=>ok(v);tx.onerror=tx.onabort=()=>no(tx.error||new Error('abort'));
+  }));
+}
+function dbGet(k){return dbReq('readonly',st=>st.get(k));}
+function dbPut(k,v){return dbReq('readwrite',st=>st.put(v,k));}
+function lsGet(){try{return localStorage.getItem(DB.ls);}catch(e){return null;}}
+function lsDrop(){try{localStorage.removeItem(DB.ls);}catch(e){}_lsN=-1;}
 async function persistLoad(){
+  let v=null,ls=lsGet();
+  try{v=await dbGet(DB.key);_dbOk=true;}catch(e){_dbOk=false;console.log('IndexedDB:',e.message);}
+  if(ls!=null){v=ls;if(_dbOk)try{await dbPut(DB.key,ls);lsDrop();}catch(e){console.log('IndexedDB:',e.message);}}
   try{
-    const v=localStorage.getItem('vitalcore-data');
     if(v){const p=JSON.parse(v);_s={...JSON.parse(JSON.stringify(DEFAULTS)),...p,intervalsData:{...DEFAULTS.intervalsData,...(p.intervalsData||{})}};migrate();return true;}
   }catch(e){console.log('Storage load:',e.message);}
   return false;
 }
 function persistSave(){
+  _dirty=true;
   if(_saveTimer)clearTimeout(_saveTimer);
   _saveTimer=setTimeout(flushSave,400);
 }
 function flushSave(){
-  const put=()=>localStorage.setItem('vitalcore-data',JSON.stringify(_s));
+  if(_saveTimer){clearTimeout(_saveTimer);_saveTimer=null;}
+  if(!_dirty)return _saveQ;
+  _dirty=false;
+  if(_dbOk===false){lsSave();return _saveQ;}
+  const j=JSON.stringify(_s),n=++_saveN;
+  _saveQ=_saveQ.then(()=>dbPut(DB.key,j)).then(()=>{if(_lsN>=0&&n>=_lsN)lsDrop();})
+    .catch(e=>{console.log('Storage save:',e.message);_dbOk=false;lsSave();});
+  return _saveQ;
+}
+// the page is going away: an IndexedDB write may not finish, so also keep a copy in localStorage (if it fits)
+function flushLast(){
+  const was=_dirty;flushSave();
+  if(!was||_dbOk===false)return;
+  try{localStorage.setItem(DB.ls,JSON.stringify(_s));_lsN=_saveN;}catch(e){}
+}
+function lsSave(){
+  const put=()=>localStorage.setItem(DB.ls,JSON.stringify(_s));
   try{put();}catch(e){
     console.log('Storage save:',e.message);
     // storage full: older briefings and Polar nights also live in the database, so keep the newest on the phone and retry
@@ -53,7 +96,8 @@ function flushSave(){
     for(const t of trims){if(!t())continue;try{put();return;}catch(e2){console.log('Storage save:',e2.message);}}
   }
 }
-window.addEventListener('pagehide',flushSave);
+// arrow functions, so the tests page's stub of flushLast is the one called
+window.addEventListener('pagehide',()=>flushLast());
 document.addEventListener('visibilitychange',()=>{if(document.hidden)flushSave();});
 
 const S=()=>_s;
@@ -257,7 +301,8 @@ const TH={
   SC_AGE_MIN:18,                         // years: the body composition equations are for adults
   SC_H_RNG:[120,230],                    // cm: height needed for the body composition estimates
   CONN_ERR_LEN:120,                      // characters of a sync error kept for Settings > Connections and cloud (v146)
-  CONN_STALE_H:48                        // hours: a source not pulled for this long shows amber in Settings (v146)
+  CONN_STALE_H:48,                       // hours: a source not pulled for this long shows amber in Settings (v146)
+  BOOT_SPLASH_MAX:700                    // ms: the splash goes by then even when no frame has been drawn (v147; the fixed splash time before)
 };
 const zL=(v,t)=>{
   if(t==='atl')return v>70?'High':v>45?'Moderate':'Low';
@@ -267,7 +312,7 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe'],bodyFeel:['','Wrecked','Tired','Okay','Good','Strong'],symptoms:['None','Above the neck','Below the neck'],soreArea:{legs:'Legs',hips:'Hips',back:'Back',upper:'Shoulders and arms',core:'Core'}};
-const APP_VER=146; // keep in step with the cache name in sw.js
+const APP_VER=147; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
 const POLAR_API='https://vitalcore-backend.vercel.app/api'; // the owner's Vercel functions; they hold the Polar tokens, the app sends its app key
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M19 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 19l0 -4l-3 -3l5 -4l2 3l3 0"/><path d="M17 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M6 11l4 -2l3.5 3l-1.5 2"/><path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1 -.25"/></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2"/><path d="M22 12h-1"/></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M13 21l1 -9l7 -6"/><path d="M3 11h6l5 1"/><path d="M11.5 8.5l4.5 -3.5"/></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l2 -4"/><path d="M13 21v-4l-3 -3l1 -6l3 4l3 2"/><path d="M10 14l-1.827 -1.218a2 2 0 0 1 -.831 -2.15l.28 -1.117a2 2 0 0 1 1.939 -1.515h1.439l4 1l3 -2"/><path d="M17 12v9"/><path d="M16 20h2"/></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l3 -4"/><path d="M16 21l-2 -4l-3 -3l1 -6"/><path d="M6 12l2 -3l4 -1l3 3l3 1"/></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 20h4l1.5 -3"/><path d="M17 20l-1 -5h-5l1 -7"/><path d="M4 10l4 -1l4 -1l4 1.5l4 1.5"/></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>']];

@@ -3,7 +3,7 @@
 ## Project
 VitalCore is a personal health intelligence PWA. It combines training load, sleep, daily psychology check-ins, body measurements, blood markers and injuries into one recovery score (Body) and an AI-generated daily briefing.
 
-Current version: **146**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
+Current version: **147**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
 
 ## User context
 - Invite only (v124): the owner and the people the owner invites in Supabase; each person sees only their own data. Personal notes about the owner (devices, phone, habits) live in the gitignored `CLAUDE.local.md`; never put them back here, the repo is public.
@@ -22,9 +22,10 @@ Current version: **146**. This file holds the rules. What each release changed a
   - strength, log (Log tab forms, Bluetooth monitor and scale), today (race phase, day bar), settings, render (Today gauges and factors, Trends chart renderers), recovery (`calcBody`, `calcLoad`, `calcMind`, illness, sleep debt, strain), detail (detail sheets), chart (`mountChart`), form (`rollBand`), trends (range bar), progress, plan, coach (`coachFlags`, `coachVerdict`), sessions (session library), workout (reading a workout, doubles, the workout sheet, route and map), day (Your day, naps), strategy (7-day outline, levels, comebacks), fuel, health, digest, insights (briefing), coachpage (Insights page), app (starts the app).
 - `sw.js` caches the shell: add new files to SHELL and bump the cache name together with `APP_VER` (core.js). It installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`. It answers with `ignoreSearch:true`, so a new `?r=` does not bypass the cache.
 - External: Google Fonts; OpenStreetMap tiles only after Show map (Leaflet 1.9.4 vendored in `vendor/leaflet/`, never a CDN, never cached by `sw.js`).
-- State: one in-memory object `_s`, read via `S()`, written via `save(d)` (400 ms debounced persist to localStorage `vitalcore-data`; `flushSave` trims briefings and Polar nights when storage is full).
+- State: one in-memory object `_s`, read via `S()`, written via `save(d)` (400 ms debounced persist, v147: IndexedDB `vitalcore`, store `kv`, key `data`, as one JSON string). localStorage `vitalcore-data` is only the fallback where IndexedDB will not open (`lsSave` trims briefings and Polar nights when it is full) and the copy `flushLast` writes on pagehide; a localStorage copy is always the newer one, read first and moved into IndexedDB. Never read or write the data any other way.
+- Startup (v147): every app script loads with `defer`; `initUI` draws Today and the open tab only, the other tabs draw when opened (`refreshActive`); `_boot` keeps this visit's timing in memory and Settings shows it under the version.
 - Charts: hand-drawn on `<canvas>`. Every time chart goes through `mountChart()` (js/chart.js; options listed in its header comment). The workout trace (`wkDraw`) and Your day (`dyMount`/`dyDraw`) are their own canvases. Colours from `cssv('--name')`; `chRedrawAll()` redraws on a theme change.
-- Tests: `tests/index.html` loads every script but app.js and runs the acceptance tests in the page, no library. Serve with `.claude/launch.json` "vitalcore" (`python3 -m http.server 8118`), open `/tests/`; it shows "N of N passed" and sets `window.TEST_RESULT`. It stubs `Storage.prototype.setItem` and replaces `save`, so fixtures never reach the app's storage. `/tests/?day=YYYY-MM-DD` runs the suite as if today were that date; run it as a Monday, a Thursday and a Sunday before every release. The 360px checks need the browser pane at phone width. Never in SHELL.
+- Tests: `tests/index.html` loads every script but app.js and runs the acceptance tests in the page, no library. Serve with `.claude/launch.json` "vitalcore" (`python3 -m http.server 8118`), open `/tests/`; it shows "N of N passed" and sets `window.TEST_RESULT`. It stubs `Storage.prototype.setItem` and replaces `save`, so fixtures never reach the app's storage. `/tests/?day=YYYY-MM-DD` runs the suite as if today were that date; run it as a Monday, a Thursday and a Sunday before every release. The 360px checks need the browser pane at phone width. Never in SHELL. It sets `DB.name` to `vitalcore-test`, so storage tests never touch the app's database.
 
 ### State shape
 ```
@@ -90,11 +91,10 @@ exDismissed, hasRealData, onboardingDone
 - Trends: one range bar (7D · 30D · 90D · 1Y) for every chart, same card anatomy (title with ⓘ, stat header, chart, legend, one line).
 
 ## Status
-- Open: verify on the S24 itself (offline, the Bluetooth reads, the connection check); real passive activity.
+- Open: verify on the S24 itself (offline, the Bluetooth reads, the connection check, the move to IndexedDB); real passive activity.
 - Supabase SQL scripts the owner runs, in order: `docs/supabase-v79`, `v88`, `v98`, `v116`, `v118`, `v124`, `v127`, `v140`. Settings > Connections and cloud > Check the cloud tables names any still missing (`connProbe`, `CONN_SQL` in sync.js).
 
 ## Backlog
-- v147: IndexedDB storage, script `defer`, render only the active tab at startup, startup timing.
 - v148: field-level profile merge (or a naps table), so two phones editing the profile do not lose a change.
 - v149: in-app fitness and fatigue that leave out hidden duplicates; CSS consolidation.
 - v150: Body calibration and Phase B (body feel and sore area into scores); the nap prompt with `s5`.

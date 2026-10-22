@@ -56,7 +56,9 @@ try{Storage.prototype.setItem=function(){};}catch(e){}
 <script src="../js/coachpage.js"></script>
 <script>
 // app.js is left out: it starts the app (init) and would load and save real data
-save=function(d){_s=d;};persistSave=function(){};flushSave=function(){};queuePush=function(){};updSyncStatus=function(){};
+// v147: the storage functions are kept for their own tests, which use a test database, never the app's
+const core0={persistSave,flushSave,flushLast};DB.name='vitalcore-test';
+save=function(d){_s=d;};persistSave=function(){};flushSave=function(){};flushLast=function(){};queuePush=function(){};updSyncStatus=function(){};
 const later=[];   // async tests (v119): each is a promise that calls check() itself
 const res=[];
 function check(name,ok,info){res.push({name,ok:!!ok,info});}
@@ -4392,6 +4394,57 @@ seq('v146 connections',async()=>{
     const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v146: Settings > Connections and cloud')[1]||'';
     check('v146: no accent in the v146 CSS, the version is at least 146',all.length>0&&!/--gold/.test(all)&&APP_VER>=146,'');
   }finally{Object.assign(window,keep);_auth=null;_idKey=false;delete _s.connLog;box.remove();css.remove();}
+});
+
+seq('v147 storage and startup',async()=>{
+  const keep={_s,_db,_dbOk,_dirty,_saveQ,_saveN,_lsN},fns={lsGet,persistSave,flushSave,dbGet};
+  const set=Storage.prototype.setItem,rm=Storage.prototype.removeItem;let ls=null,lsSet=0;
+  Storage.prototype.setItem=function(k,v){if(k===DB.ls){ls=v;lsSet++;}};
+  Storage.prototype.removeItem=function(k){if(k===DB.ls)ls=null;};
+  window.lsGet=()=>ls;
+  try{
+    check('v147: the tests use their own database',DB.name==='vitalcore-test','');
+    Object.assign(window,{persistSave:core0.persistSave,flushSave:core0.flushSave});
+    const fix=n=>JSON.stringify({...JSON.parse(JSON.stringify(DEFAULTS)),profile:{...DEFAULTS.profile,name:n},onboardingDone:true});
+    // a phone from before v147: the data is only in localStorage
+    await dbPut(DB.key,null);ls=fix('Old');
+    check('v147 load: data in localStorage only is read',await persistLoad()&&_s.profile.name==='Old'&&_dbOk===true,_s.profile.name);
+    check('v147 load: and moved into IndexedDB, the localStorage copy removed',JSON.parse(await dbGet(DB.key)).profile.name==='Old'&&ls===null,String(ls).slice(0,40));
+    // a save goes to IndexedDB, not localStorage
+    lsSet=0;_s.profile.name='New';save(_s);persistSave();await flushSave();
+    check('v147 save: written to IndexedDB, localStorage untouched',JSON.parse(await dbGet(DB.key)).profile.name==='New'&&lsSet===0&&!_dirty,'');
+    {const q=_saveQ,n=_saveN;check('v147 save: nothing changed, nothing written',flushSave()===q&&_saveN===n&&!_dirty,'');}
+    _s.profile.name='Reload';await persistLoad();
+    check('v147 load: a reload reads IndexedDB',_s.profile.name==='New','');
+    // leaving the page: the change also goes to localStorage, and that copy wins on the next start
+    _s.profile.name='Leaving';persistSave();core0.flushLast();
+    check('v147 pagehide: an unsaved change is also copied to localStorage',ls&&JSON.parse(ls).profile.name==='Leaving'&&_lsN===_saveN,'');
+    await _saveQ;
+    check('v147 pagehide: the copy is removed once IndexedDB holds that save',ls===null,'');
+    ls=fix('Copy');await persistLoad();
+    check('v147 load: a localStorage copy is newer than IndexedDB and wins',_s.profile.name==='Copy'&&JSON.parse(await dbGet(DB.key)).profile.name==='Copy'&&ls===null,_s.profile.name);
+    lsSet=0;core0.flushLast();
+    check('v147 pagehide: nothing unsaved, nothing copied',lsSet===0,'');
+    // IndexedDB will not open: localStorage is the store, as before v147
+    window.dbGet=()=>Promise.reject(new Error('no idb'));_db=null;ls=fix('Private');
+    check('v147 fallback: without IndexedDB the data loads from localStorage',await persistLoad()&&_dbOk===false&&_s.profile.name==='Private','');
+    _s.profile.name='Private2';persistSave();await flushSave();
+    check('v147 fallback: and saves to localStorage',ls&&JSON.parse(ls).profile.name==='Private2','');
+    // startup and scripts
+    const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),app=await (await realFetch('../js/app.js',{cache:'no-store'})).text();
+    const tags=html.match(/<script src="js\/[^"]+"[^>]*>/g)||[];
+    check('v147: every app script loads with defer, in the documented order',tags.length>=25&&tags.every(t=>/ defer>/.test(t))&&/core\.js/.test(tags[0])&&/app\.js/.test(tags[tags.length-1]),tags.length);
+    const iu=(app.split('function initUI(){')[1]||'').split('\n}')[0];
+    check('v147: startup draws only the open tab (no Log or Insights drawing in initUI)',iu&&!/renderExGrid|fillCI\(\)|renderBloodDisplay|updMeasHist|renderFood|renderInjuryDisplay|renderInsightHistory/.test(iu)&&/refreshActive/.test(iu),iu);
+    check('v147: the Log tab draws its workout grid the first time it opens',/if\(!\$\('exGrid'\)\.innerHTML\)renderExGrid\(\)/.test(app),'');
+    check('v147: the splash goes once the first screen is drawn, startup timing kept in memory',/requestAnimationFrame\(shown\);setTimeout\(shown,TH\.BOOT_SPLASH_MAX\)/.test(app)&&!/setTimeout\(\(\)=>\$\('splash'\)/.test(app)&&!/_boot/.test(JSON.stringify(DEFAULTS)),'');
+    check('v147: pagehide reaches the storage through a lookup, so the tests page stub holds',/addEventListener\('pagehide',\(\)=>flushLast\(\)\)/.test(await (await realFetch('../js/core.js',{cache:'no-store'})).text()),'');
+  }finally{
+    Storage.prototype.setItem=set;Storage.prototype.removeItem=rm;
+    try{if(_db)_db.close();}catch(e){}
+    Object.assign(window,fns);_db=keep._db;_dbOk=keep._dbOk;_dirty=keep._dirty;_saveQ=keep._saveQ;_saveN=keep._saveN;_lsN=keep._lsN;_s=keep._s;
+    try{indexedDB.deleteDatabase('vitalcore-test');}catch(e){}
+  }
 });
 
 Promise.all(later).then(()=>{

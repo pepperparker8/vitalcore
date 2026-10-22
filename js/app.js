@@ -13,7 +13,7 @@ function refreshActive(){
   if(tab==='today')recalc();
   if(tab==='trends')renderTrendsTab();
   if(tab==='health')renderHealth();
-  if(tab==='log'){if(ciKey()!==_ciKey)fillCI();renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderFood();renderSleepBars();}
+  if(tab==='log'){if(!$('exGrid').innerHTML)renderExGrid();if(ciKey()!==_ciKey)fillCI();renderBloodDisplay();renderInjuryDisplay();updMeasHist();renderFood();renderSleepBars();}
   if(tab==='insights'){renderInsCall();renderInsWatch();renderInsSum();renderDigest();renderInsightHistory();renderInsWeek();showTodayInsight();}
 }
 function refreshAll(){recalc();refreshActive();updSyncStatus();}
@@ -44,18 +44,25 @@ function dayForms(){
   $('wDate').max=td();$('slDate').max=td();loadSleepFor(td());
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&_day&&_day!==td()){dayForms();fillCI();refreshAll();}});
+// v147: only the open tab is drawn; the others draw when you switch to them (refreshActive)
 function initUI(){
   dayForms();
   $('welcome').style.display=S().onboardingDone?'none':'flex';
-  renderExGrid();fillCI();renderBloodDisplay();updMeasHist();renderFood();renderInjuryDisplay();renderInsightHistory();
-  updSyncStatus();recalc();
+  _ciKey='';updSyncStatus();recalc();if(_tab!=='today')refreshActive();
 }
+// v147: startup timing for this visit, in ms from the page request (memory only; Settings shows it under the version)
+const _boot={data:0,first:0};
 async function init(){
+  const t=performance.now();
   await persistLoad();
+  _boot.data=Math.round(performance.now()-t);
   loadAuth();ownData();
   try{dupFill();}catch(e){}
   initUI();
-  setTimeout(()=>$('splash').classList.add('gone'),700);
+  // the splash goes on the first frame after drawing, or after BOOT_SPLASH_MAX where frames are held back (a page opened in the background)
+  const shown=()=>{if(_boot.first)return;_boot.first=Math.round(performance.now());$('splash').classList.add('gone');};
+  requestAnimationFrame(shown);setTimeout(shown,TH.BOOT_SPLASH_MAX);
+  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
   if(!navigator.onLine)$('offlineBar').classList.add('show');
   await handleAuthHash();
   showGate();   // v124: invite only; nothing shows until an invited account has signed in on this phone
