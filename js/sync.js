@@ -99,7 +99,7 @@ async function sbFetch(path,opts={},retry=true){
 // ── CLOUD SYNC ───────────────────────────────────────────────────────────────
 let _pushT=null,_pushing=false,_syncing=false;
 let _pushErr='';
-function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(e=>{const m=String(e.message||e);if(m!==_pushErr){_pushErr=m;showToast('Upload failed: '+m.slice(0,80));}}),1500);}
+function queuePush(){if(!_auth)return;clearTimeout(_pushT);_pushT=setTimeout(()=>pushAll().catch(e=>{connMark('cloud',e);const m=String(e.message||e);if(m!==_pushErr){_pushErr=m;showToast('Upload failed: '+m.slice(0,80));}}),1500);}
 // fields left out of a row while empty; the v118 check-in fields too, so check-ins keep syncing before docs/supabase-v118.sql has been run
 const SKIP_NULL=new Set(['sets','sub','reflection','symptoms','soreArea','bodyFeel','imp']);
 const toRow=(n,r)=>{const o={user_id:_auth.user.id,id:r.id,date:r.date,updated_at:new Date(r.ts||Date.now()).toISOString()};for(const [a,b] of Object.entries(TBL[n].f)){if(SKIP_NULL.has(a)&&r[a]==null)continue;o[b]=r[a]===undefined?null:r[a];}return o;};
@@ -137,7 +137,7 @@ async function pushAll(){
       if(!r.ok){if(TBL[t.n].opt)continue;throw new Error(await errMsg(r));}
       d.tomb=d.tomb.filter(x=>x!==t);
     }
-    d.lastSync=new Date().toISOString();_pushErr='';save(d);
+    d.lastSync=new Date().toISOString();_pushErr='';connMark('cloud');save(d);
   }finally{_pushing=false;updSyncStatus();}
 }
 // optional tables (added after the first database setup): sync carries on without them and notes it here
@@ -184,27 +184,27 @@ async function syncAll(manual){
   _syncing=true;$('syncBtn').textContent='…';
   const msgs=[];let cloudErr=null;
   try{
-    if(_auth){try{await pullAll();}catch(e){cloudErr=e;}}
+    if(_auth){try{await pullAll();}catch(e){cloudErr=e;connMark('cloud',e);}}
     const icu=!!(S().intervalsKey&&S().intervalsID),pol=!!S().polarKey;
     // Polar runs first (v117): a night it delivers is the sleep record, and Intervals.icu then only adds what Polar
     // does not have (how rested you felt). If Polar fails, Intervals.icu still fills the night as before.
     if(pol){
-      try{const r=await pullPolar();msgs.push(r.n?`${r.n} night${r.n>1?'s':''} from Polar`:'Polar up to date');}
-      catch(e){msgs.push(e.message);}
+      try{const r=await pullPolar();connMark('polar');msgs.push(r.n?`${r.n} night${r.n>1?'s':''} from Polar`:'Polar up to date');}
+      catch(e){connMark('polar',e);msgs.push(e.message);}
       // the band's day (v127): steps, active time and 24/7 heart rate; silent, the nights above are what the toast reports
-      try{await pullPolarDay();}catch(e){}
+      try{await pullPolarDay();connMark('pday');}catch(e){connMark('pday',e);}
     }
     if(icu){
-      try{const r=await pullIntervals();msgs.push(r.n?`${r.n} new from Intervals.icu`:'Intervals.icu up to date');}
-      catch(e){msgs.push(e.message);}
+      try{const r=await pullIntervals();connMark('icu');msgs.push(r.n?`${r.n} new from Intervals.icu`:'Intervals.icu up to date');}
+      catch(e){connMark('icu',e);msgs.push(e.message);}
     }
     if(!icu&&!pol&&manual&&!_auth)msgs.push('Nothing to sync yet — connect Intervals.icu or Polar, or sign in in Settings');
     // v130: typed values on a hidden copy of a double move to the copy that counts (only into empty fields)
     try{dupFill();}catch(e){}
-    if(_auth&&!cloudErr){try{await pushAll();}catch(e){cloudErr=e;}}
+    if(_auth&&!cloudErr){try{await pushAll();}catch(e){cloudErr=e;connMark('cloud',e);}}
   }finally{
     _syncing=false;$('syncBtn').textContent=_auth?'Sync':'Sign in';
-    updSyncStatus();recalc();refreshActive();
+    updSyncStatus();recalc();refreshActive();if(typeof renderConn==='function')renderConn();
   }
   if(cloudErr)msgs.unshift(cloudErr.message==='Failed to fetch'?'Cloud unreachable — will retry':'Cloud: '+cloudErr.message);
   else if(_auth)msgs.unshift('Cloud backup up to date ✓');
@@ -222,6 +222,41 @@ function updSyncStatus(){
   const el=$('hdrStatus');el.textContent=t;el.style.setProperty('--dot',`var(${c})`);
   $('syncBtn').textContent=_syncing?'…':_auth?'Sync':'Sign in';
   const sb=$('signBan');if(sb)sb.classList.toggle('hidden',!!_auth||d.signBanOff||!d.onboardingDone);
+}
+
+// ── CONNECTIONS AND CLOUD (v146) ─────────────────────────────────────────────
+// connLog (local only, left out of backups, kept on restore): per source {ok: the last good pull, err, at: the last failure}.
+// A later success keeps the old failure, so Settings shows it only while it is newer than the success.
+function connMark(k,e){
+  const d=S(),L=d.connLog=d.connLog||{},c=L[k]=L[k]||{};
+  if(e){c.err=String((e&&e.message)||e).slice(0,TH.CONN_ERR_LEN);c.at=Date.now();}else c.ok=Date.now();
+}
+// each table and column, the script that adds it; anything not listed came with the first database setup
+const CONN_SQL={food_logs:'v88','food_logs.meals':'v98',polar_nights:'v116','polar_nights.trim':'v127',polar_days:'v127',
+  'checkins.soreness':'v79','checkins.coffee':'v79','checkins.coffee_late':'v79','sleep_logs.bed':'v79','sleep_logs.wake':'v79',
+  'checkins.symptoms':'v118','checkins.sore_area':'v118','checkins.body_feel':'v118','measurements.imp':'v140'};
+const connSqlOf=(t,c)=>c==='user_id'?'docs/supabase-v124.sql':CONN_SQL[c?t+'.'+c:t]?`docs/supabase-${CONN_SQL[c?t+'.'+c:t]}.sql`:'';
+const connTables=()=>[...Object.values(TBL).map(T=>({t:T.t,opt:!!T.opt,c:['user_id','id','date','updated_at',...Object.values(T.f)]})),
+  {t:'profile',c:['user_id','data','updated_at']},{t:'insights',c:['user_id','date','time','rendered']}];
+// asks each table for no rows with every column the app writes: 404 = no table, 42703 = a column is missing (then each column alone)
+async function connProbe(){
+  const out=[],noTbl=c=>c==='PGRST205'||c==='42P01';
+  for(const x of connTables()){
+    const q=cs=>sbFetch(`/rest/v1/${x.t}?select=${cs.join(',')}&limit=0`);
+    const r=await q(x.c);
+    if(r.ok){out.push({t:x.t,ok:true});continue;}
+    const code=await pgCode(r);
+    if(r.status===404||noTbl(code)){out.push({t:x.t,none:true,sql:[...new Set([x.t,...x.c.filter(c=>c!=='user_id')].map((c,i)=>i?connSqlOf(x.t,c):connSqlOf(c)).filter(Boolean))]});continue;}
+    if(code==='42703'){
+      const miss=[];
+      for(const c of x.c){const y=await q([c]);if(!y.ok&&await pgCode(y)==='42703')miss.push(c);}
+      out.push({t:x.t,miss,sql:[...new Set(miss.map(c=>connSqlOf(x.t,c)).filter(Boolean))]});continue;
+    }
+    out.push({t:x.t,err:await errMsg(r)});
+  }
+  // the (user_id, id) key cannot be read without writing; an upload that fell back this session says it is missing
+  if(_idKey)out.push({t:'key',miss:['user_id, id'],sql:['docs/supabase-v124.sql']});
+  return out;
 }
 
 // ── INTERVALS.ICU ────────────────────────────────────────────────────────────

@@ -402,6 +402,11 @@
         <div class="api-test-row"><button class="api-test-btn" onclick="testClaudeKey()">Test connection</button><span class="api-test-res" id="claudeTestRes"></span></div>
       </div>
     </div>
+    <div class="set-sec"><div class="set-title">Connections and cloud</div>
+      <div class="cn" id="connBox"></div>
+      <div class="api-test-row"><button class="api-test-btn cn-chk" id="connChk" onclick="connCheck()">Check the cloud tables</button></div>
+      <div class="cn" id="connTbl"></div>
+    </div>
     <div class="set-sec"><div class="set-title">Your data</div>
       <button class="btn-out" onclick="backupJSON()">⬇ Download backup file</button>
       <button class="btn-out" onclick="document.getElementById('restoreFile').click()">⬆ Restore from backup file</button>

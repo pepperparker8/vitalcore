@@ -1622,3 +1622,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 #pg-health .hl-sub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:16px 0 4px;padding-top:12px;border-top:1px solid var(--bdr);font-size:13px;color:var(--t2)}
 #pg-health .hl-sub b{font-size:14px;font-weight:600;color:var(--text)}
 #pg-health .hl-pw{font-size:13px;line-height:1.45;color:var(--text);margin:10px 0 0}
+/* v146: Settings > Connections and cloud */
+.cn{display:flex;flex-direction:column}
+.cn-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--bdr);min-height:44px;align-items:center}
+.cn-r:last-child{border-bottom:0}
+.cn-l{font-size:14px;color:var(--text);overflow-wrap:anywhere}
+.cn-v{font-size:13px;color:var(--t2);text-align:right;white-space:nowrap}
+.cn-v i{font-style:normal;margin-right:6px}
+.cn-n{grid-column:1/-1;font-size:12px;color:var(--t3);overflow-wrap:anywhere}
+.cn-ok .cn-v i{color:var(--green)}
+.cn-warn .cn-v i{color:var(--amber)}
+.cn-bad .cn-v i,.cn-bad .cn-n{color:var(--red)}
+.cn-off .cn-v i{color:var(--t3)}
+.cn-h{font-size:13px;color:var(--t2);padding:8px 0}
+.cn-chk{width:100%}

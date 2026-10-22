@@ -4326,6 +4326,74 @@ seq('v145 weight with body fat',async()=>{
   }
 });
 
+// v146: Settings > Connections and cloud: when each source last pulled, and whether each cloud table and column exists
+seq('v146 connections',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto';box.innerHTML=doc.getElementById('connBox').closest('.set-sec').outerHTML;document.body.appendChild(box);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={showToast:window.showToast,sbFetch:window.sbFetch},toasts=[];window.showToast=m=>toasts.push(m);
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',H=3600000;
+  const ans=(s,j)=>new Response(JSON.stringify(j),{status:s,headers:{'Content-Type':'application/json'}});
+  try{
+    base();_auth=null;renderConn();
+    check('v146 rows: signed out, the cloud row says to sign in and the table check is hidden',$('cn_cloud').classList.contains('cn-off')&&/Sign in/.test(txt($('cn_cloud')))&&$('connChk').hidden&&$('connTbl').innerHTML==='',txt($('cn_cloud')));
+    check('v146 rows: a source without its keys says what to set up',/Not set up/.test(txt($('cn_icu')))&&/athlete ID and API key/.test(txt($('cn_icu')))&&$('cn_claude').classList.contains('cn-off'),txt($('cn_icu')));
+
+    _auth={access_token:'t',user:{id:'uid-a'}};_s.intervalsKey='k';_s.intervalsID='i1';_s.polarKey='p';_s.claudeKey='c';_s.lastSync=new Date(Date.now()-2*60000).toISOString();_s.pending={'checkins|a':1,'sleep_logs|b':1};
+    _s.connLog={};connMark('icu');connMark('polar');_s.connLog.polar.ok=Date.now()-60*H;
+    connMark('pday');_s.connLog.pday.ok-=60000;connMark('pday',new Error('Polar day error 500 '+'x'.repeat(300)));
+    renderConn();
+    check('v146 rows: a fresh pull is ok, with how long ago',$('cn_icu').classList.contains('cn-ok')&&/just now/.test(txt($('cn_icu'))),txt($('cn_icu')));
+    check('v146 rows: a pull older than 48 hours turns amber',$('cn_polar').classList.contains('cn-warn')&&/\d+ Oct|\d+ Sept|\d+ Nov/.test(txt($('cn_polar'))),txt($('cn_polar')));
+    check('v146 rows: a failure newer than the last success shows the error, cut short, and when it last worked',$('cn_pday').classList.contains('cn-bad')&&/Failed just now/.test(txt($('cn_pday')))&&/Last worked 1 min ago/.test(txt($('cn_pday')))&&_s.connLog.pday.err.length===TH.CONN_ERR_LEN,txt($('cn_pday')));
+    _s.connLog.pday.ok=_s.connLog.pday.at+1000;renderConn();
+    check('v146 rows: a later success hides the old error',$('cn_pday').classList.contains('cn-ok')&&!/Failed/.test(txt($('cn_pday'))),txt($('cn_pday')));
+    check('v146 rows: the cloud row falls back to the last sync and counts waiting changes',$('cn_cloud').classList.contains('cn-ok')&&/2 min ago/.test(txt($('cn_cloud')))&&/2 changes waiting to upload/.test(txt($('cn_cloud'))),txt($('cn_cloud')));
+    check('v146 rows: the Claude key reads Set, never the key',/Set/.test(txt($('cn_claude')))&&!/\bc\b/.test(txt($('cn_claude')).replace('Claude key','')),txt($('cn_claude')));
+
+    check('v146 sql: each table and column names the script that adds it',connSqlOf('food_logs')==='docs/supabase-v88.sql'&&connSqlOf('food_logs','meals')==='docs/supabase-v98.sql'&&connSqlOf('checkins','symptoms')==='docs/supabase-v118.sql'&&connSqlOf('measurements','imp')==='docs/supabase-v140.sql'&&connSqlOf('polar_nights','trim')==='docs/supabase-v127.sql'&&connSqlOf('sleep_logs','user_id')==='docs/supabase-v124.sql'&&connSqlOf('workouts')==='','');
+    const tb=connTables();
+    check('v146 sql: every synced table is checked with every column the app writes, plus profile and insights',Object.values(TBL).every(T=>tb.some(x=>x.t===T.t&&Object.values(T.f).every(c=>x.c.includes(c))))&&tb.some(x=>x.t==='profile')&&tb.some(x=>x.t==='insights')&&tb.find(x=>x.t==='measurements').c.includes('imp'),'');
+
+    const calls=[];
+    window.sbFetch=async p=>{calls.push(p);const t=p.split('/rest/v1/')[1].split('?')[0],cs=decodeURIComponent(p.split('select=')[1].split('&')[0]).split(',');
+      if(t==='food_logs')return ans(404,{code:'PGRST205',message:'Could not find the table'});
+      if(t==='checkins'&&cs.includes('symptoms'))return ans(400,{code:'42703',message:'column checkins.symptoms does not exist'});
+      if(t==='measurements'&&cs.includes('imp'))return ans(400,{code:'42703',message:'column measurements.imp does not exist'});
+      if(t==='insights')return ans(500,{message:'boom'});
+      return ans(200,[]);};
+    _idKey=true;
+    const res=await connProbe(),by=t=>res.find(x=>x.t===t)||{};
+    check('v146 probe: no rows asked for, never a write',calls.every(p=>/limit=0$/.test(p)),calls[0]);
+    check('v146 probe: a missing table names its script and its later columns\' scripts',by('food_logs').none&&by('food_logs').sql.join()==='docs/supabase-v88.sql,docs/supabase-v98.sql',JSON.stringify(by('food_logs')));
+    check('v146 probe: a missing column is found alone and names its script',by('checkins').miss.join()==='symptoms'&&by('checkins').sql.join()==='docs/supabase-v118.sql'&&by('measurements').miss.join()==='imp'&&by('measurements').sql.join()==='docs/supabase-v140.sql',JSON.stringify(by('checkins')));
+    check('v146 probe: another error is reported as it is, the rest ready',by('insights').err==='boom'&&by('sleep_logs').ok&&by('profile').ok,JSON.stringify(by('insights')));
+    check('v146 probe: an upload that fell back to the id alone names the v124 script',by('key').sql&&by('key').sql[0]==='docs/supabase-v124.sql','');
+
+    await connCheck();
+    const tt=txt($('connTbl'));
+    check('v146 check: the result is saved and shown with how many to fix and the scripts to run',_s.connLog.probe&&_s.connLog.probe.res.length===res.length&&/^5 to fix\. In Supabase, open the SQL editor and run docs\/supabase-v88\.sql, docs\/supabase-v98\.sql, docs\/supabase-v118\.sql, docs\/supabase-v124\.sql, docs\/supabase-v140\.sql, oldest first\./.test(tt)&&/Checked just now/.test(tt),tt.slice(0,240));
+    const fr=box.querySelector('[data-t="checkins"]'),kr=box.querySelector('[data-t="key"]'),ir=box.querySelector('[data-t="insights"]');
+    check('v146 check: each row says Ready, Missing or the missing columns, with the fix under it',/Missing symptoms/.test(txt(fr))&&/Run docs\/supabase-v118\.sql/.test(txt(fr))&&/Row key per person/.test(txt(kr))&&/Could not check/.test(txt(ir))&&/boom/.test(txt(ir))&&/Ready/.test(txt(box.querySelector('[data-t="workouts"]'))),txt(fr));
+    check('v146 check: the button is back once done',!$('connChk').disabled&&$('connChk').textContent==='Check the cloud tables','');
+    window.sbFetch=async()=>ans(200,[]);_idKey=false;await connCheck();
+    check('v146 check: all there reads as all there',/^Every table and column the app writes is there\./.test(txt($('connTbl')))&&!box.querySelector('#connTbl .cn-bad'),txt($('connTbl')).slice(0,80));
+    _auth=null;await connCheck();
+    check('v146 check: signed out it asks for a sign-in',toasts.pop()==='Sign in first','');
+
+    let got='';const dl=window.download;window.download=(n,t,s)=>{got=s;};try{backupJSON();}finally{window.download=dl;}
+    check('v146: a backup leaves out the connection log',got&&!('connLog' in JSON.parse(got)),'');
+    check('v146: a restore keeps this phone\'s connection log, and every sync step marks its source',/connLog:d\.connLog/.test(String(restoreBackup))&&['cloud','icu','polar','pday'].every(k=>new RegExp(`connMark\\('${k}'`).test(String(syncAll)+String(pushAll)+String(queuePush))),'');
+
+    _auth={access_token:'t',user:{id:'uid-a'}};_s.connLog.pday={err:'x'.repeat(TH.CONN_ERR_LEN),at:Date.now()};renderConn();
+    const over=[...box.querySelectorAll('.cn-r,.cn-r *')].filter(e=>e.getBoundingClientRect().right>box.getBoundingClientRect().right+1);
+    check('v146: at 360px no row runs past the screen and each row is at least 44px tall',!over.length&&[...box.querySelectorAll('#connBox .cn-r')].every(e=>e.getBoundingClientRect().height>=44),over.map(e=>e.className).join());
+    check('v146: no source name leaks into the table rows',[...box.querySelectorAll('#connTbl .cn-r')].every(e=>!/Polar|Intervals|Garmin/.test(txt(e))),'');
+    const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v146: Settings > Connections and cloud')[1]||'';
+    check('v146: no accent in the v146 CSS, the version is at least 146',all.length>0&&!/--gold/.test(all)&&APP_VER>=146,'');
+  }finally{Object.assign(window,keep);_auth=null;_idKey=false;delete _s.connLog;box.remove();css.remove();}
+});
+
 Promise.all(later).then(()=>{
   const pass=res.filter(r=>r.ok).length;
   document.getElementById('sum').textContent=`${pass} of ${res.length} passed`;
