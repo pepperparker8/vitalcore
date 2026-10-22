@@ -1312,7 +1312,7 @@ run('v123 text',()=>{
     check('v123 text: the week summary has no What stood out',!/What stood out/.test($('digestCard').textContent)&&/Your week in numbers/.test($('digestCard').textContent),$('digestCard').textContent.slice(-120));
   }finally{box.remove();_stOpen.clear();}
   {const c1=cupsLine(1.8,8,20),c2=cupsLine(1,1,20),c3=cupsLine(0.2,0,5);check('v123 text: coffee reads as whole cups, "often late" only when it happens often',c1==='About 2 cups of coffee a day, often late in the day.'&&c2==='About 1 cup of coffee a day.'&&c3==='Little coffee.',[c1,c2,c3].join(' | '));}
-  check('v123 text: the briefing asks for 1 to 2 sentences a field, allows an empty field and keeps follow-up answers to 1 to 4',/1 to 2 short sentences per field/.test(INS_SYS)&&/empty string for any field \(except overall and today\)/.test(INS_SYS)&&/at most 3 sentences/.test(INS_SYS)&&/1 to 4 short sentences/.test(INS_QA_SYS)&&/Be brief\./.test(INS_COMMON)&&/At most one number per sentence/.test(INS_COMMON));
+  check('v145 text: the briefing asks for 2 to 3 sentences a field, fills every field and keeps follow-up answers to 1 to 4',/2 to 3 short sentences per field/.test(INS_SYS)&&/Fill every field/.test(INS_SYS)&&!/empty string/.test(INS_SYS)&&/at most 3 sentences/.test(INS_SYS)&&/1 to 4 short sentences/.test(INS_QA_SYS)&&/Be brief\./.test(INS_COMMON)&&/At most one number per sentence/.test(INS_COMMON));
 });
 
 // v124: invite only. A sign-in wall until an invited account signs in, no account created from the app, each person's rows kept apart,
@@ -4258,6 +4258,70 @@ seq('v141 health trends',async()=>{
     check('v141: no accent in the v141 CSS, the version is at least 141, the cache follows it',all.length>0&&!/--gold/.test(all)&&APP_VER>=141,'');
   }finally{
     if(_hlOpen)chUnmount(hlCid(_hlOpen));_hlOpen=null;
+    Object.assign(window,keep);box.remove();css.remove();
+  }
+});
+seq('v145 weight with body fat',async()=>{
+  const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-health').outerHTML;document.body.appendChild(box);
+  box.firstElementChild.classList.add('active');box.firstElementChild.style.display='block';
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const keep={},stub={recalc:()=>{},showToast:()=>{},renderInjuryDisplay:()=>{},refreshAll:()=>renderHealth()};
+  Object.keys(stub).forEach(k=>{keep[k]=window[k];window[k]=stub[k];});
+  const kS=window.scComp,kT=window.stThr,kP=window.pmOn,kW=window.wtTrend;
+  const txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'',noNames=x=>!/Polar|Intervals\.icu|Garmin|Strava|Xiaomi|Omron/i.test(x);
+  const v123=x=>x.length<=140&&x.split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(x);
+  const fix=(imp=true)=>{
+    base();Object.assign(_s.profile,{height:175,age:40,sex:'m',wtGoal:70});
+    _s.measurements=Array.from({length:15},(_,i)=>({id:'m-'+i,date:dAgo(56-i*4),weight:+(80-i*8/14).toFixed(1),imp:imp?480+i:null}));
+    _hlOpen=null;
+  };
+  // weight from a to b, fat-free mass from fa to fb, 15 weigh-ins over 56 days
+  const run=(a,b,fa,fb)=>{_s.measurements=Array.from({length:15},(_,i)=>({id:'q-'+i,date:dAgo(56-i*4),weight:a+(b-a)*i/14,imp:500,ffm:fa+(fb-fa)*i/14}));
+    window.scComp=m=>({ffm:m.ffm,fat:(m.weight-m.ffm)/m.weight*100});return hlWtFat({from:dAgo(56),to:dAgo(0),first:{d:dAgo(56),v:25},last:{d:dAgo(0),v:20}});};
+  try{
+    fix();renderHealth();hlOpen('wt');
+    const A=_ch.htc_wt,B=_ch.htc_wtf;
+    check('v145 open: weight opens with body fat under it, both on one group',A&&A.on&&B&&B.on&&A.cfg.group==='hlwt'&&B.cfg.group==='hlwt'&&B.cfg.bare&&!$('hx_wt').querySelector('button,.wk-ch,.vc-tb'),'');
+    check('v145 open: body fat dots with its 7-day average line, in teal',B.cfg.series[0].noLine&&B.cfg.series[0].color==='--teal'&&B.cfg.series[1].noDots&&B.cfg.series[1].pts.length===15,'');
+    check('v145 header: Body fat with the latest estimate and its date',/^Body fat ?\d+\.\d % · /.test(txt($('hth_wtf')))&&txt($('hth_wtf')).endsWith(fmtD(dAgo(0))),txt($('hth_wtf')));
+    B.cfg.pick(dAgo(28));
+    check('v145 header: a pick on body fat moves both headers',txt($('hth_wtf')).endsWith(fmtD(dAgo(28)))&&txt($('hth_wt')).startsWith(fmtD(dAgo(28))),txt($('hth_wtf'))+' | '+txt($('hth_wt')));
+    const L=txt($('htc_wtf').querySelector('.vc-mean'));
+    check('v145 line: the split of the loss follows the one-line rule, no brand names',v123(L)&&noNames(L)&&/kg/.test(L),L);
+    hlOpen('bmi');
+    check('v145 close: opening another row takes both weight charts down',!_ch.htc_wt&&!_ch.htc_wtf&&!$('htc_wtf'),'');
+    hlOpen('wt');hlOpen('wt');
+    check('v145 close: closing weight takes body fat down too',_hlOpen===null&&!_ch.htc_wtf,'');
+    fix(false);renderHealth();hlOpen('wt');
+    check('v145 no impedance: weight alone, no body fat chart',_ch.htc_wt&&_ch.htc_wt.on&&!$('htc_wtf')&&!_ch.htc_wtf,'');
+    hlOpen('wt');
+    // the split
+    let s=run(80,76,60,59.6);
+    check('v145 split: 4 kg lost, 90% fat → mostly fat, muscle holding',s==='Most of the 3.9 kg lost looks like fat. Muscle is holding.',s);
+    s=run(80,76,60,58.5);
+    check('v145 split: 4 kg lost, 62% fat → part may be muscle',s==='Part of the 3.9 kg lost may be muscle, an estimate. A slower loss and protein at each meal help keep it.'&&v123(s),s);
+    s=run(76,80,58,58.5);
+    check('v145 split: 4 kg gained, 88% fat → mostly fat',s==='Most of the 3.9 kg gained looks like fat, an estimate.',s);
+    s=run(76,80,58,60.5);
+    check('v145 split: 4 kg gained, 38% fat → fat-free mass',s==='Much of the 3.9 kg gained looks like fat-free mass, an estimate.',s);
+    s=run(80,79.5,60,59);
+    check('v145 split: under TH.WF_MIN_KG falls back to the body fat trend',/on the 7-day average since/.test(s)&&/ An estimate, best read as a trend\.$/.test(s),s);
+    _s.measurements=[];window.scComp=kS;
+    // power to weight
+    _s.measurements=[{id:'w1',date:dAgo(1),weight:75}];window.stThr=()=>({ride:{ftp:262}});window.pmOn=()=>true;window.wtTrend=()=>({fast:false});
+    let P=hlPwHTML();
+    check('v145 power: threshold power per kilogram and the climb rule',txt(Object.assign(document.createElement('p'),{innerHTML:P}))==='Threshold power 3.5 W/kg at 75.0 kg. On a climb, each kilogram less is worth about 1.3% if power holds.',P);
+    window.wtTrend=()=>({fast:true});P=hlPwHTML();
+    check('v145 power: a fast loss warns that it can cost power',/Losing this fast can cost power, which undoes the gain\./.test(P)&&!/kilogram less/.test(P),P);
+    window.pmOn=()=>false;
+    check('v145 power: nothing without a real power meter',hlPwHTML()==='','');
+    window.pmOn=()=>true;window.stThr=()=>({ride:{}});
+    check('v145 power: nothing without a threshold power',hlPwHTML()==='','');
+    const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v145: body fat')[1]||'';
+    check('v145: no accent in the v145 CSS, the version is at least 145',all.length>0&&!/--gold/.test(all)&&APP_VER>=145,'');
+  }finally{
+    if(_hlOpen)hlOff(_hlOpen);_hlOpen=null;window.scComp=kS;window.stThr=kT;window.pmOn=kP;window.wtTrend=kW;
     Object.assign(window,keep);box.remove();css.remove();
   }
 });

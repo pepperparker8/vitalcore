@@ -338,6 +338,12 @@ Verify after each change; don't batch.
   - Every read is still a tap: Chrome cannot read Bluetooth in the background. On Android `getDevices` may need Chrome's new Bluetooth permissions backend; without it the chooser opens as before.
   - Local only: `bpDev`, `scDev` (left out of backups, kept on restore).
   - Tests: 1138. The suite passes run as a Monday, a Thursday and a Sunday through `?day=`.
+- Weight with body fat, power to weight, a fuller briefing (v145; the owner asked to combine the weight and body fat charts and for research-based weight and performance insight). No score maths, Supabase or backend change.
+  - Thresholds (`TH`, core.js): `WF_MIN_KG` 1, `WF_FAT_SHARE` 0.75 (`docs/research-v132.md` R9.4 to R9.6).
+  - Health > Weight (health.js): the open row also mounts `htc_wtf` (body fat dots and its `HL_AVG`-day average, teal) under `htc_wt`, both bare in group `hlwt`, header `hth_wtf` (`hlFatHd`), only when `hlFatOn()` (weigh-ins with impedance); `hlOff(k)` takes both down. `hlWtFat(info)` is the body fat chart's line: the change of the 7-day average weight split into fat and fat-free mass from `scComp`, under `WF_MIN_KG` the `hlTrendLine('fat')` line; mostly fat from `WF_FAT_SHARE`. `hlPw()` / `hlPwHTML()` (`.hl-pw`): threshold power per kg from `stThr().ride.ftp`, `wtOn(td())`, only with `pmOn()`; the climb line, or the fast-loss line by `wtTrend().fast`. Estimates only, never in a score, the outline, fuel or the briefing.
+  - Briefing (insights.js): `INS_SYS` asks for 2 to 3 sentences per field (week 3 to 4, focus 1 to 2) and every field filled; `INS_COMMON` says a horizon with too little data gets one sentence saying so.
+  - The scale chooser on every read on Android comes from Chrome: `getDevices` needs `chrome://flags#enable-web-bluetooth-new-permissions-backend`.
+  - Tests: 1156. The suite passes run as a Monday, a Thursday and a Sunday through `?day=`.
 - Updates (v84): `sw.js` installs with `cache:'reload'` and revalidates same-origin files with `cache:'no-cache'`, because GitHub Pages serves `max-age=600` and a new cache could otherwise be filled with old files. Settings shows `Version N` from `APP_VER` (core.js); bump it together with the cache name.
 
 ## Conventions

@@ -503,6 +503,9 @@ The consensus gives no fixed number of days. It is expert consensus, not trial r
 >
 >   *Source:* Mountjoy 2023. Strong for the concept; the combination is the app's.
 > - **R9.3 No energy availability number.** Never compute or show energy availability. *Source:* Mountjoy 2023. Strong.
+> - **R9.4 What the loss is made of (v145).** With weigh-ins that carry body measurement, split the change of the 7-day average weight in view into estimated fat and fat-free mass, only from a change of 1 kg (`WF_MIN_KG`). A loss about three quarters fat is the usual composition (Heymsfield 2014); read 75% or more fat (`WF_FAT_SHARE`) as "mostly fat, muscle holding", less as "part may be muscle" with a slower loss and protein at each meal. *Source:* Heymsfield 2014; Garthe 2011; Helms 2014 (0.5 to 1% a week keeps lean mass). Moderate; scale body composition has a wide error for one person, so it is called an estimate and never feeds a score.
+> - **R9.5 Read scale body composition as a trend.** Consumer bioimpedance is off by several kilograms of fat for one person on one day; a 7-day average over weeks is more useful than one reading. *Source:* Heymsfield 2014. Moderate.
+> - **R9.6 Power to weight (v145).** On a steep climb almost all power goes into lifting rider and bike, so climbing speed follows watts per kilogram; at the same power a kilogram less is worth about 100 / body weight per cent. Show threshold power per kilogram only with a real power meter, and when the loss is fast (R9.1) say it can cost power, which undoes the gain. *Source:* Martin 1998 (the road cycling power model); Garthe 2011; Mountjoy 2023. Strong for the physics, the app's for the wording.
 
 > **Do not claim**
 >
@@ -926,3 +929,6 @@ Every DOI and PubMed number below was checked against Crossref or PubMed (11 Oct
 99. Faraut B, Nakib S, Drogou C, et al. Napping reverses the salivary interleukin-6 and urinary norepinephrine changes induced by sleep restriction. *J Clin Endocrinol Metab* 2015;100(3):E416-E426. doi:10.1210/jc.2014-2566
 100. McCauley P, Kalachev LV, Mollicone DJ, Banks S, Dinges DF, Van Dongen HPA. Dynamic circadian modulation in a biomathematical model for the effects of sleep and sleep loss on waking neurobehavioral performance. *Sleep* 2013;36(12):1987-1997. doi:10.5665/sleep.3246
 101. Oura Health. Sleep debt. Help article, read 15 Oct 2026. Product documentation, not peer reviewed; no DOI.
+102. Heymsfield SB, Gonzalez MC, Shen W, Redman L, Thomas D. Weight loss composition is one-fourth fat-free mass: a critical review and critique of this widely cited rule. *Obes Rev* 2014;15(4):310-321. doi:10.1111/obr.12143
+103. Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. *J Int Soc Sports Nutr* 2014;11:20. doi:10.1186/1550-2783-11-20
+104. Martin JC, Milliken DL, Cobb JE, McFadden KL, Coggan AR. Validation of a mathematical model for road cycling power. *J Appl Biomech* 1998;14(3):276-291. doi:10.1123/jab.14.3.276

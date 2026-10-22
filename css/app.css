@@ -1617,3 +1617,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 /* v144: Use another monitor / scale, under the read button */
 .ble-alt{display:block;min-height:44px;padding:0 4px;background:none;border:0;color:var(--t2);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* v145: body fat under the weight chart, and power to weight */
+#pg-health .hl-sub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:16px 0 4px;padding-top:12px;border-top:1px solid var(--bdr);font-size:13px;color:var(--t2)}
+#pg-health .hl-sub b{font-size:14px;font-weight:600;color:var(--text)}
+#pg-health .hl-pw{font-size:13px;line-height:1.45;color:var(--text);margin:10px 0 0}

@@ -65,7 +65,7 @@ function hlRow(icon,label,v,unit,cmp,cls,date,k){
   const m=/^([▲▼●]) (.*)$/.exec(cmp),g=m?m[1]:cmp.startsWith('at ')?'●':'',t=m?m[2]:cmp,age=date&&daysAgo(date)>1?' · '+fmtD(date):'';
   const op=k&&_hlOpen===k,at=k?` id="hr_${k}" role="button" tabindex="0" aria-expanded="${op}" aria-controls="hx_${k}" onclick="hlOpen('${k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hlOpen('${k}')}"`:'';
   return`<div class="rf ${cls}"${at}>${UI[icon]}<span class="rf-l">${label}</span><span class="rf-r"><span class="rf-v">${v}${unit?` <em>${unit}</em>`:''}</span><span class="rf-n">${g?`<i class="rf-g" aria-hidden="true">${g}</i>`:''}${t}${age}</span></span>${k?(op?UI.chevU:UI.chevD):''}</div>`
-    +(op?`<div class="bx" id="hx_${k}"><div class="vc-hd" id="hth_${k}"></div><div id="htc_${k}"></div>`
+    +(op?`<div class="bx" id="hx_${k}"><div class="vc-hd" id="hth_${k}"></div><div id="htc_${k}"></div>${k==='wt'&&hlFatOn()?'<div class="hl-sub" id="hth_wtf"></div><div id="htc_wtf"></div>':''}${k==='wt'?hlPwHTML():''}`
       +`<details class="wm"${_hlWm[k]?' open':''} ontoggle="_hlWm['${k}']=this.open"><summary><b>What moves it</b>${UI.chevD}</summary><p>${HL_NOTE[k]}</p></details></div>`:'');
 }
 function hlBase(){
@@ -151,8 +151,15 @@ function hlBlood(){
 // ── v141 HEALTH HISTORY: every baseline row opens to its chart (bare: drag and pinch, no toolbar), nothing stored ──
 const HL_KEYS=['rhr','wt','bmi','fat','ffm','smm','tbw','ree','bp','vo2'];
 const hlCid=k=>(HL_KEYS.includes(k)?'htc_':'btc_')+k;
+// v145: the weight row also charts body fat under it, on the same dates (two charts that pan together, never two axes)
+const hlFatOn=()=>hlPts('fat').length>1;
+function hlOff(k){chUnmount(hlCid(k));if(k==='wt')chUnmount('htc_wtf');}
+function hlFatHd(d){
+  const h=$('hth_wtf');if(!h)return;const P=hlPts('fat');let i=d?P.findIndex(p=>p.d===d):P.length-1;if(i<0)i=P.length-1;
+  h.innerHTML=`<b>Body fat</b><span>${hlF('fat',P[i].v)} % · ${fmtD(P[i].d)}</span>`;
+}
 function hlOpen(k){
-  const was=_hlOpen===k;if(_hlOpen)chUnmount(hlCid(_hlOpen));_hlOpen=was?null:k;renderHealth();
+  const was=_hlOpen===k;if(_hlOpen)hlOff(_hlOpen);_hlOpen=was?null:k;renderHealth();
   if(_hlOpen){const e=$((HL_KEYS.includes(k)?'hr_':'br_')+k);if(e&&e.scrollIntoView)e.scrollIntoView({block:'nearest'});}
 }
 const HL_SPEC={rhr:['Resting heart rate','bpm',0],wt:['Weight','kg',1],bmi:['BMI','',1],fat:['Body fat','%',1],ffm:['Fat-free mass','kg',1],
@@ -208,6 +215,24 @@ function hlTrendLine(k,info,est){
   if(k==='wt'&&df<0){const w=wtTrend();if(w&&w.fast)return s+' A slower loss keeps more muscle and strength.';}
   return s+tail;
 }
+// v145 (R9.4, R9.5): the weight change in view split into estimated fat and fat-free mass, from the weigh-ins with body measurement
+function hlWtFat(info){
+  const ms=S().measurements.filter(m=>m.weight&&m.imp&&m.date>=info.from&&m.date<=info.to),W=hlAvg(hlDays(ms,m=>m.weight)),F=hlAvg(hlDays(ms,m=>{const c=scComp(m);return c?c.ffm:null;}));
+  const fb=hlTrendLine('fat',info,true);if(W.length<2||F.length!==W.length)return fb;
+  const dw=W[W.length-1].v-W[0].v,dl=F[F.length-1].v-F[0].v,kg=r1(Math.abs(dw)).toFixed(1);
+  if(Math.abs(dw)<TH.WF_MIN_KG)return fb;
+  const fat=(dw-dl)/dw; // the share of the change that is fat
+  if(dw<0)return fat>=TH.WF_FAT_SHARE?`Most of the ${kg} kg lost looks like fat. Muscle is holding.`
+    :`Part of the ${kg} kg lost may be muscle, an estimate. A slower loss and protein at each meal help keep it.`;
+  return fat>=TH.WF_FAT_SHARE?`Most of the ${kg} kg gained looks like fat, an estimate.`:`Much of the ${kg} kg gained looks like fat-free mass, an estimate.`;
+}
+// v145 (R9.6): threshold power per kilogram with a real power meter; on a climb speed follows W/kg, so a kilogram less is worth about 100/kg %
+function hlPw(){
+  const r=(stThr()||{}).ride||{},w=wtOn(td());if(!r.ftp||!w||!pmOn())return null;
+  return{wkg:r1(r.ftp/w.weight).toFixed(1),kg:r1(w.weight).toFixed(1),pct:r1(100/w.weight).toFixed(1)};
+}
+function hlPwHTML(){const p=hlPw();if(!p)return'';const w=wtTrend();
+  return`<p class="hl-pw">Threshold power ${p.wkg} W/kg at ${p.kg} kg. ${w&&w.fast?'Losing this fast can cost power, which undoes the gain.':`On a climb, each kilogram less is worth about ${p.pct}% if power holds.`}</p>`;}
 function hlChart(k){
   const id='htc_'+k,[name,unit]=HL_SPEC[k],f=v=>hlF(k,v)+hlU(k),P=hlPts(k);
   const base={bare:true,vals:false,key:'hl'+k,H:150,span:TH.HL_VIEW,label:name,yfmt:v=>hlF(k,v),pick:d=>hlHead(k,d),
@@ -236,7 +261,13 @@ function hlChart(k){
   const goal=S().profile.wtGoal;
   if(k==='wt'&&goal)cfg.lines=[{v:goal,label:'Goal',color:'--t2'}];
   if(k==='bmi'){const R=TH.BMI_RNG;cfg.zones=[{lo:R[0],hi:R[1],color:'--t3/1.6'}];cfg.legend='General adult range';cfg.yat=[R[0],R[1]];}
-  return mountChart(id,cfg);
+  if(k!=='wt'||!$('htc_wtf'))return mountChart(id,cfg);
+  // body fat under weight: the same dates, so a pan or a tap on one moves both
+  cfg.group='hlwt';const r=mountChart(id,cfg),F=hlPts('fat'),ff=v=>hlF('fat',v)+' %';hlFatHd(null);
+  mountChart('htc_wtf',{...base,key:'hlwtf',H:110,group:'hlwt',label:'Body fat',yfmt:v=>hlF('fat',v),pick:d=>{hlHead('wt',d);hlFatHd(d);},stats:{s:1},
+    series:[{name:'Body fat',color:'--teal',noLine:true,dots:true,fmt:ff,pts:F},{name:`${TH.HL_AVG}-day average`,color:'--text',noDots:true,fmt:ff,pts:hlAvg(F)}],
+    means:info=>hlWtFat(info)});
+  return r;
 }
 
 // ── active injuries, each with Mark healed (Log > Injury keeps its own list) ──
@@ -253,7 +284,7 @@ function renderHealth(){
   $('hinf_base').textContent=`Usual is your average over the ${TH.HL_USUAL} days before the latest reading.`;
   $('hBase').innerHTML=b||'<div class="empty-state" style="padding:8px 0"><div class="empty-title">No measurements yet</div><div class="empty-sub">Log weight, blood pressure or resting heart rate and your personal baseline builds here.</div><button class="empty-btn" onclick="logGo(\'lMeas\')">Add a measurement</button></div>';
   // an open row whose data has gone closes
-  if(_hlOpen&&(HL_KEYS.includes(_hlOpen)?!$('hr_'+_hlOpen):!bmPts(_hlOpen).length)){chUnmount(hlCid(_hlOpen));_hlOpen=null;if(b)$('hBase').innerHTML=hlBase();}
+  if(_hlOpen&&(HL_KEYS.includes(_hlOpen)?!$('hr_'+_hlOpen):!bmPts(_hlOpen).length)){hlOff(_hlOpen);_hlOpen=null;if(b)$('hBase').innerHTML=hlBase();}
   if(_hlOpen&&HL_KEYS.includes(_hlOpen))hlChart(_hlOpen);
   $('hBlood').innerHTML=hlBlood();
   if(_hlOpen&&!HL_KEYS.includes(_hlOpen))drawBloodChart(_hlOpen);
