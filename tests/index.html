@@ -4396,6 +4396,70 @@ seq('v146 connections',async()=>{
   }finally{Object.assign(window,keep);_auth=null;_idKey=false;delete _s.connLog;box.remove();css.remove();}
 });
 
+seq('v148 profile merge',async()=>{
+  const keep={_s,_auth,sbFetch:window.sbFetch,_idKey},JS=JSON.stringify,cloud={row:null,posts:0};
+  const ans=(st,j)=>new Response(JSON.stringify(j),{status:st,headers:{'Content-Type':'application/json'}});
+  const phone=p=>{const d=JSON.parse(JS(DEFAULTS));d.profile={name:'A',sleepGoal:8,wtGoal:70,plan:{0:{type:'Run'},2:{type:'Ride'}},...p};d.onboardingDone=true;d.dataUid='uid-a';d.insLean=true;_s=d;migrate();return d;};
+  const sync=async d=>{_s=d;await pullAll();await pushAll();return d;};
+  const tick=()=>new Promise(r=>setTimeout(r,3));
+  try{
+    _auth={access_token:'t',user:{id:'uid-a'}};_idKey=false;
+    window.sbFetch=async(p,o={})=>{const t=p.split('/rest/v1/')[1].split('?')[0];
+      if(t==='profile'){if(o.method==='POST'){cloud.row=JSON.parse(o.body)[0];cloud.posts++;return ans(201,{});}return ans(200,cloud.row?[JSON.parse(JS(cloud.row))]:[]);}
+      return ans(o.method?201:200,[]);};
+    const P=profPaths({name:'A',plan:{0:{type:'Run'},3:{type:'Yoga'}},naps:{'2026-10-20':[{a:1,b:2,by:'you'}]},ft:{name:1}});
+    check('v148 paths: each plan day and each nap date is its own field, the stamps are not',JS(Object.keys(P).sort())===JS(['name','naps.2026-10-20','plan.0','plan.3'])&&JS(profBuild(P,{name:1}))===JS({name:'A',plan:{0:{type:'Run'},3:{type:'Yoga'}},naps:{'2026-10-20':[{a:1,b:2,by:'you'}]},ft:{name:1}}),JS(P));
+
+    // phone A sets up the account; phone B starts from the cloud
+    const A=phone({});A.pending['profile|1']=Date.now();A.profileTs=Date.now();A.profSnap=null;await sync(A);
+    const B=phone({name:'',sleepGoal:7.5,wtGoal:null,plan:{}});B.onboardingDone=false;B.profSnap=null;await sync(B);
+    check('v148 start: a new phone takes the profile from the cloud',B.profile.name==='A'&&B.profile.sleepGoal===8&&JS(B.profile.plan)===JS(A.profile.plan)&&B.onboardingDone&&!B.pending['profile|1'],JS(B.profile));
+
+    // both phones edit, neither has synced the other's change
+    await tick();_s=A;A.profile.sleepGoal=8.5;A.profile.plan[4]={type:'Swim'};markProfile();
+    await tick();_s=B;B.profile.wtGoal=68;B.profile.plan[2]={type:'Weights'};markProfile();
+    check('v148 stamps: an edit stamps only the fields it changed',JS(Object.keys(B.profile.ft).sort())===JS(['plan.2','wtGoal'])&&JS(Object.keys(A.profile.ft).sort())===JS(['plan.4','sleepGoal']),JS(B.profile.ft));
+    await sync(A);await sync(B);await sync(A);
+    const want=p=>p.sleepGoal===8.5&&p.wtGoal===68&&p.plan[2].type==='Weights'&&p.plan[4].type==='Swim'&&p.plan[0].type==='Run';
+    check('v148 merge: two phones changing different fields both keep both changes',want(A.profile)&&want(B.profile)&&want(cloud.row.data),JS(A.profile)+' | '+JS(cloud.row.data));
+    check('v148 merge: nothing left waiting once both phones hold the same profile',!A.pending['profile|1']&&!B.pending['profile|1'],'');
+    const n0=cloud.posts;await sync(A);await sync(B);
+    check('v148 merge: syncing again with nothing changed sends nothing',cloud.posts===n0,cloud.posts-n0);
+
+    // naps added on two phones, one taken off on one of them
+    await tick();_s=A;napSet('2026-10-21',780,820);await tick();_s=B;napSet('2026-10-22',800,840);
+    await sync(A);await sync(B);await sync(A);
+    check('v148 naps: naps added on two phones on different days are both kept',A.profile.naps['2026-10-21']&&A.profile.naps['2026-10-22']&&B.profile.naps['2026-10-21']&&B.profile.naps['2026-10-22'],JS(A.profile.naps));
+    await tick();_s=B;napPut('2026-10-21',[]);await sync(B);await sync(A);
+    check('v148 naps: a nap removed on one phone is removed on the other',!A.profile.naps['2026-10-21']&&A.profile.naps['2026-10-22']&&!cloud.row.data.naps['2026-10-21'],JS(A.profile.naps));
+
+    // the same field on both: the later change wins, wherever it syncs first
+    _s=A;A.profile.goalName='10K';markProfile();await tick();_s=B;B.profile.goalName='Half marathon';markProfile();
+    await sync(B);await sync(A);
+    check('v148 conflict: the same field changed on both phones keeps the later change',A.profile.goalName==='Half marathon'&&cloud.row.data.goalName==='Half marathon',A.profile.goalName);
+    _s=A;A.profile.goalName='Marathon';markProfile();await tick();_s=B;B.profile.goalName='Trail';markProfile();
+    await sync(A);await sync(B);await sync(A);
+    check('v148 conflict: and the earlier one loses even when it reaches the cloud last',A.profile.goalName==='Trail'&&B.profile.goalName==='Trail',A.profile.goalName);
+
+    // a phone still on v147 sends its whole profile, without stamps
+    await tick();_s=A;A.profile.hrGoal=150;markProfile();
+    const old=JSON.parse(JS(cloud.row.data));delete old.ft;old.age=40;cloud.row={...cloud.row,data:old,updated_at:new Date(Date.now()+1000).toISOString()};
+    await sync(A);
+    check('v148 older phone: its change is taken, and this phone keeps its own waiting change',A.profile.age===40&&A.profile.hrGoal===150&&cloud.row.data.age===40&&cloud.row.data.hrGoal===150,JS(cloud.row.data));
+
+    // no last synced copy: the v124 rule
+    const C=phone({name:'A',sleepGoal:6});C.profSnap=null;C.pending['profile|1']=Date.now();C.profileTs=Date.now();await sync(C);
+    check('v148 first merge: with no last synced copy a waiting change wins, the cloud fills the rest',C.profile.sleepGoal===6&&C.profile.age===40&&cloud.row.data.sleepGoal===6,JS(C.profile));
+    _s=phone({});_s.profSnap=null;_s.pending['profile|1']=1;_s.profile.ft={a:Date.now()-(TH.PROF_FT_DAYS+1)*864e5,b:Date.now()};migrate();
+    check('v148 migrate: old stamps are dropped, and a phone with a waiting change gets no synced copy yet',JS(Object.keys(_s.profile.ft))===JS(['b'])&&_s.profSnap===null,JS(_s.profile.ft));
+    _s=phone({});
+    check('v148 migrate: a phone with nothing waiting takes its profile as the last synced copy',profSnapOf(_s)&&profSnapOf(_s).b.name==='"A"','');
+    _s.profSnap='x';
+    check('v148 backup: the last synced copy is left out of backups and cleared by a restore',/delete d\.profSnap/.test(String(backupJSON))&&/_s\.profSnap=null/.test(String(restoreBackup))&&/d\.profSnap=null/.test(String(afterSignIn)),'');
+  }finally{
+    _s=keep._s;_auth=keep._auth;window.sbFetch=keep.sbFetch;_idKey=keep._idKey;
+  }
+});
 seq('v147 storage and startup',async()=>{
   const keep={_s,_db,_dbOk,_dirty,_saveQ,_saveN,_lsN},fns={lsGet,persistSave,flushSave,dbGet};
   const set=Storage.prototype.setItem,rm=Storage.prototype.removeItem;let ls=null,lsSet=0;

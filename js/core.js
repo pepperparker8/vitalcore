@@ -268,6 +268,7 @@ const TH={
   DEBT_HALF:7,                           // R7.6: nights until an old shortfall counts half (the app's choice; no study gives one)
   DEBT_LOOK:42,                          // nights the fading debt reads (an old shortfall is under 2 % of itself by then)
   NAP_KEEP:42,                           // days your nap answers are kept
+  PROF_FT_DAYS:60,                       // v148: days a profile field's change time is kept (long past any two phones syncing)
   NAP_TYPE_MIN:10,NAP_TYPE_MAX:180,      // a nap you add: 10 minutes to 3 hours
   NAP_S5_V:1,                            // version of the 5-minute steps on the band's day (read again once when it changes)
   DY_SPAN_MID:360,DY_SPAN_MIN:60,        // Your day chips 6h and 1h (minutes); 1h is the closest zoom
@@ -312,7 +313,7 @@ const zL=(v,t)=>{
   return'—';
 };
 const EM={energy:['','Exhausted','Low','Good','Full'],mood:['','Low','Flat','Good','Great'],stress:['','Calm','Some','Stressed','Very stressed'],motivation:['','None','Low','Good','Fired up'],soreness:['','None','Mild','Moderate','Severe'],bodyFeel:['','Wrecked','Tired','Okay','Good','Strong'],symptoms:['None','Above the neck','Below the neck'],soreArea:{legs:'Legs',hips:'Hips',back:'Back',upper:'Shoulders and arms',core:'Core'}};
-const APP_VER=147; // keep in step with the cache name in sw.js
+const APP_VER=148; // keep in step with the cache name in sw.js
 const CLAUDE_MODEL='claude-sonnet-5-5';
 const POLAR_API='https://vitalcore-backend.vercel.app/api'; // the owner's Vercel functions; they hold the Polar tokens, the app sends its app key
 const SPORTS=[['Run','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg>'],['Cycle','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M19 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 19l0 -4l-3 -3l5 -4l2 3l3 0"/><path d="M17 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>'],['Swim','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M6 11l4 -2l3.5 3l-1.5 2"/><path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1 -.25"/></svg>'],['Weights','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2"/><path d="M22 12h-1"/></svg>'],['Calisthenics','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M13 21l1 -9l7 -6"/><path d="M3 11h6l5 1"/><path d="M11.5 8.5l4.5 -3.5"/></svg>'],['Hike','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l2 -4"/><path d="M13 21v-4l-3 -3l1 -6l3 4l3 2"/><path d="M10 14l-1.827 -1.218a2 2 0 0 1 -.831 -2.15l.28 -1.117a2 2 0 0 1 1.939 -1.515h1.439l4 1l3 -2"/><path d="M17 12v9"/><path d="M16 20h2"/></svg>'],['Walk','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l3 -4"/><path d="M16 21l-2 -4l-3 -3l1 -6"/><path d="M6 12l2 -3l4 -1l3 3l3 1"/></svg>'],['Yoga','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 20h4l1.5 -3"/><path d="M17 20l-1 -5h-5l1 -7"/><path d="M4 10l4 -1l4 -1l4 1.5l4 1.5"/></svg>'],['Other','<svg class="sp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>']];
@@ -363,7 +364,31 @@ function icuFill(rec,vals,who='icu'){
   }
   rec.src=src;return ch;
 }
-function markProfile(){const d=S();d.profileTs=Date.now();d.pending['profile|1']=d.profileTs;save(d);queuePush();}
+// v148: the profile merges field by field. Each field (each day of the plan, each date of naps) is a path; profSnap (local only)
+// holds the paths as last synced (b) and as last stamped (m); profile.ft {path: ms} (synced inside the profile) says when this
+// phone or another changed a path. Only a path both phones changed since the last sync is settled by the newer stamp.
+const PROF_DEEP=['naps','plan'];
+function profPaths(p){
+  const o={};
+  for(const [k,v] of Object.entries(p||{})){
+    if(k==='ft'||v===undefined)continue;
+    if(PROF_DEEP.includes(k)&&v&&typeof v==='object'&&!Array.isArray(v)){for(const [j,w] of Object.entries(v))if(w!==undefined)o[k+'.'+j]=JSON.stringify(w);}
+    else o[k]=JSON.stringify(v);
+  }
+  return o;
+}
+function profBuild(P,ft){
+  const p={};
+  for(const [k,v] of Object.entries(P)){const i=k.indexOf('.'),t=i>0?k.slice(0,i):'';if(PROF_DEEP.includes(t))(p[t]=p[t]||{})[k.slice(i+1)]=JSON.parse(v);else p[k]=JSON.parse(v);}
+  if(ft&&Object.keys(ft).length)p.ft=ft;
+  return p;
+}
+function profSnapOf(d){try{return d.profSnap?JSON.parse(d.profSnap):null;}catch(e){return null;}}
+function markProfile(){
+  const d=S(),now=Date.now(),a=profPaths(d.profile),sn=profSnapOf(d),was=sn?sn.m||sn.b:null;
+  if(was){const ft=d.profile.ft={...(d.profile.ft||{})};for(const k of new Set([...Object.keys(a),...Object.keys(was)]))if(a[k]!==was[k])ft[k]=now;d.profSnap=JSON.stringify({b:sn.b,m:a});}
+  d.profileTs=now;d.pending['profile|1']=now;save(d);queuePush();
+}
 function migrate(){
   const d=_s;
   delete d.readHist;   // v134: the old readiness is retired; Body (bodyHist) is the one score
@@ -420,6 +445,9 @@ function migrate(){
       if(ch)d.profile.naps=keep;
     }else if(N!=null&&d.profile)delete d.profile.naps;
   }
+  // v148: stamps older than TH.PROF_FT_DAYS are dropped; a phone with nothing waiting takes its profile as the last synced copy
+  if(d.profile&&d.profile.ft){const ft={};for(const [k,t] of Object.entries(d.profile.ft))if(Number.isFinite(t)&&Date.now()-t<=TH.PROF_FT_DAYS*864e5)ft[k]=t;if(Object.keys(ft).length)d.profile.ft=ft;else delete d.profile.ft;}
+  if(!d.profSnap&&d.pending&&!d.pending['profile|1'])d.profSnap=JSON.stringify({b:profPaths(d.profile)});
   delete d.streak;delete d.exDismissed;delete d.hasRealData;delete d.lastInsight;
 }
 

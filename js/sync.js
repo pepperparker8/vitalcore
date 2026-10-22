@@ -47,6 +47,7 @@ function afterSignIn(){
   d.insightLog.forEach(e=>{d.pending['insight|'+e.date]=e.ts||Date.now();});
   // v124: a phone that never finished setup (the sign-in wall comes first now) takes the account's profile from the cloud instead of overwriting it
   if(d.onboardingDone){d.pending['profile|1']=Date.now();d.profileTs=Date.now();}
+  d.profSnap=null;   // v148: the first merge on this account follows the v124 rule above
   save(d);
   if(fresh){initUI();refreshAll();}
   showToast('Signed in ✓ — syncing…');
@@ -120,7 +121,7 @@ async function pushAll(){
     for(const n of [...Object.keys(TBL),'insight','profile']){
       const items=sent.filter(([k])=>k.startsWith(n+'|'));if(!items.length)continue;
       let rows=[],path;
-      if(n==='profile'){rows=[{user_id:_auth.user.id,data:d.profile,updated_at:new Date(d.profileTs||Date.now()).toISOString()}];path='/rest/v1/profile?on_conflict=user_id';}
+      if(n==='profile'){rows=[{user_id:_auth.user.id,data:JSON.parse(JSON.stringify(d.profile)),updated_at:new Date(d.profileTs||Date.now()).toISOString()}];path='/rest/v1/profile?on_conflict=user_id';}
       else if(n==='insight'){rows=items.map(([k])=>d.insightLog.find(e=>e.date===k.slice(8))).filter(Boolean).map(e=>({user_id:_auth.user.id,date:e.date,time:e.time,rendered:JSON.stringify(e)}));path='/rest/v1/insights?on_conflict=user_id,date';}
       else{rows=items.map(([k])=>d[TBL[n].k].find(r=>r.id===k.slice(n.length+1))).filter(Boolean).map(r=>toRow(n,r));rows=sameKeys(rows);path=`/rest/v1/${TBL[n].t}?on_conflict=${_idKey?'id':'user_id,id'}`;}
       if(rows.length){
@@ -130,6 +131,8 @@ async function pushAll(){
         if(!r.ok){if(TBL[n]?.opt){d[OPT_FLAG[n]]=true;continue;}throw new Error(await errMsg(r));}
         if(TBL[n]?.opt)d[OPT_FLAG[n]]=false;
       }
+      // v148: what the cloud now holds is the last synced profile
+      if(n==='profile'&&rows.length){const sb=profPaths(rows[0].data),sn=profSnapOf(d);d.profSnap=JSON.stringify({b:sb,m:sn&&sn.m||sb});}
       items.forEach(([k,ts])=>{if(d.pending[k]===ts)delete d.pending[k];});
     }
     for(const t of [...d.tomb]){
@@ -142,6 +145,32 @@ async function pushAll(){
 }
 // optional tables (added after the first database setup): sync carries on without them and notes it here
 const OPT_FLAG={food:'noFoodTbl',polar:'noPolarTbl',pday:'noDayTbl'};
+// v148: the cloud profile merged into this phone's, path by path (profPaths, core.js). A path only one side changed since the
+// last sync takes that side; both changed, the newer stamp wins (no stamp: the whole profile's time). With no last synced copy
+// (first sync after the update, a new account, a restore) the v124 rule holds: a waiting local change wins, else the newer profile.
+function profMerge(L,R,lTs,rTs,base,waiting){
+  const a=profPaths(L),b=profPaths(R),lf=L.ft||{},rf=R.ft||{},M={},ft={};
+  for(const k of new Set([...Object.keys(a),...Object.keys(b)])){
+    const l=a[k],r=b[k];let take;
+    if(l===r)take='l';
+    else if(base){const s=base[k];take=l===s?'r':r===s?'l':(rf[k]||rTs)>(lf[k]||lTs)?'r':'l';}
+    else take=waiting?(l===undefined?'r':'l'):r===undefined?'l':rTs>lTs?'r':'l';
+    const v=take==='r'?r:l,t=l===r?Math.max(lf[k]||0,rf[k]||0):take==='r'?rf[k]:lf[k];
+    if(v!==undefined)M[k]=v;
+    if(t)ft[k]=t;
+  }
+  return {p:profBuild(M,ft),M,b};
+}
+function profPull(d,data,rTs){
+  const sn=profSnapOf(d),waiting=!!d.pending['profile|1'],lTs=d.profileTs||0;
+  const {p,M,b}=profMerge(d.profile||{},data,lTs,rTs,sn&&sn.b,waiting);
+  const same=(X,Y)=>{const kx=Object.keys(X),ky=Object.keys(Y);return kx.length===ky.length&&kx.every(k=>X[k]===Y[k]);};
+  const st=f=>JSON.stringify(Object.entries(f||{}).sort()),ftSame=st(p.ft)===st(data.ft);
+  d.profile=p;d.profSnap=JSON.stringify({b,m:M});   // the cloud's copy is the last synced one until the merge is sent
+  if(!same(M,b)||!ftSame){d.profileTs=Math.max(Date.now(),lTs,rTs);d.pending['profile|1']=d.profileTs;}   // the cloud lacks something: send the merge
+  else{d.profileTs=Math.max(lTs,rTs);delete d.pending['profile|1'];}
+  if(d.profile.name)d.onboardingDone=true;
+}
 async function pullAll(){
   const d=S();
   for(const [n,T] of Object.entries(TBL)){
@@ -161,7 +190,7 @@ async function pullAll(){
   }
   const pr=await sbFetch('/rest/v1/profile?select=*');
   if(pr.ok){const rows=await pr.json();const x=rows[0];
-    if(x&&!d.pending['profile|1']&&Date.parse(x.updated_at)>(d.profileTs||0)){d.profile={...d.profile,...x.data};d.profileTs=Date.parse(x.updated_at);if(d.profile.name)d.onboardingDone=true;}}
+    if(x&&x.data)profPull(d,x.data,Date.parse(x.updated_at)||0);}   // v148: always merged, as phone clocks differ
   const ir=await sbFetch('/rest/v1/insights?select=*&order=date.desc&limit=30');
   if(ir.ok){
     // newer copy wins (follow-up questions are saved inside the briefing); local unsent edits are never overwritten

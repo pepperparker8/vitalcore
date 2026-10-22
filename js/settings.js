@@ -33,7 +33,7 @@ function saveSettings(){
 }
 function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function backupJSON(){
-  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;delete d.napBackV;delete d.bpUser;delete d.bpOk;delete d.scUid;delete d.scOk;delete d.bpDev;delete d.scDev;delete d.connLog;
+  const d={...S()};delete d.claudeKey;delete d.intervalsKey;delete d.intervalsID;delete d.polarKey;delete d.pending;delete d.tomb;delete d.icuSent;delete d.dataUid;delete d.napBack;delete d.napBackV;delete d.bpUser;delete d.bpOk;delete d.scUid;delete d.scOk;delete d.bpDev;delete d.scDev;delete d.connLog;delete d.profSnap;
   download(`vitalcore-backup-${td()}.json`,'application/json',JSON.stringify(d));
   showToast('Backup downloaded');
 }
@@ -52,7 +52,7 @@ function restoreBackup(inp){
       migrate();
       for(const [n,T] of Object.entries(TBL))_s[T.k].forEach(r=>{_s.pending[n+'|'+r.id]=r.ts||Date.now();});
       _s.insightLog.forEach(e=>{_s.pending['insight|'+e.date]=e.ts;});
-      _s.pending['profile|1']=Date.now();_s.profileTs=Date.now();
+      _s.pending['profile|1']=Date.now();_s.profileTs=Date.now();_s.profSnap=null;   // v148: the restored profile wins its first merge
       save(_s);queuePush();closeSettings();initUI();showToast('Backup restored ✓');
     }catch(e){showToast('That file is not a VitalCore backup');}
   };
