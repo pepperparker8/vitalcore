@@ -138,6 +138,7 @@
 
   <div class="tr-sec">Body</div>
   <div class="card"><div class="kh" data-i="wt"><b>Body weight</b></div><div id="wtCanvas"></div><div class="wt-goal-line" id="wtGoalLine"></div></div>
+  <div class="card" id="fatCard" style="display:none"><div class="kh" data-i="fat"><b>Body fat</b></div><div id="fatCanvas"></div></div>
   <div class="card"><div class="kh" data-i="sore"><b>Soreness and coffee</b></div><div id="bodyCanvas"></div><div class="set-note" id="bodyNote"></div></div>
 
 </div><!-- /trCharts -->
@@ -164,7 +165,7 @@
 <!-- LOG -->
 <div class="page page-fade" id="pg-log">
   <div class="lg-prog" id="lgProg"></div>
-  <div class="lg-grp">Every day</div>
+  <div class="lg-grp">Morning</div>
   <div class="lg-card">
   <div class="log-sec" id="lCheckin"><div class="log-hdr" onclick="tlog('lCheckin')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 10l.01 0"/><path d="M15 10l.01 0"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/></svg></div><div><div class="log-title">Check-in</div><div class="log-stat" id="ciStat">Not done today</div></div><span class="log-st" id="lCheckinSt"></span><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
@@ -179,21 +180,9 @@
     <div class="ci-row ci-wide" id="ciAreaRow" style="display:none"><div class="ci-q"><b>Where</b><span class="ci-w" data-k="soreArea" data-e="Tap all that apply">Tap all that apply</span></div><div class="ci-btns ci-txt ci-area" data-k="soreArea"><button class="ci-btn" data-a="legs" onclick="selArea('legs',this)">Legs</button><button class="ci-btn" data-a="hips" onclick="selArea('hips',this)">Hips</button><button class="ci-btn" data-a="back" onclick="selArea('back',this)">Back</button><button class="ci-btn" data-a="upper" onclick="selArea('upper',this)">Shoulders and arms</button><button class="ci-btn" data-a="core" onclick="selArea('core',this)">Core</button></div></div>
     <div class="ci-row ci-wide"><div class="ci-q"><b>Symptoms</b><span class="ci-w" data-k="symptoms" data-e="Cold or illness">Cold or illness</span></div><div class="ci-btns ci-txt" data-k="symptoms"><button class="ci-btn" onclick="selCI('symptoms',0,this)">None</button><button class="ci-btn" onclick="selCI('symptoms',1,this)">Above the neck</button><button class="ci-btn" onclick="selCI('symptoms',2,this)">Below the neck</button></div></div>
     <div class="ci-qn">Above the neck: runny nose, sore throat. Below: fever, aches, chest, stomach.</div>
-    <div class="ci-row"><div class="ci-q"><b>Coffee</b><span class="ci-w" data-k="coffee" data-e="Cups today">Cups today</span></div><div class="ci-btns ci-txt" data-k="coffee"><button class="ci-btn" onclick="selCI('coffee',0,this)">0</button><button class="ci-btn" onclick="selCI('coffee',1,this)">1</button><button class="ci-btn" onclick="selCI('coffee',2,this)">2</button><button class="ci-btn" onclick="selCI('coffee',3,this)">3</button><button class="ci-btn" onclick="selCI('coffee',4,this)">4+</button></div></div>
-    <label class="ci-sw"><span>Last cup after 14:00</span><input type="checkbox" id="ciLate" role="switch"><i class="tgl" aria-hidden="true"></i></label>
-    <label class="ci-fl" for="ciGrat">Grateful for<span>Optional</span></label>
-    <input type="text" class="ci-note" id="ciGrat" placeholder="A good coffee, a quiet run" maxlength="200">
     <div class="ci-sum" id="ciSum"></div>
     <button class="ci-cta" id="ciCta" onclick="submitCI()">Save check-in</button>
   </div>
-
-  <details class="lg-fold" id="reflCard"><summary>Evening reflection<small id="reflWhen"></small></summary>
-    <div class="fg"><label class="fl" for="reflGave">WHAT GAVE ME ENERGY TODAY</label><input type="text" class="inp" id="reflGave" maxlength="200" placeholder="A long walk, a good talk"></div>
-    <div class="fg"><label class="fl" for="reflDrain">WHAT DRAINED ME</label><input type="text" class="inp" id="reflDrain" maxlength="200" placeholder="Back-to-back meetings"></div>
-    <button class="btn-gold" id="reflBtn" onclick="saveReflect()">Save reflection</button>
-  </details>
-
-
     </div>
   </div>
 
@@ -215,6 +204,10 @@
     </div>
   </div>
 
+  </div>
+
+  <div class="lg-grp">Through the day</div>
+  <div class="lg-card">
   <div class="log-sec" id="lWorkout"><div class="log-hdr" onclick="tlog('lWorkout')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 17l5 1l.75 -1.5"/><path d="M15 21l0 -4l-4 -3l1 -6"/><path d="M7 12l0 -3l5 -1l3 3l3 1"/></svg></div><div><div class="log-title">Workout</div><div class="log-stat" id="wkStat">Any sport, any day</div></div><span class="log-st" id="lWorkoutSt"></span><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
     <div class="log-body">
       <div class="set-note" id="wkIcuNote" style="display:none"></div>
@@ -276,6 +269,26 @@
     </div>
   </div>
 
+  </div>
+
+  <div class="lg-grp">Afternoon and evening</div>
+  <div class="lg-card">
+  <div class="log-sec" id="lEve"><div class="log-hdr c3" onclick="tlog('lEve')"><div class="log-ico"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14c.83 .642 2.077 1.017 3.5 1c1.423 .017 2.67 -.358 3.5 -1c.83 -.642 2.077 -1.017 3.5 -1c1.423 -.017 2.67 .358 3.5 1"/><path d="M8 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2"/><path d="M12 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2"/><path d="M3 10h14v5a6 6 0 0 1 -6 6h-2a6 6 0 0 1 -6 -6v-5z"/><path d="M16.746 16.726a3 3 0 1 0 .252 -5.555"/></svg></div><div><div class="log-title">Coffee and reflection</div><div class="log-stat" id="eveStat">Optional</div></div><div class="log-chev"><svg class="ui-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div></div>
+    <div class="log-body">
+  <div class="ci-card" id="eveCard">
+    <div class="ci-row"><div class="ci-q"><b>Coffee</b><span class="ci-w" data-k="coffee" data-e="Cups today">Cups today</span></div><div class="ci-btns ci-txt" data-k="coffee"><button class="ci-btn" onclick="selCI('coffee',0,this)">0</button><button class="ci-btn" onclick="selCI('coffee',1,this)">1</button><button class="ci-btn" onclick="selCI('coffee',2,this)">2</button><button class="ci-btn" onclick="selCI('coffee',3,this)">3</button><button class="ci-btn" onclick="selCI('coffee',4,this)">4+</button></div></div>
+    <label class="ci-sw"><span>Last cup after 14:00</span><input type="checkbox" id="ciLate" role="switch"><i class="tgl" aria-hidden="true"></i></label>
+    <label class="ci-fl" for="ciGrat">Grateful for<span>Optional</span></label>
+    <input type="text" class="ci-note" id="ciGrat" placeholder="A good coffee, a quiet run" maxlength="200">
+    <label class="ci-fl" for="reflGave">What gave me energy<span>Optional</span></label>
+    <input type="text" class="ci-note" id="reflGave" placeholder="A long walk, a good talk" maxlength="200">
+    <label class="ci-fl" for="reflDrain">What drained me<span>Optional</span></label>
+    <input type="text" class="ci-note" id="reflDrain" placeholder="Back-to-back meetings" maxlength="200">
+    <div class="ci-sum" id="eveSum"></div>
+    <button class="ci-cta" id="eveCta" onclick="saveEve()">Save coffee and reflection</button>
+  </div>
+    </div>
+  </div>
   </div>
 
   <div class="lg-grp">Now and then</div>

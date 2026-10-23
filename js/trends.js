@@ -22,6 +22,7 @@ const TR_INFO={read:'How ready your body is for training today, from 0 to 100, a
  bo:'How your mood, energy and calm have run over your last 7 check-ins. High means you need a lighter week, not more effort.',
  mind:'Minutes of mindfulness or breathing practice. Short, regular sessions help calm and sleep.',
  wt:'Your weight with a 7-day average, which smooths out day-to-day swings from water and food.',
+ fat:'An estimate from the scale, so water, a meal or a workout shift it. Read the trend over weeks, not one day.',
  sore:'How sore you felt each day and how many coffees you had. Coffee after 14:00 can shorten that night\'s sleep.'};
 const TR_I_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></svg>';
 let _trInf={},_trT=null,_trSK='';
@@ -88,7 +89,7 @@ function renderTrendsTab(){
   const T=DN(td()),g=_chG.trends;
   if(g&&_trT!=null&&T!==_trT&&Math.abs(g.view[1]-(_trT+0.5))<0.01)g.view=[g.view[0]+T-_trT,g.view[1]+T-_trT];
   _trT=T;trDecor();renderSleepBars();renderBurnout();
-  requestAnimationFrame(()=>{renderReadTrend();renderRecTrend();renderTrends();renderWtChart();renderStrTrend();renderSportTrend();renderFormChart();renderLoad();renderProgress();trOnView();});
+  requestAnimationFrame(()=>{renderReadTrend();renderRecTrend();renderTrends();renderWtChart();renderFatChart();renderStrTrend();renderSportTrend();renderFormChart();renderLoad();renderProgress();trOnView();});
 }
 // distance for one sport: by day up to TH.TR_WEEKLY days, by week beyond
 const spVU=(v,swim)=>swim?[Math.round(v*1000)+'','m']:[(Math.round(v*10)/10)+'','km'];

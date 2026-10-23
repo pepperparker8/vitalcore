@@ -30,7 +30,7 @@ function recalc(){
   // v134: Body is the one recovery score; one snapshot a day in bodyHist
   recordBody(calcBody().score);stSnap();
   renderExTag();renderDayBar();renderRing(dayScore(tdDay()));renderGauges();renderYourDay();
-  renderPlan();renderSoreSug();renderReflect();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
+  renderPlan();renderSoreSug();renderMind();renderLogHead();renderTLoad();renderActList();updateInsNudge();
 }
 window.addEventListener('offline',()=>$('offlineBar').classList.add('show'));
 window.addEventListener('online',()=>{$('offlineBar').classList.remove('show');if(_auth||(S().intervalsKey&&S().intervalsID)||S().polarKey)syncAll(false);updSyncStatus();});

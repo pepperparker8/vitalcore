@@ -724,18 +724,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 #wEffNote{margin-top:6px}
 
 /* ── v119: check-in rows full width (the card no longer sits inside a second card), every button 44px+ at 360px ── */
-#lCheckin .ci-card{padding:0;margin:0;background:none;box-shadow:none;border:0}
-#lCheckin .ci-row{display:block;margin-bottom:14px}
-#lCheckin .ci-metric{width:auto;margin:0 0 6px}
-#lCheckin .ci-btns{display:flex;gap:6px}
-#lCheckin .ci-btn{flex:1;min-height:48px;min-width:44px}
-#lCheckin .ci-btn .face{width:30px;height:30px}
-#lCheckin .ci-txt .ci-btn{font-size:13px;line-height:1.2;white-space:normal;padding:4px}
-#lCheckin .ci-area{flex-wrap:wrap}
-#lCheckin .ci-area .ci-btn{flex:1 0 auto;padding:4px 12px}
-#lCheckin .ci-ends{width:100%;margin:4px 0 0;font-size:11px}
-#lCheckin .ci-late{min-height:44px;margin:0 0 8px}
-#lCheckin .ci-late input{width:22px;height:22px}
+:is(#lCheckin,#lEve) .ci-card{padding:0;margin:0;background:none;box-shadow:none;border:0}
+:is(#lCheckin,#lEve) .ci-row{display:block;margin-bottom:14px}
+:is(#lCheckin,#lEve) .ci-metric{width:auto;margin:0 0 6px}
+:is(#lCheckin,#lEve) .ci-btns{display:flex;gap:6px}
+:is(#lCheckin,#lEve) .ci-btn{flex:1;min-height:48px;min-width:44px}
+:is(#lCheckin,#lEve) .ci-btn .face{width:30px;height:30px}
+:is(#lCheckin,#lEve) .ci-txt .ci-btn{font-size:13px;line-height:1.2;white-space:normal;padding:4px}
+:is(#lCheckin,#lEve) .ci-area{flex-wrap:wrap}
+:is(#lCheckin,#lEve) .ci-area .ci-btn{flex:1 0 auto;padding:4px 12px}
+:is(#lCheckin,#lEve) .ci-ends{width:100%;margin:4px 0 0;font-size:11px}
+:is(#lCheckin,#lEve) .ci-late{min-height:44px;margin:0 0 8px}
+:is(#lCheckin,#lEve) .ci-late input{width:22px;height:22px}
 
 /* ── v119, v123: one plain sentence under each chart ── */
 .vc-mean{font-size:13px;color:var(--text);line-height:1.45;margin-top:6px}
@@ -1170,16 +1170,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .lg-sh:first-child{margin-top:4px}
 /* check-in: one question per row, the chosen word beside the label */
 #pg-log #ciCard>.sec{display:none}
-#pg-log #lCheckin .ci-row{margin:0;padding:14px 0;border-top:1px solid var(--bdr)}
-#pg-log #lCheckin .ci-row:first-of-type{border-top:0;padding-top:4px}
+#pg-log :is(#lCheckin,#lEve) .ci-row{margin:0;padding:14px 0;border-top:1px solid var(--bdr)}
+#pg-log :is(#lCheckin,#lEve) .ci-row:first-of-type{border-top:0;padding-top:4px}
 .ci-q{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
 .ci-q b{font-size:14px;font-weight:600;color:var(--text)}
 .ci-w{font-size:13px;color:var(--t2);text-align:right}
 .ci-w.on{color:var(--text);font-weight:600}
 #pg-log .ci-btn{background:transparent;border:1px solid var(--bdr);border-radius:12px;color:var(--t2);box-shadow:none}
-#pg-log #lCheckin .ci-btn{min-height:52px}
+#pg-log :is(#lCheckin,#lEve) .ci-btn{min-height:52px}
 #pg-log .ci-btn .face{width:28px;height:28px;color:var(--t3)}
-#pg-log #lCheckin .ci-txt .ci-btn{min-height:44px;border-radius:10px;font-size:14px}
+#pg-log :is(#lCheckin,#lEve) .ci-txt .ci-btn{min-height:44px;border-radius:10px;font-size:14px}
 #pg-log .ci-btn.sel{background:transparent;border-color:var(--text);box-shadow:inset 0 0 0 .5px var(--text);color:var(--text);font-weight:600}
 #pg-log .ci-btn.sel .face{color:var(--text)}
 .ci-qn{font-size:12px;line-height:16px;color:var(--t2);margin:-6px 0 12px}
@@ -1195,15 +1195,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 #pg-log .ci-note{background:var(--bg);border-radius:10px;font-size:15px}
 #pg-log .ci-note:focus{border-color:var(--text)}
 #pg-log .ci-sum{display:none}
-/* folds: evening reflection, sleep details, date effort pain and note */
-.lg-fold,#pg-log .sl-more{margin:16px 0 0;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)}
-.lg-fold summary,#pg-log .sl-more summary{display:flex;align-items:center;min-height:48px;font-size:15px;font-weight:600;color:var(--text);list-style:none;cursor:pointer}
-.lg-fold summary::-webkit-details-marker,#pg-log .sl-more summary::-webkit-details-marker{display:none}
-.lg-fold summary small,#pg-log .sl-more summary small{font-size:13px;font-weight:400;color:var(--t2);margin-left:6px}
-.lg-fold summary::after,#pg-log .sl-more summary::after{content:"";width:7px;height:7px;margin:0 6px 4px auto;border-right:1.8px solid var(--t3);border-bottom:1.8px solid var(--t3);transform:rotate(45deg);transition:transform .15s}
-.lg-fold[open] summary::after,#pg-log .sl-more[open] summary::after{transform:rotate(-135deg);margin-bottom:-4px}
-.lg-fold[open],#pg-log .sl-more[open]{padding-bottom:12px}
-#pg-log .sl-more{margin-bottom:16px}
+/* folds: sleep details, date effort pain and note */
+#pg-log .sl-more{margin:16px 0;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)}
+#pg-log .sl-more summary{display:flex;align-items:center;min-height:48px;font-size:15px;font-weight:600;color:var(--text);list-style:none;cursor:pointer}
+#pg-log .sl-more summary::-webkit-details-marker{display:none}
+#pg-log .sl-more summary small{font-size:13px;font-weight:400;color:var(--t2);margin-left:6px}
+#pg-log .sl-more summary::after{content:"";width:7px;height:7px;margin:0 6px 4px auto;border-right:1.8px solid var(--t3);border-bottom:1.8px solid var(--t3);transform:rotate(45deg);transition:transform .15s}
+#pg-log .sl-more[open] summary::after{transform:rotate(-135deg);margin-bottom:-4px}
+#pg-log .sl-more[open]{padding-bottom:12px}
 #pg-log .btn-out{margin-top:8px}
 /* workout rows: icon, text, a ⋯ menu with Edit and Delete */
 #wkRecent .act-item{display:grid;grid-template-columns:24px minmax(0,1fr) 44px;column-gap:14px;align-items:center;min-height:60px;padding:8px 0;border-bottom:0;border-top:1px solid var(--bdr);position:relative}

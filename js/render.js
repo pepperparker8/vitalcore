@@ -227,6 +227,26 @@ function renderWtChart(){
       return t+'.';}});
   gl.textContent='';
 }
+// v151: body fat under body weight on Trends, from the weigh-ins with body measurement (needs two); an estimate, read as a trend
+function renderFatChart(){
+  const card=$('fatCard');if(!card)return;
+  if(!hlFatOn()){chUnmount('fatCanvas');card.style.display='none';return;}
+  card.style.display='';
+  const raw=hlPts('fat'),ffm=hlPts('ffm'),sm=hlAvg(raw),sf=hlAvg(ffm);
+  const f1=v=>hlF('fat',v)+' %',s1=v=>hlF('fat',v),k1=v=>hlF('ffm',v);
+  mountChart('fatCanvas',{key:'fat',group:'trends',tb:false,legend:true,H:170,label:'Body fat',yfmt:v=>hlF('fat',v),
+    series:[{pts:raw,color:'--t2',name:'Body fat',fmt:f1,vl:s1,thin:true},{pts:sm,color:'--text',name:`${TH.HL_AVG}-day average`,fmt:f1,noDots:true,lg:true}],
+    hi:true,
+    head:x=>{
+      const R=trRight(ffm,x,{f:v=>[k1(v),'kg'],r:r1,rl:'Fat-free mass'});if(!x.p)return{...R,v:null};
+      return{...R,v:s1(x.p.v),u:'%'};},
+    means:info=>{
+      const v=sm.filter(p=>p.d>=info.from&&p.d<=info.to),w=sf.filter(p=>p.d>=info.from&&p.d<=info.to);if(v.length<2)return'';
+      const a=v[0],b=last(v),ch=b.v-a.v;
+      let t=f1(b.v)+(!+hlF('fat',Math.abs(ch))?', steady':`, ${ch<0?'down':'up'} ${hlF('fat',Math.abs(ch))} points since ${dayWord(a.d).replace('Today','today')}`);
+      if(w.length>1){const dm=last(w).v-w[0].v;t+=dm<=-TH.FAT_FFM_DROP?'. Fat-free mass is falling':dm>=TH.FAT_FFM_DROP?'. Fat-free mass is rising':'. Fat-free mass holding';}
+      return t+'.';}});
+}
 function calcBurnout(){
   const d=S(),cis=d.checkins.filter(ciFull).slice(-7);
   if(!cis.length)return{score:0,label:'No data',sub:'Do a few check-ins and this fills in.',psy:0,phys:0};

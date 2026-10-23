@@ -31,7 +31,7 @@ function hlMeas(f,g){
 }
 // ── v140: body composition from a weigh-in with impedance (published equations, estimates only) ──
 // H height cm, W weight kg, R impedance ohms (50 kHz, foot to foot); sex unset = the average of the two.
-// Never in a score, the fuel targets or the briefing; the scale maker's own formulas are not used.
+// Never in a score, the plan or the fuel targets; the briefing reads them as a trend (v151). The scale maker's own formulas are not used.
 const scSx=(m,f)=>{const x=S().profile.sex;return x==='m'?m:x==='f'?f:(m+f)/2;};
 function scComp(rec){
   const p=S().profile,H=p.height,W=rec&&rec.weight,R=rec&&rec.imp;

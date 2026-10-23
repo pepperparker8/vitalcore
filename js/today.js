@@ -27,21 +27,8 @@ function dayScore(dt){
 // a gauge, factor row or Your day opens its sheet for the day in view
 function tdOpen(k){_dtDay=tdDay()===td()?null:tdDay();openDetail(k);}
 
-// evening reflection: opens at TH.REFL_FROM, or once written
+// the day's reflection, saved from the Log's coffee and reflection card (v151)
 const reflOf=c=>{if(!c?.reflection)return null;try{const o=JSON.parse(c.reflection);return{gave:o.g||'',drained:o.d||''};}catch(e){return{gave:c.reflection,drained:''};}};
-function renderReflect(){
-  const c=todayCI(),r=reflOf(c),w=$('reflWhen');
-  if(w)w.textContent=r?'Saved':new Date().getHours()<TH.REFL_FROM?'From '+String(TH.REFL_FROM).padStart(2,'0')+':00':'Optional';
-  if(document.activeElement!==$('reflGave'))$('reflGave').value=r?.gave||'';
-  if(document.activeElement!==$('reflDrain'))$('reflDrain').value=r?.drained||'';
-  $('reflBtn').textContent=r?'Update reflection':'Save reflection';
-}
-function saveReflect(){
-  const g=$('reflGave').value.trim(),dr=$('reflDrain').value.trim();
-  if(!g&&!dr){showToast('Write a few words in either box');return;}
-  const rec=ciRec();rec.reflection=JSON.stringify({g,d:dr});
-  put('checkins',rec);showToast('Reflection saved');refreshAll();
-}
 
 // race phases from profile.goalDate (the goal card was removed in v111; strategy, fuel and the briefing still use these)
 const RACE_PH=[

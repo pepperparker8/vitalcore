@@ -717,7 +717,7 @@ function dtSpec(k){
       usual:u.length?`${Math.round(avg(u)*10)/10} cups a day`:'Needs more days',trend:dtTrend(fn,v=>Math.round(v)+(Math.round(v)>=4?'+':'')+(Math.round(v)===1?' cup':' cups'),{bar:true,color:'--t2',label:'Coffee',min:0,max:4,yfmt:v=>String(Math.round(v)),
         barColor:v=>v>=3?'--amber':'--t2',lines:[{v:3,label:'3+ cups',color:'--amber'}],stats:{good:v=>v<3,label:'under 3 cups',avg:'average'},
         means:info=>cupsLine(info.avg,info.pts.filter(p=>{const c=ciOn(p.d);return c&&c.coffeeLate;}).length,info.n)}),
-      effect:'Not in the score.',link:['Edit in Log',"logGo('lCheckin')"]};
+      effect:'Not in the score.',link:['Edit in Log',"logGo('lEve')"]};
   }
   if(k==='injury'){
     const inj=d.injuries.filter(i=>i.active);

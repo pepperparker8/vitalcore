@@ -341,6 +341,26 @@ later.push((async()=>{
   finally{window.fetch=realFetch;}
 })());
 
+// v151 briefing body composition: estimates from the scale, the change over 28 days, the fat share of the change, W/kg
+run('v151 briefing body comp',()=>{
+  base();_s.profile.age=40;_s.profile.height=175;_s.profile.sex='m';
+  const fx=(n,f)=>{_s.measurements=Array.from({length:n},(_,i)=>({id:'t-'+i,date:dAgo(n-1-i),...f(i,n)}));};
+  fx(10,()=>({weight:75}));
+  check('v151 comp: no impedance gives no bodyComp and the briefing data leaves it out',insComp()===null&&insightData().health.bodyComp==null,'');
+  fx(29,i=>({weight:80-3*i/28,imp:500+10*i/28}));const a=insComp();
+  check('v151 comp: a 3 kg loss with fat-free mass falling reads as falling and moved, with the change over the 28 days',a&&a.change&&a.change.days===28&&a.change.weightKg<-2&&a.change.fatFreeKg<0&&a.fatShareOfChange<TH.WF_FAT_SHARE&&a.fatFreeFalling===true&&a.moved===true&&a.fatPct>0&&a.muscleKg>0,JSON.stringify(a));
+  fx(29,i=>({weight:80-3*i/28,imp:500-5*i/28}));const b=insComp();
+  check('v151 comp: the same loss with impedance easing reads as mostly fat, not falling',b&&b.fatShareOfChange>=TH.WF_FAT_SHARE&&b.fatFreeFalling===undefined&&b.moved===true,JSON.stringify(b));
+  fx(29,()=>({weight:75,imp:500}));const c=insComp();
+  check('v151 comp: a steady month has no fat share and is not moved',c&&c.change&&c.change.weightKg===0&&c.fatShareOfChange===null&&c.moved===undefined,JSON.stringify(c));
+  fx(8,i=>({weight:80-i/4,imp:500}));const d=insComp();
+  check('v151 comp: under 14 days of weigh-ins gives the latest only, no change',d&&d.change===null&&d.fatShareOfChange===null&&d.moved===undefined&&d.fatPct>0,JSON.stringify(d));
+  _s.measurements.push({id:'ex',date:td(),weight:60,imp:400,isEx:true});
+  check('v151 comp: example weigh-ins are left out',insComp().date===d.date&&insComp().fatPct===d.fatPct,'');
+  check('v151 comp: the prompt reads them as estimates and a trend, never a diagnosis, and lets the week run longer',/health\.bodyComp holds estimates/.test(INS_SYS)&&/never one weigh-in/.test(INS_SYS)&&/Never diagnose/.test(INS_SYS)&&/4 to 5 when health\.bodyComp\.moved/.test(INS_SYS),'');
+  check('v151 comp: Body, Load and the outline never read the scale estimates',!/scComp|insComp|hlComp/.test(String(calcBody)+String(calcLoad)+String(strategy)),'');
+});
+
 // v119 briefing data: trimmed, no duplicate check-in or night, no app or device names
 run('Briefing data',()=>{
   base();const s=_s;s.profile.age=40;s.profile.height=175;s.intervalsData={ctl:55,atl:60,tsb:-5,prs:[]};
@@ -348,7 +368,7 @@ run('Briefing data',()=>{
   for(let i=0;i<30;i++){const dt=dAgo(i);
     s.checkins.push({id:'ci-'+dt,date:dt,energy:3,mood:3,stress:2,motivation:3,soreness:2,coffee:2,mindfulMin:10,gratitude:'Family and a good run',reflection:long.slice(0,300),bodyFeel:4});
     s.workouts.push({id:'w'+i,date:dt,type:i%2?'Run':'Cycle',durMin:60,distKm:10,rpe:3,notes:'Easy aerobic, felt smooth',sub:{icu:{hr:140,hrMax:160,kcal:600,elev:100,load:60,z:[1500,1200,600,300,0],zb:[136,152,160,170,190],lt:170,dec:3.2}}});   // v122: zones and drift, as real imports now carry
-    s.measurements.push({id:'mi-'+dt,date:dt,weight:70+i/10,hr:null,bpSys:null,bpDia:null});
+    s.measurements.push({id:'mi-'+dt,date:dt,weight:70+i/10,imp:500+i,hr:null,bpSys:null,bpDia:null});   // v151: impedance, so bodyComp counts toward the size
   }
   s.checkins.reverse();
   s.workouts.slice(0,14).forEach((w,i)=>{w.sub.pain=i%4;});for(let i=0;i<60;i+=2)(s.wellness[dAgo(i)]=s.wellness[dAgo(i)]||{}).vo2=52-i/20;   // v121: pain and the fitness estimate
@@ -1947,7 +1967,7 @@ seq('v128 page',async()=>{
     check('v128 page: sections in order and nothing left of the old page',sec.join()==='Recovery,Sleep,Training,Mind,Body'&&!host.querySelector('#moreCharts,.rng,#weekStats,#trainBars,.week-ban,.pr-sum,.burnout-card')&&typeof setRange==='undefined'&&typeof renderWeekBanner==='undefined',sec.join(', '));
     const tr=ids.map(k=>[k,_ch[k]]),bad=tr.filter(([k,o])=>!o||!o.on||!o.tr||o.cfg.group!=='trends'||o.view[0]!==T-6.5||o.view[1]!==T+0.5).map(x=>x[0]);
     check('v128 page: every Trends chart opens on the same 7 days, with 7D lit and › off',!bad.length&&$('trR7').classList.contains('on')&&$('trR7').getAttribute('aria-pressed')==='true'&&$('trNext').disabled&&$('trSpanLbl').textContent==='Last 7 days'&&!host.querySelector('#trCharts .vc-tb'),bad.length?'off: '+bad.join(', '):$('trDates').textContent+' · '+$('trSpanLbl').textContent);
-    check('v128 page: every card has an ⓘ with its own text',kh.length===15&&kh.every(h=>{const b=h.querySelector('.ib'),p=$('inf-'+h.dataset.i);return b&&b.getAttribute('aria-expanded')==='false'&&p&&p.hidden&&p.textContent.length>30;}),kh.length+' cards');
+    check('v128 page: every card has an ⓘ with its own text',kh.length===16&&kh.every(h=>{const b=h.querySelector('.ib'),p=$('inf-'+h.dataset.i);return b&&b.getAttribute('aria-expanded')==='false'&&p&&p.hidden&&p.textContent.length>30;}),kh.length+' cards');
     trInfo('hrv');const ib=host.querySelector('.kh[data-i="hrv"] .ib');
     check('v128 page: the ⓘ opens its text and says so',ib.getAttribute('aria-expanded')==='true'&&!$('inf-hrv').hidden&&ib.classList.contains('on'),ib.getAttribute('aria-expanded'));
     renderTrendsTab();
@@ -2693,6 +2713,42 @@ seq('v129 health',async()=>{
   }finally{if(_hlOpen)chUnmount('btc_'+_hlOpen);_hlOpen=null;box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}
 });
 
+seq('v151 trends body fat',async()=>{
+  const html=await realFetch('../index.html',{cache:'no-store'}).then(r=>r.text()),card=new DOMParser().parseFromString(html,'text/html').getElementById('fatCard');
+  const css=document.createElement('link');css.rel='stylesheet';css.href='../css/app.css';await new Promise(r=>{css.onload=css.onerror=r;document.head.appendChild(css);});
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:360px';host.innerHTML=card?card.outerHTML:'';document.body.appendChild(host);
+  const rAF=window.requestAnimationFrame;window.requestAnimationFrame=f=>{f(performance.now());return 0;};
+  const kS=window.scComp,txt=e=>e?e.textContent.replace(/\s+/g,' ').trim():'';
+  const v123=x=>x.length<=140&&x.split(/[.!?](?:\s|$)/).filter(z=>z.trim()).length<=2&&!/In view|Of |readings in a row|Nothing to act on/.test(x);
+  delete _chG.trends;
+  // n daily weigh-ins, the first k with impedance; fat from fa to fb, fat-free mass from ma to mb
+  const fix=(n,k,fa,fb,ma,mb)=>{base();_s.profile.height=175;_s.measurements=Array.from({length:n},(_,i)=>({id:'t-'+i,date:dAgo(n-1-i),weight:75,imp:i>=n-k?500:null,fat:fa+(fb-fa)*i/Math.max(1,n-1),ffm:ma+(mb-ma)*i/Math.max(1,n-1)}));
+    window.scComp=m=>m.imp?{fat:m.fat,ffm:m.ffm}:{};};
+  try{
+    check('v151 markup: the card sits right under Body weight with the same anatomy',!!card&&card.querySelector('.kh[data-i="fat"] b').textContent==='Body fat'&&!!card.querySelector('#fatCanvas')&&card.previousElementSibling&&card.previousElementSibling.querySelector('#wtCanvas')!==null&&typeof TR_INFO.fat==='string'&&TR_INFO.fat.length>30,'');
+    fix(10,0,20,19,60,60);renderFatChart();
+    check('v151 hidden: no weigh-in with impedance hides the card and takes the chart down',host.firstElementChild.style.display==='none'&&!_ch.fatCanvas,'');
+    fix(10,1,20,19,60,60);renderFatChart();
+    check('v151 hidden: one weigh-in with impedance is still hidden',host.firstElementChild.style.display==='none'&&!_ch.fatCanvas,'');
+    fix(20,10,20,18,60,60);renderFatChart();
+    const C=_ch.fatCanvas;
+    check('v151 shown: two or more shows the card with a chart on the Trends group',host.firstElementChild.style.display!=='none'&&C&&C.on&&C.cfg.group==='trends'&&C.cfg.key==='fat'&&C.cfg.series[0].pts.length===10&&C.cfg.series[1].noDots,'');
+    const hd=C.cfg.head({p:C.cfg.series[0].pts[9],d:dAgo(0),from:dAgo(0),to:dAgo(0),n:1,wk:false});
+    check('v151 header: fat percent with fat-free mass beside it',hd.v==='18.0'&&hd.u==='%'&&hd.rv==='60.0'&&hd.ru==='kg'&&/Fat-free/.test(hd.rl||''),JSON.stringify(hd));
+    const L=txt(host.querySelector('.vc-mean'));
+    check('v151 line: names a direction, fat-free mass holding, keeps to the one-line rule',v123(L)&&/down|up|steady/.test(L)&&/Fat-free mass holding/.test(L)&&!/NaN|undefined/.test(L+JSON.stringify(hd)),L);
+    fix(20,10,20,18,66,60);renderFatChart();   // steep enough to fall inside any range, 7D included
+    const L2=txt(host.querySelector('.vc-mean'));
+    check('v151 line: fat-free mass falling is said plainly',v123(L2)&&/Fat-free mass is falling/.test(L2),L2);
+    fix(20,10,18,20,60,60);renderFatChart();
+    const L3=txt(host.querySelector('.vc-mean'));
+    check('v151 line: fat going up says up',v123(L3)&&/up/.test(L3)&&!/NaN|undefined/.test(L3),L3);
+    fix(10,0,20,19,60,60);renderFatChart();
+    check('v151 hidden again: losing the readings takes the chart down',host.firstElementChild.style.display==='none'&&!_ch.fatCanvas,'');
+  }finally{
+    window.scComp=kS;window.requestAnimationFrame=rAF;chUnmount('fatCanvas');delete _chG.trends;host.remove();css.remove();
+  }
+});
 seq('v129 log',async()=>{
   const html=await (await realFetch('../index.html',{cache:'no-store'})).text(),doc=new DOMParser().parseFromString(html,'text/html'),box=document.createElement('div');
   box.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:800px;overflow:auto;transform:translateZ(0)';box.innerHTML=doc.getElementById('pg-log').outerHTML;document.body.appendChild(box);
@@ -2708,9 +2764,9 @@ seq('v129 log',async()=>{
   try{
     // nothing logged
     base({noSleep:true});Object.assign(_s,{checkins:[],workouts:[],measurements:[],bloodLogs:[],injuries:[],foodLogs:[]});
-    renderLogHead();
-    check('v129 log: with nothing logged every row says what goes in it',J(lgSum())===J({ciStat:'Takes under a minute',sleepStat:'Not logged today',wkStat:'Nothing logged today',mindStat:'Not yet today',foodStat:'Optional · nothing yet',measStat:'Weight, blood pressure, resting heart rate',bloodStat:'Glucose, cholesterol, uric acid',injStat:'None active'})&&txt($('wkStat'))==='Nothing logged today'&&txt($('injStat'))==='None active',J(lgSum()));
-    window.lgPlan=()=>'Run';
+    Date.prototype.getHours=()=>9;renderLogHead();
+    check('v129 log: with nothing logged every row says what goes in it',J(lgSum())===J({ciStat:'Takes under a minute',sleepStat:'Not logged today',wkStat:'Nothing logged today',mindStat:'Not yet today',eveStat:'From 14:00',foodStat:'Optional · nothing yet',measStat:'Weight, blood pressure, resting heart rate',bloodStat:'Glucose, cholesterol, uric acid',injStat:'None active'})&&txt($('wkStat'))==='Nothing logged today'&&txt($('injStat'))==='None active',J(lgSum()));
+    Date.prototype.getHours=gh;window.lgPlan=()=>'Run';
     check('v129 log: with nothing logged and a session planned, the workout row names it',lgSum().wkStat==='Plan today: Run',lgSum().wkStat);window.lgPlan=stub.lgPlan;
     const day=new Date(td()+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
     check('v129 log: the progress card reads Today, the date, 0 of 4 done, four empty segments, no note',txt($('lgProg').querySelector('.lp-h'))===`Today${day}0 of 4 done`&&seg()===',,,'&&!$('lgProg').querySelector('.lp-n')&&ico()==='no,no,no,no'&&$('lCheckinSt').getAttribute('aria-label')==='Not done',txt($('lgProg'))+' · '+seg()+' · '+ico());
@@ -2719,7 +2775,10 @@ seq('v129 log',async()=>{
     Object.assign(_s,{checkins:[ci({ts:T,mindfulMin:10,coffee:2,soreness:1})],workouts:W,foodLogs:[{id:'fd-'+td(),date:td(),kcal:1450,protein:80}],measurements:[{id:'m1',date:dAgo(9),weight:72.4},{id:'m2',date:dAgo(3),weight:73.1}],bloodLogs:[{id:'b1',date:dAgo(400),glucose:98},{id:'b2',date:dAgo(44),glucose:91}],injuries:[{id:'i1',date:dAgo(5),part:'Left calf',sev:1,active:true},{id:'i2',date:dAgo(60),part:'Back',sev:1,active:false}]});
     const m=mindOf(_s.checkins[0]),mw=m>=TH.MIND_GOOD?'Good':m>=TH.MIND_FLAT?'Flat':'Strained';
     renderLogHead();const S1=lgSum();
-    check('v129 log: with everything logged each row sums it up in one line',J(S1)===J({ciStat:mw+' · 07:12',sleepStat:fmtDur(450),wkStat:'Run · '+fmtDur(48)+' · '+fmtDist(W[0]),mindStat:'10 min today',foodStat:'Optional · 1,450 kcal so far',measStat:'Weighed 3 days ago · 73.1 kg',bloodStat:'Last test '+fmtD(dAgo(44)),injStat:'1 active · Left calf'})&&/8\.2 km/.test(S1.wkStat)&&txt($('ciStat'))===S1.ciStat,J(S1));
+    check('v129 log: with everything logged each row sums it up in one line',J(S1)===J({ciStat:mw,sleepStat:fmtDur(450),wkStat:'Run · '+fmtDur(48)+' · '+fmtDist(W[0]),mindStat:'10 min today',eveStat:'2 cups',foodStat:'Optional · 1,450 kcal so far',measStat:'Weighed 3 days ago · 73.1 kg',bloodStat:'Last test '+fmtD(dAgo(44)),injStat:'1 active · Left calf'})&&/8\.2 km/.test(S1.wkStat)&&txt($('ciStat'))===S1.ciStat,J(S1));
+    delete _s.checkins[0].coffee;
+    check('v151 log: the check-in row gives the time it was saved until the afternoon card holds something, as that save moves the time',lgSum().ciStat===mw+' · 07:12',lgSum().ciStat);
+    _s.checkins[0].coffee=2;
     _s.measurements.push({id:'m3',date:dAgo(1),bpSys:131,bpDia:84});
     check('v136 log: the Body row names the latest blood pressure when it is the newest entry',lgSum().measStat==='Blood pressure 131/84 · yesterday',lgSum().measStat);
     _s.measurements.pop();
@@ -2732,20 +2791,36 @@ seq('v129 log',async()=>{
     check('v129 log: a night that needs its bedtime is an amber segment and icon, with the note under the bar',seg()==='ok,pt,ok,ok'&&ico()==='ok,pt,ok,ok'&&$('lSleep').classList.contains('part')&&txt($('lgProg').querySelector('.lp-n'))==='Sleep needs your bedtime.'&&lgSum().sleepStat===fmtDur(450)+' · add your bedtime'&&/3 of 4 done/.test(txt($('lgProg'))),seg()+' · '+txt($('lgProg')));
     delete sl.src;renderLogHead();
     // rows, groups, status icons only on the four daily rows
-    check('v129 log: two groups, the status icon only on the four daily rows',J([...pg.querySelectorAll('.lg-grp')].map(txt))===J(['Every day','Now and then'])&&['lFood','lMeas','lBlood','lInjury'].every(id=>!$(id).querySelector('.log-st')&&$(id).querySelector('.log-hdr.c3'))&&['lCheckin','lSleep','lWorkout','lMind'].every(id=>$(id).querySelector('.log-st svg.ui-i')),'');
+    check('v151 log: four groups by time of day, the status icon only on the four daily rows',J([...pg.querySelectorAll('.lg-grp')].map(txt))===J(['Morning','Through the day','Afternoon and evening','Now and then'])&&J([...pg.querySelectorAll('.lg-card')].map(c=>[...c.querySelectorAll('.log-sec')].map(x=>x.id)))===J([['lCheckin','lSleep'],['lWorkout','lMind','lFood'],['lEve'],['lMeas','lBlood','lInjury']])&&['lFood','lEve','lMeas','lBlood','lInjury'].every(id=>!$(id).querySelector('.log-st')&&$(id).querySelector('.log-hdr.c3'))&&['lCheckin','lSleep','lWorkout','lMind'].every(id=>$(id).querySelector('.log-st svg.ui-i')),'');
     // check-in words and the switch
-    $('lCheckin').classList.add('open');fillCI();
+    $('lCheckin').classList.add('open');$('lEve').classList.add('open');fillCI();
     const w1=['bodyFeel','energy','stress','soreness','coffee'].map(word);
     check('v129 log: each question shows the chosen word beside it, else the two ends of the scale',J(w1)===J(['Wrecked to Strong','Good*','Some stress*','None*','2 cups*']),J(w1));
     const cw=[];[4,1,0].forEach(v=>{_ci.coffee=v;ciWord('coffee');cw.push(word('coffee'));});
     check('v129 log: coffee reads 4+ cups, 1 cup, 0 cups',J(cw)===J(['4+ cups*','1 cup*','0 cups*']),J(cw));
     const sw=$('ciLate'),lb=sw.closest('.ci-sw'),sel=pg.querySelector('#ciCard .ci-btn.sel');
     check('v129 log: the late coffee answer is a switch in a 44px row, the selected answer outlined in the text colour, not the accent',sw.type==='checkbox'&&sw.getAttribute('role')==='switch'&&!!lb&&!!lb.querySelector('.tgl')&&tall(lb)&&getComputedStyle(sel).borderTopColor===getComputedStyle(pg).color&&[...pg.querySelectorAll('#ciCard .ci-btn')].filter(b=>b.offsetParent).every(tall),getComputedStyle(sel).borderTopColor+' · '+getComputedStyle(pg).color);
-    // the evening reflection
-    Date.prototype.getHours=()=>17;renderReflect();const r17=txt($('reflWhen'));Date.prototype.getHours=()=>18;renderReflect();const r18=txt($('reflWhen'));Date.prototype.getHours=gh;
-    _s.checkins[0].reflection=JSON.stringify({g:'A long ride',d:''});renderReflect();const rs=txt($('reflWhen'));delete _s.checkins[0].reflection;
-    check('v129 log: the evening reflection opens from 18:00, then reads Optional, then Saved',r17==='From 18:00'&&r18==='Optional'&&rs==='Saved',[r17,r18,rs].join(' | '));
-    $('lCheckin').classList.remove('open');
+    // v151: coffee and the reflection on their own afternoon card
+    check('v151 log: the morning check-in holds the feelings only; coffee, the late cup, gratitude and the reflection sit on the afternoon card',!$('ciCard').querySelector('[data-k="coffee"],#ciLate,#ciGrat,#reflGave')&&J(['coffee','ciLate','ciGrat','reflGave','reflDrain','eveCta'].map(k=>!!$('eveCard').querySelector(k==='coffee'?'.ci-btns[data-k="coffee"]':'#'+k)))===J([true,true,true,true,true,true])&&!pg.querySelector('#reflCard,.lg-fold')&&[...pg.querySelectorAll('#eveCard .ci-btn,#eveCard .ci-note,#eveCard .ci-sw,#eveCta')].every(tall),'');
+    const ev=[];[[13,{}],[14,{}],[20,{reflection:JSON.stringify({g:'A long ride',d:''})}],[20,{coffee:1,coffeeLate:true,gratitude:'Sun'}]].forEach(([h,o])=>{Date.prototype.getHours=()=>h;const c0=_s.checkins[0],keepC={...c0};delete c0.coffee;delete c0.coffeeLate;Object.assign(c0,o);ev.push(lgSum().eveStat);_s.checkins[0]=keepC;});Date.prototype.getHours=gh;
+    check('v151 log: the afternoon row reads From 14:00 until then, Optional after, then what is saved',J(ev)===J(['From 14:00','Optional · coffee and how the day went','Reflection saved','1 cup, last one late · reflection saved']),J(ev));
+    $('lCheckin').classList.remove('open');$('lEve').classList.remove('open');
+    // v151: each half saves onto the one record and leaves the other half as it was
+    {const toasts=[];window.showToast=m=>toasts.push(m);const keepCI=_s.checkins;
+      _s.checkins=[];fillCI();
+      saveEve();const t0=toasts.pop();
+      $('ciLate').checked=true;saveEve();const t1=toasts.pop();
+      pg.querySelector('#eveCard .ci-btn[onclick*="coffee\',0"]').click();saveEve();const t2=toasts.pop();
+      pg.querySelector('#eveCard .ci-btn[onclick*="coffee\',3"]').click();$('ciGrat').value=' Sun ';$('reflGave').value='A ride';saveEve();
+      const r1={..._s.checkins[0]};
+      ['energy','mood','stress','motivation'].forEach(k=>pg.querySelector(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).click());submitCI();
+      const r2={..._s.checkins[0]};
+      $('reflGave').value='';$('reflDrain').value='';saveEve();const r3={..._s.checkins[0]};
+      check('v151 log: an empty or contradictory afternoon save is refused with a toast and nothing saved',t0==='Tap your cups or write a few words'&&t1==='Tap how many cups first'&&t2==='Turn off the late cup, or tap how many cups'&&_s.checkins.length===1,[t0,t1,t2].join(' | '));
+      check('v151 log: the afternoon save writes coffee, the late cup, gratitude and the reflection without a morning answer',r1.coffee===3&&r1.coffeeLate===true&&r1.gratitude==='Sun'&&J(reflOf(r1))===J({gave:'A ride',drained:''})&&r1.energy==null&&!ciFull(r1),J(r1));
+      check('v151 log: the morning save afterwards keeps the coffee and reflection, one record for the day',_s.checkins.length===1&&ciFull(r2)&&r2.coffee===3&&r2.coffeeLate===true&&r2.gratitude==='Sun'&&r2.reflection===r1.reflection,J(r2));
+      check('v151 log: emptying both reflection boxes clears the reflection and keeps the morning answers',r3.reflection===''&&!reflOf(r3)&&ciFull(r3)&&r3.coffee===3&&$('eveCta').textContent==='Update coffee and reflection',J(r3));
+      _s.checkins=keepCI;window.showToast=stub.showToast;fillCI();}
     // the workout list and its menu
     $('lWorkout').classList.add('open');renderExGrid();renderWkLog();
     const rows=[...$('wkRecent').querySelectorAll('.act-item')],mo=rows.map(r=>r.querySelector('.wk-mo')),mn=rows.map(r=>r.querySelector('.wk-menu'));
@@ -2762,7 +2837,7 @@ seq('v129 log',async()=>{
     rows[0].click();
     check('v129 log: Edit and Delete do their own job and close the menu; tapping the row opens the workout sheet',e1&&hit.join()==='edit:w-a,del:w-b,open:wk:w-a',hit.join());
     // the page as a whole
-    ['lCheckin','lSleep','lMind','lFood','lMeas','lBlood','lInjury'].forEach(id=>$(id).classList.add('open'));
+    ['lCheckin','lSleep','lMind','lFood','lEve','lMeas','lBlood','lInjury'].forEach(id=>$(id).classList.add('open'));
     const all=pg.textContent;
     check('v129 log: no sideways scroll at 360px with every row open, no source names, no emoji, no old progress line',pg.scrollWidth<=pg.clientWidth+1&&box.scrollWidth<=box.clientWidth+1&&noNames(all)&&!/\p{Extended_Pictographic}/u.test(all)&&!/daily entries done|NaN|undefined/.test(all),[pg.scrollWidth,pg.clientWidth,box.scrollWidth,box.clientWidth,noNames(all),(all.match(/\p{Extended_Pictographic}|daily entries done|NaN|undefined/u)||[''])[0]].join(' / '));
   }finally{Date.prototype.getHours=gh;wkMenuClose();box.remove();css.remove();Object.keys(keep).forEach(k=>{if(had[k])window[k]=keep[k];else delete window[k];});}

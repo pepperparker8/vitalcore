@@ -23,11 +23,14 @@ function finishWelcome(skip){
 let _ci={energy:null,mood:null,stress:null,motivation:null,rested:null,symptoms:null,bodyFeel:null,soreArea:[]};
 function selCI(k,v,btn){_ci[k]=v;btn.closest('.ci-btns').querySelectorAll('.ci-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');if(k==='soreness')$('ciAreaRow').style.display=v>=3?'':'none';ciWord(k);}
 // v129: the chosen answer in words beside each question (the button's own label), else the two ends of the scale
+// v151: the morning check-in (#ciCard) and the afternoon coffee and reflection (#eveCard) share the one record and these helpers
+const CI_CARDS=':is(#ciCard,#eveCard)';
+const cupsW=v=>v>=4?'4+ cups':v+(v===1?' cup':' cups');
 function ciWord(k){
-  const el=document.querySelector(`#ciCard .ci-w[data-k="${k}"]`);if(!el)return;
+  const el=document.querySelector(`${CI_CARDS} .ci-w[data-k="${k}"]`);if(!el)return;
   let w='';
   if(k==='soreArea')w=_ci.soreArea.map(a=>EM.soreArea[a]).filter(Boolean).join(', ');
-  else if(k==='coffee'){const v=_ci.coffee;if(v!=null)w=v>=4?'4+ cups':v+(v===1?' cup':' cups');}
+  else if(k==='coffee'){if(_ci.coffee!=null)w=cupsW(_ci.coffee);}
   else{const b=document.querySelector(`#ciCard .ci-btns[data-k="${k}"] .ci-btn.sel`);if(b)w=b.getAttribute('aria-label')||b.textContent.trim();}
   el.textContent=w||el.dataset.e;el.classList.toggle('on',!!w);
 }
@@ -36,35 +39,59 @@ function selArea(a,btn){const i=_ci.soreArea.indexOf(a);if(i<0)_ci.soreArea.push
 function todayCI(){return S().checkins.find(c=>c.date===td());}
 let _ciKey='';
 const ciKey=()=>td()+'|'+(todayCI()?.ts||0);
-function fillCI(){
+function fillCI(){fillAM();fillEve();}
+function fillAM(){
   const c=todayCI();_ciKey=ciKey();
-  ['energy','mood','stress','motivation','soreness','coffee','symptoms','bodyFeel'].forEach(k=>{
+  ['energy','mood','stress','motivation','soreness','symptoms','bodyFeel'].forEach(k=>{
     _ci[k]=c?.[k]??null;
     document.querySelectorAll(`#ciCard .ci-btns[data-k="${k}"] .ci-btn`).forEach(b=>b.classList.toggle('sel',c?.[k]===+b.getAttribute('onclick').match(/,(\d),this/)[1]));
   });
   _ci.soreArea=c?.soreArea?c.soreArea.split(',').filter(Boolean):[];
   document.querySelectorAll('#ciAreaRow .ci-btn').forEach(b=>b.classList.toggle('sel',_ci.soreArea.includes(b.dataset.a)));
   $('ciAreaRow').style.display=(c?.soreness||0)>=3?'':'none';
-  $('ciGrat').value=c?.gratitude||'';$('ciLate').checked=!!c?.coffeeLate;
-  ['bodyFeel','energy','mood','stress','motivation','soreness','soreArea','symptoms','coffee'].forEach(ciWord);
+  ['bodyFeel','energy','mood','stress','motivation','soreness','soreArea','symptoms'].forEach(ciWord);
   const done=ciFull(c);
   $('ciCard').classList.toggle('done',done);lgStat();
   $('ciCta').textContent=done?'Update check-in':'Save check-in';
   const sum=$('ciSum');
-  if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}${c.bodyFeel?` · Body ${EM.bodyFeel[c.bodyFeel]}`:''}${c.soreness?` · Soreness ${EM.soreness[c.soreness]}${c.soreArea&&c.soreness>=3?` (${c.soreArea.split(',').map(a=>EM.soreArea[a]||'').filter(Boolean).join(', ').toLowerCase()})`:''}`:''}${c.symptoms?` · Symptoms ${EM.symptoms[c.symptoms].toLowerCase()}`:''}${c.coffee!=null?` · Coffee ${c.coffee===4?'4+':c.coffee}${c.coffeeLate?' (late)':''}`:''}`;sum.classList.add('show');}
+  if(done){sum.innerHTML=`Saved today · Energy ${EM.energy[c.energy]} · Mood ${EM.mood[c.mood]} · Stress ${EM.stress[c.stress]} · Motivation ${EM.motivation[c.motivation]}${c.bodyFeel?` · Body ${EM.bodyFeel[c.bodyFeel]}`:''}${c.soreness?` · Soreness ${EM.soreness[c.soreness]}${c.soreArea&&c.soreness>=3?` (${c.soreArea.split(',').map(a=>EM.soreArea[a]||'').filter(Boolean).join(', ').toLowerCase()})`:''}`:''}${c.symptoms?` · Symptoms ${EM.symptoms[c.symptoms].toLowerCase()}`:''}`;sum.classList.add('show');}
   else sum.classList.remove('show');
 }
+// v151: coffee, the late cup, gratitude and the reflection, saved in the afternoon or evening onto the same day's record
+function fillEve(){
+  const c=todayCI(),r=reflOf(c);_ciKey=ciKey();
+  _ci.coffee=c?.coffee??null;
+  document.querySelectorAll('#eveCard .ci-btns[data-k="coffee"] .ci-btn').forEach(b=>b.classList.toggle('sel',c?.coffee===+b.getAttribute('onclick').match(/,(\d),this/)[1]));
+  ciWord('coffee');
+  $('ciLate').checked=!!c?.coffeeLate;$('ciGrat').value=c?.gratitude||'';
+  $('reflGave').value=r?.gave||'';$('reflDrain').value=r?.drained||'';
+  const done=eveDone(c),sum=$('eveSum');
+  $('eveCta').textContent=done?'Update coffee and reflection':'Save coffee and reflection';
+  sum.textContent=done?'Saved today'+(c.coffee!=null?' · Coffee '+cupsW(c.coffee)+(c.coffeeLate?', last one late':''):'')+(c.gratitude||r?' · Reflection':''):'';
+  sum.classList.toggle('show',done);lgStat();
+}
+const eveDone=c=>!!(c&&(c.coffee!=null||c.gratitude||reflOf(c)));
 function ciRec(){return todayCI()||{id:'ci-'+td(),date:td(),energy:null,mood:null,stress:null,motivation:null,mindfulMin:0,gratitude:''};}
 function submitCI(){
   if(!_ci.energy||!_ci.mood||!_ci.stress||!_ci.motivation){showToast('Tap one face for each of the four rows');return;}
-  const rec={...ciRec(),energy:_ci.energy,mood:_ci.mood,stress:_ci.stress,motivation:_ci.motivation,soreness:_ci.soreness??null,coffee:_ci.coffee??null,coffeeLate:$('ciLate').checked,gratitude:$('ciGrat').value.trim()};
+  const rec={...ciRec(),energy:_ci.energy,mood:_ci.mood,stress:_ci.stress,motivation:_ci.motivation,soreness:_ci.soreness??null};
   // v118 fields are written only once set, so check-ins keep syncing before docs/supabase-v118.sql is run; a cleared sore area is '' (not null) so the cloud copy clears too
   if(_ci.symptoms!=null)rec.symptoms=_ci.symptoms;
   if(_ci.bodyFeel!=null)rec.bodyFeel=_ci.bodyFeel;
   const area=(_ci.soreness||0)>=3?_ci.soreArea.join(','):'';
   if(area||rec.soreArea)rec.soreArea=area;
   put('checkins',rec);
-  fillCI();showToast('Check-in saved');refreshAll();
+  fillAM();showToast('Check-in saved');refreshAll();
+}
+function saveEve(){
+  const cf=_ci.coffee,late=$('ciLate').checked,g=$('ciGrat').value.trim(),gv=$('reflGave').value.trim(),dr=$('reflDrain').value.trim();
+  if(cf==null&&!late&&!g&&!gv&&!dr){showToast('Tap your cups or write a few words');return;}
+  if(late&&!cf){showToast(cf===0?'Turn off the late cup, or tap how many cups':'Tap how many cups first');return;}
+  const rec={...ciRec(),coffeeLate:late,gratitude:g};
+  if(cf!=null)rec.coffee=cf;
+  if(gv||dr)rec.reflection=JSON.stringify({g:gv,d:dr});else if(rec.reflection)rec.reflection='';
+  put('checkins',rec);
+  fillEve();showToast('Coffee and reflection saved');refreshAll();
 }
 
 // ── MINDFULNESS ──────────────────────────────────────────────────────────────
@@ -455,7 +482,7 @@ function saveMeas(){
   rec.src=manSrc(null,rec,['bpSys','bpDia','weight','hr']);
   put('meas',rec);
   ['bpSys','bpDia','wtKg','hrVal'].forEach(i=>$(i).value='');
-  updMeasHist();renderWtChart();showToast('Measurements saved');
+  updMeasHist();renderWtChart();renderFatChart();showToast('Measurements saved');
 }
 function updMeasHist(){
   const ms=S().measurements;
@@ -1043,7 +1070,7 @@ const lgClock=ts=>new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute
 function lgPlan(){try{const x=strategy().days[0];return x&&x.type&&x.role!=='rest'&&x.role!=='race'&&x.role!=='recover'?x.type:'';}catch(e){return'';}}
 function lgSum(){
   const d=S(),t=td(),ci=todayCI(),o={};
-  if(ciFull(ci)){const m=mindOf(ci);o.ciStat=(m>=TH.MIND_GOOD?'Good':m>=TH.MIND_FLAT?'Flat':'Strained')+(ci.ts?' · '+lgClock(ci.ts):'');}
+  if(ciFull(ci)){const m=mindOf(ci);o.ciStat=(m>=TH.MIND_GOOD?'Good':m>=TH.MIND_FLAT?'Flat':'Strained')+(ci.ts&&!eveDone(ci)?' · '+lgClock(ci.ts):'');}
   else o.ciStat='Takes under a minute';
   const sl=d.sleepLogs.find(s=>s.date===t),w=slWhy(sl);
   o.sleepStat=!sl?'Not logged today':[sl.durMin?fmtDur(sl.durMin):sl.score?'Score '+sl.score:'',w?w.sm:sl.bed&&sl.wake?sl.bed+' to '+sl.wake:''].filter(Boolean).join(' · ')||'Logged today';
@@ -1052,6 +1079,9 @@ function lgSum(){
   else if(wt.length){const m=wt.reduce((a,x)=>a+(x.durMin||0),0);o.wkStat=wt.length+' workouts'+(m?' · '+fmtDur(m):'');}
   else{const p=lgPlan();o.wkStat=p?'Plan today: '+p:'Nothing logged today';}
   const mm=ci?.mindfulMin||0;o.mindStat=mm?mm+' min today':'Not yet today';
+  // v151: the afternoon card says what is saved, else when it opens
+  const ev=eveDone(ci)?[ci.coffee!=null?cupsW(ci.coffee)+(ci.coffeeLate?', last one late':''):'',ci.gratitude||reflOf(ci)?'reflection saved':''].filter(Boolean).join(' · '):'';
+  o.eveStat=ev?ev.charAt(0).toUpperCase()+ev.slice(1):new Date().getHours()<TH.EVE_FROM?'From '+String(TH.EVE_FROM).padStart(2,'0')+':00':'Optional · coffee and how the day went';
   const fd=fuFood(t);o.foodStat='Optional · '+(fd?fuN(fd.kcal)+' kcal so far':'nothing yet');
   const ms=d.measurements.filter(x=>x.date<=t).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0),mw=ms.filter(x=>x.weight).pop(),ml=ms[ms.length-1],mb=ms.filter(x=>x.bpSys&&x.bpDia).pop();
   o.measStat=mb&&(!mw||mb.date>=mw.date)?'Blood pressure '+mb.bpSys+'/'+mb.bpDia+' · '+lgAgo(mb.date):mw?'Weighed '+lgAgo(mw.date)+' · '+mw.weight+' kg':ml?'Measured '+lgAgo(ml.date):'Weight, blood pressure, resting heart rate';

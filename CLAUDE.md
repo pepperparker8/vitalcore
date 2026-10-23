@@ -3,7 +3,7 @@
 ## Project
 VitalCore is a personal health intelligence PWA. It combines training load, sleep, daily psychology check-ins, body measurements, blood markers and injuries into one recovery score (Body) and an AI-generated daily briefing.
 
-Current version: **150**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
+Current version: **151**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
 
 ## User context
 - Invite only (v124): the owner and the people the owner invites in Supabase; each person sees only their own data. Personal notes about the owner (devices, phone, habits) live in the gitignored `CLAUDE.local.md`; never put them back here, the repo is public.
@@ -68,10 +68,11 @@ exDismissed, hasRealData, onboardingDone
 - **No source names on data screens** (Today, Log, Trends, Health, sheets, briefing): "recorded automatically", "your watch", "your band", "your scale", "your monitor". Source names only in Settings, sync toasts and "Connect … in Settings" empty states. No device brand names anywhere on screen.
 - **One line per chart and sheet sentence** (v123): what matters now, else the trend, else a short steady line; at most two rounded numbers, each with a comparison; at most 2 sentences and 140 characters. No "In view", counts or date lists.
 - **The outline is computed in code** (`strategy()`); the AI only explains it and never changes the call. Never invent a pace, wattage or heart rate. Never diagnose.
-- **Briefing**: five sections for new entries (`INS_SECS`), old ones render through `INS_SECS_OLD`. App-made question chips, Q&A max 10. The heavy-month data stays under 16,000 characters (tested). Streamed at effort low.
+- **Briefing**: five sections for new entries (`INS_SECS`), old ones render through `INS_SECS_OLD`. App-made question chips, Q&A max 10. The heavy-month data stays under 16,000 characters (tested). Streamed at effort low. Scale estimates (fat %, fat-free and skeletal muscle mass, W/kg) reach the briefing as `health.bodyComp` (v151, `insComp`), read as a trend and never a diagnosis; Body, Load, the outline and the fuel targets never read them.
 - **Imports never overwrite what you typed** (`icuFill`, `src` per field; Polar beats Intervals.icu, typed beats both). Deleted imports stay deleted (`gone`).
 - **Sync**: whole-record last-write-wins by `ts`; local pending beats remote. The profile alone merges field by field (v148, `profPull`): always change it through `markProfile()`. `SKIP_NULL` fields are left out while null and `sameKeys` evens a bulk upsert. Optional tables (`TBL.*.opt`, `OPT_FLAG`) let sync carry on before their SQL has run. Any new column needs a `docs/supabase-vN.sql` the owner runs, and a line in `CONN_SQL` (sync.js) so Settings names it.
 - **Local only** (never synced, left out of backups where noted in the release): `gone`, `dupOk`, `effOk`, `soreOk`, `bodyHist`, `wtBack`, `dataUid`, `icuThr`, `planHist`, `icuSent`, `stSwap`, `napBack`/`napBackV`, `bpUser`, `bpOk`, `bpDev`, `scDev`, `scUid`, `scOk`, `connLog`, `profSnap`.
+- **Log groups** (v151): Morning (check-in with the feelings only, sleep), Through the day (workout, mindfulness, food), Afternoon and evening (coffee and reflection, `#lEve`, from `TH.EVE_FROM`, also the late-cup cut-off), Now and then. Both cards write the same check-in record; saving one never clears the other's fields.
 - **Bluetooth** (monitor, scale): every read is a tap; Chrome cannot read in the background. Readings save on their own with Undo. Protocol facts from public descriptions only, never GPL code.
 - **Workout route** stays in memory only: never stored, synced, backed up, logged or sent to the briefing.
 - Dates on screen through `fmtD()`, durations through `fmtDur()` / `fmtHM()`; never raw ISO or decimal hours.
@@ -97,7 +98,7 @@ exDismissed, hasRealData, onboardingDone
 - Supabase SQL scripts the owner runs, in order: `docs/supabase-v79`, `v88`, `v98`, `v116`, `v118`, `v124`, `v127`, `v140`. Settings > Connections and cloud > Check the cloud tables names any still missing (`connProbe`, `CONN_SQL` in sync.js).
 
 ## Backlog
-- v151: Body calibration (a usual day sits on the green line at 67; fit the cuts to the owner's last 8 weeks from a backup); the nap prompt with `s5`, tested against a known nap with false positives counted.
+- v152: Body calibration (a usual day sits on the green line at 67; fit the cuts to the owner's last 8 weeks from a backup); the nap prompt with `s5`, tested against a known nap with false positives counted.
 - Real push notifications (needs a push server).
 
 ## Conventions
