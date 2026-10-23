@@ -14,7 +14,7 @@ function formZones(){return[{lo:TH.FORM_FRESH,hi:null,color:'--green',label:'Fre
 const sgn=v=>(v>0?'+':'')+Math.round(v);
 const inView=(pts,info)=>pts.filter(p=>p.d>=info.from&&p.d<=info.to);
 // easy days until form is back to balanced: fatigue fades over about 7 days, fitness over about 42 (no training counted, so it is a best case)
-function formDaysBack(ctl,atl){for(let t=1;t<=21;t++)if(ctl*Math.exp(-t/42)-atl*Math.exp(-t/7)>=TH.FORM_OK)return t;return null;}
+function formDaysBack(ctl,atl){for(let t=1;t<=TH.FORM_BACK_DAYS;t++)if(ctl*Math.exp(-t/TH.FIT_DAYS)-atl*Math.exp(-t/TH.FAT_DAYS)>=TH.FORM_OK)return t;return null;}
 // v123: one line. Today's form word with what to do, then fitness only when it moved 3 or more over the dates in view
 function formMeaning(info,ctl,atl){
   const l=info.last,now=l.d===last(ctl).d,z=info.zone(l.v),w=z?z.label:'';
@@ -30,7 +30,7 @@ function formMeaning(info,ctl,atl){
 function renderFormChart(){
   const d=S(),host=$('formCanvas');if(!host)return;
   const ctl=[],atl=[],tsb=[];
-  Object.keys(d.wellness||{}).sort().forEach(dt=>{const w=d.wellness[dt];if(w&&w.ctl!=null&&w.atl!=null){ctl.push({d:dt,v:w.ctl});atl.push({d:dt,v:w.atl});tsb.push({d:dt,v:w.ctl-w.atl});}});
+  Object.keys(d.wellness||{}).sort().forEach(dt=>{const f=fitOf(dt);if(f){ctl.push({d:dt,v:f.ctl});atl.push({d:dt,v:f.atl});tsb.push({d:dt,v:f.tsb});}});
   const note=$('formNote'),sec=$('tsbSec');
   if(ctl.length<2){
     chUnmount('formCanvas');chUnmount('tsbCanvas');host.innerHTML='';$('tsbCanvas').innerHTML='';sec.style.display='none';

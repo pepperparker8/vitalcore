@@ -319,7 +319,7 @@ function insightRaw(){
       checkins:d.checkins.filter(c=>daysAgo(c.date)<14&&c!==ci).map(c=>({date:c.date,energy:c.energy??null,mood:c.mood??null,stress:c.stress??null,motivation:c.motivation??null,soreness:c.soreness??null,coffeeCups:c.coffee??null,mindfulMin:c.mindfulMin||0,...(daysAgo(c.date)<7?{grateful:insClip(c.gratitude,200),reflection:insRefl(c)}:{})})),
       sleep:d.sleepLogs.filter(s=>daysAgo(s.date)<14&&s!==sl).map(s=>({date:s.date,hours:r1(s.durMin?s.durMin/60:null),batteryRanOut:slCounts(s)?undefined:true,bed:s.bed||null,wake:s.wake||null,score:s.score??null,night:daysAgo(s.date)<7?insPolar(s.date,true):null}))},
     // v132: the five-section briefing has no month or 12-week field, so the snapshot keeps the 6 weeks before the two in week (room for coach)
-    trend:{weeksBefore:insightTrends().filter(x=>x.weeksAgo>=2&&x.weeksAgo<8),fitnessCTL:d.intervalsData.ctl??null,fatigueATL:d.intervalsData.atl??null,formTSB:d.intervalsData.tsb??null,correlations:insightCorrelations()},
+    trend:{weeksBefore:insightTrends().filter(x=>x.weeksAgo>=2&&x.weeksAgo<8),...(f=>({fitnessCTL:f?Math.round(f.ctl):null,fatigueATL:f?Math.round(f.atl):null,formTSB:f?Math.round(f.tsb):null}))(fitOn()),correlations:insightCorrelations()},
     health:{bloodMgDl:insightBlood(),measurements:d.measurements.filter(m=>!m.isEx).slice(-6).map(m=>({date:m.date,weightKg:m.weight??null,bpSys:m.bpSys??null,bpDia:m.bpDia??null,restingHrManual:m.hr??null})),
       injuries:d.injuries.filter(i=>i.active).map(i=>({part:i.part,severity1to3:i.sev,since:i.date,notes:i.notes||undefined}))},
     profile:{age:p.age||null,heightCm:p.height||null,sleepGoalHours:p.sleepGoal||null,weightGoalKg:p.wtGoal||null,goal:p.goalName||null,goalDate:p.goalDate||null,daysToGoal:ph?ph.n:null,phase:ph&&ph.k?ph.k:null},
@@ -516,7 +516,7 @@ function buildFallbackOld(){
   if(sl&&sl.score<65)t+='Sleep quality is below your usual. Aim for 7 to 8 hours tonight. ';
   if(ci?.stress>=3)t+='Stress elevated. Try a 5-minute breathing session and a lighter day. ';
   if(ci?.energy<=2)t+='Energy is low. Avoid hard training today. ';
-  if(d.intervalsData.tsb!=null&&d.intervalsData.tsb<TH.FORM_TIRED)t+='Significant training fatigue detected. A recovery day is appropriate. ';
+  if(tsbOn(td())!=null&&tsbOn(td())<TH.FORM_TIRED)t+='Significant training fatigue detected. A recovery day is appropriate. ';
   const inj=d.injuries.filter(i=>i.active);
   if(inj.length)t+=`Active injury: ${inj[0].part}. Modify training accordingly. `;
   return t||'All indicators look stable. Maintain your current routine.';

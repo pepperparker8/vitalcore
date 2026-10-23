@@ -230,8 +230,30 @@ function bodyRhrPart(t=td()){
   if(rv&&rb.m!=null){const s=Math.max(rb.sd,TH.RHR_FLOOR),z=(rv.v-rb.m)/s;return{part:{pts:clampN(50-TH.Z_GAIN*z),v:rv.v,m:rb.m,sd:s,z,nBase:rb.n,src:rv.src},why:null};}
   return{part:null,why:!rv?(o?'no resting heart rate for that day':'no resting heart rate for today yet'):`resting heart rate baseline has ${rb.n} of ${TH.MIN_BASE_DAYS} days`};
 }
-// form (fitness minus fatigue) on a day: today's from the last sync, an earlier day's from that day's wellness
-function tsbOn(date){const d=S();if(date===td())return d.intervalsData&&d.intervalsData.tsb!=null?d.intervalsData.tsb:null;const w=d.wellness[date];return w&&w.ctl!=null&&w.atl!=null?Math.round((w.ctl-w.atl)*10)/10:null;}
+// v149: fitness and fatigue without the hidden copies. Intervals.icu counts both copies of a double: a load L on day d
+// still adds L·k·(1-k)^(t-d) to day t (k = 1 - e^(-1/τ), τ = TH.FIT_DAYS or TH.FAT_DAYS), so that share comes back out
+const fitK=tau=>1-Math.exp(-1/tau);
+function fitHidOn(date){
+  const t=DN(date),kc=fitK(TH.FIT_DAYS),ka=fitK(TH.FAT_DAYS);let ctl=0,atl=0;
+  for(const w of wkHidW()){const L=wIcu(w).load,n=t-DN(w.date);if(!(L>0)||n<0)continue;ctl+=L*kc*Math.pow(1-kc,n);atl+=L*ka*Math.pow(1-ka,n);}
+  return{ctl,atl};
+}
+// one day's wellness fitness and fatigue, less the hidden copies: {ctl, atl, tsb} or null
+function fitOf(date){
+  const w=S().wellness[date];if(!w||w.ctl==null||w.atl==null)return null;
+  const h=fitHidOn(date),ctl=Math.max(0,w.ctl-h.ctl),atl=Math.max(0,w.atl-h.atl);return{ctl,atl,tsb:ctl-atl};
+}
+// the latest day Intervals.icu gave fitness for (intervalsData.date from v149; older data: the newest wellness day that has it)
+function fitLastDate(){const d=S(),ia=d.intervalsData||{};if(ia.date)return ia.date;const k=Object.keys(d.wellness||{}).filter(x=>{const w=d.wellness[x];return w&&w.ctl!=null&&w.atl!=null;}).sort();return k.length?last(k):null;}
+// fitness, fatigue and form on a day: today's from the last sync, an earlier day's from that day's wellness; both less the hidden copies
+function fitOn(date=td()){
+  if(date!==td())return fitOf(date);
+  const ia=S().intervalsData||{};if(ia.ctl==null||ia.atl==null)return null;
+  const at=fitLastDate(),h=at?fitHidOn(at):{ctl:0,atl:0},ctl=Math.max(0,ia.ctl-h.ctl),atl=Math.max(0,ia.atl-h.atl);
+  return{ctl,atl,tsb:ctl-atl};
+}
+// form (fitness minus fatigue) on a day
+function tsbOn(date){const f=fitOn(date);return f?Math.round(f.tsb*10)/10:null;}
 // what you needed for one night: the goal, plus the strain of the day before, plus recent debt (sleepNeed); shared by Body, the factor row and the sleep sheet
 const needOf=sl=>sleepNeed(strainOf(strainLoad(dAgo(daysAgo(sl.date)+1))),sl.date);
 // the night Body uses: the record dated that day, else the day before (A5: never an older night)
@@ -259,7 +281,7 @@ function calcBody(date=td()){
 }
 // Load: the training fatigue you carry. Form (TSB) in TH.FORM_* bands, this week's minutes against the 4-week mean (ramp), hard sessions in the last 4 days.
 function calcLoad(){
-  const d=S(),tsb=d.intervalsData?d.intervalsData.tsb:null,L=raceLoad(),ws=stWs();
+  const tsb=tsbOn(td()),L=raceLoad(),ws=stWs();
   let hard4=0;for(let i=0;i<4;i++){const dt=dAgo(i);if(stHard(dt,ws.filter(w=>w.date===dt)))hard4++;}
   const ramp=L.base?L.now/L.base:null,rampFlag=ramp==null?null:ramp>=TH.RAMP_HIGH?'high':ramp>=TH.RAMP_CAUTION?'caution':null;
   const band=tsb==null?null:tsb>=TH.FORM_FRESH?'fresh':tsb>=TH.FORM_OK?'ok':tsb>=TH.FORM_DEEP?'tired':'over';

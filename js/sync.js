@@ -330,7 +330,7 @@ async function pullIntervals(){
     else if(ex){const r={...ex};if(icuFill(r,sv)){put('sleep',r);n++;}}
     n+=icuWeight(d,date,w.weight);
   }
-  if(latest){const ctl=Math.round(latest.ctl),atl=Math.round(latest.atl);d.intervalsData={ctl,atl,tsb:ctl-atl};}
+  if(latest){const ctl=Math.round(latest.ctl),atl=Math.round(latest.atl);d.intervalsData={ctl,atl,tsb:ctl-atl,date:latest.id};}
   if(ar.ok){
     const acts=await ar.json();
     for(const a of acts){

@@ -114,13 +114,13 @@ const mindOn=date=>S().checkins.find(x=>x.date===date)?.mindfulMin||0;
 const fmtIcu=w=>{const r=wIcu(w),x={};['hr','hrMax','kcal','elev'].forEach(k=>x[k]=Math.round(+r[k])||0);const o=[];if(x.hr)o.push('avg '+x.hr+' bpm'+(x.hrMax?', max '+x.hrMax:''));if(x.kcal)o.push(x.kcal+' kcal');if(x.elev)o.push(x.elev+' m climb');return o.join(' · ');};
 const fmtDist=w=>w.distKm?(w.type==='Swim'?Math.round(w.distKm*1000)+' m':w.distKm+' km'):'';
 // v123: fitness against about 4 weeks ago in one word, instead of "CTL"
-function fitWord(){const d=S();let o=null;for(let i=28;i<=35&&o==null;i++){const x=d.wellness[dAgo(i)];if(x&&x.ctl!=null)o=x.ctl;}if(o==null)return'';const c=d.intervalsData.ctl-o;return c>=3?'Rising':c<=-3?'Falling':'Steady';}
+function fitWord(){const f=fitOn();let o=null;for(let i=28;i<=35&&o==null;i++){const dt=dAgo(i),x=S().wellness[dt];if(x&&x.ctl!=null)o=Math.max(0,x.ctl-fitHidOn(dt).ctl);}if(o==null||!f)return'';const c=f.ctl-o;return c>=3?'Rising':c<=-3?'Falling':'Steady';}
 function renderTLoad(){
-  const d=S(),{ctl,atl,tsb}=d.intervalsData;
-  if(ctl===null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;return;}
+  const f=fitOn(),{ctl,atl,tsb}=f||{ctl:null};
+  if(ctl==null){$('tloadContent').innerHTML=`<div class="empty-state"><div class="empty-icon">${UI.sat}</div><div class="empty-title">No training-load data yet</div><div class="empty-sub">Connect Intervals.icu in Settings to see your fitness, fatigue and freshness.</div><button class="empty-btn" onclick="openSettings()">Open Settings</button></div>`;return;}
   // v129: three plain tiles, the number and its word; no state colours
   const tl=(k,v,w)=>`<div class="dy-tl"><small>${k}</small><b>${v}</b><span>${w||'&nbsp;'}</span></div>`;
-  $('tloadContent').innerHTML=`<div class="dy-tiles">${tl('Fitness',Math.round(ctl),fitWord())}${tl('Fatigue',Math.round(atl),zL(atl,'atl'))}${tl('Form',(tsb>0?'+':tsb<0?'−':'')+Math.abs(Math.round(tsb)),zL(tsb,'tsb'))}</div>`;
+  $('tloadContent').innerHTML=`<div class="dy-tiles">${tl('Fitness',Math.round(ctl),fitWord())}${tl('Fatigue',Math.round(atl),zL(atl,'atl'))}${tl('Form',(Math.round(tsb)>0?'+':Math.round(tsb)<0?'−':'')+Math.abs(Math.round(tsb)),zL(tsb,'tsb'))}</div>`;
 }
 // v129: the workouts of the last 7 days, the total time in the header; Edit and Delete live in Log
 function renderActList(){

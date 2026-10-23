@@ -234,7 +234,7 @@ run('Body only',()=>{
 });
 // Load and Mind
 run('Load',()=>{
-  base();const st=t=>{_s.intervalsData.tsb=t;return calcLoad().state;};
+  base();const st=t=>{_s.intervalsData={ctl:60,atl:60-t,tsb:t};return calcLoad().state;};
   const r=[[8,'Fresh'],[0,'Normal'],[-25,'Tired'],[-35,'Overreached']].map(([t,w])=>[t,w,st(t)]);
   check('Load: form bands from TH',r.every(x=>x[1]===x[2]),r.map(x=>`form ${x[0]} → ${x[2]}`).join(', '));
 });
@@ -277,7 +277,7 @@ run('Chart zones',()=>{
   const z=v=>(chZone({zones:formZones()},v)||{}).label;
   const r=[[TH.FORM_FRESH,'Fresh'],[TH.FORM_FRESH-0.1,'Balanced'],[TH.FORM_OK,'Balanced'],[TH.FORM_OK-0.1,'Tired'],[TH.FORM_TIRED,'Tired'],[TH.FORM_TIRED-0.1,'Very tired'],[TH.FORM_DEEP,'Very tired'],[TH.FORM_DEEP-0.1,'Overreached']].map(([v,w])=>[v,w,z(v)]);
   check('Chart: form zones switch exactly at the TH cuts',r.every(x=>x[1]===x[2]),r.map(x=>`${x[0]} → ${x[2]}`).join(', '));
-  base();const st=t=>{_s.intervalsData.tsb=t;return calcLoad().state;};
+  base();const st=t=>{_s.intervalsData={ctl:60,atl:60-t,tsb:t};return calcLoad().state;};
   const same=[[TH.FORM_FRESH,'Fresh'],[TH.FORM_DEEP-0.1,'Overreached']].every(([v,w])=>st(v)===w&&z(v)===w);
   check('Chart: the chart and Load agree at the ends',same,`Fresh at ${TH.FORM_FRESH}, Overreached under ${TH.FORM_DEEP}`);
 });
@@ -4394,6 +4394,57 @@ seq('v146 connections',async()=>{
     const all=(await (await realFetch('../css/app.css',{cache:'no-store'})).text()).split('v146: Settings > Connections and cloud')[1]||'';
     check('v146: no accent in the v146 CSS, the version is at least 146',all.length>0&&!/--gold/.test(all)&&APP_VER>=146,'');
   }finally{Object.assign(window,keep);_auth=null;_idKey=false;delete _s.connLog;box.remove();css.remove();}
+});
+
+// ── v149: fitness and fatigue without the hidden copies ─────────────────────────────────────────
+// Intervals.icu counts both copies of a double; the app takes the hidden copy's share back out on every day from its date on.
+run('v149 fitness without doubles',()=>{
+  base();const kc=1-Math.exp(-1/TH.FIT_DAYS),ka=1-Math.exp(-1/TH.FAT_DAYS),N=20,L={};
+  for(let i=N;i>=0;i--)L[dAgo(i)]=i%3?0:50;
+  const dbl=dAgo(6),hw=dwk('icu-b','07:10',60,{date:dbl},{load:80}),kw=dwk('icu-a','07:00',60,{date:dbl},{load:80,hrMax:170});
+  // what Intervals.icu gives (both copies counted) and what one copy gives, by the same daily recurrence
+  let c2=0,a2=0,c1=0,a1=0;_s.wellness={};
+  for(let i=N;i>=0;i--){const dt=dAgo(i),x=L[dt]+(dt===dbl?80:0);c2+=(x+(dt===dbl?80:0)-c2)*kc;a2+=(x+(dt===dbl?80:0)-a2)*ka;c1+=(x-c1)*kc;a1+=(x-a1)*ka;
+    _s.wellness[dt]={ctl:c2,atl:a2,_c1:c1,_a1:a1};}
+  _s.workouts=[kw,hw];_wkDup=null;
+  const hid=[...wkHid()].join(),err=Object.keys(_s.wellness).map(dt=>{const f=fitOf(dt),w=_s.wellness[dt];return Math.max(Math.abs(f.ctl-w._c1),Math.abs(f.atl-w._a1));}),mx=Math.max(...err);
+  const before=fitOf(dAgo(7)),w7=_s.wellness[dAgo(7)];
+  check('v149 fitness: each day equals the model run with one copy of the double, days before it untouched',hid==='icu-b'&&mx<1e-9&&before.ctl===w7.ctl&&before.atl===w7.atl,`hidden ${hid}, largest gap ${mx.toExponential(1)}`);
+  const w0=_s.wellness[td()];_s.intervalsData={ctl:Math.round(w0.ctl),atl:Math.round(w0.atl),tsb:Math.round(w0.ctl)-Math.round(w0.atl),date:td()};
+  const f=fitOn(),g=Math.abs(f.ctl-(Math.round(w0.ctl)-(w0.ctl-w0._c1)))<1e-9&&Math.abs(f.atl-(Math.round(w0.atl)-(w0.atl-w0._a1)))<1e-9;
+  delete _s.intervalsData.date;const g2=Math.abs(fitOn().ctl-f.ctl)<1e-9;
+  check('v149 fitness: today comes from the last sync less the double, with or without the stored sync date',g&&g2&&Math.abs(tsbOn(td())-Math.round(f.tsb*10)/10)<1e-9,`fitness ${r1(f.ctl)}, fatigue ${r1(f.atl)}, form ${r1(f.tsb)}`);
+  _s.workouts=[kw,hw].map(w=>({...w,sub:{...w.sub,both:1}}));_wkDup=null;
+  const sb=fitOf(dbl),wd=_s.wellness[dbl];
+  check('v149 fitness: Show both counts both copies, so the numbers stay as imported',!wkHid().size&&sb.ctl===wd.ctl&&sb.atl===wd.atl,`${r1(sb.ctl)} / ${r1(wd.ctl)}`);
+  // a big doubled ride today: the extra copy pushes form into the deepest band; without it the band is one up
+  base();_s.wellness={};_s.wellness[td()]={ctl:50,atl:50+2*150*ka};_s.intervalsData={ctl:50,atl:Math.round(50+2*150*ka),tsb:-Math.round(2*150*ka),date:td()};
+  _s.workouts=[dwk('icu-a','07:00',240,{},{load:150,hrMax:170}),dwk('icu-b','07:05',240,{},{load:150})];_wkDup=null;
+  const st=calcLoad(),raw=_s.intervalsData.tsb;
+  const tb=document.createElement('div');tb.id='tloadContent';document.body.appendChild(tb);renderTLoad();const tile=tb.textContent;tb.remove();
+  check('v149 fitness: Load, the form band and the Fitness tile use the numbers without the double',raw<TH.FORM_DEEP&&st.tsb>=TH.FORM_DEEP&&st.tsb<TH.FORM_TIRED&&st.formWord===zL(st.tsb,'tsb')&&tile.includes(String(Math.round(fitOn().atl)))&&!/NaN|undefined/.test(tile),`imported form ${raw}, without the double ${st.tsb}; ${tile.replace(/\s+/g,' ')}`);
+  const fd=String(formDaysBack);
+  check('v149 fitness: the form sheet reads its time constants from TH',/TH\.FIT_DAYS/.test(fd)&&/TH\.FAT_DAYS/.test(fd)&&!/\b(42|21)\b/.test(fd),fd.slice(0,80));
+  _s.workouts=[];_wkDup=null;
+});
+
+// v149: the stylesheet carries no dead weight: no declaration a later rule with the same selector replaces, no class or id the app never uses
+seq('v149 stylesheet',async()=>{
+  const css=(await(await realFetch('../css/app.css',{cache:'no-store'})).text()).replace(/\/\*[\s\S]*?\*\//g,'').replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g,'');
+  const sw=await(await realFetch('../sw.js',{cache:'no-store'})).text(),files=['index.html',...[...sw.matchAll(/\.\/(js\/[\w-]+\.js)/g)].map(m=>m[1])];
+  let code='';for(const f of files)code+=await(await realFetch('../'+f,{cache:'no-store'})).text();
+  // rules in order with their @media; selector lists split outside brackets
+  const rules=[],split=(s,c)=>{const o=[];let d=0,cur='';for(const ch of s){if('(['.includes(ch))d++;if(')]'.includes(ch))d--;if(ch===c&&!d){o.push(cur);cur='';}else cur+=ch;}o.push(cur);return o.map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);};
+  const walk=(s,ctx)=>{let i=0;while(i<s.length){const k=s.indexOf('{',i);if(k<0)break;const pre=s.slice(i,k).trim();let d=0,e=k;for(;e<s.length;e++){if(s[e]==='{')d++;else if(s[e]==='}'&&!--d)break;}
+    const body=s.slice(k+1,e);if(/^@media/.test(pre))walk(body,pre.replace(/\s+/g,' '));else if(!/^@/.test(pre))rules.push({ctx,sel:split(pre,','),decl:split(body,';').map(x=>{const m=/^(-?-?[\w-]+)\s*:/.exec(x);return m&&{p:m[1],imp:/!\s*important\s*$/i.test(x)};}).filter(Boolean)});i=e+1;}};
+  walk(css,'');
+  const late={};rules.forEach((r,n)=>r.decl.forEach(x=>r.sel.forEach(s=>(late[r.ctx+'|'+s+'|'+x.p]=late[r.ctx+'|'+s+'|'+x.p]||[]).push([n,x.imp]))));
+  const over=(n,r,s,x)=>[r.ctx,''].some(c=>(late[c+'|'+s+'|'+x.p]||[]).some(([j,imp])=>j>n&&(imp||!x.imp)));
+  const dead=[];rules.forEach((r,n)=>r.decl.forEach(x=>{if(r.sel.every(s=>over(n,r,s,x)))dead.push(r.sel.join(',')+' '+x.p);}));
+  const used=t=>code.includes(t)||[...t].some((c,k)=>'-_'.includes(c)&&k&&new RegExp(t.slice(0,k+1).replace(/[-]/g,'\\-')+`(['"]\\s*\\+|\\$\\{)`).test(code));
+  const unused=new Set();rules.forEach(r=>r.sel.forEach(s=>(s.replace(/\[[^\]]*\]/g,'').match(/[.#]-?[A-Za-z_][\w-]*/g)||[]).forEach(t=>{t=t.slice(1);if(!/^leaflet-/.test(t)&&!/^[0-9a-f]{3,6}$/i.test(t)&&!used(t))unused.add(t);})));
+  check('v149 stylesheet: no declaration that a later rule with the same selector replaces',rules.length>1000&&!dead.length,`${rules.length} rules; ${dead.slice(0,6).join(', ')||'none replaced'}`);
+  check('v149 stylesheet: every class and id it names is used by the app',!unused.size,[...unused].slice(0,12).join(', ')||'all used');
 });
 
 seq('v148 profile merge',async()=>{

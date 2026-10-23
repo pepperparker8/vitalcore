@@ -77,7 +77,7 @@ function wkDupScan(){
   for(const w of a){ts+=w.ts||0;du+=w.durMin||0;if(wkBoth(w))b++;}
   const key=a.length+'|'+ts+'|'+du+'|'+b;
   if(_wkDup&&_wkDup.a===a&&_wkDup.key===key)return _wkDup;
-  const by={},hid=new Set(),cl=new Map();
+  const by={},hid=new Set(),cl=new Map(),hw=[];
   a.forEach(w=>{if(w.isEx||!/^icu-/.test(String(w.id))||!(w.durMin>0))return;const st=wkT0(w);if(st==null)return;(by[w.date]=by[w.date]||[]).push({w,st,en:st+w.durMin});});
   Object.values(by).forEach(L=>{
     if(L.length<2)return;
@@ -91,12 +91,14 @@ function wkDupScan(){
       if(ws.length<2)return;
       ws.sort(wkKeepCmp);
       const c={keep:ws[0].id,ids:ws.map(w=>w.id),hid:ws.slice(1).filter(w=>!wkBoth(w)).map(w=>w.id)};
-      c.hid.forEach(id=>hid.add(id));c.ids.forEach(id=>cl.set(id,c));
+      c.hid.forEach(id=>hid.add(id));c.ids.forEach(id=>cl.set(id,c));ws.forEach(w=>{if(hid.has(w.id))hw.push(w);});
     });
   });
-  return _wkDup={a,key,hid,cl};
+  return _wkDup={a,key,hid,cl,hw};
 }
 const wkHid=()=>wkDupScan().hid;
+// v149: the hidden copies themselves (fitHidOn takes their load back out of fitness and fatigue)
+const wkHidW=()=>wkDupScan().hw;
 // the cluster a workout sits in, null without a copy: {keep id, ids (best first), hid (the hidden ones)}
 const wkDupOf=id=>wkDupScan().cl.get(id)||null;
 // typed values on a hidden copy fill empty fields of the copy that counts: effort, sets, pain, pool and stroke (never the note).

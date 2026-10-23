@@ -3,7 +3,7 @@
 ## Project
 VitalCore is a personal health intelligence PWA. It combines training load, sleep, daily psychology check-ins, body measurements, blood markers and injuries into one recovery score (Body) and an AI-generated daily briefing.
 
-Current version: **148**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
+Current version: **149**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
 
 ## User context
 - Invite only (v124): the owner and the people the owner invites in Supabase; each person sees only their own data. Personal notes about the owner (devices, phone, habits) live in the gitignored `CLAUDE.local.md`; never put them back here, the repo is public.
@@ -16,7 +16,7 @@ Current version: **148**. This file holds the rules. What each release changed a
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
-- `index.html` (shell), `css/app.css` (later releases add a "vN" block at the end), `js/` classic scripts sharing globals, loaded in this order. Top-level names are shared across all of them and the tests page, so a new global must not reuse one.
+- `index.html` (shell), `css/app.css` (later releases add a "vN" block at the end; v149 took out every declaration a later rule with the same selector replaced and every rule for a class the app no longer uses, and the "v149 stylesheet" test keeps it that way: change a rule in place rather than restating it further down), `js/` classic scripts sharing globals, loaded in this order. Top-level names are shared across all of them and the tests page, so a new global must not reuse one.
   - core: state, `TH` thresholds, `TBL`, `UI`/`SPORTS` icons, `save`, `migrate`, `wkOn`, formatting.
   - sync: Supabase auth and sync, Intervals.icu, Polar nights and days, the night cut, send to watch, the connection check (v146).
   - strength, log (Log tab forms, Bluetooth monitor and scale), today (race phase, day bar), settings, render (Today gauges and factors, Trends chart renderers), recovery (`calcBody`, `calcLoad`, `calcMind`, illness, sleep debt, strain), detail (detail sheets), chart (`mountChart`), form (`rollBand`), trends (range bar), progress, plan, coach (`coachFlags`, `coachVerdict`), sessions (session library), workout (reading a workout, doubles, the workout sheet, route and map), day (Your day, naps), strategy (7-day outline, levels, comebacks), fuel, health, digest, insights (briefing), coachpage (Insights page), app (starts the app).
@@ -61,6 +61,7 @@ exDismissed, hasRealData, onboardingDone
 ## Rules that hold everywhere
 - **Thresholds** live in `TH` (core.js), with the research reference in a comment where there is one (`docs/research-v132.md`, R numbers). Never write an inline number for a score band, cut, note or rule. Display labels (sleep score words) are the only exception.
 - **Workouts are read through `wkOn()`** (hidden duplicate copies left out). Only id lookups, backup, CSV export, the duplicate scan, sync and delete code read `S().workouts` directly; the "v130 source scan" test enforces it.
+- **Fitness, fatigue and form are read through `fitOn(date)` / `fitOf(date)` / `tsbOn(date)`** (recovery.js, v149): the Intervals.icu numbers less what the hidden copies added (`fitHidOn`, time constants `TH.FIT_DAYS` / `TH.FAT_DAYS`). Never read `intervalsData` or `wellness[].ctl/atl` for display or a rule.
 - **Body is the one recovery score** (`calcBody()`: HRV 45%, resting HR 20%, sleep 35%, each against your own band). No check-in, form, soreness, injury, burnout, sleep debt or naps in it. `calcBody`, `sleepNeed` and `needOf` are pinned by tests; sleep debt and naps never lower any score. A day without HRV and resting HR has no score (`coachGates()` keeps the outline running).
 - **Stress is inverted** wherever it feeds a score: use `5 - stress`.
 - **Each signal sits in one place**: form only in Load, energy/mood/motivation only in Mind, injuries only in `coachVerdict` and the outline, soreness only shapes the session.
@@ -96,7 +97,6 @@ exDismissed, hasRealData, onboardingDone
 - Supabase SQL scripts the owner runs, in order: `docs/supabase-v79`, `v88`, `v98`, `v116`, `v118`, `v124`, `v127`, `v140`. Settings > Connections and cloud > Check the cloud tables names any still missing (`connProbe`, `CONN_SQL` in sync.js).
 
 ## Backlog
-- v149: in-app fitness and fatigue that leave out hidden duplicates; CSS consolidation.
 - v150: Body calibration and Phase B (body feel and sore area into scores); the nap prompt with `s5`.
 - Real push notifications (needs a push server).
 

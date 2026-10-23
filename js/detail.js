@@ -650,7 +650,7 @@ function dtSpec(k){
       link:['Edit in Log',"logGo('lSleep')"],extra:late+(now?tonight:'')};
   }
   if(k==='form'){
-    const fn=tsbOn,tsb=fn(t),ia=now?d.intervalsData:d.wellness[t]||{},u=dtAvg(fn);
+    const fn=tsbOn,tsb=fn(t),ia=fitOn(t)||{},u=dtAvg(fn);
     if(tsb==null)return{title:'Form',missing:'Form (how fresh your legs are) is fitness minus recent fatigue, from your training history. Connect your training account in Settings and sync.',link:['Open Settings','openSettings()']};
     const w=zL(tsb,'tsb');
     return{title:'Form',val:(tsb>0?'+':'')+Math.round(tsb),sub:`${w} · fitness ${Math.round(ia.ctl)} minus recent fatigue ${Math.round(ia.atl)}`,

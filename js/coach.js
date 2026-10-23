@@ -17,7 +17,7 @@ function coachFlags(){
     fl.push({k:'debt',ic:'zzz',go:'recovery',st:D.min>=TH.DEBT_BAD?'bad':'warn',t:'Sleep debt',v:fmtDur(D.min),g:st==='building'?'▲':st==='paying'?'▼':'●',w:st==='building'?'Building':st==='paying'?'Paying back':'Steady',a:debtLine(D)});}}
   const wk=loadWeeks();const cur=wk[wk.length-2];if(cur&&cur.jump)fl.push({k:'jump',ic:'chartLine',go:'training',st:'warn',t:'Big jump in training',v:`+${cur.jump}%`,g:'▲',w:'last week',a:'Keep this week similar or easier.'});
   // v118 (A3 ledger): form and burnout explain, they no longer set today's verdict. Form is read under Load, burnout under Mind (the weekly hard-day budget).
-  const tsb=d.intervalsData&&d.intervalsData.tsb;if(tsb!=null&&tsb<TH.FORM_TIRED)fl.push({k:'form',ic:'battery',go:'training',st:tsb<TH.FORM_DEEP?'bad':'warn',t:tsb<TH.FORM_DEEP?'Carrying a lot of fatigue':'Carrying fatigue',a:tsb<TH.FORM_DEEP?'Keep the next few days easy.':'An easy day or two will freshen you up.'});
+  const tsb=tsbOn(td());if(tsb!=null&&tsb<TH.FORM_TIRED)fl.push({k:'form',ic:'battery',go:'training',st:tsb<TH.FORM_DEEP?'bad':'warn',t:tsb<TH.FORM_DEEP?'Carrying a lot of fatigue':'Carrying fatigue',a:tsb<TH.FORM_DEEP?'Keep the next few days easy.':'An easy day or two will freshen you up.'});
   const b=calcBurnout();if(b.score>=TH.BURNOUT_HIGH)fl.push({k:'burnout',ic:'mood',go:'recovery',st:'warn',t:'Energy, mood or calm low for a week',a:'Keep hard days few and protect sleep.'});
   // v132 (R3.4): heart rate above your similar sessions at the same pace or speed, twice in a row
   if(F('hrPaceList')&&thr){const L=hrPaceList(t,thr);if(L[0]&&L[0].run&&daysAgoBetween(L[0].w.date,t)<7){
