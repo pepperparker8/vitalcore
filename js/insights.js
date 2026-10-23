@@ -302,7 +302,7 @@ function insightRaw(){
   return{
     today:{date:t,weekday:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][dw],verdict:v?v.head[0]:null,strain0to21:load?strainOf(load):0,activity:insAct(t),
       body:{score:B.score,confidence:B.conf,missing:B.missing.map(m=>m.k),hrv7NightPoints:B.parts.hrv?Math.round(B.parts.hrv.pts):null,restingHrPoints:B.parts.rhr?Math.round(B.parts.rhr.pts):null,sleepPoints:B.parts.sleep?Math.round(B.parts.sleep.pts):null},
-      load:{state:Ld.state,rampFlag:Ld.rampFlag,hardSessionsLast4Days:Ld.hard4},
+      load:{state:Ld.state,rampFlag:Ld.rampFlag,hardSessionsLast4Days:Ld.hard4,bodyFeelMoved:Ld.feel},
       mind:{state:M.state,burnoutHigh:M.burnoutHigh},
       illness:il?il.lvl:null,
       lastNight:sl?{sleepHours:r1(sl.durMin?sl.durMin/60:null),batteryRanOut:slCounts(sl)?undefined:true,bed:sl.bed||null,wake:sl.wake||null,score:sl.score??null,deepHours:r1((sl.deepH||0)+(sl.deepM||0)/60)||null,remHours:r1((sl.remH||0)+(sl.remM||0)/60)||null,rested:sl.rested??null,lateCoffeeEveningBefore:!!(ciOn(dAgo(daysAgo(sl.date)+1))||{}).coffeeLate,night:insPolar(sl.date)}:null,

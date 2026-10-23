@@ -290,7 +290,12 @@ function calcLoad(){
   else if(band==='tired'&&(hard4>=2||rampFlag==='high'))state='Overreached';
   else if(band==='tired'||hard4>=2||rampFlag==='high')state='Tired';
   else if(band==='fresh'&&hard4===0)state='Fresh';
-  return{state,tsb:tsb??null,formWord:tsb==null?null:zL(tsb,'tsb'),ramp,rampFlag,hard4,base:L.base,now:L.now};
+  // v150 (Phase B): how your body feels today (check-in, 1 to 5) is read here and only here. Wrecked or Tired moves Load one step toward
+  // Tired, never to Overreached; Strong lets a balanced form with no hard days and no ramp read Fresh. feel 'low'|'high' when it moved the state.
+  const bf=(S().checkins.find(c=>c.date===td())||{}).bodyFeel??null;let feel=null;
+  if(bf!=null&&bf<=TH.LOAD_FEEL_LOW&&(state==='Fresh'||state==='Normal')){state=state==='Fresh'?'Normal':'Tired';feel='low';}
+  else if(bf!=null&&bf>=TH.LOAD_FEEL_HIGH&&state==='Normal'&&band==='ok'&&hard4===0&&!rampFlag){state='Fresh';feel='high';}
+  return{state,tsb:tsb??null,formWord:tsb==null?null:zL(tsb,'tsb'),ramp,rampFlag,hard4,base:L.base,now:L.now,bodyFeel:bf,feel};
 }
 // Mind score of one full check-in: energy, mood, calm (5 - stress) and motivation on 0 to 100 (25 when all four are Low)
 const mindOf=c=>ciFull(c)?Math.round((c.energy+c.mood+(5-c.stress)+c.motivation)/16*100):null;

@@ -659,6 +659,28 @@ run('Coach v132',()=>{
     check('Coach: after a session back, a planned hard day still waits for 2 clear days and says so; the day after is not held by it',K0.role==='easy'&&!K0.back&&K0.why===`Plan says hard. Kept easy: hard sessions wait until you have been well for ${TH.ILL_FREE_D} days.`&&!/been well/.test(K.days[1].why),`${K0.role}: ${K0.why} | ${K.days[1].why}`);
   }finally{window.bodyHrvPart=keepH;window.overreach=keepO;window.illBack=keepB;}
 });
+// v150 (Phase B): body feel moves Load and only Load; sore area steers today's sport and strength session; Body never reads either
+run('v150 Phase B',()=>{
+  base();const st=(t,bf,f)=>{_s.intervalsData={ctl:60,atl:60-t,tsb:t};_s.checkins=bf==null?[]:[ci({bodyFeel:bf})];if(f)f(_s);return calcLoad();};
+  const r=[[0,null,'Normal'],[0,3,'Normal'],[0,2,'Tired'],[0,1,'Tired'],[8,2,'Normal'],[-25,1,'Tired'],[-35,1,'Overreached'],[0,5,'Fresh'],[8,5,'Fresh'],[-25,5,'Tired']].map(([t,bf,w])=>[t,bf,w,st(t,bf).state]);
+  check('v150 Load: Wrecked or Tired moves Load one step toward Tired (never to Overreached); Strong lets a balanced form read Fresh',r.every(x=>x[2]===x[3]),r.map(x=>`form ${x[0]} feel ${x[1]} → ${x[3]}`).join(', '));
+  const lo=st(0,2),hi=st(0,5),hard=st(0,5,s=>{s.workouts=[wk1(dAgo(1),5,'Run',60,5)];});
+  check('v150 Load: says when body feel moved it; Strong does not lift a day after a hard session',lo.feel==='low'&&lo.bodyFeel===2&&hi.feel==='high'&&hard.state==='Normal'&&hard.feel===null,`${lo.feel} ${hi.feel}; after a hard day: ${hard.state} ${hard.feel}`);
+  base();_s.checkins=[ci()];const b0=calcBody().score;_s.checkins=[ci({bodyFeel:1,soreness:4,soreArea:'legs,back'})];
+  check('v150: Body does not read body feel or sore area',calcBody().score===b0,`${b0} → ${calcBody().score}`);
+  const EZ={1:['Run',50,2],2:['Run',45,2],3:['Cycle',60,2],5:['Run',100,2],6:['Run',45,2]};
+  const kc=(c,pl)=>{trn({pat:EZ,skip:(dt,wd)=>noLong3(dt,wd)||inCal(dt,0)});_s.profile.plan={[wdOf(td())]:pl||{type:'Run',note:'tempo'}};_s.checkins=[ci(c)];return strategy().days[0];};
+  const F=kc({bodyFeel:1}),F3=kc({bodyFeel:3});
+  check('v150 outline: a Wrecked body keeps a planned hard day easy and says why; Okay does not',F.role==='easy'&&F.why.startsWith('Your body feels wrecked today.')&&F3.role==='hard',`${F.role}: ${F.why} | ${F3.role}: ${F3.why}`);
+  const L=kc({soreness:3,soreArea:'legs'}),L0=kc({soreness:3});
+  check('v150 outline: sore legs move today\'s run to the sport you do most that spares them, and say so',L.role==='easy'&&L.type==='Cycle'&&L.why.startsWith('Your legs are sore today.')&&/ Cycling spares them\.$/.test(L.why)&&!L.swaps.includes('Run')&&L0.type==='Run'&&L0.why.startsWith('You are sore today.'),`${L.type}: ${L.why} [${L.swaps}] | ${L0.type}: ${L0.why}`);
+  const U=kc({soreness:3,soreArea:'upper'},{type:'Swim',note:'easy'});
+  check('v150 outline: sore shoulders and arms move a swim to another sport',U.type!=='Swim'&&U.why.startsWith('Your shoulders and arms are sore today.')&&/ spares them\.$/.test(U.why),`${U.type}: ${U.why}`);
+  const K=kc({soreness:3,soreArea:'back'},{type:'Weights'}),K0=kc({},{type:'Weights'}),C=kc({soreness:3,soreArea:'core'},{type:'Weights'}),nm=x=>JSON.stringify(x.sess||{});
+  check('v150 outline: a sore back makes a strength session lighter with no leg lifts; a sore core only lighter',K.role==='strength'&&K.effort===2&&K.why==='Your back is sore today. Lift lighter than usual. Leave out the leg lifts.'&&!/Squat|Deadlift/.test(nm(K))&&/Squat/.test(nm(K0))&&C.effort===2&&/Squat/.test(nm(C))&&!/leg lifts/.test(C.why),`${K.why} | ${C.why} | ${nm(K).slice(0,120)}`);
+  const T=kc({soreness:3,soreArea:'legs'}),later=strategy().days.slice(1).filter(x=>x.type==='Run').length;
+  check('v150 outline: only today is steered by a sore area, later days keep their runs',T.type!=='Run'&&later>0,`today ${T.type}, runs later ${later}`);
+});
 // v132 fuel: carbs on very long days and the evening before, carbs and drink during by length, protein per meal, the day as foods,
 // the last coffee from your own bedtime and caffeine only when it fits before it; habits that go with your sleep
 run('Fuel v132',()=>{

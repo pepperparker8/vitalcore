@@ -26,6 +26,8 @@ const ST_GAP=[[TH.GAP_MID,3,[0.33,0.5,0.75,0.9]],[TH.GAP_SHORT,2,[0.5,0.75,0.9]]
 // the two kinds of hard session in each race phase; hard days take turns
 const ST_QUAL={Base:['tempo','hills'],Build:['tempo','vo2'],Peak:['vo2','tempo'],def:['tempo','vo2']};
 // what a day can be swapped for, by its role (the role and its place in the week stay)
+// v150 (Phase B): the sports a sore area keeps you out of today, and the areas that leave the leg lifts out of a strength session
+const SORE_OFF={legs:['Run','Hike'],hips:['Run','Hike'],upper:['Swim']},SORE_NOLOW=new Set(['legs','hips','back']),SORE_PL=new Set(['legs','hips','upper']),SPORT_ING={Cycle:'Cycling',Swim:'Swimming',Run:'Running'};
 const ST_SWAP={hard:['Run','Cycle','Swim'],easy:['Run','Cycle','Swim','Yoga'],long:['Run','Cycle','Swim'],steady:['Run','Cycle','Swim','Hike'],strength:['Weights','Calisthenics','Yoga'],gentle:['Yoga','Walk']};
 // after the run-walk ladder, one stage a week: what each stage adds back
 const ST_IRS=['volume','strides','tempo','hills','long'];
@@ -260,7 +262,10 @@ function strategy(){
   const plans=PL_DAYS.map((_,i)=>planOf(i)),hasPlan=plans.some(Boolean);
   const planHas=re=>plans.some(p=>p&&re.test(p.note||''));
   const planHard=planHas(ST_HARD),planLong=planHas(ST_LONG);
-  const sore=(d.checkins.find(c=>c.date===t)||{}).soreness||0;
+  const ciT=d.checkins.find(c=>c.date===t)||{},sore=ciT.soreness||0,Ld=calcLoad();
+  // v150 (Phase B): where you are sore today (saved with soreness 3 or more) steers today's sport and strength session
+  const soreAt=sore>=3&&ciT.soreArea?ciT.soreArea.split(',').filter(a=>EM.soreArea[a]):[],soreOff=new Set(soreAt.flatMap(a=>SORE_OFF[a]||[]));
+  const soreW=soreAt.map(a=>EM.soreArea[a].toLowerCase()).join(' and '),soreLow=soreAt.some(a=>SORE_NOLOW.has(a)),soreIs=soreAt.length>1||SORE_PL.has(soreAt[0])?'are':'is';
   const r5=n=>Math.max(10,Math.round(n/5)*5);
   const wd0=stWd(t);
   // what actually happened on the six days before today, then the outline is appended day by day
@@ -333,7 +338,7 @@ function strategy(){
       }else if(role!=='rest'&&role!=='gentle'){
         // v132 (R1.2 to R1.4, R6.3, R7.2): the first of these that holds keeps today easy, in this order
         const hz=bodyHrvPart(t).part,sn=shortNight(t),fl=feelLow(t);
-        const cap=v&&v.ill?v.ill.why:prev.hard?'You trained hard yesterday.':hz&&hz.z<=TH.HRV_EASY_Z?'Your HRV is under your usual this week.':sn?`Last night was ${fmtDur(sn.gap)} under your need.`:fl?fl.why:sore>=3?'You are sore today.':v&&v.lvl==='warn'?(sc!=null?'Body is middling today.':v.ill?v.ill.why:''):'';
+        const cap=v&&v.ill?v.ill.why:prev.hard?'You trained hard yesterday.':hz&&hz.z<=TH.HRV_EASY_Z?'Your HRV is under your usual this week.':sn?`Last night was ${fmtDur(sn.gap)} under your need.`:fl?fl.why:Ld.feel==='low'?`Your body feels ${EM.bodyFeel[Ld.bodyFeel].toLowerCase()} today.`:sore>=3?(soreW?`Your ${soreW} ${soreIs} sore today.`:'You are sore today.'):v&&v.lvl==='warn'?(sc!=null?'Body is middling today.':v.ill?v.ill.why:''):'';
         const nap=sn&&!(v&&v.ill)&&!prev.hard&&!(hz&&hz.z<=TH.HRV_EASY_Z)?` A ${TH.NAP_MIN} to ${TH.NAP_MAX} minute nap between ${TH.NAP_SUG_FROM}:00 and ${TH.NAP_SUG_TO}:00 helps.`:'';
         if(cap){
           o.cap=cap;
@@ -353,7 +358,14 @@ function strategy(){
     const IMPACT=['Run','Cycle','Hike','Walk'];
     if(lowerHurt&&IMPACT.includes(type)&&role!=='rest'&&role!=='recover'&&role!=='race'&&role!=='strength'){type='Swim';o.bent=o.bent||hasPlan;why+=' Low impact because of your leg injury.';}
     // v121: your swap for this day (Insights), when the role allows it; never an impact sport with an active leg injury
-    const allow=r=>(ST_SWAP[r]||[]).filter(x=>!(lowerHurt&&IMPACT.includes(x)));
+    // v150: today, a sport that loads where you are sore moves to the one you do most of those it spares
+    if(i===0&&soreOff.has(type)&&!['rest','recover','race','strength','gentle'].includes(role)){
+      const to=['Cycle','Swim','Run'].filter(x=>!soreOff.has(x)&&!(lowerHurt&&IMPACT.includes(x))).sort((a,b)=>cnt(b)-cnt(a))[0];
+      if(to){type=to;o.bent=o.bent||hasPlan;why+=` ${SPORT_ING[to]} spares ${why.includes(`${soreW} ${soreIs} sore`)?(soreIs==='are'?'them':'it'):`your sore ${soreW}`}.`;}}
+    if(i===0&&role==='strength'&&soreAt.length){const lt=/Lift lighter/.test(why);o.light=true;o.soreLow=soreLow;
+      const tail=why.includes(`${soreW} ${soreIs} sore`)?'.':` while your ${soreW} ${soreIs} sore.`;
+      if(!lt||soreLow)why+=` ${lt?'Leave out the leg lifts':'Lift lighter'+(soreLow?' and leave out the leg lifts':'')}${tail}`;}
+    const allow=r=>(ST_SWAP[r]||[]).filter(x=>!(lowerHurt&&IMPACT.includes(x))&&!(i===0&&soreOff.has(x)));
     if(swp[dt]&&swp[dt]!==type&&allow(role).includes(swp[dt])){o.swapFrom=type;type=swp[dt];}
     let kind=role==='hard'?pair[qi%2]:null;
     // v121: coming back from a leg injury: hard runs wait for their stage, long runs come back last, never runs two days in a row
@@ -393,10 +405,10 @@ function strategy(){
       if(role==='gentle')return type==='Yoga'?'yoga':null;
       return null;};
     let x=shape(),fam=famOf(),sess=null;
-    const fit=()=>fam?sessFit(fam,fam==='runReturn'?ir.step:P.lv[fam]||1,x.lo,x.hi,capNow(),{noLower,light:!!(o.light||near)}):null;
+    const fit=()=>fam?sessFit(fam,fam==='runReturn'?ir.step:P.lv[fam]||1,x.lo,x.hi,capNow(),{noLower:noLower||!!o.soreLow,light:!!(o.light||near)}):null;
     sess=fit();
     // a hard session may run up to a quarter over your usual time rather than drop to easy
-    if(!sess&&fam&&role==='hard'){const h2=Math.max(x.hi,r5(x.hi*1.25));sess=sessFit(fam,P.lv[fam]||1,x.lo,h2,capNow(),{noLower});if(sess){x.lo=Math.max(x.lo,Math.round(sess.min/5)*5);x.hi=x.lo+5;}}
+    if(!sess&&fam&&role==='hard'){const h2=Math.max(x.hi,r5(x.hi*1.25));sess=sessFit(fam,P.lv[fam]||1,x.lo,h2,capNow(),{noLower:noLower||!!o.soreLow});if(sess){x.lo=Math.max(x.lo,Math.round(sess.min/5)*5);x.hi=x.lo+5;}}
     // still no fit: easy, and later days without a plan pick strength or long instead of trying hard again
     if(!sess&&fam&&role==='hard'){const l1=sessMake(fam,1,{}),full=l1.cap&&l1.q>capNow()[l1.cap]+0.01;hardOff=true;role='easy';kind=null;why=full?'Easy instead: this week\'s hard work is already planned.':'Easy instead: a hard session needs more time than you usually train.';x=shape();fam=famOf();sess=fit();}
     let{effort,name,how,lo,hi}=x;

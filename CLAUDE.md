@@ -3,7 +3,7 @@
 ## Project
 VitalCore is a personal health intelligence PWA. It combines training load, sleep, daily psychology check-ins, body measurements, blood markers and injuries into one recovery score (Body) and an AI-generated daily briefing.
 
-Current version: **149**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
+Current version: **150**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
 
 ## User context
 - Invite only (v124): the owner and the people the owner invites in Supabase; each person sees only their own data. Personal notes about the owner (devices, phone, habits) live in the gitignored `CLAUDE.local.md`; never put them back here, the repo is public.
@@ -62,9 +62,9 @@ exDismissed, hasRealData, onboardingDone
 - **Thresholds** live in `TH` (core.js), with the research reference in a comment where there is one (`docs/research-v132.md`, R numbers). Never write an inline number for a score band, cut, note or rule. Display labels (sleep score words) are the only exception.
 - **Workouts are read through `wkOn()`** (hidden duplicate copies left out). Only id lookups, backup, CSV export, the duplicate scan, sync and delete code read `S().workouts` directly; the "v130 source scan" test enforces it.
 - **Fitness, fatigue and form are read through `fitOn(date)` / `fitOf(date)` / `tsbOn(date)`** (recovery.js, v149): the Intervals.icu numbers less what the hidden copies added (`fitHidOn`, time constants `TH.FIT_DAYS` / `TH.FAT_DAYS`). Never read `intervalsData` or `wellness[].ctl/atl` for display or a rule.
-- **Body is the one recovery score** (`calcBody()`: HRV 45%, resting HR 20%, sleep 35%, each against your own band). No check-in, form, soreness, injury, burnout, sleep debt or naps in it. `calcBody`, `sleepNeed` and `needOf` are pinned by tests; sleep debt and naps never lower any score. A day without HRV and resting HR has no score (`coachGates()` keeps the outline running).
+- **Body is the one recovery score** (`calcBody()`: HRV 45%, resting HR 20%, sleep 35%, each against your own band). No check-in (body feel and sore area included), form, soreness, injury, burnout, sleep debt or naps in it. `calcBody`, `sleepNeed` and `needOf` are pinned by tests; sleep debt and naps never lower any score. A day without HRV and resting HR has no score (`coachGates()` keeps the outline running).
 - **Stress is inverted** wherever it feeds a score: use `5 - stress`.
-- **Each signal sits in one place**: form only in Load, energy/mood/motivation only in Mind, injuries only in `coachVerdict` and the outline, soreness only shapes the session.
+- **Each signal sits in one place**: form and body feel only in Load (v150: Wrecked or Tired one step toward Tired, never to Overreached; Strong lets a balanced week read Fresh; the outline reads it through `calcLoad().feel`), energy/mood/motivation only in Mind, injuries only in `coachVerdict` and the outline, soreness and sore area only shape the session (v150: today only, `SORE_OFF` sports move to one that spares the area, a sore back, legs or hips leaves the leg lifts out of strength).
 - **No source names on data screens** (Today, Log, Trends, Health, sheets, briefing): "recorded automatically", "your watch", "your band", "your scale", "your monitor". Source names only in Settings, sync toasts and "Connect … in Settings" empty states. No device brand names anywhere on screen.
 - **One line per chart and sheet sentence** (v123): what matters now, else the trend, else a short steady line; at most two rounded numbers, each with a comparison; at most 2 sentences and 140 characters. No "In view", counts or date lists.
 - **The outline is computed in code** (`strategy()`); the AI only explains it and never changes the call. Never invent a pace, wattage or heart rate. Never diagnose.
@@ -97,7 +97,7 @@ exDismissed, hasRealData, onboardingDone
 - Supabase SQL scripts the owner runs, in order: `docs/supabase-v79`, `v88`, `v98`, `v116`, `v118`, `v124`, `v127`, `v140`. Settings > Connections and cloud > Check the cloud tables names any still missing (`connProbe`, `CONN_SQL` in sync.js).
 
 ## Backlog
-- v150: Body calibration and Phase B (body feel and sore area into scores); the nap prompt with `s5`.
+- v151: Body calibration (a usual day sits on the green line at 67; fit the cuts to the owner's last 8 weeks from a backup); the nap prompt with `s5`, tested against a known nap with false positives counted.
 - Real push notifications (needs a push server).
 
 ## Conventions
