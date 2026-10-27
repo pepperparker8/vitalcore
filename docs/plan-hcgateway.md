@@ -1,6 +1,6 @@
 # Plan: body composition from Health Connect through a self-hosted HCGateway
 
-Status: approved with the recommended answers to section 10 (27 Oct 2026). The check in section 1 passed: the scale app writes weight and body fat to Health Connect. The backend route is built (vitalcore-backend 7b367bc, tested against a stand-in server only). Paused by the owner on 27 Oct 2026: Railway was not taking sign-ups, and a free host plus MongoDB Atlas was more upkeep than the scale app's own figures are worth while the Bluetooth read (v140) works. The backend route stays deployed and answers 409 "not set up". To resume, start at section 7, step 2.
+Status: approved with the recommended answers to section 10 (27 Oct 2026). The check in section 1 passed: the scale app writes weight and body fat to Health Connect. The backend route is built (vitalcore-backend 7b367bc, tested against a stand-in server only). Paused by the owner on 27 Oct 2026: Railway was not taking sign-ups, and a free host plus MongoDB Atlas was more upkeep than the scale app's own figures are worth while the Bluetooth read (v140) works. The backend route stays deployed and answers 409 "not set up". To resume, start at section 7, step 2. The owner confirmed the Bluetooth read works with the real scale (27 Oct 2026). A route with no server, if ever needed: Health Sync (Appyhapps) copies weight and body fat from Health Connect to Intervals.icu, and the app would read the body fat wellness field beside `icuWeight`.
 
 ## 1. Why, and the check that decides it
 
