@@ -3701,7 +3701,7 @@ run('v134 retired',()=>{
   check('v134: the old readiness and its helpers are gone',!gone.length,gone.join(' '));
   const oldTh=Object.keys(TH).filter(k=>/^OLD_|^PARALLEL/.test(k));
   check('v134: no OLD_ or PARALLEL_DAYS thresholds',!oldTh.length,oldTh.join(' '));
-  check('v134: the cuts are Body\'s, and no Primed',scoreCuts().high===67&&scoreCuts().mod===34&&[95,80,70,50,20].every(v=>scoreWord(v)!=='Primed')&&scoreWord(null)==='No score',JS(scoreCuts()));
+  check('v134: the cuts are Body\'s, and no Primed (v152: green from 57)',scoreCuts().high===57&&scoreCuts().mod===34&&[95,80,70,50,20].every(v=>scoreWord(v)!=='Primed')&&scoreWord(null)==='No score',JS(scoreCuts()));
   base();_s.readHist={[dAgo(1)]:71};migrate();
   check('v134: migrate() deletes readHist',!('readHist' in S()),'');
   base();const D=insightData(),t=JS(D);
