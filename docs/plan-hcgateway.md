@@ -1,6 +1,6 @@
 # Plan: body composition from Health Connect through a self-hosted HCGateway
 
-Status: approved with the recommended answers to section 10 (27 Oct 2026). Building waits for the check in section 1 and the shape in section 7, step 3.
+Status: approved with the recommended answers to section 10 (27 Oct 2026). The check in section 1 passed: the scale app writes weight and body fat to Health Connect. The backend route is built (vitalcore-backend 7b367bc, tested against a stand-in server only). The app side waits for the shape in section 7, step 3.
 
 ## 1. Why, and the check that decides it
 
@@ -114,6 +114,7 @@ New `measurements` columns, in `docs/supabase-vN.sql` and a `CONN_SQL` line, all
 - Up to 2 hours late; the Bluetooth read stays the way to see a weigh-in at once.
 - The scale's own figures come from formulas its maker does not publish. They are shown as estimates and read as a trend, like the v140 figures.
 - Another always-on service to keep running and patched.
+- From HCGateway's API: a login with an unknown username signs it up, so anyone who can reach the server can make an account, and a typo in `HC_USER` reads an empty one. Records are encrypted with a key made from the stored password hash, so whoever holds the database can read them; the server has to be the owner's.
 
 ## 10. Decisions for the owner (approved as recommended, 27 Oct 2026)
 1. **Where the server runs.** Recommended: a small container host with MongoDB Atlas's free tier. Alternative: a machine at home behind a tunnel.
