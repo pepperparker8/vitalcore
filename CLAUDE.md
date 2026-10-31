@@ -3,7 +3,7 @@
 ## Project
 VitalCore is a personal health intelligence PWA. It combines training load, sleep, daily psychology check-ins, body measurements, blood markers and injuries into one recovery score (Body) and an AI-generated daily briefing.
 
-Current version: **152**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
+Current version: **153**. This file holds the rules. What each release changed and why is in `docs/history.md` (everything up to v145, verbatim) and `docs/release-v*.md` (v118 on). Read the matching release note before changing a feature.
 
 ## User context
 - Invite only (v124): the owner and the people the owner invites in Supabase; each person sees only their own data. Personal notes about the owner (devices, phone, habits) live in the gitignored `CLAUDE.local.md`; never put them back here, the repo is public.
@@ -12,7 +12,7 @@ Current version: **152**. This file holds the rules. What each release changed a
 - Polar (owner only, through the owner's backend, repo `vitalcore-backend`, Vercel functions holding one token row) supplies the detailed night and the band's day (steps, active time, 24/7 heart rate). Workouts come only from Intervals.icu, never from Polar. Intervals.icu stays the source of daily wellness (HRV, resting HR, breathing). Polar's own recovery verdicts are never imported.
 - Intervals.icu wellness can mix two devices (a watch for the day, a ring or band for sleep), which is why the resting heart rate baseline uses all imported values rather than one device.
 - Blood markers in **mg/dL**, never mmol/L.
-- AI: Anthropic Messages API with each user's own key; model id in one constant, `CLAUDE_MODEL` (core.js).
+- AI: Anthropic Messages API with each user's own key; model id in one constant, `CLAUDE_MODEL` (core.js), Claude Haiku 5.5 since v153 for cost.
 
 ## Architecture
 - Vanilla HTML/CSS/JS, no framework, no build step. Hosted on GitHub Pages; Supabase for sync (local-first, RLS own rows).
@@ -94,11 +94,11 @@ exDismissed, hasRealData, onboardingDone
 - Trends: one range bar (7D · 30D · 90D · 1Y) for every chart, same card anatomy (title with ⓘ, stat header, chart, legend, one line).
 
 ## Status
-- Open: verify on the S24 itself (offline, the Bluetooth reads, the connection check, the move to IndexedDB); real passive activity.
+- Open: read a few Haiku briefings against the Sonnet ones for quality (v153); verify on the S24 itself (offline, the Bluetooth reads, the connection check, the move to IndexedDB); real passive activity.
 - Supabase SQL scripts the owner runs, in order: `docs/supabase-v79`, `v88`, `v98`, `v116`, `v118`, `v124`, `v127`, `v140`. Settings > Connections and cloud > Check the cloud tables names any still missing (`connProbe`, `CONN_SQL` in sync.js).
 
 ## Backlog
-- v153: fit Body's green line again once a backup holds 8 weeks with HRV on most days (v152 fitted it to 57 with HRV on 11 of 46 days); the nap prompt with `s5`, tested against a known nap with false positives counted.
+- Next: fit Body's green line again once a backup holds 8 weeks with HRV on most days (v152 fitted it to 57 with HRV on 11 of 46 days); the nap prompt with `s5`, tested against a known nap with false positives counted.
 - Real push notifications (needs a push server).
 
 ## Conventions
