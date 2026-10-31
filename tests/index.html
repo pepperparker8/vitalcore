@@ -337,6 +337,7 @@ later.push((async()=>{
     const[a,b]=calls,oc=a&&a.output_config||{},oc2=b&&b.output_config||{};
     check('Briefing: the request is low effort, streamed, with the instructions cached',calls.length===2&&a.stream===true&&oc.effort==='low'&&oc.format&&oc.format.type==='json_schema'&&a.max_tokens===8000&&a.system[0].cache_control&&a.system[0].cache_control.type==='ephemeral'&&a.model===CLAUDE_MODEL,`calls ${calls.length}; effort ${oc.effort}, schema ${!!oc.format}, max ${a&&a.max_tokens}, cached ${!!(a&&a.system[0].cache_control)}`);
     check('v153 Briefing: the AI is Haiku 5.5',CLAUDE_MODEL==='claude-haiku-5-5'&&a.model==='claude-haiku-5-5',`model ${CLAUDE_MODEL}`);
+    check('v154 Briefing: days named as the outline gives them, the aerobic estimate never called Fitness',/never call a day hard, a key session or a rest day unless its session says so/.test(a.system[0].text)&&/as your aerobic fitness estimate\. Never call it Fitness alone/.test(a.system[0].text),'rules missing from the prompt');
     check('Briefing: a rejected effort setting is dropped, the schema kept, and the error shown with the quick summary',b&&!('effort' in oc2)&&oc2.format&&/did not load/.test($('insContent').innerHTML)&&/Quick summary/.test($('insContent').innerHTML),`second call: ${JSON.stringify(Object.keys(oc2))}`);
   }catch(e){check('Stream: async tests',false,'Threw: '+e.message);}
   finally{window.fetch=realFetch;}
